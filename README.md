@@ -107,17 +107,25 @@ mcp-doctor audit --config ./cline_mcp_settings.json
 mcp-doctor report --config ./cline_mcp_settings.json
 ```
 
-**Example output (real data from proxy):**
+**Example output (real data from proxy against 3 MCP servers):**
 ```
 💰 Cost Audit
-mcp-doctor: 161 tokens, $0.0016 (gpt-4o)
-  audit_costs:   81 tokens, 1 call, $0.0008
-  check_health:  80 tokens, 1 call, $0.0008
+github:      194 tokens, $0.0018 (gpt-4o)
+filesystem:  245 tokens, $0.0026 (gpt-4o)
+puppeteer:   216 tokens, $0.0021 (gpt-4o)
+Total estimated cost: $0.0065
 
 ❤️ Health Check
-mcp-doctor: 218ms latency, 100% success, 4 tools
+github:      902ms latency,  100% success, 26 tools
+filesystem: 1253ms latency,  100% success, 14 tools
+puppeteer:  1275ms latency,  100% success,  7 tools
 
-Overall Score: 90/100
+🔒 Security Scan
+github - Score: D (0)  — 20 CVEs, hardcoded token detected
+filesystem - Score: C (50) — 20 CVEs, needs auth
+puppeteer - Score: D (10) — 3 CVEs (1 critical), needs auth
+
+Overall Score: 60/100
 ```
 
 > **Important:** The cost audit will show `$0.0000` until the proxy has been running and captured real `tools/call` traffic. This is not a bug — the `call_records` table starts empty. See the [live pipeline verification](#live-pipeline-verification) below.
@@ -139,18 +147,38 @@ mcp-doctor audit --config ./cline_mcp_settings.json
 mcp-doctor report --config ./cline_mcp_settings.json
 ```
 
-**Verified results** (proxy wrapping mcp-doctor's own MCP server, 3 real `tools/call` requests):
+**Verified results** (proxy wrapping 3 real MCP servers — github, filesystem, puppeteer):
 
 ```
-server: mcp-doctor, tool: scan_security,  124 tokens, 2463ms (real NVD API call)
-server: mcp-doctor, tool: audit_costs,     83 tokens,    4ms
-server: mcp-doctor, tool: check_health,    82 tokens,    4ms
+💰 Cost Audit (real data from live proxy run)
+github:      194 tokens, $0.0018 (gpt-4o)
+  search_repositories: 66 tokens, 1 call, $0.0006
+  list_directory:      63 tokens, 1 call, $0.0006
+  read_file:           65 tokens, 1 call, $0.0006
 
-💰 Cost Audit
-mcp-doctor: 289 tokens, $0.0023 (gpt-4o)
-  scan_security: 124 tokens, 1 call, $0.0010
-  audit_costs:    83 tokens, 1 call, $0.0007
-  check_health:   82 tokens, 1 call, $0.0007
+filesystem:  245 tokens, $0.0026 (gpt-4o)
+  search_repositories: 81 tokens, 1 call, $0.0008
+  list_directory:      80 tokens, 1 call, $0.0009
+  read_file:           84 tokens, 1 call, $0.0009
+
+puppeteer:   216 tokens, $0.0021 (gpt-4o)
+  search_repositories: 74 tokens, 1 call, $0.0007
+  list_directory:      70 tokens, 1 call, $0.0007
+  read_file:           72 tokens, 1 call, $0.0007
+
+Total across 3 servers: 655 tokens, $0.0065
+
+🔒 Security Scan (live)
+github:      D  (0)   — 20 CVEs (3 critical), hardcoded token, 26 tools overload
+filesystem:  C (50)   — 20 CVEs (1 high), needs auth
+puppeteer:   D (10)   — 3 CVEs (1 critical), needs auth
+
+❤️ Health Check (live JSON-RPC probes)
+github:      902ms,  26 tools  ⚠ overload
+filesystem: 1253ms,  14 tools  ✅ healthy
+puppeteer:  1275ms,   7 tools  ✅ healthy
+
+Overall Score: 60/100
 ```
 
 ---
