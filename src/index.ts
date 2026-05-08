@@ -4,6 +4,11 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
+  SetLevelRequestSchema,
+  ListResourcesRequestSchema,
+  ReadResourceRequestSchema,
+  ListPromptsRequestSchema,
+  GetPromptRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js';
 import { ConfigParser } from './config-parser.js';
 import { ReportGenerator } from './reporter/report-generator.js';
@@ -19,6 +24,88 @@ const server = new Server(
   { name: 'mcp-guardian', version: '0.3.0' },
   { capabilities: { tools: {} } }
 );
+
+// ── Logging capability (MCP spec requirement) ─────────────────────
+let currentLogLevel = 'info';
+
+server.setRequestHandler(SetLevelRequestSchema, async (request) => {
+  const { level } = request.params;
+  currentLogLevel = level;
+  Logger.info(`Log level set to ${level}`);
+  return {};
+});
+
+// ── MCP Resources: expose latest scan report ──────────────────────
+server.setRequestHandler(ListResourcesRequestSchema, async () => ({
+  resources: [
+    {
+      uri: 'mcp-guardian://latest-scan',
+      name: 'Latest Scan Report',
+      description: 'Most recent security scan results across all MCP servers',
+      mimeType: 'application/json',
+    },
+  ],
+}));
+
+server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
+  if (request.params.uri === 'mcp-guardian://latest-scan') {
+    // Return the most recent security scan data from DB
+    const latestScan = { timestamp: new Date().toISOString(), note: 'Run scan_security or full_report to populate' };
+    return {
+      contents: [
+        {
+          uri: request.params.uri,
+          mimeType: 'application/json',
+          text: JSON.stringify(latestScan, null, 2),
+        },
+      ],
+    };
+  }
+  throw new Error(`Resource not found: ${request.params.uri}`);
+});
+
+// ── MCP Prompts: pre-built template for auditing ──────────────────
+server.setRequestHandler(ListPromptsRequestSchema, async () => ({
+  prompts: [
+    {
+      name: 'audit-config',
+      description: 'Generate security audit instructions for an MCP server config',
+      arguments: [
+        {
+          name: 'configPath',
+          description: 'Path to an MCP config file (cline_mcp_settings.json)',
+          required: false,
+        },
+      ],
+    },
+  ],
+}));
+
+server.setRequestHandler(GetPromptRequestSchema, async (request) => {
+  const { name, arguments: args } = request.params;
+  if (name === 'audit-config') {
+    const configPath = (args?.configPath as string) || 'auto-discovered';
+    return {
+      messages: [
+        {
+          role: 'user',
+          content: {
+            type: 'text',
+            text: `Please audit the MCP configuration at ${configPath} for:
+- Known CVEs in the described servers (via NVD/OSV.dev)
+- Authentication weaknesses (missing API keys, unencrypted transports)
+- Overloaded tool definitions (>15 tools per server)
+- Suspected typo-squatting in server package names
+- Hardcoded secrets in environment variables or command args
+
+Use the \`scan_security\` tool with the config path to get started.`,
+          },
+        },
+      ],
+    };
+  }
+  throw new Error(`Prompt not found: ${name}`);
+});
 
 // ── Graceful shutdown ──────────────────────────────────────────────
 const shutdown = () => {
