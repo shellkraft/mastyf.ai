@@ -1,52 +1,78 @@
-# 🩺 MCP Guardian
+# 🛡️ MCP Guardian
 
 **Security, cost, and health audit for MCP infrastructure.**
 
-MCP Guardian scans your Model Context Protocol (MCP) servers for security vulnerabilities, tracks real token costs via a proxy interceptor, and monitors health metrics. It works as both an MCP server (so Cline/Claude can call its tools) and a standalone CLI.
-
+[![npm version](https://img.shields.io/npm/v/@mcp-guardian/server)](https://www.npmjs.com/package/@mcp-guardian/server)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.4-blue)](https://www.typescriptlang.org/)
 [![MCP SDK](https://img.shields.io/badge/MCP_SDK-1.0-green)](https://github.com/modelcontextprotocol/typescript-sdk)
 [![License](https://img.shields.io/badge/License-MIT-yellow)](LICENSE)
 [![CI](https://github.com/rudraneel93/mcp-guardian/actions/workflows/ci.yml/badge.svg)](https://github.com/rudraneel93/mcp-guardian/actions/workflows/ci.yml)
 
+MCP Guardian scans your [Model Context Protocol](https://modelcontextprotocol.io/) (MCP) servers for security vulnerabilities, tracks real token costs via a proxy interceptor, and monitors health metrics. It works as both an **MCP server** (so AI assistants like Cline/Claude can invoke its tools) and a **standalone CLI**.
+
 ---
 
 ## Table of Contents
 
+- [Why MCP Guardian?](#why-mcp-guardian)
 - [Features](#features)
 - [Installation](#installation)
 - [Quick Start](#quick-start)
   - [Proxy Workflow (Real Cost Tracking)](#proxy-workflow-real-cost-tracking)
+  - [One-Off Scan](#one-off-scan)
 - [CLI Reference](#cli-reference)
-  - [mcp-guardian proxy](#mcp-guardian-proxy)
-  - [mcp-guardian scan](#mcp-guardian-scan)
-  - [mcp-guardian audit](#mcp-guardian-audit)
-  - [mcp-guardian health](#mcp-guardian-health)
-  - [mcp-guardian report](#mcp-guardian-report)
-- [MCP Server](#mcp-server-for-clineclaude-desktop)
+  - [`mcp-guardian proxy`](#mcp-guardian-proxy)
+  - [`mcp-guardian scan`](#mcp-guardian-scan)
+  - [`mcp-guardian audit`](#mcp-guardian-audit)
+  - [`mcp-guardian health`](#mcp-guardian-health)
+  - [`mcp-guardian report`](#mcp-guardian-report)
+- [MCP Server (AI Assistant Integration)](#mcp-server-ai-assistant-integration)
+  - [Available Tools](#available-tools)
+  - [Available Resources & Prompts](#available-resources--prompts)
 - [CI/CD Integration](#cicd-integration)
+- [Docker](#docker)
 - [Architecture](#architecture)
+  - [Data Flow (Proxy → DB → Audit)](#data-flow-proxy--db--audit)
 - [Config Discovery](#config-discovery)
-- [Security Scoring](#security-scoring-model)
+- [Security Scoring Model](#security-scoring-model)
 - [Pricing Models](#pricing-models)
 - [Environment Variables](#environment-variables)
 - [Development](#development)
+- [FAQ](#faq)
 - [Roadmap](#roadmap)
 - [License](#license)
+
+---
+
+## Why MCP Guardian?
+
+As MCP adoption grows, so does the attack surface. MCP servers run arbitrary commands, access filesystems, make network calls, and handle sensitive data — often with zero visibility into their security posture or operational cost.
+
+MCP Guardian provides:
+
+- **Security auditing** — CVE scanning (OSV.dev + NVD), hardcoded secret detection, typo-squatting detection, command injection detection, and TLS validation
+- **Real cost tracking** — Proxy interceptor that captures actual `tools/call` traffic and counts tokens via `tiktoken` (o200k_base encoding) — no estimates, no mocks
+- **Health monitoring** — Live JSON-RPC 2.0 handshake probes with latency, success rate, tool count, and context pressure analysis
+- **Agent-native** — Runs as an MCP server so your AI assistant can self-audit its own infrastructure
 
 ---
 
 ## Features
 
 ### 🔒 Security Scan (`scan_security`)
-- **CVE Checking** — Queries [OSV.dev](https://osv.dev) (purl-based) and [NIST NVD](https://nvd.nist.gov) for known vulnerabilities. Rate-limited (5 req/min without API key, 20 req/min with key)
-- **Auth Probing** — Detects missing authentication via env vars (`API_KEY`, `AUTH_TOKEN`, etc.) and URL credentials
-- **Transport Security** — Flags unencrypted transports (HTTP, WS) and validates TLS certificates (expiry, issuer, validity)
-- **Typo-Squat Detection** — Levenshtein distance matching against 24 known official MCP packages
-- **Secret Scanning** — 6 regex patterns for hardcoded API keys, tokens, private keys, passwords, GitHub tokens, OpenAI keys
-- **Scoring** — Weighted 0–100 security score with actionable recommendations
 
-### 💰 Cost Audit (`audit_costs')
+| Check | Description |
+|---|---|
+| **CVE Checking** | Queries [OSV.dev](https://osv.dev) (purl-based) and [NIST NVD](https://nvd.nist.gov) for known vulnerabilities. Rate-limited (5 req/min without API key, 20 req/min with key) |
+| **Auth Probing** | Detects missing authentication via env vars (`API_KEY`, `AUTH_TOKEN`, etc.) and URL credentials |
+| **Transport Security** | Flags unencrypted transports (HTTP, WS) and validates TLS certificates (expiry, issuer, validity) |
+| **Typo-Squat Detection** | Levenshtein distance matching against 24 known official MCP packages |
+| **Secret Scanning** | 6 regex patterns for hardcoded API keys, tokens, private keys, passwords, GitHub tokens, OpenAI keys |
+| **Command Validation** | Flags dangerous patterns (path traversal, shell chaining, `rm -rf`, `curl`/`wget` in commands, and more) |
+| **Scoring** | Weighted 0–100 security score with actionable recommendations |
+
+### 💰 Cost Audit (`audit_costs`)
+
 - **Proxy Interceptor** — `mcp-guardian proxy` sits between your AI client and MCP servers, capturing every `tools/call` request/response
 - **Real Token Counting** — Uses `tiktoken` (o200k_base encoding) on actual JSON-RPC traffic — no hardcoded estimates
 - **Multi-Model Pricing** — 97 models across 17 providers (OpenAI, Anthropic, Google, DeepSeek, xAI, Meta, Mistral, and more)
@@ -54,27 +80,40 @@ MCP Guardian scans your Model Context Protocol (MCP) servers for security vulner
 - **Custom Pricing** — Override via `PRICING_OVERRIDES` env var: `{"my-model": {"input": 2.0, "output": 6.0}}`
 
 ### ❤️ Health Monitor (`check_health`)
+
 - **Live Probes** — Full JSON-RPC 2.0 handshake (initialize → initialized → `tools/list`) with request/response correlation
 - **SSE Probing** — Multi-path discovery (`/`, `/sse`, `/message`) with auth header injection and timeout handling
 - **Latency Tracking** — End-to-end latency per server with historical success rates from SQLite
 - **Overload Detection** — Warns when >15 tools exposed; context pressure estimation
 
 ### 📊 Full Report (`full_report`)
+
 - **Three Output Formats** — Colored text, Markdown tables, structured JSON (with `resource` MIME type for agent consumption)
 - **Overall Score** — Composite security + health score (0–100)
-- **Database Storage** — All scans, costs, health checks, and proxy-captured call records persisted in SQLite
+- **Database Storage** — All scans, costs, health checks, and proxy-captured call records persisted in SQLite (4 tables, batched writes)
 
 ### 🔧 Production Features
+
 - **Dependency Injection** — IoC container (`src/container.ts`) for testability and runtime swaps
 - **Rate Limiting** — Token-bucket rate limiter on OSV.dev and NVD API calls
 - **Graceful Shutdown** — SIGINT/SIGTERM handlers flush DB and close connections
 - **Batched DB Writes** — 1s debounced flush reduces I/O by 10x
 - **Alert Thresholds** — 6 CLI flags with exit codes 1/2 for CI/CD integration
-- **GitHub Actions CI** — Node 18/20/22 matrix, 62 unit tests across 9 suites
+- **GitHub Actions CI** — Node 18/20/22 matrix, 63 tests across 10 suites
 
 ---
 
 ## Installation
+
+### From npm (recommended)
+
+```bash
+npm install -g @mcp-guardian/server
+```
+
+After global install, the `mcp-guardian` command is available in your PATH.
+
+### From source
 
 ```bash
 git clone https://github.com/rudraneel93/mcp-guardian.git
@@ -83,7 +122,7 @@ npm install
 npm run build
 ```
 
-**Requirements:** Node.js ≥18, npm ≥9
+**Requirements:** Node.js ≥ 18, npm ≥ 9
 
 ---
 
@@ -108,6 +147,7 @@ mcp-guardian report --config ./cline_mcp_settings.json
 ```
 
 **Example output (real data from proxy against 3 MCP servers):**
+
 ```
 💰 Cost Audit
 github:      194 tokens, $0.0018 (gpt-4o)
@@ -128,57 +168,22 @@ puppeteer - Score: D (10) — 3 CVEs (1 critical), needs auth
 Overall Score: 60/100
 ```
 
-> **Important:** The cost audit will show `$0.0000` until the proxy has been running and captured real `tools/call` traffic. This is not a bug — the `call_records` table starts empty. See the [live pipeline verification](#live-pipeline-verification) below.
+> **Important:** The cost audit will show `$0.0000` until the proxy has been running and captured real `tools/call` traffic. This is not a bug — the `call_records` table starts empty.
 
----
-
-## Live Pipeline Verification
-
-To verify the full pipeline works end-to-end with real data (no mocks):
+### One-Off Scan
 
 ```bash
-# Terminal 1: Start the proxy
-mcp-guardian proxy --config ./cline_mcp_settings.json
+# Quick security scan on auto-discovered configs
+mcp-guardian scan
 
-# Terminal 2: Run your AI workflows (or pipe test calls)
+# Scan with thresholds for CI
+mcp-guardian scan --config ./cline_mcp_settings.json --fail-on-critical --fail-on-secrets --threshold-score 70
 
-# Terminal 1: Ctrl+C when done, then:
-mcp-guardian audit --config ./cline_mcp_settings.json
-mcp-guardian report --config ./cline_mcp_settings.json
-```
+# Check health
+mcp-guardian health --server github-server --fail-on-overload --threshold-latency 2000
 
-**Verified results** (proxy wrapping 3 real MCP servers — github, filesystem, puppeteer):
-
-```
-💰 Cost Audit (real data from live proxy run)
-github:      194 tokens, $0.0018 (gpt-4o)
-  search_repositories: 66 tokens, 1 call, $0.0006
-  list_directory:      63 tokens, 1 call, $0.0006
-  read_file:           65 tokens, 1 call, $0.0006
-
-filesystem:  245 tokens, $0.0026 (gpt-4o)
-  search_repositories: 81 tokens, 1 call, $0.0008
-  list_directory:      80 tokens, 1 call, $0.0009
-  read_file:           84 tokens, 1 call, $0.0009
-
-puppeteer:   216 tokens, $0.0021 (gpt-4o)
-  search_repositories: 74 tokens, 1 call, $0.0007
-  list_directory:      70 tokens, 1 call, $0.0007
-  read_file:           72 tokens, 1 call, $0.0007
-
-Total across 3 servers: 655 tokens, $0.0065
-
-🔒 Security Scan (live)
-github:      D  (0)   — 20 CVEs (3 critical), hardcoded token, 26 tools overload
-filesystem:  C (50)   — 20 CVEs (1 high), needs auth
-puppeteer:   D (10)   — 3 CVEs (1 critical), needs auth
-
-❤️ Health Check (live JSON-RPC probes)
-github:      902ms,  26 tools  ⚠ overload
-filesystem: 1253ms,  14 tools  ✅ healthy
-puppeteer:  1275ms,   7 tools  ✅ healthy
-
-Overall Score: 60/100
+# Generate a Markdown report for documentation
+mcp-guardian report --format markdown --output audit-report.md
 ```
 
 ---
@@ -187,21 +192,19 @@ Overall Score: 60/100
 
 ### `mcp-guardian proxy`
 
-Start the MCP proxy interceptor to capture real token usage data.
+Start the MCP proxy interceptor to capture real token usage data. The proxy spawns all stdio MCP servers from config, then bridges stdin/stdout.
 
 ```bash
 mcp-guardian proxy --config ./cline_mcp_settings.json
 ```
 
-The proxy spawns all stdio MCP servers from config, then bridges stdin/stdout. Pipe JSON-RPC messages through it, or configure your AI client to connect via the proxy's stdio transport.
-
 | Option | Description |
-|--------|-------------|
+|---|---|
 | `-c, --config <path>` | Path to MCP config file |
 
 ### `mcp-guardian scan`
 
-Run security scan on MCP servers. Detects CVEs, auth gaps, secrets, typo-squatting, and transport issues.
+Run security scan on MCP servers.
 
 ```bash
 mcp-guardian scan
@@ -210,8 +213,8 @@ mcp-guardian scan --all --threshold-score 70
 ```
 
 | Option | Description |
-|--------|-------------|
-| `-c, --config <path>` | Path to MCP config file |
+|---|---|
+| `-c, --config <path>` | Path to an MCP config file |
 | `-a, --all` | Aggregate all discoverable configs |
 | `--threshold-score <n>` | Exit code 2 if any server score drops below `n` |
 | `--fail-on-critical` | Exit code 1 if any critical CVE found |
@@ -228,8 +231,8 @@ mcp-guardian audit --threshold-cost 0.50
 ```
 
 | Option | Description |
-|--------|-------------|
-| `-c, --config <path>` | Path to MCP config file |
+|---|---|
+| `-c, --config <path>` | Path to an MCP config file |
 | `-a, --all` | Aggregate all discoverable configs |
 | `-s, --server <name>` | Filter to a specific server |
 | `--threshold-cost <n>` | Exit code 2 if total cost exceeds `n` USD |
@@ -245,8 +248,8 @@ mcp-guardian health --threshold-latency 2000 --fail-on-overload
 ```
 
 | Option | Description |
-|--------|-------------|
-| `-c, --config <path>` | Path to MCP config file |
+|---|---|
+| `-c, --config <path>` | Path to an MCP config file |
 | `-a, --all` | Aggregate all discoverable configs |
 | `-s, --server <name>` | Filter to a specific server |
 | `--threshold-latency <ms>` | Exit code 2 if any server exceeds latency threshold |
@@ -264,17 +267,31 @@ mcp-guardian report --all --threshold-score 60
 ```
 
 | Option | Description |
-|--------|-------------|
-| `-c, --config <path>` | Path to MCP config file |
+|---|---|
+| `-c, --config <path>` | Path to an MCP config file |
 | `-a, --all` | Aggregate all discoverable configs |
-| `-f, --format <fmt>` | Output format: `text`, `markdown`, or `json` |
+| `-f, --format <fmt>` | Output format: `text` (default), `markdown`, or `json` |
+| `--output <path>` | Save report to a file instead of stdout |
 | `--threshold-score <n>` | Exit code 2 if overall score drops below `n` |
 
 ---
 
-## MCP Server (for Cline/Claude Desktop)
+## MCP Server (AI Assistant Integration)
 
 Add to your `cline_mcp_settings.json` or `claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "mcp-guardian": {
+      "command": "npx",
+      "args": ["-y", "@mcp-guardian/server"]
+    }
+  }
+}
+```
+
+Or with a local install:
 
 ```json
 {
@@ -287,29 +304,67 @@ Add to your `cline_mcp_settings.json` or `claude_desktop_config.json`:
 }
 ```
 
-Then Cline/Claude can invoke these tools:
+### Available Tools
 
 | Tool | Parameters | Description |
-|------|-----------|-------------|
-| `scan_security` | `configPath?` | Scan MCP configs for CVEs, auth gaps, typo-squatting, and hardcoded secrets |
+|---|---|---|
+| `scan_security` | `configPath?` | Scan MCP configs for CVEs, auth gaps, typo-squatting, hardcoded secrets, and dangerous commands |
 | `audit_costs` | `serverName?` | Estimate token usage and costs per server with multi-model pricing |
 | `check_health` | `serverName?` | Check latency, success rate, tool count, and context pressure |
-| `full_report` | `configPath?`, `format?` (json\|markdown\|text) | Generate complete audit report |
+| `full_report` | `configPath?`, `format?` (json\|markdown\|text) | Generate complete audit report in any format |
 
-JSON format reports also include a structured `resource` content type for agent consumption.
+JSON format reports also include a structured `resource` content type (MIME: `application/json`) so AI assistants can consume reports programmatically.
+
+### Available Resources & Prompts
+
+- **Resource:** `mcp-guardian://latest-scan` — exposes the most recent security scan as structured JSON
+- **Prompt:** `audit-config` — generates structured audit instructions for an MCP config path, which the assistant can use to guide its investigation
 
 ---
 
 ## CI/CD Integration
 
-Run in GitHub Actions to catch security issues before deployment:
+Run MCP Guardian in CI to catch issues before deployment:
 
 ```yaml
 - name: MCP Guardian Security Scan
-  run: npx mcp-guardian scan --config ./cline_mcp_settings.json --fail-on-critical --fail-on-secrets
+  run: npx @mcp-guardian/server scan --config ./cline_mcp_settings.json --fail-on-critical --fail-on-secrets
   env:
     NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
+
+- name: MCP Guardian Cost Audit
+  run: npx @mcp-guardian/server audit --all --threshold-cost 0.50
+
+- name: MCP Guardian Health Check
+  run: npx @mcp-guardian/server health --all --threshold-latency 3000 --fail-on-overload
 ```
+
+### Exit Codes
+
+| Code | Meaning |
+|---|---|
+| 0 | All checks passed within thresholds |
+| 1 | Critical security issue found (critical CVE, secret, overload) |
+| 2 | Threshold exceeded (score, cost, or latency below/above limit) |
+
+---
+
+## Docker
+
+A Docker image is available for running the proxy in containerized environments.
+
+```bash
+# Build
+docker build -t mcp-guardian .
+
+# Run proxy
+docker run -i \
+  -v $(pwd)/cline_mcp_settings.json:/app/cline_mcp_settings.json \
+  -v mcp-guardian-db:/root/.mcp-guardian \
+  mcp-guardian --config /app/cline_mcp_settings.json
+```
+
+The `Dockerfile` uses `node:20-alpine` and runs `mcp-guardian proxy` as the default entrypoint.
 
 ---
 
@@ -319,9 +374,9 @@ Run in GitHub Actions to catch security issues before deployment:
 mcp-guardian/
 ├── src/
 │   ├── index.ts                    # MCP server entry (stdio transport)
-│   ├── cli.ts                      # CLI wrapper (5 commands: scan, audit, health, report, proxy)
-│   ├── container.ts                # Dependency injection container
-│   ├── types.ts                    # 13 shared TypeScript interfaces
+│   ├── cli.ts                      # CLI wrapper (5 commands: proxy, scan, audit, health, report)
+│   ├── container.ts                # Dependency injection container (IoC)
+│   ├── types.ts                    # Shared TypeScript interfaces (8 types)
 │   ├── config-parser.ts            # Multi-format config parsing with multi-file aggregation
 │   │
 │   ├── proxy/                      # MCP Proxy Interceptor (real cost engine)
@@ -334,18 +389,19 @@ mcp-guardian/
 │   │   └── health-monitor.ts       # Live JSON-RPC probing + DB integration
 │   │
 │   ├── scanners/                   # Individual security checks
-│   │   ├── cve-checker.ts          # OSV.dev → NVD fallback chain
-│   │   ├── auth-prober.ts          # Auth/transport detection (env + URL)
+│   │   ├── cve-checker.ts          # OSV.dev → NVD fallback chain (rate-limited)
+│   │   ├── auth-prober.ts          # Auth/transport detection (env + URL patterns)
 │   │   ├── typo-squat-detector.ts  # Levenshtein distance (O(n) memory)
-│   │   └── secret-scanner.ts       # 6 regex patterns for secrets
+│   │   ├── secret-scanner.ts       # 6 regex patterns for secrets
+│   │   └── command-validator.ts    # 10 suspicious pattern checks for command injection
 │   │
 │   ├── clients/                    # External API clients
-│   │   ├── osv-client.ts           # api.osv.dev (purl-based, rate-limited)
-│   │   ├── nvd-client.ts           # NIST NVD (API key, rate-limited)
-│   │   └── pricing-client.ts       # 97 models, custom override support
+│   │   ├── osv-client.ts           # api.osv.dev (purl-based, token-bucket rate-limited)
+│   │   ├── nvd-client.ts           # NIST NVD (API key support, rate-limited)
+│   │   └── pricing-client.ts       # 97 models, 17 providers, custom override support
 │   │
 │   ├── database/
-│   │   └── history-db.ts           # SQLite via sql.js (4 tables, batched writes)
+│   │   └── history-db.ts           # SQLite via sql.js (4 tables, batched writes, 1s debounce)
 │   │
 │   ├── reporter/
 │   │   └── report-generator.ts     # Text, Markdown, JSON formatting
@@ -354,12 +410,26 @@ mcp-guardian/
 │       ├── token-counter.ts        # tiktoken (o200k_base) wrapper
 │       ├── mcp-client.ts           # Full JSON-RPC 2.0 state machine + SSE probing
 │       ├── rate-limiter.ts         # Token-bucket rate limiter
-│       ├── tls-checker.ts          # TLS certificate validation
+│       ├── tls-checker.ts          # TLS certificate validation (expiry, issuer, chain)
 │       ├── scoring.ts              # Shared scoring utility
-│       └── logger.ts              # Colored console logger
+│       └── logger.ts              # Colored console logger with log levels
+│
+tests/                              # 63 tests across 10 suites (Vitest)
+├── config-parser.test.ts
+├── secret-scanner.test.ts
+├── auth-prober.test.ts
+├── typo-squat-detector.test.ts
+├── scoring.test.ts
+├── pricing-client.test.ts
+├── services/
+│   ├── cost-auditor.test.ts
+│   └── security-scanner.test.ts
+└── integration/
+    ├── proxy-audit.test.ts
+    └── full-pipeline.test.ts
 ```
 
-### Data Flow — Proxy → DB → Audit
+### Data Flow (Proxy → DB → Audit)
 
 ```
 AI Client (Cline/Claude)
@@ -370,10 +440,10 @@ AI Client (Cline/Claude)
 │ MCP Proxy Server  │ ← mcp-guardian proxy
 │ (proxy-server.ts) │
 └───────┬───────────┘
-        │ counts tokens (tiktoken)
+        │ counts tokens (tiktoken o200k_base)
         ▼
 ┌───────────────────┐
-│ call_records table │ ← SQLite
+│ call_records table │ ← SQLite (sql.js)
 │ (history-db.ts)   │
 └───────┬───────────┘
         │ async getCallRecordsForServer()
@@ -382,7 +452,7 @@ AI Client (Cline/Claude)
 │   Cost Auditor    │ ← mcp-guardian audit / report
 │ (cost-auditor.ts) │
 └───────────────────┘
-        │ per-tool breakdown + multi-model pricing
+        │ per-tool breakdown + multi-model pricing (97 models)
         ▼
    Cost Report ($0.0023, gpt-4o)
 ```
@@ -394,17 +464,17 @@ AI Client (Cline/Claude)
 MCP Guardian auto-discovers config files from these standard locations:
 
 | Client | Config Path |
-|--------|------------|
+|---|---|
 | **Cline (VS Code)** | `~/Library/Application Support/Code/User/globalStorage/saoudrizwan.claude-dev/settings/cline_mcp_settings.json` |
-| **Cline (VS Code Insiders)** | `~/Library/Application Support/Code - Insiders/User/globalStorage/.../cline_mcp_settings.json` |
-| **Cline (Linux)** | `~/.config/Code/User/globalStorage/.../cline_mcp_settings.json` |
-| **Cline (Windows)** | `%APPDATA%/Code/User/globalStorage/.../cline_mcp_settings.json` |
+| **Cline (VS Code Insiders)** | `~/Library/Application Support/Code - Insiders/User/globalStorage/saoudrizwan.claude-dev/settings/cline_mcp_settings.json` |
+| **Cline (Linux)** | `~/.config/Code/User/globalStorage/saoudrizwan.claude-dev/settings/cline_mcp_settings.json` |
+| **Cline (Windows)** | `%APPDATA%/Code/User/globalStorage/saoudrizwan.claude-dev/settings/cline_mcp_settings.json` |
 | **Claude Desktop (macOS)** | `~/Library/Application Support/Claude/claude_desktop_config.json` |
 | **Claude Desktop (Linux)** | `~/.config/Claude/claude_desktop_config.json` |
 | **Cursor** | `~/.cursor/mcp.json` |
 | **Windsurf** | `~/.codeium/windsurf/mcp_config.json` |
 
-Use `--config` / `configPath` for a custom path, or `--all` to aggregate all discoverable configs with deduplication.
+Use `--config` / `-c` for a custom path, or `--all` / `-a` to aggregate all discoverable configs with deduplication (first file wins for duplicate server names).
 
 ---
 
@@ -413,7 +483,7 @@ Use `--config` / `configPath` for a custom path, or `--all` to aggregate all dis
 Each server receives a score from 0–100 with these deductions:
 
 | Finding | Deduction |
-|---------|-----------|
+|---|---|
 | Critical CVEs detected | −40 |
 | High-severity CVEs | −20 |
 | Medium-severity CVEs | −10 |
@@ -421,6 +491,8 @@ Each server receives a score from 0–100 with these deductions:
 | Unencrypted transport | −10 |
 | Typo-squat detected | −30 |
 | Hardcoded secrets found | −15 |
+| High-severity command warning | −25 |
+| Medium-severity command warning | −10 |
 
 **Letter grades:** A (80–100), B (60–79), C (40–59), D (0–39)
 
@@ -430,29 +502,30 @@ Each server receives a score from 0–100 with these deductions:
 
 97 models across 17 providers. Cached rates per 1M tokens (as of mid-2025):
 
-| Provider | Models | Example Rates |
-|----------|--------|---------------|
-| OpenAI (14) | gpt-4o, gpt-4.5-preview, o1, o3, o4-mini, gpt-3.5-turbo | $5/$15/M |
-| Anthropic (8) | claude-3-5-sonnet, claude-opus, claude-haiku | $3/$15/M |
-| Google (12) | gemini-2.5-pro, gemini-2.0-flash, gemma | $1.25/$10/M |
-| DeepSeek (4) | deepseek-chat, deepseek-reasoner, deepseek-v3 | $0.14/$0.28/M |
-| xAI/Grok (5) | grok-3, grok-3-mini | $3/$15/M |
-| Meta/Llama (8) | llama-4-maverick, llama-3.3-70b | $0.2/$0.6/M |
-| Mistral (9) | mistral-large, mixtral-8x22b, codestral | $2/$6/M |
-| + 10 more providers | Cohere, AI21, Reka, Amazon, Alibaba, Zhipu, 01.AI, Writer, Perplexity, HuggingFace | |
+| Provider | Models | Example Rates (input/output per 1M) |
+|---|---|---|
+| OpenAI (14) | gpt-4o, gpt-4.5-preview, o1, o3, o4-mini, gpt-3.5-turbo | $5/$15 |
+| Anthropic (8) | claude-3-5-sonnet, claude-opus, claude-haiku | $3/$15 |
+| Google (12) | gemini-2.5-pro, gemini-2.0-flash, gemma | $1.25/$10 |
+| DeepSeek (4) | deepseek-chat, deepseek-reasoner, deepseek-v3 | $0.14/$0.28 |
+| xAI/Grok (5) | grok-3, grok-3-mini | $3/$15 |
+| Meta/Llama (8) | llama-4-maverick, llama-3.3-70b | $0.2/$0.6 |
+| Mistral (9) | mistral-large, mixtral-8x22b, codestral | $2/$6 |
+| + 10 more | Cohere, AI21, Reka, Amazon, Alibaba, Zhipu, 01.AI, Writer, Perplexity, HuggingFace | varies |
 
-Unknown models receive a conservative default estimate of $10/$30 per million tokens. Override via `PRICING_OVERRIDES` env var.
+Unknown models receive a conservative default estimate of $10/$30 per million tokens. Override any model via the `PRICING_OVERRIDES` env var.
 
 ---
 
 ## Environment Variables
 
-| Variable | Purpose |
-|----------|---------|
-| `NVD_API_KEY` | NIST NVD API key for CVE lookups (20 req/min vs 5 without) |
-| `MCP_GUARDIAN_DB_PATH` | Override SQLite database path (default: `~/.mcp-guardian/history.db`) |
-| `LOG_LEVEL` | Logging level: `DEBUG`, `INFO`, `WARN`, `ERROR` (default: `INFO`) |
-| `PRICING_OVERRIDES` | Custom pricing JSON: `{"my-model": {"input": 2.0, "output": 6.0}}` |
+| Variable | Purpose | Default |
+|---|---|---|
+| `NVD_API_KEY` | NIST NVD API key for CVE lookups (20 req/min vs 5 without) | (none) |
+| `MCP_GUARDIAN_DB_PATH` | Override SQLite database path | `~/.mcp-guardian/history.db` |
+| `LOG_LEVEL` | Logging level: `DEBUG`, `INFO`, `WARN`, `ERROR` | `INFO` |
+| `PRICING_OVERRIDES` | Custom pricing JSON: `{"my-model": {"input": 2.0, "output": 6.0}}` | (none) |
+| `OPENAI_API_KEY` | Optionally used by tiktoken for token counting | (none) |
 
 ---
 
@@ -465,15 +538,66 @@ cd mcp-guardian
 npm install
 
 # Development
-npm run dev       # Watch mode with tsx
-npm run build     # Compile TypeScript
-npm run lint      # Type check
-npm test          # 52 unit tests
-npm run test:watch # Watch mode
+npm run dev          # Watch mode with tsx
+npm run build        # Compile TypeScript
+npm run lint         # Type check (tsc --noEmit)
+npm test             # 63 tests across 10 suites (Vitest)
+npm run test:watch   # Watch mode
 
 # Contributing
-See CONTRIBUTING.md for guidelines on adding scanners, pricing models, and tests.
+# See CONTRIBUTING.md for guidelines on adding scanners, pricing models, and tests.
 ```
+
+---
+
+## FAQ
+
+### Why does `mcp-guardian audit` show $0.0000?
+
+The cost audit reads real data from the proxy's database. You must run `mcp-guardian proxy` first to capture `tools/call` traffic, then run `audit`. Without proxy data, the `call_records` table is empty and the audit returns zero.
+
+### Do I need an NVD API key?
+
+No, but you'll be rate-limited to 5 requests per minute without one. Get a free key at [NIST NVD](https://nvd.nist.gov/developers/request-an-api-key) for 20 req/min.
+
+### How do I run the proxy alongside my AI assistant?
+
+Start `mcp-guardian proxy --config <path>` in one terminal, then run your AI assistant normally in another. The proxy sits between the assistant and MCP servers, transparently capturing all `tools/call` traffic.
+
+### What does the proxy intercept?
+
+The proxy only tracks `tools/call` JSON-RPC messages — it counts input tokens (the request) and output tokens (the response). It forwards all other messages without tracking.
+
+### Can I use MCP Guardian with SSE/HTTP transports?
+
+The security scan and health monitor support SSE/HTTP transports. The proxy currently supports **stdio** transports only (it spawns child processes). Cost auditing via proxy works only for stdio-based MCP servers.
+
+### How do I override pricing for my custom model?
+
+Set the `PRICING_OVERRIDES` environment variable with JSON:
+
+```bash
+export PRICING_OVERRIDES='{"my-custom-model": {"input": 2.0, "output": 6.0}}'
+```
+
+Rates are in USD per 1 million tokens.
+
+### Where is the database stored?
+
+By default, SQLite data is stored at `~/.mcp-guardian/history.db`. Override with the `MCP_GUARDIAN_DB_PATH` environment variable. The database has 4 tables: `security_scans`, `cost_records`, `health_checks`, and `call_records`.
+
+### What's the difference between `--config` and `--all`?
+
+- `--config <path>` loads a single config file
+- `--all` auto-discovers and aggregates all config files from known locations (Cline, Claude Desktop, Cursor, Windsurf), deduplicating servers by name
+
+### Can I run MCP Guardian in CI/CD?
+
+Yes. Use the alert threshold flags (`--fail-on-critical`, `--fail-on-secrets`, `--threshold-score`, etc.) which return non-zero exit codes that CI systems understand. See the [CI/CD Integration](#cicd-integration) section for examples.
+
+### How accurate is the token counting?
+
+Token counting uses `tiktoken` with the `o200k_base` encoding (used by GPT-4o and many modern models). For non-OpenAI models, this provides a close approximation since most modern tokenizers are similar in granularity.
 
 ---
 
@@ -492,9 +616,14 @@ See CONTRIBUTING.md for guidelines on adding scanners, pricing models, and tests
 - [x] Dependency injection container (IoC pattern)
 - [x] Token-bucket rate limiter (OSV + NVD)
 - [x] TLS certificate validation
-- [x] 52 unit tests (6 test suites)
+- [x] Command injection validation (10 suspicious patterns)
+- [x] 63 unit tests (10 test suites)
 - [x] GitHub Actions CI (Node 18/20/22 matrix)
-- [ ] Publish to npm as `@rudraneel/mcp-guardian`
+- [x] Published to npm as [`@mcp-guardian/server`](https://www.npmjs.com/package/@mcp-guardian/server)
+- [ ] Web dashboard for historical trends
+- [ ] Slack/Discord alerting integration
+- [ ] Custom CVE feed support
+- [ ] Multi-user proxy mode
 
 ---
 
@@ -502,4 +631,4 @@ See CONTRIBUTING.md for guidelines on adding scanners, pricing models, and tests
 
 MIT — see [LICENSE](LICENSE) for details.
 
-**Built with TypeScript, @modelcontextprotocol/sdk, tiktoken, sql.js, and chalk.**
+**Built with TypeScript, @modelcontextprotocol/sdk, tiktoken, sql.js, commander, chalk, and zod.**

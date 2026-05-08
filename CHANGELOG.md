@@ -28,7 +28,7 @@ All notable changes to MCP Guardian will be documented in this file.
   - Structured MCP output (JSON format returns resource + text)
 
 ### Changed
-- Package name: `@mcp-guardian/server` → `@rudraneel/mcp-guardian`
+- Package name: `@mcp-doctor/server` → `@mcp-guardian/server`
 - Version: `0.1.0` → `0.3.0`
 - SQLite backend: `better-sqlite3` → `sql.js` (pure JS, no native compilation)
 - Config parser: now supports `--all` flag for multi-config aggregation with deduplication
