@@ -117,6 +117,7 @@ MCP Guardian provides:
 - **Batched DB Writes** — 1s debounced flush reduces I/O by 10x
 - **Alert Thresholds** — 6 CLI flags with exit codes 1/2 for CI/CD integration
 - **GitHub Actions CI** — Node 18/20/22 matrix, 79 tests across 12 suites
+- **npm published** — `@mcp-guardian/server@1.0.0` — install via `npm install -g @mcp-guardian/server`
 
 ---
 
@@ -125,7 +126,7 @@ MCP Guardian provides:
 ### From npm (recommended)
 
 ```bash
-npm install -g @mcp-guardian/server
+npm install -g @mcp-guardian/server@1.0.0
 ```
 
 After global install, the `mcp-guardian` command is available in your PATH.
@@ -762,7 +763,7 @@ Token counting uses `tiktoken` with the `o200k_base` encoding (used by GPT-4o an
 - [x] GitHub Actions CI (Node 18/20/22 matrix)
 - [x] Performance benchmarks (p50: 5ms baseline, +25.78ms proxy overhead, +0.15ms policy)
 - [x] Helm chart + production deployment guide (K8s, fail-open/closed, sidecar pattern, scaling)
-- [x] Published to npm as [`@mcp-guardian/server`](https://www.npmjs.com/package/@mcp-guardian/server)
+- [x] Published to npm as [`@mcp-guardian/server@1.0.0`](https://www.npmjs.com/package/@mcp-guardian/server)
 - [x] OAuth 2.1 / OIDC proxy authentication (v0.5.0)
 - [x] RBAC — scope & client-ID-based access control (v0.5.1)
 - [x] Circuit breaker — 3-state protection for upstream servers (v0.5.2)

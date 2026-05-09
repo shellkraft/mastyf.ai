@@ -94,7 +94,7 @@ const program = new Command();
 program
   .name('mcp-guardian')
   .description('Security, cost, and health audit for MCP infrastructure')
-  .version('0.7.0');
+  .version('1.0.0');
 
 program
   .command('scan')
