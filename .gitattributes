@@ -1,0 +1,5 @@
+*.rs linguist-vendored
+*.ts linguist-language=TypeScript
+*.tsx linguist-language=TypeScript
+dist/* linguist-generated=true
+node_modules/** linguist-vendored

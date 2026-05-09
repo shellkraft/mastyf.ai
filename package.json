@@ -1,6 +1,6 @@
 {
   "name": "@mcp-guardian/server",
-  "version": "1.3.2",
+  "version": "1.3.3",
   "description": "Security, cost, and health audit for MCP infrastructure",
   "type": "module",
   "files": [
@@ -24,14 +24,27 @@
   },
   "keywords": [
     "mcp",
+    "mcp-server",
+    "mcp-gateway",
+    "mcp-proxy",
+    "mcp-security",
     "model-context-protocol",
+    "ai-security",
+    "llm-guardrails",
+    "llm-security",
     "security",
+    "governance",
     "audit",
-    "cost",
-    "health",
+    "proxy",
+    "gateway",
     "observability",
+    "monitoring",
+    "zero-trust",
+    "infrastructure",
     "agent-ai",
-    "cli"
+    "cli",
+    "typescript",
+    "cost-tracking"
   ],
   "scripts": {
     "build": "tsc",
