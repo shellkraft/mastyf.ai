@@ -2,8 +2,8 @@ import { Logger } from './logger.js';
 
 /**
  * OpenTelemetry tracing for distributed request tracking across proxy + MCP servers.
- * Enable with: OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4317
- * Falls back gracefully if OpenTelemetry SDK is not installed.
+ * Enable with: OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318
+ * Uses OTLP HTTP exporter (gRPC exporter deprecated due to critical CVE in protobufjs).
  */
 export async function initTracing(): Promise<void> {
   if (!process.env['OTEL_EXPORTER_OTLP_ENDPOINT']) {
@@ -14,12 +14,15 @@ export async function initTracing(): Promise<void> {
   try {
     const { NodeSDK } = await import('@opentelemetry/sdk-node');
     const { getNodeAutoInstrumentations } = await import('@opentelemetry/auto-instrumentations-node');
-    const { OTLPTraceExporter } = await import('@opentelemetry/exporter-otlp-grpc');
+    // Use OTLP HTTP exporter instead of deprecated gRPC
+    const { OTLPTraceExporter } = await import('@opentelemetry/exporter-trace-otlp-http');
 
-    const exporter = new OTLPTraceExporter() as any;
+    const exporter = new OTLPTraceExporter({
+      url: `${process.env['OTEL_EXPORTER_OTLP_ENDPOINT']}/v1/traces`,
+    }) as any;
+
     const instruments = getNodeAutoInstrumentations({
       '@opentelemetry/instrumentation-http': { enabled: true },
-      '@opentelemetry/instrumentation-pino': { enabled: false },
     }) as any;
 
     const sdk = new NodeSDK({
@@ -28,7 +31,7 @@ export async function initTracing(): Promise<void> {
     });
 
     await sdk.start();
-    Logger.info('[tracing] OpenTelemetry tracing initialized — exporting to OTLP endpoint');
+    Logger.info('[tracing] OpenTelemetry tracing initialized — exporting to OTLP HTTP endpoint');
   } catch (err: any) {
     Logger.warn(`[tracing] OpenTelemetry initialization failed: ${err?.message}`);
   }
