@@ -10,6 +10,7 @@ import { CallContext } from '../policy/policy-types.js';
 import { StructuredLogger } from '../utils/structured-logger.js';
 import { OAuthValidator } from '../auth/oauth.js';
 import { AuthValidationResult, AgentIdentity } from '../auth/auth-types.js';
+import { SessionCache } from '../auth/session-cache.js';
 import { CircuitBreaker } from '../utils/circuit-breaker.js';
 
 /**
@@ -33,6 +34,7 @@ export class McpProxyServer {
   private serverName: string;
   private policyEngine: PolicyEngine | null;
   private authValidator: OAuthValidator | null;
+  private sessionCache: SessionCache | null;
   private circuitBreaker: CircuitBreaker;
   /** v0.5.2: Per-client rate limit counters (key: agentSub:toolName) */
   private clientRateCounters: Map<string, { count: number; resetAt: number }> = new Map();
@@ -49,6 +51,7 @@ export class McpProxyServer {
     this.serverName = serverName || command.split('/').pop() || command;
     this.policyEngine = policyEngine || null;
     this.authValidator = authValidator || null;
+    this.sessionCache = authValidator ? new SessionCache() : null;
     this.circuitBreaker = new CircuitBreaker(this.serverName);
     this.child = spawn(command, args, {
       env: { ...process.env, ...env },
@@ -183,15 +186,31 @@ export class McpProxyServer {
                 return;
               }
             } else {
-              StructuredLogger.info({
-                event: 'auth_success',
-                requestId,
-                serverName: this.serverName,
-                toolName,
-                agent: result.identity?.sub,
-                clientId: result.identity?.clientId,
-                authnSuccess: true,
-              });
+              // v0.6.0: Session cache — issue short-lived session to prevent JWT replay
+              if (this.sessionCache && result.identity) {
+                const session = this.sessionCache.createSession(result.identity);
+                StructuredLogger.info({
+                  event: 'auth_success',
+                  requestId,
+                  serverName: this.serverName,
+                  toolName,
+                  agent: result.identity.sub,
+                  clientId: result.identity.clientId,
+                  sessionToken: session.token,
+                  sessionExpiry: new Date(session.expiresAt).toISOString(),
+                  authnSuccess: true,
+                });
+              } else {
+                StructuredLogger.info({
+                  event: 'auth_success',
+                  requestId,
+                  serverName: this.serverName,
+                  toolName,
+                  agent: result.identity?.sub,
+                  clientId: result.identity?.clientId,
+                  authnSuccess: true,
+                });
+              }
             }
           }
         }
