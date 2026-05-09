@@ -22,8 +22,8 @@ export interface SessionEntry {
 export class SessionCache {
   private sessions: Map<string, SessionEntry> = new Map();
   private usedNonces: Set<string> = new Set();
-  private readonly sessionTtlMs: number;
-  private readonly nonceTtlMs: number;
+  protected readonly sessionTtlMs: number;
+  protected readonly nonceTtlMs: number;
 
   constructor(sessionTtlMs: number = 5 * 60 * 1000, nonceTtlMs: number = 10 * 60 * 1000) {
     this.sessionTtlMs = sessionTtlMs;
@@ -90,7 +90,7 @@ export class SessionCache {
     this.sessions.delete(token);
   }
 
-  private cleanup(): void {
+  protected cleanup(): void {
     const now = Date.now();
     // Clean expired sessions
     for (const [token, entry] of this.sessions) {

@@ -12,6 +12,7 @@ import { OAuthValidator } from '../auth/oauth.js';
 import { AuthValidationResult, AgentIdentity } from '../auth/auth-types.js';
 import { SessionCache } from '../auth/session-cache.js';
 import { CircuitBreaker } from '../utils/circuit-breaker.js';
+import * as Metrics from '../utils/metrics.js';
 
 /**
  * MCP Proxy Interceptor — sits between the AI client and an MCP server.
@@ -53,6 +54,7 @@ export class McpProxyServer {
     this.authValidator = authValidator || null;
     this.sessionCache = authValidator ? new SessionCache() : null;
     this.circuitBreaker = new CircuitBreaker(this.serverName);
+    Metrics.circuitBreakerState.set({ server_name: this.serverName }, 0);
     this.child = spawn(command, args, {
       env: { ...process.env, ...env },
       stdio: ['pipe', 'pipe', 'pipe'],
@@ -95,8 +97,11 @@ export class McpProxyServer {
           this.db.addCallRecord(record).then(() => this.db.flush()).catch((err) =>
             Logger.debug(`Proxy: failed to store call record: ${err?.message}`)
           );
-          // Circuit breaker: success
           this.circuitBreaker.recordSuccess();
+          Metrics.circuitBreakerState.set({ server_name: this.serverName }, this.circuitBreaker.getState() === 'CLOSED' ? 0 : this.circuitBreaker.getState() === 'OPEN' ? 1 : 2);
+          Metrics.proxyLatencyMs.observe({ server_name: this.serverName }, proxyLatencyMs);
+          Metrics.requestsTotal.inc({ server_name: this.serverName, decision: 'pass', authn_success: 'true' });
+          if (this.sessionCache) Metrics.activeSessions.set(this.sessionCache.size);
           this.currentRequestId = null;
           this.requestToolName = null;
         }
@@ -279,6 +284,8 @@ export class McpProxyServer {
               proxyLatencyMs: Date.now() - proxyStartTime,
             });
 
+            Metrics.blockedRequestsTotal.inc({ server_name: this.serverName, block_reason: blockReason || 'policy', rule: decision.rule });
+            Metrics.requestsTotal.inc({ server_name: this.serverName, decision: 'block', authn_success: String(authnSuccess) });
             this.sendError(msg.id, -32001, `Blocked by MCP Guardian policy: ${decision.reason}`, {
               rule: decision.rule,
               policy: this.policyEngine.getMode(),
