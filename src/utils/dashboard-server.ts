@@ -19,7 +19,6 @@ const __dirname = dirname(__filename);
 export async function startDashboardServer(
   port: number = 4000,
   policyWatcher?: PolicyWatcher,
-  metricsRegistry?: Registry,
 ): Promise<void> {
   if (process.env['DASHBOARD_ENABLED'] !== 'true') {
     Logger.debug('[dashboard] Dashboard server not enabled (set DASHBOARD_ENABLED=true)');
@@ -63,15 +62,23 @@ export async function startDashboardServer(
         return;
       }
 
-      // ── Prometheus /metrics ─────────────────────────────────
+      // ── Prometheus /metrics proxy ──────────────────────────
       if (url === '/metrics') {
-        if (!metricsRegistry) {
-          res.writeHead(503, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({ error: 'Metrics not available (set METRICS_ENABLED=true)' }));
-          return;
+        try {
+          // Fetch from the metrics server (port 9090 by default)
+          const metricsPort = process.env['METRICS_PORT'] || '9090';
+          const metricsRes = await fetch(`http://localhost:${metricsPort}/metrics`);
+          if (!metricsRes.ok) throw new Error(`Metrics server returned ${metricsRes.status}`);
+          const text = await metricsRes.text();
+          res.writeHead(200, {
+            'Content-Type': 'text/plain; version=0.0.4; charset=utf-8',
+            'Access-Control-Allow-Origin': '*',
+          });
+          res.end(text);
+        } catch {
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Metrics not available. Ensure METRICS_ENABLED=true and proxy is running.' }));
         }
-        res.writeHead(200, { 'Content-Type': metricsRegistry.contentType });
-        res.end(await metricsRegistry.metrics());
         return;
       }
 
