@@ -9,13 +9,13 @@
 [![License](https://img.shields.io/badge/License-MIT-yellow)](LICENSE)
 [![CI](https://github.com/rudraneel93/mcp-guardian/actions/workflows/ci.yml/badge.svg)](https://github.com/rudraneel93/mcp-guardian/actions/workflows/ci.yml)
 
-> **Always use the latest version:** `npm install -g @mcp-guardian/server@latest` — current is **v1.3.8**. See the [Changelog](./CHANGELOG.md) for full version history and [GitHub Releases](https://github.com/rudraneel93/mcp-guardian/releases) for per-version source tags.
+> **Always use the latest version:** `npm install -g @mcp-guardian/server@latest` — current is **v2.0.0**. See the [Changelog](./CHANGELOG.md) for full version history and [GitHub Releases](https://github.com/rudraneel93/mcp-guardian/releases) for per-version source tags.
 
 MCP Guardian is a **security and governance proxy** for [Model Context Protocol](https://modelcontextprotocol.io/) (MCP) infrastructure. It sits between AI clients and MCP servers, enforcing active security policies, tracking real token costs, and monitoring health — all while providing enterprise-grade observability and audit trails.
 
-**Key positioning:** Runtime governance and security proxy for MCP infrastructure — with threat modeling, semantic shell analysis, mTLS, and zero-trust networking.
+**Key positioning:** Runtime governance and security proxy for MCP infrastructure — with a three-layer detection engine (regex triage → schema analysis → LLM semantic verdict), threat modeling, mTLS, and zero-trust networking.
 
-It works as both an **MCP server** (so AI assistants like Cline/Claude can invoke its tools) and a **standalone CLI**.
+It works as an **MCP server**, a **standalone CLI**, and a **pnpm monorepo** — install just what you need.
 
 ---
 
@@ -85,6 +85,13 @@ MCP Guardian provides:
 - **Supply chain CI (v1.3.0)** — GitHub Actions pipeline with `npm audit --audit-level=high`, CycloneDX SBOM generation, and `.npmrc` enforcement
 - **Operational runbooks (v1.3.0)** — 7 production runbooks covering circuit breaker, Redis, policy corruption, dashboard auth, latency, DB corruption, and token spikes with SLOs
 - **Disaster recovery plan (v1.3.0)** — RTO/RPO for all state types, backup strategy, recovery drills, and rollback procedures
+- **🆕 Three-layer detection engine (v2.0)** — Regex triage (38 patterns across 8 attack categories) → Schema analysis (parameters, defaults, enum injection) → LLM semantic verdict (Anthropic Claude)
+- **🆕 Monorepo architecture (v2.0)** — pnpm workspace with 3 packages: `@mcp-guardian/core`, `@mcp-guardian/cli`, `@mcp-guardian/server`
+- **🆕 Tamper-resistant manifest (v2.0)** — HMAC-SHA256 tool definition integrity verification with machine-local secret
+- **🆕 Red-team corpus (v2.0)** — Labeled poisoned/benign test cases with precision/recall CI gate (F1 ≥ 85%)
+- **🆕 Transport layer (v2.0)** — Stdio (JSON-RPC handshake) + HTTP/SSE tool fetching
+- **🆕 Corpus evaluation (v2.0)** — Nightly precision/recall measurement with corpus-eval.yml workflow
+- **🆕 Provenance-signed publishing (v2.0)** — npm provenance attestation on every release via publish.yml
 
 ---
 
