@@ -1,8 +1,12 @@
 #!/usr/bin/env tsx
 import { readFileSync, readdirSync } from "node:fs";
-import { join } from "node:path";
+import { join, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
 import { scanTool } from "../packages/core/src/engine.js";
 import type { ToolDefinition } from "../packages/core/src/types.js";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 interface CorpusEntry {
   id: string;

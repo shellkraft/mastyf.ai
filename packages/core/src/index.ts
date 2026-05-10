@@ -7,6 +7,8 @@ export { runSemanticScan, type SemanticScanOptions } from "./semantic-scanner.js
 export {
   verifyToolDefinitions, approveToolDefinitions
 } from "./manifest.js";
+export { fetchToolsFromStdio, type StdioServerConfig } from "./transports/stdio.js";
+export { fetchToolsFromHttp, fetchToolsFromSse, type HttpServerConfig } from "./transports/http.js";
 export type {
   Severity, DetectionLayer, Issue, ToolDefinition, ScanStatus,
   ToolScanResult, ServerScanResult, ToolManifestEntry,

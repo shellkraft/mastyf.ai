@@ -8,10 +8,7 @@ import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js';
-import { scanServer } from '@mcp-guardian/core/engine';
-import { verifyToolDefinitions } from '@mcp-guardian/core/manifest';
-import { fetchToolsFromStdio } from '@mcp-guardian/core/transports/stdio';
-import { fetchToolsFromHttp } from '@mcp-guardian/core/transports/http';
+import { scanServer, verifyToolDefinitions, fetchToolsFromStdio, fetchToolsFromHttp } from '@mcp-guardian/core';
 
 const server = new Server(
   { name: 'mcp-guardian', version: '2.0.0' },

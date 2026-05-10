@@ -3,11 +3,10 @@ import { parseArgs } from "node:util";
 import { readFileSync, existsSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
-import { scanServer } from "@mcp-guardian/core/engine";
-import { verifyToolDefinitions } from "@mcp-guardian/core/manifest";
-import { fetchToolsFromStdio } from "@mcp-guardian/core/transports/stdio";
-import { fetchToolsFromHttp, fetchToolsFromSse } from "@mcp-guardian/core/transports/http";
-import type { ServerScanResult, ToolScanResult } from "@mcp-guardian/core/types";
+import { scanServer, verifyToolDefinitions } from "@mcp-guardian/core";
+import { fetchToolsFromStdio } from "@mcp-guardian/core";
+import { fetchToolsFromHttp, fetchToolsFromSse } from "@mcp-guardian/core";
+import type { ServerScanResult, ToolScanResult } from "@mcp-guardian/core";
 
 interface ClaudeDesktopConfig {
   mcpServers?: Record<string, {
@@ -79,7 +78,7 @@ async function main() {
 
   // Single URL mode
   if (flags.url) {
-    const transport = (flags.transport ?? "http") as "http" | "sse";
+    const transport = (flags.transport ?? "http") as "stdio" | "http" | "sse";
     const fetchFn = transport === "sse" ? fetchToolsFromSse : fetchToolsFromHttp;
     const tools = await fetchFn({ url: flags.url });
     const scanResult = await scanServer(flags.url, tools, transport, { skipSemantic: flags["skip-semantic"] });
@@ -109,9 +108,14 @@ async function main() {
       let transport: "stdio" | "http" | "sse" = "stdio";
 
       if (serverConfig.url) {
-        transport = (serverConfig.transport as typeof transport) ?? "http";
-        const fetchFn = transport === "sse" ? fetchToolsFromSse : fetchToolsFromHttp;
-        tools = await fetchFn({ url: serverConfig.url });
+        const raw = (serverConfig.transport as string | undefined) ?? "http";
+        if (raw === "sse") {
+          transport = "sse";
+          tools = await fetchToolsFromSse({ url: serverConfig.url });
+        } else {
+          transport = "http";
+          tools = await fetchToolsFromHttp({ url: serverConfig.url });
+        }
       } else if (serverConfig.command) {
         tools = await fetchToolsFromStdio({ command: serverConfig.command, args: serverConfig.args, env: serverConfig.env });
       } else {
