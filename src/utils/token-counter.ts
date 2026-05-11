@@ -52,6 +52,8 @@ export class TokenCounter {
 
   /** Per-provider count with metadata about estimation accuracy. */
   countWithProvider(text: string, model?: string): TokenCountResult {
+    if (!model) return this.estimate(text, 'unknown', 'default');
+    const m = model.toLowerCase();
     if (m.startsWith('claude-')) return this.estimate(text, 'anthropic', 'char-ratio-0.30');
     if (m.startsWith('gemini-') || m.startsWith('gemma-')) return this.estimate(text, 'google', 'char-ratio-0.22');
     if (m.startsWith('deepseek-')) return this.estimate(text, 'deepseek', 'char-ratio-0.27');
