@@ -6,13 +6,12 @@
  * Supports Client Credentials flow (most common for server-to-agent MCP).
  */
 import * as jose from 'jose';
-import type { JWKSCacheInput } from 'jose';
 import { AuthConfig, AuthValidationResult, AgentIdentity, OIDCDiscovery } from './auth-types.js';
 import { StructuredLogger } from '../utils/structured-logger.js';
 
 export class OAuthValidator {
   private config: AuthConfig;
-  private jwks: ReturnType<typeof createRemoteJWKSet> | null = null;
+  private jwks: ReturnType<typeof jose.createRemoteJWKSet> | null = null;
   private cachedDiscovery: OIDCDiscovery | null = null;
 
   constructor(config: AuthConfig) {
