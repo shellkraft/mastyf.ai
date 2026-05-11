@@ -1,6 +1,20 @@
 name: MCP Security Scan
 
 on:
+  push:
+    paths:
+      - "mcp.json"
+      - "cline_mcp_settings.json"
+      - "claude_desktop_config.json"
+      - ".claude/**"
+      - "packages/core/src/**"
+      - ".github/workflows/scan-mcp.yml"
+  pull_request:
+    paths:
+      - "mcp.json"
+      - "cline_mcp_settings.json"
+      - "claude_desktop_config.json"
+      - ".claude/**"
   workflow_dispatch:
   schedule:
     - cron: "0 2 * * *"
