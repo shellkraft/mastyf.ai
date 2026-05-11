@@ -97,43 +97,70 @@ export class McpClient {
    * 3. POST tools/list to /message?sessionId=...
    * Returns actual tool count from server — no hardcoded values.
    */
+  private static SSE_PER_PATH_TIMEOUT_MS = 3000; // 3s per path
+
   private static async probeSse(server: McpServerConfig): Promise<McpProbeResult> {
     const start = Date.now();
     if (!server.url) return { success: false, authRequired: false, latencyMs: 0, error: 'No URL provided' };
-    const parsed = new URL(server.url);
+
+    const baseUrl = server.url.replace(/\/$/, '');
+    const parsed = new URL(baseUrl);
     const isHttps = parsed.protocol === 'https:';
     const httpModule = isHttps ? https : http;
-    const timeout = McpClient.SSE_TIMEOUT_MS;
+    const overallTimeout = McpClient.SSE_TIMEOUT_MS;
 
-    // Step 1: GET SSE endpoint for session ID
-    const sessionId = await McpClient.getSessionId(parsed, httpModule, timeout);
+    // Step 1: Multi-path SSE discovery with per-path timeout
+    const sessionId = await McpClient.discoverSessionId(parsed, httpModule);
     if (!sessionId) {
-      return { success: false, authRequired: false, latencyMs: Date.now() - start, error: 'Failed to obtain SSE session ID' };
+      return { success: false, authRequired: false, latencyMs: Date.now() - start, error: 'Failed to obtain SSE session ID across all paths' };
     }
 
     // Step 2: POST initialize
-    const messageBase = new URL(server.url);
+    const messageBase = new URL(baseUrl);
     messageBase.pathname = messageBase.pathname.replace(/\/$/, '') + '/message';
     messageBase.searchParams.set('sessionId', sessionId);
 
     const initId = randomUUID();
     const initBody = { jsonrpc: '2.0', id: initId, method: 'initialize', params: { protocolVersion: '2024-11-05', capabilities: {}, clientInfo: { name: 'mcp-guardian', version: '0.3.0' } } };
-    const initResp = await McpClient.postJson(messageBase, initBody, httpModule, timeout);
+    const initResp = await McpClient.postJson(messageBase, initBody, httpModule, overallTimeout);
     if (!initResp || initResp.error) {
       return { success: false, authRequired: initResp?.error?.code === -32001 || /auth/i.test(initResp?.error?.message || ''), latencyMs: Date.now() - start, error: initResp?.error?.message || 'Initialize failed' };
     }
 
     // Step 3: POST initialized notification
-    await McpClient.postJson(messageBase, { jsonrpc: '2.0', method: 'notifications/initialized' }, httpModule, timeout).catch(() => {});
+    await McpClient.postJson(messageBase, { jsonrpc: '2.0', method: 'notifications/initialized' }, httpModule, overallTimeout).catch(() => {});
 
     // Step 4: POST tools/list
     const listId = randomUUID();
-    const listResp = await McpClient.postJson(messageBase, { jsonrpc: '2.0', id: listId, method: 'tools/list' }, httpModule, timeout);
+    const listResp = await McpClient.postJson(messageBase, { jsonrpc: '2.0', id: listId, method: 'tools/list' }, httpModule, overallTimeout);
     if (listResp?.result?.tools) {
       const tools = Array.isArray(listResp.result.tools) ? listResp.result.tools : [];
       return { success: true, toolCount: tools.length, toolNames: tools.map((t: any) => t.name || 'unnamed'), authRequired: false, latencyMs: Date.now() - start };
     }
     return { success: false, authRequired: false, latencyMs: Date.now() - start, error: listResp?.error?.message || 'tools/list did not return tools' };
+  }
+
+  /**
+   * Discover SSE session ID by probing multiple paths (/, /sse, /message)
+   * with individual per-path timeouts so a hung TCP connection doesn't
+   * exhaust the global timeout.
+   */
+  private static async discoverSessionId(
+    parsedUrl: URL,
+    httpModule: typeof http | typeof https,
+  ): Promise<string | null> {
+    const paths = ['/', '/sse', '/message'];
+    for (const path of paths) {
+      const probeUrl = new URL(parsedUrl.href);
+      probeUrl.pathname = path;
+      try {
+        const id = await McpClient.getSessionId(probeUrl, httpModule, McpClient.SSE_PER_PATH_TIMEOUT_MS);
+        if (id) return id;
+      } catch {
+        // per-path failure — try next
+      }
+    }
+    return null;
   }
 
   /**

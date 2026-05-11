@@ -6,6 +6,18 @@ export type PolicyAction = 'pass' | 'block' | 'flag';
 
 export type PolicyMode = 'audit' | 'warn' | 'block';
 
+export interface ArgPatternSpec {
+  /** Field name to match against ('*' = any argument field) */
+  field: string;
+  /** Regex patterns — if any match, the rule fires */
+  patterns: string[];
+}
+
+export interface ToolCategorySpec {
+  /** Tool names containing these words are blocked */
+  deny: string[];
+}
+
 export interface PolicyRule {
   name: string;
   description?: string;
@@ -17,6 +29,12 @@ export interface PolicyRule {
   };
   /** Regex patterns for blocking malicious tool arguments */
   patterns?: string[];
+  /** v2.2: Argument-level field patterns (e.g., block /etc/ in 'path' field) */
+  argPatterns?: ArgPatternSpec[];
+  /** v2.2: Destructive tool categories (e.g., tools with 'delete' in name) */
+  toolCategories?: ToolCategorySpec;
+  /** v2.2: Tools exempted from toolCategories deny (by exact name) */
+  toolAllowExceptions?: string[];
   /** Max tokens per call */
   maxTokens?: number;
   /** Max calls per minute per server */

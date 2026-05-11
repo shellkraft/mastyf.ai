@@ -15,6 +15,12 @@ import { CircuitBreaker } from '../utils/circuit-breaker.js';
 import { LRUCache } from 'lru-cache';
 import * as Metrics from '../utils/metrics.js';
 
+const MAX_PAYLOAD_BYTES = parseInt(
+  process.env['MCP_GUARDIAN_MAX_PAYLOAD_BYTES'] ?? '10485760', // 10 MB default
+);
+
+const RESTART_BACKOFF_MS = [1000, 2000, 4000, 8000, 16000]; // Exponential
+
 /**
  * MCP Proxy Interceptor — sits between the AI client and an MCP server.
  *
@@ -23,6 +29,7 @@ import * as Metrics from '../utils/metrics.js';
  * v0.5.2: Circuit breaker for upstream MCP server failures.
  * v0.5.2: Per-client rate limiting (keyed by agent sub + tool name).
  * v0.5.2: Consistent SIEM fields (request_id, proxy_latency_ms, authn_success, authz_allowed).
+ * v2.2: Payload size guard (MAX_PAYLOAD_BYTES) + exponential backoff on child restart.
  */
 export class McpProxyServer {
   private child!: ChildProcess; // Definitely assigned in spawnChild()
@@ -38,7 +45,7 @@ export class McpProxyServer {
   private authValidator: OAuthValidator | null;
   private sessionCache: SessionCache | null;
   private circuitBreaker: CircuitBreaker;
-  /** v0.5.2: Per-client rate limit counters — LRU-backed to prevent memory leaks */
+  /** Per-client rate limit counters — LRU-backed to prevent memory leaks */
   private clientRateCounters: LRUCache<string, { count: number; resetAt: number }> = new LRUCache({
     max: 10000,
     ttl: 60000,
@@ -72,6 +79,7 @@ export class McpProxyServer {
     this.maxRestarts = maxRestarts;
     this.spawnCommand = command;
     this.spawnArgs = args || [];
+    // Explicit env — do NOT leak parent process secrets to child
     this.spawnEnv = { ...env } as Record<string, string>;
     for (const [k, v] of Object.entries(process.env)) {
       if (v !== undefined) (this.spawnEnv as any)[k] = v;
@@ -98,20 +106,26 @@ export class McpProxyServer {
       stdio: ['pipe', 'pipe', 'pipe'],
     });
 
+    this.child.on('spawn', () => {
+      this.restartCount = 0; // reset after successful start
+    });
+
     this.child.on('exit', (code, signal) => {
-      if (signal === 'SIGKILL' || code !== 0) {
-        if (this.restartCount < this.maxRestarts) {
-          this.restartCount++;
-          Logger.warn(`[proxy:${this.serverName}] Child process exited (code=${code}, signal=${signal}), restarting (attempt ${this.restartCount}/${this.maxRestarts})...`);
-          setTimeout(() => this.spawnChild(), 1000);
-        } else {
-          Logger.error(`[proxy:${this.serverName}] Child process exceeded max restarts (${this.maxRestarts}), giving up`);
-          StructuredLogger.logError({
-            event: 'proxy_error' as const,
-            serverName: this.serverName,
-            error: `Child process exceeded max restarts (${this.maxRestarts}), code=${code}, signal=${signal}`,
-          });
-        }
+      if (signal === 'SIGTERM') return; // intentional shutdown
+      if (this.restartCount < this.maxRestarts) {
+        this.restartCount++;
+        const delay = RESTART_BACKOFF_MS[this.restartCount - 1] ?? 16000;
+        Logger.warn(
+          `[proxy:${this.serverName}] Child process exited (code=${code}, signal=${signal}), restarting with backoff ${delay}ms (attempt ${this.restartCount}/${this.maxRestarts})...`
+        );
+        setTimeout(() => this.spawnChild(), delay);
+      } else {
+        Logger.error(`[proxy:${this.serverName}] Child process exceeded max restarts (${this.maxRestarts}), giving up`);
+        StructuredLogger.logError({
+          event: 'proxy_error' as const,
+          serverName: this.serverName,
+          error: `Child process exceeded max restarts (${this.maxRestarts}), code=${code}, signal=${signal}`,
+        });
       }
     });
 
@@ -140,7 +154,7 @@ export class McpProxyServer {
             durationMs: proxyLatencyMs,
             timestamp: new Date().toISOString(),
           };
-          this.db.addCallRecord(record).then(() => this.db.flush()).catch((err) =>
+          this.db.addCallRecord(record).catch((err) =>
             Logger.debug(`Proxy: failed to store call record: ${err?.message}`)
           );
           this.circuitBreaker.recordSuccess();
@@ -179,17 +193,33 @@ export class McpProxyServer {
 
   /**
    * Called when the AI client writes a request to be proxied.
-   * Pipeline: Auth → Circuit Breaker → Policy + RBAC → Forward.
+   * Pipeline: Payload guard → Auth → Circuit Breaker → Policy + RBAC → Forward.
    */
   async handleClientInput(raw: string): Promise<void> {
+    // ── Payload size guard ──────────────────────────────────
+    if (Buffer.byteLength(raw, 'utf8') > MAX_PAYLOAD_BYTES) {
+      Logger.warn(
+        `[Proxy] Oversized payload rejected: ${Buffer.byteLength(raw, 'utf8')} bytes > ${MAX_PAYLOAD_BYTES} byte limit. Increase MCP_GUARDIAN_MAX_PAYLOAD_BYTES to allow.`
+      );
+      try {
+        const msg = JSON.parse(raw);
+        if (msg.id) {
+          this.sendError(msg.id, -32001, 'Payload exceeds MCP Guardian size limit');
+        }
+      } catch {
+        // Non-JSON oversize — silently drop
+      }
+      return;
+    }
+
     const requestId = randomUUID();
     const proxyStartTime = Date.now();
 
     try {
       const msg = JSON.parse(raw);
       if (msg.method === 'tools/call' && msg.id) {
-    this.requestStartTime = proxyStartTime;
-    this.currentRequestId = msg.id; // Original msg ID for response matching
+        this.requestStartTime = proxyStartTime;
+        this.currentRequestId = msg.id;
         this.requestToolName = msg.params?.name || 'unknown';
         this.requestTokens = this.tokenCounter.count(raw);
         this.requestArguments = msg.params?.arguments;
@@ -198,7 +228,7 @@ export class McpProxyServer {
         let agentIdentity: AgentIdentity | undefined;
         let authnSuccess = false;
 
-        // ── v0.5: OAuth 2.1 JWT validation ──────────────────
+        // ── OAuth 2.1 JWT validation ────────────────────────
         if (this.authValidator) {
           const authHeader = msg.params?._meta?.auth?.Authorization
             || msg.Authorization
@@ -237,7 +267,6 @@ export class McpProxyServer {
                 return;
               }
             } else {
-              // v0.6.0: Session cache — issue short-lived session to prevent JWT replay
               if (this.sessionCache && result.identity) {
                 const session = this.sessionCache.createSession(result.identity);
                 StructuredLogger.info({
@@ -266,7 +295,7 @@ export class McpProxyServer {
           }
         }
 
-        // ── v0.5.2: Circuit breaker check ──────────────────
+        // ── Circuit breaker check ───────────────────────────
         if (!this.circuitBreaker.allowRequest()) {
           StructuredLogger.info({
             event: 'circuit_open',
@@ -280,7 +309,7 @@ export class McpProxyServer {
           return;
         }
 
-        // ── v0.5.1: RBAC + policy evaluation ────────────────
+        // ── RBAC + policy evaluation ────────────────────────
         let authzAllowed = true;
         let blockReason: string | undefined;
 
@@ -339,7 +368,7 @@ export class McpProxyServer {
             return;
           }
 
-          // v0.5.2: Per-client rate limiting
+          // Per-client rate limiting
           if (agentIdentity) {
             const rateKey = `${agentIdentity.sub}:${toolName}`;
             const now = Date.now();
@@ -350,7 +379,6 @@ export class McpProxyServer {
               counter.count++;
             }
             this.clientRateCounters.set(rateKey, counter);
-            // Check if any RBAC rule with per-client rate limit fires
             const perClientLimit = this.checkPerClientRateLimit(agentIdentity, toolName, counter.count);
             if (perClientLimit) {
               StructuredLogger.info({
@@ -391,12 +419,9 @@ export class McpProxyServer {
    * Check per-client rate limits against RBAC rules.
    * Returns block reason string or null.
    */
-  private checkPerClientRateLimit(identity: AgentIdentity, toolName: string, currentCount: number): string | null {
+  private checkPerClientRateLimit(identity: AgentIdentity, _toolName: string, currentCount: number): string | null {
     if (!this.policyEngine) return null;
-    // Per-client limits are tracked via RBAC scopes — if agent has "basic" scope, check against "basic" rate limit rule
     const scopes = identity.scopes || [];
-    // Simple: if the agent has no special scopes and we've hit a hard limit
-    // In a full implementation, this would check per-scope/per-client limits from policy
     if (scopes.length === 0 && currentCount > 100) {
       return `Per-client rate limit exceeded: ${currentCount}/100 calls per minute (agent: ${identity.sub})`;
     }

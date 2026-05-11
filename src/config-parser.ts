@@ -87,15 +87,23 @@ export class ConfigParser {
     const paths = ConfigParser.findConfigPaths();
     if (paths.length === 0) return { servers: [], sourcePaths: [] };
 
-    const seen = new Set<string>();
+    const seen = new Map<string, string>(); // serverName → sourceFile
     const allServers: McpServerConfig[] = [];
 
     for (const p of paths) {
       try {
         const parsed = ConfigParser.parse(p);
         for (const server of parsed) {
-          if (!seen.has(server.name)) {
-            seen.add(server.name);
+          if (seen.has(server.name)) {
+            const existingSource = seen.get(server.name);
+            console.warn(
+              `[ConfigParser] Duplicate server name '${server.name}' found:\n` +
+              `  Keeping:  ${existingSource}\n` +
+              `  Dropping: ${p}\n` +
+              `  Use --config to specify a single config file to avoid this.`
+            );
+          } else {
+            seen.set(server.name, p);
             allServers.push(server);
           }
         }

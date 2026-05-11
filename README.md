@@ -750,7 +750,7 @@ Unknown models receive a conservative default estimate of $10/$30 per million to
 | `MCP_GUARDIAN_DB_PATH` | Override SQLite database path | `~/.mcp-guardian/history.db` |
 | `LOG_LEVEL` | Logging level: `DEBUG`, `INFO`, `WARN`, `ERROR` | `INFO` |
 | `PRICING_OVERRIDES` | Custom pricing JSON: `{"my-model": {"input": 2.0, "output": 6.0}}` | (none) |
-| `OPENAI_API_KEY` | Optionally used by tiktoken for token counting | (none) |
+| `ENABLE_LIVE_PRICING` | Set to 'true' to fetch live model pricing from litellm data | (none) |
 
 ---
 

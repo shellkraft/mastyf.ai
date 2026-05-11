@@ -155,12 +155,59 @@ function loadCustomPricing(): Record<string, { input: number; output: number }> 
   }
 }
 
+/**
+ * Try to fetch live pricing data from a public source.
+ * Falls back silently to the hardcoded table on failure.
+ * Opt-in: set ENABLE_LIVE_PRICING=true to enable.
+ */
+async function fetchLivePricing(): Promise<Record<string, { input: number; output: number }>> {
+  if (process.env['ENABLE_LIVE_PRICING'] !== 'true') return {};
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 5000);
+    const res = await fetch(
+      'https://raw.githubusercontent.com/BerriAI/litellm/main/model_prices_and_context_window.json',
+      { signal: controller.signal },
+    );
+    clearTimeout(timer);
+    if (!res.ok) return {};
+    const raw = (await res.json()) as Record<string, any>;
+    const parsed: Record<string, { input: number; output: number }> = {};
+    for (const [model, data] of Object.entries(raw)) {
+      if (data.input_cost_per_token && data.output_cost_per_token) {
+        parsed[model] = {
+          input: data.input_cost_per_token * 1_000_000,
+          output: data.output_cost_per_token * 1_000_000,
+        };
+      }
+    }
+    return parsed;
+  } catch {
+    return {};
+  }
+}
+
+let liveCache: Record<string, { input: number; output: number }> | null = null;
+let lastFetch = 0;
+const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
+
 export class PricingClient {
   private prices: Record<string, { input: number; output: number }>;
 
   constructor() {
     const custom = loadCustomPricing();
     this.prices = { ...DEFAULT_PRICING_TABLE, ...custom };
+  }
+
+  /** Init live pricing async — call once on startup. */
+  async refreshLivePricing(): Promise<void> {
+    if (Date.now() - lastFetch > CACHE_TTL_MS) {
+      liveCache = await fetchLivePricing();
+      lastFetch = Date.now();
+    }
+    if (liveCache) {
+      this.prices = { ...DEFAULT_PRICING_TABLE, ...liveCache, ...loadCustomPricing() };
+    }
   }
 
   /** Calculate estimated cost for a given number of tokens. */

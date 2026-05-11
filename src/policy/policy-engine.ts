@@ -84,6 +84,49 @@ export class PolicyEngine {
       }
     }
 
+    // v2.2: Tool category matching (e.g., destructive operations)
+    if (rule.toolCategories?.deny) {
+      const toolLower = ctx.toolName.toLowerCase();
+      const matchesCategory = rule.toolCategories.deny.some(
+        (cat) => toolLower.includes(cat.toLowerCase())
+      );
+      const isException = (rule.toolAllowExceptions ?? []).includes(ctx.toolName);
+      if (matchesCategory && !isException) {
+        return {
+          action: this.resolveAction(rule.action),
+          rule: rule.name,
+          reason: `Tool '${ctx.toolName}' matches destructive category in rule '${rule.name}'`,
+        };
+      }
+    }
+
+    // v2.2: Argument-level field patterns (e.g., block /etc/ in 'path' arguments)
+    if (rule.argPatterns && rule.argPatterns.length > 0 && ctx.arguments) {
+      for (const { field, patterns } of rule.argPatterns) {
+        const values: string[] =
+          field === '*'
+            ? Object.values(ctx.arguments).map((v) => String(v))
+            : ctx.arguments[field] !== undefined
+            ? [String(ctx.arguments[field])]
+            : [];
+        for (const value of values) {
+          for (const pattern of patterns) {
+            try {
+              if (new RegExp(pattern, 'i').test(value)) {
+                return {
+                  action: this.resolveAction(rule.action),
+                  rule: rule.name,
+                  reason: `Argument field '${field}' matches blocked pattern '${pattern}' in rule '${rule.name}'`,
+                };
+              }
+            } catch {
+              Logger.warn(`Policy: invalid argPattern regex in rule '${rule.name}': ${pattern}`);
+            }
+          }
+        }
+      }
+    }
+
     // v1.2: Malicious pattern detection — runs against NORMALIZED payload
     if (rule.patterns) {
       for (const pattern of rule.patterns) {

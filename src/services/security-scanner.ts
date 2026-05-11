@@ -4,6 +4,19 @@ import { AuthProber } from '../scanners/auth-prober.js';
 import { TypoSquatDetector } from '../scanners/typo-squat-detector.js';
 import { SecretScanner } from '../scanners/secret-scanner.js';
 import { CommandValidator } from '../scanners/command-validator.js';
+import { Logger } from '../utils/logger.js';
+
+async function safeRun<T>(
+  name: string,
+  fn: () => Promise<T>,
+): Promise<T> {
+  try {
+    return await fn();
+  } catch (err) {
+    Logger.warn(`[Scanner:${name}] Failed: ${err instanceof Error ? err.message : String(err)}`);
+    throw err; // Let Promise.all handle — but this way we can log which scanner failed
+  }
+}
 
 /**
  * Orchestrates all security scanning for a single MCP server.
@@ -31,13 +44,24 @@ export class SecurityScanner {
   }
 
   async scanServer(server: McpServerConfig): Promise<SecurityReport> {
-    const [cves, auth, typos, secrets, cmdWarnings] = await Promise.all([
-      this.cveChecker.check(server.packageName || server.name, server.version),
-      Promise.resolve(this.authProber.probe(server)),
-      Promise.resolve(this.typoDetector.detect(server.name)),
-      Promise.resolve(this.secretScanner.scan(server)),
-      Promise.resolve(this.cmdValidator.validate(server)),
+    const [
+      cvesResult, authResult, typosResult, secretsResult, cmdWarningsResult,
+    ] = await Promise.allSettled([
+      safeRun('cve', () => this.cveChecker.check(server.packageName || server.name, server.version)),
+      safeRun('auth', () => Promise.resolve(this.authProber.probe(server))),
+      safeRun('typo', () => Promise.resolve(this.typoDetector.detect(server.name))),
+      safeRun('secret', () => Promise.resolve(this.secretScanner.scan(server))),
+      safeRun('command', () => Promise.resolve(this.cmdValidator.validate(server))),
     ]);
+
+    const cves: CveFinding[] = cvesResult.status === 'fulfilled' ? cvesResult.value : [];
+    const auth: AuthStatus = authResult.status === 'fulfilled'
+      ? authResult.value
+      : { hasAuthentication: false, isTransportEncrypted: false };
+    const typos: TypoSquatResult[] = typosResult.status === 'fulfilled' ? typosResult.value : [];
+    const secrets: SecretFinding[] = secretsResult.status === 'fulfilled' ? secretsResult.value : [];
+    const cmdWarnings: import('../scanners/command-validator.js').CommandWarning[] =
+      cmdWarningsResult.status === 'fulfilled' ? cmdWarningsResult.value : [];
 
     const score = calculateSecurityScore(cves, auth, typos, secrets, cmdWarnings);
     const recommendations = generateRecommendations(cves, auth, typos, secrets, cmdWarnings);

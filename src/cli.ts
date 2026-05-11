@@ -314,7 +314,11 @@ program
     startDashboardServer(dashboardPort, policyWatcher).catch(() => {});
 
     console.error(chalk.green('MCP Guardian proxy running. Press Ctrl+C to stop.'));
-    const cleanup = () => { manager.stopAll(); db.close(); process.exit(0); };
+    const cleanup = () => {
+      manager.stopAll();
+      db.close(); // Synchronous WAL checkpoint with better-sqlite3
+      process.exit(0);
+    };
     process.on('SIGINT', cleanup);
     process.on('SIGTERM', cleanup);
 
