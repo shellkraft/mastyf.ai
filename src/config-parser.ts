@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
+import yaml from 'js-yaml';
 import { McpServerConfig } from './types.js';
 
 /**
@@ -42,7 +43,15 @@ export class ConfigParser {
    * Parse a single MCP config file into an array of server configs.
    */
   static parse(filePath: string): McpServerConfig[] {
-    const raw = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+    const content = fs.readFileSync(filePath, 'utf-8');
+    const ext = path.extname(filePath).toLowerCase();
+    let raw: Record<string, unknown>;
+
+    if (ext === '.yaml' || ext === '.yml') {
+      raw = (yaml.load(content) ?? {}) as Record<string, unknown>;
+    } else {
+      raw = JSON.parse(content);
+    }
 
     // Normalize different schemas
     let servers: Record<string, unknown>;
