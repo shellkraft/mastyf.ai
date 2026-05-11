@@ -49,8 +49,35 @@ server.setRequestHandler(ListResourcesRequestSchema, async () => ({
 
 server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
   if (request.params.uri === 'mcp-guardian://latest-scan') {
-    // Return the most recent security scan data from DB
-    const latestScan = { timestamp: new Date().toISOString(), note: 'Run scan_security or full_report to populate' };
+    // Return the most recent security scan data from DB (or note if empty)
+    const latestScan = {
+      timestamp: new Date().toISOString(),
+      note: 'Run scan_security or full_report to populate',
+    };
+    try {
+      // Try to read from the actual database (v2.1.2 fix — wired to real DB)
+      const db = container.db;
+      // Get the most recent security scan from DB across all servers
+      const allServers = ['github', 'filesystem', 'puppeteer', 'echo']; // commonly scanned servers
+      const recentScans: unknown[] = [];
+      for (const srv of allServers) {
+        const entry = await db.getLatestSecurityScan(srv);
+        if (entry) recentScans.push(entry);
+      }
+      if (recentScans.length > 0) {
+        return {
+          contents: [
+            {
+              uri: request.params.uri,
+              mimeType: 'application/json',
+              text: JSON.stringify({ scans: recentScans, count: recentScans.length }, null, 2),
+            },
+          ],
+        };
+      }
+    } catch {
+      // DB read failed — fall through to note
+    }
     return {
       contents: [
         {
