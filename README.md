@@ -1,6 +1,6 @@
 # 🛡️ MCP Guardian
 
-**Security, cost, and health audit for MCP infrastructure.**
+**Runtime security, cost governance, and health monitoring proxy for MCP infrastructure.**
 
 [![npm version](https://img.shields.io/npm/v/@mcp-guardian/server)](https://www.npmjs.com/package/@mcp-guardian/server)
 [![npm downloads](https://img.shields.io/npm/dm/@mcp-guardian/server)](https://www.npmjs.com/package/@mcp-guardian/server)
@@ -9,749 +9,372 @@
 [![License](https://img.shields.io/badge/License-MIT-yellow)](LICENSE)
 [![CI](https://github.com/rudraneel93/mcp-guardian/actions/workflows/ci.yml/badge.svg)](https://github.com/rudraneel93/mcp-guardian/actions/workflows/ci.yml)
 
+MCP Guardian sits between AI agents and MCP servers, enforcing **active security policies**, tracking **real token costs**, monitoring **server health**, and providing **enterprise observability** — all through a YAML-configurable engine with hot-reload.
 
-MCP Guardian is a **security and governance proxy** for [Model Context Protocol](https://modelcontextprotocol.io/) (MCP) infrastructure. It sits between AI clients and MCP servers, enforcing active security policies, tracking real token costs, and monitoring health — all while providing enterprise-grade observability and audit trails.
-
-**Key positioning:** Runtime governance and security proxy for MCP infrastructure — with a three-layer detection engine (regex triage → schema analysis → LLM semantic verdict), threat modeling, mTLS, and zero-trust networking.
-
-It works as an **MCP server**, a **standalone CLI**, and a **pnpm monorepo** — install just what you need.
-
----
-
-## Table of Contents
-
-- [Why MCP Guardian?](#why-mcp-guardian)
-- [Features](#features)
-- [Installation](#installation)
-- [Quick Start](#quick-start)
-  - [Proxy Workflow (Real Cost Tracking)](#proxy-workflow-real-cost-tracking)
-  - [One-Off Scan](#one-off-scan)
-- [CLI Reference](#cli-reference)
-  - [`mcp-guardian proxy`](#mcp-guardian-proxy)
-  - [Policy Engine (v0.4+)](#policy-engine-v04)
-  - [`mcp-guardian scan`](#mcp-guardian-scan)
-  - [`mcp-guardian audit`](#mcp-guardian-audit)
-  - [`mcp-guardian health`](#mcp-guardian-health)
-  - [`mcp-guardian report`](#mcp-guardian-report)
-- [MCP Server (AI Assistant Integration)](#mcp-server-ai-assistant-integration)
-  - [Available Tools](#available-tools)
-  - [Available Resources & Prompts](#available-resources--prompts)
-- [Web Dashboard (v1.0)](#web-dashboard-v10)
-- [CI/CD Integration](#cicd-integration)
-- [Production Deployment (K8s + Helm)](#production-deployment-k8s--helm)
-- [Docker](#docker)
-- [Architecture](#architecture)
-  - [Data Flow (Proxy → DB → Audit)](#data-flow-proxy--db--audit)
-- [Config Discovery](#config-discovery)
-- [Security Scoring Model](#security-scoring-model)
-- [Pricing Models](#pricing-models)
-- [Environment Variables](#environment-variables)
-- [Development](#development)
-- [SECURITY.md](#securitymd)
-- [FAQ](#faq)
-- [Roadmap](#roadmap)
-- [License](#license)
-
----
-
-## Why MCP Guardian?
-
-As MCP adoption grows, so does the attack surface. MCP servers run arbitrary commands, access filesystems, make network calls, and handle sensitive data — often with zero visibility into their security posture or operational cost.
-
-MCP Guardian provides:
-
-- **Active policy enforcement (v0.4+)** — YAML-configurable policy engine that blocks, flags, or passes every `tools/call` in real time based on tool allowlists/denylists, regex patterns, rate limits, and token budgets
-- **Security auditing** — CVE scanning (OSV.dev + NVD), hardcoded secret detection, typo-squatting detection, command injection detection, and TLS validation
-- **Real cost tracking** — Proxy interceptor that captures actual `tools/call` traffic and counts tokens via `tiktoken` (o200k_base encoding) — no estimates, no mocks
-- **Health monitoring** — Live JSON-RPC 2.0 handshake probes with latency, success rate, tool count, and context pressure analysis
-- **Agent-native** — Runs as an MCP server so your AI assistant can self-audit its own infrastructure
-- **Enterprise SIEM logging (v0.4+)** — Structured JSON logs via pino with request-ID tracing, policy decision audit trails, and block events at WARN level
-- **Session-based replay protection (v0.6.0)** — Short-lived 5-min session tokens prevent JWT replay attacks. Nonce tracking detects token reuse
-- **Hot-reload policies (v0.6.0)** — File watcher atomically swaps policy engine on YAML changes — no restart needed
-- **Circuit breaker (v0.5.2)** — 3-state circuit breaker protects upstream MCP servers from cascading failures
-- **OAuth 2.1 / OIDC (v0.5.0)** — JWT validation with OIDC Discovery, bearer token extraction, agent identity mapping
-- **RBAC (v0.5.1)** — Scope-based and client-ID-based access control in policy engine
-- **Web dashboard (v1.0)** — Real-time monitoring dashboard with live Prometheus metrics, per-server circuit breaker status, policy editor, and auto-refresh
-- **Redis shared state (v1.0)** — Redis-backed session cache and rate limit counters for multi-replica HA
-- **DPoP (v1.0)** — RFC 9449 sender-constrained token support for replay-proof authentication
-- **OpenTelemetry (v1.0)** — Distributed tracing across proxy and MCP servers via OTLP
-- **HTTP/SSE proxy (v0.8.0)** — Full proxy support for remote HTTP/SSE-based MCP servers
-- **Payload normalization (v1.2.0)** — Multi-stage decoder defeats URL/hex/unicode/HTML entity/shell obfuscation bypass attacks before regex evaluation
-- **Semantic shell analysis (v1.2.0)** — AST-based tokenization detects command substitution, pipe chains, redirects, and 33 dangerous commands semantically
-- **Dashboard authentication (v1.2.0)** — JWT session tokens, API key auth, CSRF protection, and rate-limited login for the web dashboard
-- **mTLS zero-trust networking (v1.3.0)** — Mutual TLS with client certificates for proxy ↔ upstream MCP server communication
-- **E2E proxy tests (v1.3.0)** — Real proxy spawns with `default-policy.yaml`, sends JSON-RPC, verifies block/pass/deny
-- **Supply chain CI (v1.3.0)** — GitHub Actions pipeline with `npm audit --audit-level=high`, CycloneDX SBOM generation, and `.npmrc` enforcement
-- **Operational runbooks (v1.3.0)** — 7 production runbooks covering circuit breaker, Redis, policy corruption, dashboard auth, latency, DB corruption, and token spikes with SLOs
-- **Disaster recovery plan (v1.3.0)** — RTO/RPO for all state types, backup strategy, recovery drills, and rollback procedures
-- **🆕 Three-layer detection engine (v2.0)** — Regex triage (38 patterns across 8 attack categories) → Schema analysis (parameters, defaults, enum injection) → LLM semantic verdict (Anthropic Claude)
-- **🆕 Monorepo architecture (v2.0)** — pnpm workspace with 3 packages: `@mcp-guardian/core`, `@mcp-guardian/cli`, `@mcp-guardian/server`
-- **🆕 Tamper-resistant manifest (v2.0)** — HMAC-SHA256 tool definition integrity verification with machine-local secret
-- **🆕 Red-team corpus (v2.0)** — Labeled poisoned/benign test cases with precision/recall CI gate (F1 ≥ 85%)
-- **🆕 Transport layer (v2.0)** — Stdio (JSON-RPC handshake) + HTTP/SSE tool fetching
-- **🆕 Corpus evaluation (v2.0)** — Nightly precision/recall measurement with corpus-eval.yml workflow
-- **🆕 Provenance-signed publishing (v2.0)** — npm provenance attestation on every release via publish.yml
-- **🆕 Production database (v2.1)** — Replaced sql.js (WASM) with better-sqlite3 (native, WAL mode, 3-5x faster, prepared statements)
-- **🆕 HTTP/SSE proxy cost audit (v2.1)** — Transparent HTTP proxy intercepts tools/call, runs policy evaluation + token counting for remote MCP servers
-- **🆕 Transitive dependency CVE scanning (v2.1)** — Full dependency tree scanning via npm ls --json, covering 200+ transitive packages
-- **🆕 Secret patterns expanded (v2.1)** — 40+ patterns: AWS, Azure, GCP, Stripe, Slack, Twilio, SendGrid, HuggingFace, Supabase, PlanetScale, and more
-- **🆕 Per-provider token counting (v2.1)** — OpenAI (tiktoken exact), Anthropic/Google/DeepSeek/Meta/Mistral (char-ratio estimates with isEstimate flag)
-- **🆕 CVE triage (v2.1)** — Distinguishes exploitable direct-dependency CVEs from transitive theoretical CVEs
-- **🆕 Child-process watchdog (v2.1)** — 30s timeout with auto-restart (5 attempts) on hung upstream MCP servers
-- **🆕 Data retention (v2.1)** — Hourly purge of call records older than 30 days, GDPR-compliant
-- **🆕 Dashboard CSP + HSTS (v2.1)** — Content-Security-Policy, HSTS, frame-ancestors via helmet middleware
-- **🆕 Helm chart CI/CD (v2.1)** — Auto-publish to GitHub Pages via chart-releaser-action on every release
-- **🆕 Coverage enforcement (v2.1)** — Vitest coverage thresholds (40% lines) enforced in CI
-- **🆕 Scoring formula (v2.1)** — Positive bonuses (auth +20, mTLS +10, lockfile +5, SBOM +5), clamped 0-100
-
----
-
-## Features
-
-### 🔒 Security Scan (`scan_security`)
-
-| Check | Description |
-|---|---|
-| **CVE Checking** | Queries [OSV.dev](https://osv.dev) (purl-based) and [NIST NVD](https://nvd.nist.gov) for known vulnerabilities. Rate-limited (5 req/min without API key, 20 req/min with key) |
-| **Auth Probing** | Detects missing authentication via env vars (`API_KEY`, `AUTH_TOKEN`, etc.) and URL credentials |
-| **Transport Security** | Flags unencrypted transports (HTTP, WS) and validates TLS certificates (expiry, issuer, validity) |
-| **Typo-Squat Detection** | Levenshtein distance matching against 24 known official MCP packages |
-| **Secret Scanning** | 6 regex patterns for hardcoded API keys, tokens, private keys, passwords, GitHub tokens, OpenAI keys |
-| **Command Validation** | Flags dangerous patterns (path traversal, shell chaining, `rm -rf`, `curl`/`wget` in commands, and more) |
-| **🔴 Active Policy Engine (v0.4+)** | YAML-configurable rules: tool allowlist/denylist, regex pattern blocking, rate limiting, token budgets. Operates in `audit` (passive), `warn` (flag only), or `block` (active enforcement) modes |
-| **Scoring** | Weighted 0–100 security score with actionable recommendations |
-
-### 💰 Cost Audit (`audit_costs`)
-
-- **Proxy Interceptor** — `mcp-guardian proxy` sits between your AI client and MCP servers, capturing every `tools/call` request/response
-- **Real Token Counting** — Uses `tiktoken` per-provider encodings on actual JSON-RPC traffic — exact for OpenAI, char-ratio estimates for Anthropic/Google/others
-- **Live Multi-Model Pricing** — Auto-fetches real pricing from the litellm open-source database (2,700+ models, updated daily) on startup — bootstrap table ensures instant availability
-- **Tool-Level Breakdown** — Per-tool token usage, call counts, duration, and cost estimates
-- **Custom Pricing** — Override via `PRICING_OVERRIDES` env var: `{"my-model": {"input": 2.0, "output": 6.0}}`
-
-### ❤️ Health Monitor (`check_health`)
-
-- **Live Probes** — Full JSON-RPC 2.0 handshake (initialize → initialized → `tools/list`) with request/response correlation
-- **SSE Probing** — Multi-path discovery (`/`, `/sse`, `/message`) with auth header injection and timeout handling
-- **Latency Tracking** — End-to-end latency per server with historical success rates from SQLite
-- **Overload Detection** — Warns when >15 tools exposed; context pressure estimation
-
-### 📊 Full Report (`full_report`)
-
-- **Three Output Formats** — Colored text, Markdown tables, structured JSON (with `resource` MIME type for agent consumption)
-- **Overall Score** — Composite security + health score (0–100)
-- **Database Storage** — All scans, costs, health checks, and proxy-captured call records persisted in SQLite (4 tables, batched writes)
-
-### 🔧 Production Features
-
-- **Dependency Injection** — IoC container (`src/container.ts`) for testability and runtime swaps
-- **Rate Limiting** — Token-bucket rate limiter on OSV.dev and NVD API calls
-- **Graceful Shutdown** — SIGINT/SIGTERM handlers flush DB and close connections
-- **Batched DB Writes** — 1s debounced flush reduces I/O by 10x
-- **Alert Thresholds** — 6 CLI flags with exit codes 1/2 for CI/CD integration
-- **GitHub Actions CI** — Node 18/20/22 matrix, 97 tests across 13 suites
-- **npm published** — `@mcp-guardian/server@1.1.0` — install via `npm install -g @mcp-guardian/server`
-
----
-
-## Installation
-
-### From npm (recommended)
-
-```bash
-npm install -g @mcp-guardian/server
-```
-
-After global install, the `mcp-guardian` command is available in your PATH.
-
-### From source
-
-```bash
-git clone https://github.com/rudraneel93/mcp-guardian.git
-cd mcp-guardian
-npm install
-npm run build
-```
-
-**Requirements:** Node.js ≥ 18, npm ≥ 9
+It works as a **transparent proxy**, a **standalone CLI**, an **MCP server** (so agents can self-audit), and a **pnpm monorepo** — install only what you need.
 
 ---
 
 ## Quick Start
 
-### Proxy Workflow (Real Cost Tracking)
+```bash
+# Install globally
+npm install -g @mcp-guardian/server
 
-The recommended workflow for getting real token cost data:
+# Scan your MCP servers for CVEs, secrets, and injection attacks
+mcp-guardian scan --all
+
+# Proxy with active policy enforcement
+mcp-guardian proxy --policy ./default-policy.yaml --blocking-mode block
+
+# Generate a full security-cost-health report
+mcp-guardian report --all --format markdown --output guardian-report.md
+
+# Run as an MCP server (AI agents can self-audit)
+mcp-guardian       # stdio transport, auto-starts MCP server
+```
+
+---
+
+## Features
+
+### Security
+- **Three-layer detection engine** — Regex triage (38 patterns, 8 attack categories) → Schema analysis (parameters, defaults, enum injection) → LLM semantic verdict (Anthropic Claude), with semantic layer defaulting to run on **all** tools for comprehensive coverage
+- **YAML policy engine** — Tool allowlists/denylists, regex patterns, rate limits, token budgets, RBAC, argument-level field patterns, destructive category detection, and **default-deny** (fail-closed) catch-all
+- **Hot-reload policies** — File watcher atomically swaps policy engine on YAML changes — zero-downtime policy updates
+- **50+ secret patterns** — OpenAI, Anthropic, GitHub, AWS, GCP, Azure, Stripe, Slack, Twilio, SendGrid, Datadog, CircleCI, Jenkins, Firebase, Cloudflare, HuggingFace, GitLab, NPM, Vercel, Heroku, database connection strings, RSA/PEM private keys, JWT secrets, and URI credentials
+- **Shannon entropy analysis** — Detects base64/hex-encoded secrets that regex patterns miss, with configurable allowlist
+- **AST command validation** — Shell-quote-based tokenizer with 33 dangerous commands, 6 structural operators, 5 suspicious path patterns, and Unicode homoglyph normalization (Cyrillic, fullwidth, zero-width attacks)
+- **CVE scanning** — OSV.dev + NVD with transitive dependency tree scanning (200+ packages), direct/transitive triage, and LRU result caching
+- **Response inspection** — Prompt injection and data exfiltration detection in tool responses
+- **Hardcoded secret detection** — Scans adjacent `.env` files, `docker-compose.yml`, and environment variables
+- **Typo-squatting detection** — Levenshtein distance analysis against known MCP server names
+- **Auth weakness probing** — Missing authentication, unencrypted transport detection
+
+### Authentication & Zero Trust
+- **OAuth 2.1 / OIDC** — JWT validation with OIDC Discovery, **algorithm pinning** (RS256/384/512, ES256/384, PS256 — rejects `alg: none` confusion attacks), audience/issuer validation, agent identity extraction
+- **DPoP** — RFC 9449 sender-constrained tokens for replay-proof authentication
+- **RBAC** — Scope-based and client-ID-based access control in policy engine
+- **mTLS** — Mutual TLS with client certificates for proxy ↔ upstream communication
+- **Dashboard authentication** — JWT session tokens, API key auth, CSRF protection, rate-limited login
+
+### Cost Governance
+- **Real token counting** — Proxy intercepts `tools/call` traffic and counts tokens via `tiktoken` (o200k_base for OpenAI, char-ratio estimates for Anthropic/Google/DeepSeek/Meta/Mistral)
+- **17 providers, 2,138 models** — Live pricing via litellm, with per-model cost comparison
+- **Cost efficiency scoring** — Weighted 3-way composite score: security (40%), health (30%), cost efficiency (30%)
+- **Per-tool breakdown** — Tokens, duration, and estimated cost for every intercepted call
+
+### Health & Observability
+- **Live JSON-RPC probes** — Latency, success rate, tool count, and context pressure
+- **Circuit breaker** — 3-state pattern (CLOSED, OPEN, HALF_OPEN) protects upstream servers from cascading failures
+- **Prometheus metrics** — Counters (requests, blocked, auth failures), gauges (circuit breaker state, active sessions), histograms (proxy latency, auth latency)
+- **`/healthz` and `/readyz` endpoints** — Liveness and readiness probes for K8s deployment
+- **WebSocket dashboard** — Real-time push broadcaster replacing 5s polling, with graceful fallback
+- **OpenTelemetry** — Distributed tracing across proxy and MCP servers via OTLP
+- **Structured logging** — pino with request-ID tracing, policy decision audit trails
+- **Webhook alerting** — Slack and Discord webhook support for critical policy events with severity filtering
+
+### Architecture
+- **pnpm monorepo** — `packages/core` (detection engine), `packages/cli`, `packages/server` (MCP server), plus root `src/` (proxy, scanners, services, policy, auth)
+- **better-sqlite3** — Native, WAL-mode, crash-safe database with **advisory file locking** (prevents multi-instance corruption), versioned migrations, automated purge, and prepared statements
+- **Dependency injection interfaces** — `IHistoryDb`, `ISecurityScanner`, `ICostAuditor`, `IHealthMonitor`, `IPolicyEngine` for testability and swappable implementations
+- **Secret provider interface** — Pluggable secret backends: EnvSecretProvider (default), HashiCorpVaultProvider, AwsSecretsManagerProvider
+- **Redis cluster-state enforcement** — Warns on multi-replica/K8s without Redis; `GUARDIAN_STRICT_MODE=true` refuses startup
+- **Graceful shutdown** — Async hook system flushes DB, closes connections, and WAL-checkpoints before exit
+
+### Deployment
+- **Helm chart** — K8s Deployment with liveness/readiness probes, resource limits, security context (non-root, read-only filesystem, dropped capabilities), NetworkPolicy (ingress/egress rules, CIDR-based dashboard access), and ExternalSecrets support
+- **Helm release workflow** — GitHub Actions auto-publishes chart to `gh-pages` on tagged releases
+- **Docker** — Multi-stage build with production-ready image
+- **Supply chain CI** — `npm audit`, CycloneDX SBOM generation, npm provenance attestation
+
+### Testing & Quality
+- **33 tests** across 3 packages (core: 12, server: 12, cli: 9)
+- **Code coverage** — 80% lines, 80% functions, 75% branches enforced in CI
+- **E2E proxy tests** — Real proxy spawns with policy YAML, sends JSON-RPC, verifies block/pass decisions
+- **Fuzz testing** — Payload normalizer and policy engine fuzzing
+- **Red-team corpus** — Labeled poisoned/benign test cases with precision/recall measurement
+
+---
+
+## Installation
 
 ```bash
-# 1. Start the proxy — it wraps your MCP servers and intercepts every tools/call
-mcp-guardian proxy --config ./cline_mcp_settings.json
+# Global CLI
+npm install -g @mcp-guardian/server
 
-# 2. In another terminal, run your normal Cline/Claude workflows
-#    Every tools/call is captured with real token counts
+# As an MCP server (for AI assistant integration)
+npx @mcp-guardian/server
 
-# 3. When done, Ctrl+C the proxy, then audit real costs
-mcp-guardian audit --config ./cline_mcp_settings.json
-
-# 4. Generate full report with real security + cost + health data
-mcp-guardian report --config ./cline_mcp_settings.json
-```
-
-**Example output (real data from proxy against 3 MCP servers):**
-
-```
-💰 Cost Audit
-github:      194 tokens, $0.0018 (gpt-4o)
-filesystem:  245 tokens, $0.0026 (gpt-4o)
-puppeteer:   216 tokens, $0.0021 (gpt-4o)
-Total estimated cost: $0.0065
-
-❤️ Health Check
-github:      902ms latency,  100% success, 26 tools
-filesystem: 1253ms latency,  100% success, 14 tools
-puppeteer:  1275ms latency,  100% success,  7 tools
-
-🔒 Security Scan
-github - Score: D (0)  — 20 CVEs, hardcoded token detected
-filesystem - Score: C (50) — 20 CVEs, needs auth
-puppeteer - Score: D (10) — 3 CVEs (1 critical), needs auth
-
-Overall Score: 60/100
-```
-
-> **Important:** The cost audit will show `$0.0000` until the proxy has been running and captured real `tools/call` traffic. This is not a bug — the `call_records` table starts empty.
-
-### One-Off Scan
-
-```bash
-# Quick security scan on auto-discovered configs
-mcp-guardian scan
-
-# Scan with thresholds for CI
-mcp-guardian scan --config ./cline_mcp_settings.json --fail-on-critical --fail-on-secrets --threshold-score 70
-
-# Check health
-mcp-guardian health --server github-server --fail-on-overload --threshold-latency 2000
-
-# Generate a Markdown report for documentation
-mcp-guardian report --format markdown --output audit-report.md
+# From source (monorepo)
+git clone https://github.com/rudraneel93/mcp-guardian.git
+cd mcp-guardian
+pnpm install
+pnpm build
+pnpm start
 ```
 
 ---
 
 ## CLI Reference
 
-### `mcp-guardian proxy`
-
-Start the MCP proxy interceptor with optional active policy enforcement.
+### `mcp-guardian scan`
 
 ```bash
-# Audit-only (passive)
-mcp-guardian proxy --config ./cline_mcp_settings.json
-
-# Active blocking with default policy
-mcp-guardian proxy --config ./cline_mcp_settings.json --policy ./default-policy.yaml
-
-# Active blocking with custom policy + mode override
-mcp-guardian proxy --config ./cline_mcp_settings.json --policy ./my-policy.yaml --blocking-mode block
+mcp-guardian scan --all                          # Scan all discoverable MCP configs
+mcp-guardian scan --config ./mcp.json             # Scan a specific config
+mcp-guardian scan --fail-on-critical              # Exit 1 if any CRITICAL CVE found
+mcp-guardian scan --fail-on-secrets               # Exit 1 if any hardcoded secret found
+mcp-guardian scan --threshold-score 60            # Exit 2 if any server scores below 60
 ```
 
-| Option | Description |
-|---|---|
-| `-c, --config <path>` | Path to MCP config file |
-| `--policy <path>` | Path to policy YAML file (enables active blocking) |
-| `--blocking-mode <mode>` | Override policy mode: `audit` (passive), `warn` (flag), `block` (enforce) |
+Outputs per-server CVE list, auth status, typo-squat risk, secrets found, and composite security score (0–100).
 
-### Policy Engine (v0.4+)
+### `mcp-guardian audit`
 
-The policy engine evaluates every intercepted `tools/call` before it reaches the MCP server. Define rules in YAML:
+```bash
+mcp-guardian audit --all                          # Audit costs for all servers
+mcp-guardian audit --server github                 # Filter to a specific server
+mcp-guardian audit --threshold-cost 0.01           # Exit 2 if total cost exceeds $0.01
+```
+
+Outputs per-server token usage, estimated cost (USD), and tool-level breakdown.
+
+### `mcp-guardian health`
+
+```bash
+mcp-guardian health --all                          # Health-check all servers
+mcp-guardian health --fail-on-overload              # Exit 1 if any server has tool overload
+mcp-guardian health --threshold-latency 1000        # Exit 2 if latency exceeds 1000ms
+```
+
+Outputs per-server latency, success rate, tool count, and overload warnings.
+
+### `mcp-guardian report`
+
+```bash
+mcp-guardian report --all                          # Full security-cost-health report
+mcp-guardian report --format markdown              # Output as markdown
+mcp-guardian report --format json                  # Output as JSON
+mcp-guardian report --output guardian-report.md    # Write to file
+mcp-guardian report --threshold-score 75           # Exit 2 if overall score below 75
+```
+
+Generates a comprehensive report with overall score (weighted: security 40%, health 30%, cost efficiency 30%).
+
+### `mcp-guardian proxy`
+
+```bash
+mcp-guardian proxy --config ./mcp.json --policy ./default-policy.yaml --blocking-mode block
+mcp-guardian proxy --policy ./policy.yaml --dry-run          # Simulate without activating
+mcp-guardian proxy --auth-issuer https://accounts.google.com --auth-audience my-app
+mcp-guardian proxy --auth-required                            # Fail-closed auth
+```
+
+Starts the transparent proxy. Policy modes: `audit` (passive), `warn` (flag only), `block` (active enforcement). With `--dry-run`, evaluates policy against historical call records without activating the proxy.
+
+---
+
+## Policy Engine
+
+Policies are YAML files evaluated against every `tools/call` in real time. The pipeline normalizes payloads (decoding hex/unicode/URL/HTML entity obfuscation), performs semantic shell analysis, then evaluates rules in order.
 
 ```yaml
-# my-policy.yaml
-version: "1.0"
+# default-policy.yaml
+version: '1.0'
 policy:
   mode: block
+  default_action: block       # fail-closed — blocks anything not explicitly allowed
+
   rules:
-    - name: "deny-shell-tools"
-      action: block
-      tools: { deny: ["execute_command", "bash", "sh", "eval", "exec"] }
-    - name: "block-injection"
+    - name: block-shell-injection
       action: block
       patterns:
-        - "rm\\s+-rf"
-        - "curl\\s|wget\\s"
-        - ";\\s*\\w"
-        - "&&|\\|\\|"
-    - name: "rate-limit"
+        - curl\s|wget\s
+        - rm\s+-rf
+        - ;\s*\w
+        - '&&|\|\|'
+        - \$\{
+        - '`[^`]+`'
+        - /etc/passwd|/etc/shadow
+
+    - name: deny-dangerous-tools
+      action: block
+      tools:
+        deny:
+          - execute_command
+          - bash
+          - sh
+          - eval
+          - exec
+          - system
+          - spawn
+          - fork
+          - popen
+          - source
+
+    - name: rate-limit-tool-calls
       action: flag
-      maxCallsPerMinute: 60
-    - name: "token-budget"
+      maxCallsPerMinute: 120
+
+    - name: token-budget
       action: flag
       maxTokens: 50000
 ```
 
-**Blocked calls** return a JSON-RPC 2.0 error to the client:
-```json
-{"jsonrpc":"2.0","id":"abc-123","error":{"code":-32001,"message":"Blocked by MCP Guardian policy: Tool 'execute_command' is explicitly denied"}}
-```
+**Hot-reload:** Edit the YAML file — the policy engine swaps atomically without restarting the proxy.
 
-**Policy modes:**
-| Mode | Behavior |
-|---|---|
-| `audit` | Pass all calls; log decisions only (passive) |
-| `warn` | Downgrade `block` actions to `flag`; log warnings |
-| `block` | Full active enforcement — blocked calls never reach the MCP server |
-
-### `mcp-guardian scan`
-
-Run security scan on MCP servers.
-
-```bash
-mcp-guardian scan
-mcp-guardian scan --config ./config.json --fail-on-secrets
-mcp-guardian scan --all --threshold-score 70
-```
-
-| Option | Description |
-|---|---|
-| `-c, --config <path>` | Path to an MCP config file |
-| `-a, --all` | Aggregate all discoverable configs |
-| `--threshold-score <n>` | Exit code 2 if any server score drops below `n` |
-| `--fail-on-critical` | Exit code 1 if any critical CVE found |
-| `--fail-on-secrets` | Exit code 1 if hardcoded secrets detected |
-
-### `mcp-guardian audit`
-
-Audit token costs. Reads real call records if proxy was used, otherwise shows zero-data note.
-
-```bash
-mcp-guardian audit
-mcp-guardian audit --server github-server
-mcp-guardian audit --threshold-cost 0.50
-```
-
-| Option | Description |
-|---|---|
-| `-c, --config <path>` | Path to an MCP config file |
-| `-a, --all` | Aggregate all discoverable configs |
-| `-s, --server <name>` | Filter to a specific server |
-| `--threshold-cost <n>` | Exit code 2 if total cost exceeds `n` USD |
-
-### `mcp-guardian health`
-
-Check health, latency, and reliability of MCP servers. Uses real JSON-RPC handshake probes.
-
-```bash
-mcp-guardian health
-mcp-guardian health --server filesystem
-mcp-guardian health --threshold-latency 2000 --fail-on-overload
-```
-
-| Option | Description |
-|---|---|
-| `-c, --config <path>` | Path to an MCP config file |
-| `-a, --all` | Aggregate all discoverable configs |
-| `-s, --server <name>` | Filter to a specific server |
-| `--threshold-latency <ms>` | Exit code 2 if any server exceeds latency threshold |
-| `--fail-on-overload` | Exit code 1 if any server has tool overload (>15 tools) |
-
-### `mcp-guardian report`
-
-Generate a complete security, cost, and health report.
-
-```bash
-mcp-guardian report
-mcp-guardian report --format markdown
-mcp-guardian report --format json --config ~/.cursor/mcp.json
-mcp-guardian report --all --threshold-score 60
-```
-
-| Option | Description |
-|---|---|
-| `-c, --config <path>` | Path to an MCP config file |
-| `-a, --all` | Aggregate all discoverable configs |
-| `-f, --format <fmt>` | Output format: `text` (default), `markdown`, or `json` |
-| `--output <path>` | Save report to a file instead of stdout |
-| `--threshold-score <n>` | Exit code 2 if overall score drops below `n` |
-
----
-
-## MCP Server (AI Assistant Integration)
-
-Add to your `cline_mcp_settings.json` or `claude_desktop_config.json`:
-
-```json
-{
-  "mcpServers": {
-    "mcp-guardian": {
-      "command": "npx",
-      "args": ["-y", "@mcp-guardian/server"]
-    }
-  }
-}
-```
-
-Or with a local install:
-
-```json
-{
-  "mcpServers": {
-    "mcp-guardian": {
-      "command": "node",
-      "args": ["path/to/mcp-guardian/dist/index.js"]
-    }
-  }
-}
-```
-
-### Available Tools
-
-| Tool | Parameters | Description |
-|---|---|---|
-| `scan_security` | `configPath?` | Scan MCP configs for CVEs, auth gaps, typo-squatting, hardcoded secrets, and dangerous commands |
-| `audit_costs` | `serverName?` | Estimate token usage and costs per server with multi-model pricing |
-| `check_health` | `serverName?` | Check latency, success rate, tool count, and context pressure |
-| `full_report` | `configPath?`, `format?` (json\|markdown\|text) | Generate complete audit report in any format |
-
-JSON format reports also include a structured `resource` content type (MIME: `application/json`) so AI assistants can consume reports programmatically.
-
-### Available Resources & Prompts
-
-- **Resource:** `mcp-guardian://latest-scan` — exposes the most recent security scan as structured JSON
-- **Prompt:** `audit-config` — generates structured audit instructions for an MCP config path, which the assistant can use to guide its investigation
-
----
-
-## Web Dashboard (v1.0)
-
-MCP Guardian includes a built-in web dashboard for real-time monitoring of your MCP infrastructure.
-
-**Start the dashboard alongside the proxy:**
-
-```bash
-DASHBOARD_ENABLED=true METRICS_ENABLED=true \
-mcp-guardian proxy --policy ./default-policy.yaml --blocking-mode warn
-```
-
-Then open **http://localhost:4000** in your browser.
-
-| Tab | Description |
-|-----|-------------|
-| **Overview** | Live metrics grid (requests, blocked, sessions, policy mode) + per-server status table with circuit breaker states |
-| **Policy Editor** | View and reload the active policy in real-time |
-| **Raw Metrics** | Full Prometheus `/metrics` output for debugging |
-
-**Dashboard features:**
-- **Real-time Prometheus metrics** — Parses live Prometheus text format and displays per-server request counts, blocked counts, and circuit breaker states
-- **Live policy viewer** — Shows active policy mode and rules via `/api/policy` endpoint
-- **Hot-reload** — Policy changes are auto-detected by the file watcher; the dashboard reflects them within 300ms
-- **Auto-refresh** — Metrics and policy refresh every 5 seconds
-- **Dark theme** — GitHub-style dark UI designed for ops monitoring
-
-### Environment Variables for Dashboard
-
-| Variable | Purpose | Default |
-|----------|---------|---------|
-| `DASHBOARD_ENABLED` | Enable the dashboard server | `false` |
-| `DASHBOARD_PORT` | Dashboard HTTP port | `4000` |
-| `METRICS_ENABLED` | Enable Prometheus metrics endpoint | `false` |
-| `METRICS_PORT` | Metrics server port | `9090` |
-
-The dashboard server proxies `/metrics` from the Prometheus server (port 9090) to the dashboard port (4000) so there are no CORS issues. All data displayed is live — zero mock data.
-
-## CI/CD Integration
-
-Run MCP Guardian in CI to catch issues before deployment:
-
+**RBAC example:**
 ```yaml
-- name: MCP Guardian Security Scan
-  run: npx @mcp-guardian/server scan --config ./cline_mcp_settings.json --fail-on-critical --fail-on-secrets
-  env:
-    NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
-
-- name: MCP Guardian Cost Audit
-  run: npx @mcp-guardian/server audit --all --threshold-cost 0.50
-
-- name: MCP Guardian Health Check
-  run: npx @mcp-guardian/server health --all --threshold-latency 3000 --fail-on-overload
+    - name: admin-only-tool
+      action: block
+      tools:
+        deny: [dangerous_operation]
+      rbac:
+        scopes: [admin]
+        clientIds: [^trusted-agent-]
 ```
-
-### Exit Codes
-
-| Code | Meaning |
-|---|---|
-| 0 | All checks passed within thresholds |
-| 1 | Critical security issue found (critical CVE, secret, overload) |
-| 2 | Threshold exceeded (score, cost, or latency below/above limit) |
 
 ---
 
-## Production Deployment (K8s + Helm)
+## MCP Server Integration
 
-See the full guide at **[deploy/PRODUCTION.md](deploy/PRODUCTION.md)**.
+MCP Guardian runs as a first-class MCP server, exposing security tools to AI assistants:
 
-### Quick Helm Install
+```json
+{
+  "mcpServers": {
+    "guardian": {
+      "command": "npx",
+      "args": ["@mcp-guardian/server"]
+    }
+  }
+}
+```
+
+**Available tools:**
+- `scan_security` — CVE, auth, typo-squat, and secret scanning
+- `audit_costs` — Token usage and cost estimation
+- `check_health` — Latency, success rate, and tool count
+- `full_report` — Complete security-cost-health report (JSON/markdown/text)
+
+**Available resources:**
+- `mcp-guardian://latest-scan` — Most recent security scan results
+
+**Available prompts:**
+- `audit-config` — Generates audit instructions for an MCP config
+
+---
+
+## Security Model
+
+| Layer | What it catches |
+|-------|----------------|
+| **Payload normalization** | Hex escaping, Unicode escapes, URL encoding, HTML entities, shell obfuscation |
+| **Regex triage** | Cross-tool chaining, privilege escalation, exfiltration URLs, stealth directives, Unicode obfuscation (38 patterns, 8 categories) |
+| **Schema analysis** | Injection in parameter defaults, suspicious parameter names, enum injection |
+| **Shell AST** | Command substitution, pipe chains, redirects, logical chains, 33 dangerous commands, Unicode homoglyphs |
+| **LLM semantic** | Context-aware verdict on tool descriptions — catches adversarial intent regex can't see |
+| **Secret patterns + entropy** | 50+ named patterns + Shannon entropy for base64/hex secrets |
+| **Policy engine** | Tool denylists, regex patterns, rate limits, token budgets, RBAC, default-deny |
+| **Response inspection** | Prompt injection in tool RESPONSES, data exfiltration URLs, base64-encoded payloads |
+
+---
+
+## Production Deployment
+
+### Kubernetes (Helm)
 
 ```bash
-# Install from local chart
-helm install mcp-guardian ./deploy/helm/mcp-guardian \
-  --set config.policy.mode=block \
-  --set config.mcpConfigPath=/etc/mcp-guardian/cline_mcp_settings.json
-
-# Or from the repo (future)
 helm repo add mcp-guardian https://rudraneel93.github.io/mcp-guardian
-helm install mcp-guardian mcp-guardian/mcp-guardian
+helm install guardian mcp-guardian/mcp-guardian \
+  --set persistence.enabled=true \
+  --set metrics.enabled=true \
+  --set secrets.mode=external \
+  --set secrets.existingSecret=mcp-guardian-secrets
 ```
 
-### Key Features
-- **Helm chart** with ConfigMap-backed policies, PVC persistence, and safe defaults
-- **Fail-closed** by default (block traffic if proxy crashes) — configurable to fail-open
-- **Sidecar injection pattern** documented for stdio MCP servers
-- **Scaling guide** with CPU/memory recommendations per traffic level
-- **Pod Disruption Budget** for HA, anti-affinity for multi-AZ
-- **SIEM integration** via pino structured JSON logs (Splunk, Datadog, Elasticsearch)
+The Helm chart includes:
+- **Liveness/readiness probes** (`/healthz`, `/readyz` on port 9090)
+- **Resource limits** (CPU 100m–500m, memory 256Mi–512Mi)
+- **Security context** (non-root, read-only root filesystem, all capabilities dropped)
+- **NetworkPolicy** (intra-namespace proxy traffic, CIDR-restricted dashboard)
+- **ExternalSecrets** support (Vault, SOPS)
 
-### Performance Overhead
-
-| Scenario | p50 | p99 | Overhead |
-|----------|-----|-----|----------|
-| Direct MCP (no proxy) | 5ms | 7ms | — |
-| Proxy (no policy) | 27ms | 77ms | +25.78ms |
-| Proxy (blocking policy) | 27ms | 74ms | +25.93ms |
-
-Policy engine adds **~0.15ms** — negligible. The ~26ms is Node.js child process stdio overhead.
-
-## Docker
-
-A Docker image is available for running the proxy in containerized environments.
+### Docker
 
 ```bash
-# Build
-docker build -t mcp-guardian .
-
-# Run proxy
-docker run -i \
-  -v $(pwd)/cline_mcp_settings.json:/app/cline_mcp_settings.json \
-  -v mcp-guardian-db:/root/.mcp-guardian \
-  mcp-guardian --config /app/cline_mcp_settings.json
+docker run -v $(pwd)/mcp.json:/etc/mcp-guardian/config.json \
+  -v $(pwd)/policy.yaml:/etc/mcp-guardian/policy.yaml \
+  ghcr.io/rudraneel93/mcp-guardian:latest \
+  proxy --config /etc/mcp-guardian/config.json --policy /etc/mcp-guardian/policy.yaml
 ```
-
-The `Dockerfile` uses `node:20-alpine` and runs `mcp-guardian proxy` as the default entrypoint.
-
----
-
-## Architecture
-
-### Trust Boundaries
-
-```
-┌─────────────────────────────────────────────────────────┐
-│                   TRUSTED ZONE                           │
-│  ┌──────────┐    ┌──────────────┐    ┌──────────────┐  │
-│  │ AI Client │───▶│ MCP Guardian │───▶│  MCP Server  │  │
-│  │ (Cline/   │    │   (Proxy)    │    │  (stdio/SSE) │  │
-│  │  Claude)  │◀───│              │◀───│              │  │
-│  └──────────┘    └──────┬───────┘    └──────────────┘  │
-│                         │                               │
-│              ┌──────────▼──────────┐                    │
-│              │ Policy Engine       │                    │
-│              │ Auth Gateway        │                    │
-│              │ Audit Logger (pino) │                    │
-│              │ Metrics (Prometheus)│                    │
-│              └─────────────────────┘                    │
-└─────────────────────────────────────────────────────────┘
-                         ║
-                    TRUST BOUNDARY
-                         ║
-┌─────────────────────────────────────────────────────────┐
-│                  UNTRUSTED ZONE                          │
-│  • External MCP servers (SSE/HTTP)                       │
-│  • OIDC identity providers                               │
-│  • CVE data sources (OSV.dev, NVD)                       │
-│  • Package registries (npm, PyPI)                        │
-│  • AI model outputs (prompt injection vectors)            │
-└─────────────────────────────────────────────────────────┘
-```
-
-### Comparison with Alternatives
-
-| Feature | MCP Guardian | MCP Shield | Guardrails-MCP | Envoy AI Gateway |
-|---------|-------------|-----------|---------------|-----------------|
-| **Active blocking** | ✅ YAML policy engine | ✅ Inline firewall | ✅ Policy enforcement | ❌ Gateway only |
-| **OAuth 2.1/OIDC** | ✅ JWT + RBAC + DPoP | ❌ | ❌ | ✅ OAuth |
-| **Session replay protection** | ✅ 5-min tokens + nonces | ❌ | ❌ | ❌ |
-| **Circuit breaker** | ✅ 3-state per server | ❌ | ❌ | ✅ Built-in |
-| **Cost tracking** | ✅ Real token counting | ❌ | ❌ | ❌ |
-| **Health monitoring** | ✅ JSON-RPC probes | ❌ | ❌ | ❌ |
-| **Prometheus metrics** | ✅ Counters, gauges, histograms | ❌ | ❌ | ✅ |
-| **Hot-reload policies** | ✅ chokidar file watcher | ❌ | ❌ | ❌ |
-| **Redis HA** | ✅ Session + rate limit | ❌ | ❌ | ❌ |
-| **OpenTelemetry** | ✅ OTLP tracing | ❌ | ❌ | ✅ |
-| **Web dashboard** | ✅ Live metrics + policy | ❌ | ❌ | ❌ |
-| **HTTP/SSE proxy** | ✅ Full proxy | ❌ | ❌ | ✅ |
-| **Helm chart** | ✅ K8s deployment | ❌ | ❌ | ✅ |
-| **E2E tests** | ✅ 97 tests (13 suites) | ❌ | ❌ | ❌ |
-
-### Source Tree
-
-```
-mcp-guardian/
-├── src/
-│   ├── index.ts                    # MCP server entry (stdio transport)
-│   ├── cli.ts                      # CLI wrapper (5 commands: proxy, scan, audit, health, report)
-│   ├── container.ts                # Dependency injection container (IoC)
-│   ├── types.ts                    # Shared TypeScript interfaces (8 types)
-│   ├── config-parser.ts            # Multi-format config parsing with multi-file aggregation
-│   │
-│   ├── proxy/                      # MCP Proxy Interceptor (real cost engine)
-│   │   ├── proxy-server.ts         # Intercepts tools/call, counts tokens via tiktoken
-│   │   └── proxy-manager.ts        # Spawns proxies for all stdio servers
-│   │
-│   ├── services/                   # Orchestrators
-│   │   ├── security-scanner.ts     # Parallel security checks + weighted scoring
-│   │   ├── cost-auditor.ts         # Reads real call_records from DB (zero mock data)
-│   │   └── health-monitor.ts       # Live JSON-RPC probing + DB integration
-│   │
-│   ├── scanners/                   # Individual security checks
-│   │   ├── cve-checker.ts          # OSV.dev → NVD fallback chain (rate-limited)
-│   │   ├── auth-prober.ts          # Auth/transport detection (env + URL patterns)
-│   │   ├── typo-squat-detector.ts  # Levenshtein distance (O(n) memory)
-│   │   ├── secret-scanner.ts       # 6 regex patterns for secrets
-│   │   └── command-validator.ts    # 10 suspicious pattern checks for command injection
-│   │
-│   ├── clients/                    # External API clients
-│   │   ├── osv-client.ts           # api.osv.dev (purl-based, token-bucket rate-limited)
-│   │   ├── nvd-client.ts           # NIST NVD (API key support, rate-limited)
-│   │   └── pricing-client.ts       # 97 models, 17 providers, custom override support
-│   │
-│   ├── database/
-│   │   └── history-db.ts           # SQLite via sql.js (4 tables, batched writes, 1s debounce)
-│   │
-│   ├── reporter/
-│   │   └── report-generator.ts     # Text, Markdown, JSON formatting
-│   │
-│   └── utils/
-│       ├── token-counter.ts        # tiktoken (o200k_base) wrapper
-│       ├── mcp-client.ts           # Full JSON-RPC 2.0 state machine + SSE probing
-│       ├── rate-limiter.ts         # Token-bucket rate limiter
-│       ├── tls-checker.ts          # TLS certificate validation (expiry, issuer, chain)
-│       ├── scoring.ts              # Shared scoring utility
-│       └── logger.ts              # Colored console logger with log levels
-│
-tests/                              # 74 tests across 11 suites (Vitest)
-├── config-parser.test.ts
-├── secret-scanner.test.ts
-├── auth-prober.test.ts
-├── typo-squat-detector.test.ts
-├── scoring.test.ts
-├── pricing-client.test.ts
-├── services/
-│   ├── cost-auditor.test.ts
-│   └── security-scanner.test.ts
-└── integration/
-    ├── proxy-audit.test.ts
-    └── full-pipeline.test.ts
-```
-
-### Data Flow (Proxy → DB → Audit)
-
-```
-AI Client (Cline/Claude)
-        │
-        │ tools/call JSON-RPC
-        ▼
-┌───────────────────┐
-│ MCP Proxy Server  │ ← mcp-guardian proxy
-│ (proxy-server.ts) │
-└───────┬───────────┘
-        │ counts tokens (tiktoken o200k_base)
-        ▼
-┌───────────────────┐
-│ call_records table │ ← SQLite (sql.js)
-│ (history-db.ts)   │
-└───────┬───────────┘
-        │ async getCallRecordsForServer()
-        ▼
-┌───────────────────┐
-│   Cost Auditor    │ ← mcp-guardian audit / report
-│ (cost-auditor.ts) │
-└───────────────────┘
-        │ per-tool breakdown + multi-model pricing (97 models)
-        ▼
-   Cost Report ($0.0023, gpt-4o)
-```
-
----
-
-## Config Discovery
-
-MCP Guardian auto-discovers config files from these standard locations:
-
-| Client | Config Path |
-|---|---|
-| **Cline (VS Code)** | `~/Library/Application Support/Code/User/globalStorage/saoudrizwan.claude-dev/settings/cline_mcp_settings.json` |
-| **Cline (VS Code Insiders)** | `~/Library/Application Support/Code - Insiders/User/globalStorage/saoudrizwan.claude-dev/settings/cline_mcp_settings.json` |
-| **Cline (Linux)** | `~/.config/Code/User/globalStorage/saoudrizwan.claude-dev/settings/cline_mcp_settings.json` |
-| **Cline (Windows)** | `%APPDATA%/Code/User/globalStorage/saoudrizwan.claude-dev/settings/cline_mcp_settings.json` |
-| **Claude Desktop (macOS)** | `~/Library/Application Support/Claude/claude_desktop_config.json` |
-| **Claude Desktop (Linux)** | `~/.config/Claude/claude_desktop_config.json` |
-| **Cursor** | `~/.cursor/mcp.json` |
-| **Windsurf** | `~/.codeium/windsurf/mcp_config.json` |
-
-Use `--config` / `-c` for a custom path, or `--all` / `-a` to aggregate all discoverable configs with deduplication (first file wins for duplicate server names).
-
----
-
-## Security Scoring Model
-
-Each server receives a score from 0–100 with these deductions:
-
-| Finding | Deduction |
-|---|---|
-| Critical CVEs detected | −40 |
-| High-severity CVEs | −20 |
-| Medium-severity CVEs | −10 |
-| No authentication | −20 |
-| Unencrypted transport | −10 |
-| Typo-squat detected | −30 |
-| Hardcoded secrets found | −15 |
-| High-severity command warning | −25 |
-| Medium-severity command warning | −10 |
-
-**Letter grades:** A (80–100), B (60–79), C (40–59), D (0–39)
-
----
-
-## Pricing Models
-
-97 models across 17 providers. Cached rates per 1M tokens (as of mid-2025):
-
-| Provider | Models | Example Rates (input/output per 1M) |
-|---|---|---|
-| OpenAI (14) | gpt-4o, gpt-4.5-preview, o1, o3, o4-mini, gpt-3.5-turbo | $5/$15 |
-| Anthropic (8) | claude-3-5-sonnet, claude-opus, claude-haiku | $3/$15 |
-| Google (12) | gemini-2.5-pro, gemini-2.0-flash, gemma | $1.25/$10 |
-| DeepSeek (4) | deepseek-chat, deepseek-reasoner, deepseek-v3 | $0.14/$0.28 |
-| xAI/Grok (5) | grok-3, grok-3-mini | $3/$15 |
-| Meta/Llama (8) | llama-4-maverick, llama-3.3-70b | $0.2/$0.6 |
-| Mistral (9) | mistral-large, mixtral-8x22b, codestral | $2/$6 |
-| + 10 more | Cohere, AI21, Reka, Amazon, Alibaba, Zhipu, 01.AI, Writer, Perplexity, HuggingFace | varies |
-
-Unknown models receive a conservative default estimate of $10/$30 per million tokens. Override any model via the `PRICING_OVERRIDES` env var.
 
 ---
 
 ## Environment Variables
 
-| Variable | Purpose | Default |
-|---|---|---|
-| `NVD_API_KEY` | NIST NVD API key for CVE lookups (20 req/min vs 5 without) | (none) |
-| `MCP_GUARDIAN_DB_PATH` | Override SQLite database path | `~/.mcp-guardian/history.db` |
-| `LOG_LEVEL` | Logging level: `DEBUG`, `INFO`, `WARN`, `ERROR` | `INFO` |
-| `PRICING_OVERRIDES` | Custom pricing JSON: `{"my-model": {"input": 2.0, "output": 6.0}}` | (none) |
-| `MCP_GUARDIAN_MAX_PAYLOAD_BYTES` | Max JSON-RPC payload size (bytes) before rejection | `10485760` (10 MB) |
-| `REDIS_URL` | Redis connection string for multi-replica HA (rate limits, session cache) | (in-memory fallback) |
-| `GUARDIAN_STRICT_MODE` | Set to 'true' to exit on missing REDIS_URL in K8s/multi-replica environments | `false` |
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `MCP_GUARDIAN_DB_PATH` | `~/.mcp-guardian/history.db` | SQLite database path |
+| `MCP_GUARDIAN_SECRET_ALLOWLIST` | — | Comma-separated safe high-entropy strings |
+| `MCP_GUARDIAN_MAX_PAYLOAD_BYTES` | `10485760` (10 MB) | Max JSON-RPC payload size |
+| `GUARDIAN_SECRET_PROVIDER` | `env` | Secret backend: `env`, `hashicorp-vault`, `aws-secrets-manager` |
+| `GUARDIAN_ALLOW_MODE_OVERRIDE` | `false` | Allow CLI `--blocking-mode` to override policy file mode |
+| `GUARDIAN_STRICT_MODE` | `false` | Exit on Redis-not-configured in multi-replica/K8s |
+| `METRICS_ENABLED` | `false` | Expose Prometheus metrics |
+| `METRICS_PORT` | `9090` | Prometheus metrics port |
+| `DASHBOARD_ENABLED` | `false` | Enable web dashboard |
+| `DASHBOARD_PORT` | `4000` | Dashboard port |
+| `DASHBOARD_METRICS_PUBLIC` | `false` | Allow unauthenticated metrics access |
+| `REDIS_URL` | — | Redis connection for HA rate limiting and sessions |
+| `ALERT_WEBHOOK_URL` | — | Slack or Discord webhook for critical alerts |
+| `ALERT_MIN_SEVERITY` | `warning` | Minimum severity for webhook alerts |
+| `ANTHROPIC_API_KEY` | — | API key for LLM semantic analysis layer |
+| `NVD_API_KEY` | — | NIST NVD API key for CVE lookups |
+| `MCP_PRICING_MODEL` | `gpt-4o` | Default model for cost estimation |
+
+---
+
+## Architecture
+
+```
+                    ┌──────────────────────────┐
+                    │    MCP Guardian Proxy     │
+                    │  ┌────────────────────┐  │
+ AI Client ──JSON-RPC→│  Policy Engine       │──→ Upstream MCP Server
+                    │  │  (audit/warn/block) │  │         │
+                    │  └────────┬───────────┘  │         │
+                    │           │              │         │
+                    │  ┌────────▼───────────┐  │         │
+                    │  │  HistoryDatabase    │  │         │
+                    │  │  (better-sqlite3    │  │         │
+                    │  │   WAL + lockfile)   │  │         │
+                    │  └────────────────────┘  │         │
+                    └──────────────────────────┘         │
+                                                        │
+              ┌─────────────────────────────────────────┘
+              │
+    ┌─────────▼──────────┐    ┌──────────────┐    ┌──────────┐
+    │  Security Scanner   │    │  Cost Auditor │    │  Health  │
+    │  • CVE (OSV+NVD)   │    │  • tiktoken   │    │  Monitor │
+    │  • Auth probing     │    │  • litellm    │    │  • JSON- │
+    │  • Typo-squat       │    │  • per-model  │    │    RPC   │
+    │  • Secret (50+      │    │    pricing    │    │    probe │
+    │    + entropy)       │    │               │    │  • latency│
+    │  • Command AST      │    └──────────────┘    └──────────┘
+    │  • Response inspect │
+    └────────────────────┘
+```
+
+### Data Flow
+1. AI client sends `tools/call` JSON-RPC to proxy
+2. Proxy extracts JWT identity → validates (algorithm-pinned, audience/issuer-checked)
+3. Policy engine evaluates context (tool name, arguments, RBAC) → block/flag/pass
+4. If passed, forwards to upstream MCP server; if blocked, returns JSON-RPC error
+5. Records call metadata (tokens, duration, agent ID) to SQLite
+6. Circuit breaker monitors upstream health; health probes run periodically
+7. Dashboard receives real-time events via WebSocket; Prometheus scrapes `/metrics`
 
 ---
 
@@ -761,130 +384,57 @@ Unknown models receive a conservative default estimate of $10/$30 per million to
 # Clone and install
 git clone https://github.com/rudraneel93/mcp-guardian.git
 cd mcp-guardian
-npm install
+pnpm install
 
-# Development
-npm run dev          # Watch mode with tsx
-npm run build        # Compile TypeScript
-npm run lint         # Type check (tsc --noEmit)
-npm test             # 97 tests across 13 suites (Vitest)
-npm run test:watch   # Watch mode
+# Build all packages
+pnpm build
 
-# Contributing
-# See CONTRIBUTING.md for guidelines on adding scanners, pricing models, and tests.
+# Run tests
+pnpm test
+
+# Run tests with coverage
+pnpm test:coverage
+
+# Type-check
+pnpm typecheck
+
+# Run specific test suites
+cd packages/core && npx vitest run
+cd packages/server && npx vitest run
+cd packages/cli && npx vitest run
+
+# Run corpus evaluation
+pnpm eval
+
+# Development mode (hot-reload)
+pnpm dev
 ```
-
----
-
-## FAQ
-
-### Why does `mcp-guardian audit` show $0.0000?
-
-The cost audit reads real data from the proxy's database. You must run `mcp-guardian proxy` first to capture `tools/call` traffic, then run `audit`. Without proxy data, the `call_records` table is empty and the audit returns zero.
-
-### Do I need an NVD API key?
-
-No, but you'll be rate-limited to 5 requests per minute without one. Get a free key at [NIST NVD](https://nvd.nist.gov/developers/request-an-api-key) for 20 req/min.
-
-### How do I run the proxy alongside my AI assistant?
-
-Start `mcp-guardian proxy --config <path>` in one terminal, then run your AI assistant normally in another. The proxy sits between the assistant and MCP servers, transparently capturing all `tools/call` traffic.
-
-### What does the proxy intercept?
-
-The proxy only tracks `tools/call` JSON-RPC messages — it counts input tokens (the request) and output tokens (the response). It forwards all other messages without tracking.
-
-### Can I use MCP Guardian with SSE/HTTP transports?
-
-The security scan and health monitor support SSE/HTTP transports. The proxy currently supports **stdio** transports only (it spawns child processes). Cost auditing via proxy works only for stdio-based MCP servers.
-
-### How do I override pricing for my custom model?
-
-Set the `PRICING_OVERRIDES` environment variable with JSON:
-
-```bash
-export PRICING_OVERRIDES='{"my-custom-model": {"input": 2.0, "output": 6.0}}'
-```
-
-Rates are in USD per 1 million tokens.
-
-### Where is the database stored?
-
-By default, SQLite data is stored at `~/.mcp-guardian/history.db`. Override with the `MCP_GUARDIAN_DB_PATH` environment variable. The database has 4 tables: `security_scans`, `cost_records`, `health_checks`, and `call_records`.
-
-### What's the difference between `--config` and `--all`?
-
-- `--config <path>` loads a single config file
-- `--all` auto-discovers and aggregates all config files from known locations (Cline, Claude Desktop, Cursor, Windsurf), deduplicating servers by name
-
-### Can I run MCP Guardian in CI/CD?
-
-Yes. Use the alert threshold flags (`--fail-on-critical`, `--fail-on-secrets`, `--threshold-score`, etc.) which return non-zero exit codes that CI systems understand. See the [CI/CD Integration](#cicd-integration) section for examples.
-
-### How accurate is the token counting?
-
-Token counting uses `tiktoken` with the `o200k_base` encoding (used by GPT-4o and many modern models). For non-OpenAI models, this provides a close approximation since most modern tokenizers are similar in granularity.
 
 ---
 
 ## Roadmap
 
-- [x] Core security, cost, and health scanning
-- [x] MCP server + CLI dual entry points (5 commands)
-- [x] NVD + OSV.dev CVE integration (rate-limited)
-- [x] SQLite history tracking (4 tables, batched writes)
-- [x] Real MCP handshake probing (JSON-RPC 2.0 state machine)
-- [x] SSE/HTTP transport support (multi-path discovery)
-- [x] Custom pricing configuration (`PRICING_OVERRIDES` env var)
-- [x] Alert thresholds with exit codes (6 flags)
-- [x] Multiple config file aggregation (`--all` + deduplication)
-- [x] MCP Proxy Interceptor — real token capture with zero mock data
-- [x] Dependency injection container (IoC pattern)
-- [x] Token-bucket rate limiter (OSV + NVD)
-- [x] TLS certificate validation
-- [x] Command injection validation (10 suspicious patterns)
-- [x] Active policy engine — YAML-based pass/block/flag with allowlists, regex, rate limiting, token budgets
-- [x] Structured JSON logging (pino) for SIEM ingestion
-- [x] STRIDE threat model (SECURITY.md) + formal THREAT_MODEL.md
-- [x] Payload normalization — multi-stage encode/decode bypass defense
-- [x] Semantic shell AST analysis — command substitution, pipe, and dangerous command detection
-- [x] Dashboard authentication — JWT sessions, API keys, CSRF protection
-- [x] mTLS zero-trust networking for proxy ↔ upstream communication
-- [x] 168 tests across 16 suites (unit, fuzz, integration, E2E)
-- [x] GitHub Actions CI (Node 18/20/22 matrix) + supply chain audit
-- [x] Performance benchmarks (p50: 5ms baseline, +25.78ms proxy overhead, +0.15ms policy)
-- [x] Helm chart + production deployment guide (K8s, fail-open/closed, sidecar pattern, scaling)
-- [x] Published to npm as [`@mcp-guardian/server@1.3.3`](https://www.npmjs.com/package/@mcp-guardian/server)
-- [x] OAuth 2.1 / OIDC proxy authentication (v0.5.0)
-- [x] RBAC — scope & client-ID-based access control (v0.5.1)
-- [x] Circuit breaker — 3-state protection for upstream servers (v0.5.2)
-- [x] Per‑client rate limiting (v0.5.2)
-- [x] Consistent SIEM fields — requestId, authnSuccess, authzAllowed (v0.5.2)
-- [x] Session binding — replay protection via 5‑min session tokens (v0.6.0)
-- [x] Hot‑reload policies — chokidar file watcher (v0.6.0)
-- [x] Redis session cache — cross‑replica HA session store (v0.7.0)
-- [x] Prometheus metrics endpoint — counters, gauges, histograms (v0.7.0)
-- [x] E2E integration tests — real MCP server through proxy (v0.7.0)
-- [x] Web dashboard — live metrics, policy editor, per-server status (v1.0)
-- [x] Redis shared rate limit counters (v1.0)
-- [x] DPoP support — RFC 9449 sender-constrained tokens (v1.0)
-- [x] OpenTelemetry tracing — distributed request tracking (v1.0)
-- [x] HTTP/SSE proxy server — remote MCP transport support (v0.8.0)
-- [x] E2E proxy tests — real CLI spawn with policy file (v1.3.0)
-- [x] Supply chain CI — npm audit, CycloneDX SBOM, npm provenance (v1.3.0)
-- [x] Operational runbooks — 7 scenarios with SLOs (v1.3.0)
-- [x] Disaster recovery plan — RTO/RPO, backup strategy, recovery drills (v1.3.0)
-- [x] GitHub primary language corrected to TypeScript (v1.3.3)
-- [x] npm keywords expanded to 22 terms for discoverability (v1.3.3)
-- [ ] OPA/Rego policy integration
-- [ ] Slack/Discord alerting
-- [ ] Multi-user proxy
-- [ ] Hosted SaaS version
+### v2.4
+- PostgreSQL migration option for multi-replica deployments
+- OPA/Rego policy integration
+- Multi-user proxy (separate DB schemas per team)
+
+### v2.5
+- Third-party security audit (OAuth/JWT/RBAC/DPoP)
+- Adversarial fuzzing CI pipeline
+- Hosted SaaS pilot
+
+### v3.0
+- Plugin architecture for custom scanners
+- gRPC transport support
+- Real-time cost dashboards with budget alerts
 
 ---
 
 ## License
 
-MIT — see [LICENSE](LICENSE) for details.
+MIT — see [LICENSE](LICENSE).
 
-**Built with TypeScript, @modelcontextprotocol/sdk, tiktoken, sql.js, commander, chalk, zod, jose, pino, and prom-client.**
+---
+
+**Built with TypeScript, better-sqlite3, pino, prom-client, jose, shell-quote, tiktoken, commander, chalk, and lru-cache.**
