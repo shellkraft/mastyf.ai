@@ -24,11 +24,11 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
-      # pnpm -r respects workspace dependency order (core → server → cli)
-      - run: pnpm -r build
+      # Build root FIRST — cli imports @mcp-guardian/server (root), needs dist/
+      - run: npx tsc --project tsconfig.json
 
-      # Compile root src/ — workspace packages don't cover root
-      - run: npx tsc --project tsconfig.json --noEmit
+      # turbo builds workspace packages (core → server → cli)
+      - run: pnpm run build
 
       - run: pnpm -r test
 
@@ -54,7 +54,8 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
-      - run: pnpm -r build
+      - run: npx tsc --project tsconfig.json
+      - run: pnpm run build
 
       - name: Run corpus evaluation (regex + schema only)
         run: pnpm tsx corpus/run-eval.ts

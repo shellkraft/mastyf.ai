@@ -9,8 +9,9 @@ RUN corepack enable && pnpm install --frozen-lockfile
 # Build sequentially to respect workspace dependency order
 RUN cd packages/core && pnpm build
 RUN cd packages/server && pnpm build
-RUN cd packages/cli && pnpm build
+# Build root before cli — cli imports @mcp-guardian/server (root)
 RUN npx tsc --project tsconfig.json
+RUN cd packages/cli && pnpm build
 
 FROM node:20-alpine
 RUN addgroup -g 1001 -S appgroup && adduser -u 1001 -S appuser -G appgroup
