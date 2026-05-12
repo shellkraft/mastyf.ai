@@ -89,6 +89,21 @@ const PATTERNS: SecretPattern[] = [
   { type: 'base64_large',      regex: /(?:[A-Za-z0-9+/]{60,}={0,2})/,                            severity: 'MEDIUM' },
 ];
 
+// Shannon entropy — detect high-entropy strings that may be custom/internal secrets
+function shannonEntropy(s: string): number {
+  const freq: Record<string, number> = {};
+  for (const c of s) freq[c] = (freq[c] ?? 0) + 1;
+  return Object.values(freq).reduce((acc, n) => {
+    const p = n / s.length;
+    return acc - p * Math.log2(p);
+  }, 0);
+}
+
+const ENTROPY_THRESHOLD = 4.5; // Typical secrets have entropy > 4.5 bits/char
+const ENTROPY_MIN_LENGTH = 20;
+const ENTROPY_MAX_LENGTH = 100;
+const ENTROPY_SKIP_TYPES = new Set(['api_key_header', 'bearer_token', 'password_assign', 'base64_large']);
+
 export class SecretScanner {
   scan(server: McpServerConfig): SecretFinding[] {
     const findings: SecretFinding[] = [];
@@ -97,12 +112,23 @@ export class SecretScanner {
     if (server.env) {
       for (const [key, value] of Object.entries(server.env)) {
         if (typeof value !== 'string') continue;
+        // ── Regex pattern matching ──────────────────────────
         for (const pat of PATTERNS) {
           if (pat.regex.test(value)) {
             const id = `${pat.type}:${key}`;
             if (seen.has(id)) continue;
             seen.add(id);
             findings.push({ type: pat.type, location: `env:${key}`, severity: pat.severity });
+          }
+        }
+        // ── Shannon entropy check (catch custom secrets regex missed) ──
+        if (value.length >= ENTROPY_MIN_LENGTH && value.length <= ENTROPY_MAX_LENGTH) {
+          const entropy = shannonEntropy(value);
+          if (entropy > ENTROPY_THRESHOLD) {
+            const id = `high_entropy:${key}`;
+            if (seen.has(id)) continue;
+            seen.add(id);
+            findings.push({ type: 'high_entropy_secret', location: `env:${key}`, severity: 'MEDIUM' });
           }
         }
       }
@@ -116,6 +142,18 @@ export class SecretScanner {
           if (seen.has(id)) continue;
           seen.add(id);
           findings.push({ type: pat.type, location: 'command_args', severity: pat.severity === 'HIGH' ? 'HIGH' : 'MEDIUM' });
+        }
+      }
+      // Entropy scan on command line arguments too
+      for (const arg of server.args) {
+        if (arg.length >= ENTROPY_MIN_LENGTH && arg.length <= ENTROPY_MAX_LENGTH) {
+          const entropy = shannonEntropy(arg);
+          if (entropy > ENTROPY_THRESHOLD) {
+            const id = `high_entropy:command_args`;
+            if (seen.has(id)) continue;
+            seen.add(id);
+            findings.push({ type: 'high_entropy_secret', location: 'command_args', severity: 'MEDIUM' });
+          }
         }
       }
     }

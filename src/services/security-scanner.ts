@@ -121,9 +121,14 @@ function calculateSecurityScore(
   environmentFlags?: { hasMTLS?: boolean; hasPinnedLockfile?: boolean; hasSBOM?: boolean }
 ): number {
   let penalty = 0;
-  if (cves.some(c => c.severity === 'CRITICAL')) penalty += config.penalties.cveCritical;
-  if (cves.some(c => c.severity === 'HIGH')) penalty += config.penalties.cveHigh;
-  if (cves.some(c => c.severity === 'MEDIUM')) penalty += config.penalties.cveMedium;
+  // Compound CVE scoring: each additional CVE adds diminishing penalty (log₂ scale)
+  const criticalCount = cves.filter(c => c.severity === 'CRITICAL').length;
+  const highCount = cves.filter(c => c.severity === 'HIGH').length;
+  const mediumCount = cves.filter(c => c.severity === 'MEDIUM').length;
+  const compoundFactor = (count: number): number => Math.min(count, 1 + Math.log2(Math.max(count, 1)));
+  if (criticalCount > 0) penalty += Math.round(config.penalties.cveCritical * compoundFactor(criticalCount));
+  if (highCount > 0) penalty += Math.round(config.penalties.cveHigh * compoundFactor(highCount));
+  if (mediumCount > 0) penalty += Math.round(config.penalties.cveMedium * compoundFactor(mediumCount));
   if (!auth.hasAuthentication) penalty += config.penalties.noAuth;
   if (!auth.isTransportEncrypted) penalty += config.penalties.unencryptedTransport;
   if (typos.length > 0) penalty += config.penalties.typosquat;

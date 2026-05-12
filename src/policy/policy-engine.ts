@@ -219,6 +219,65 @@ export class PolicyEngine {
     return this.mode;
   }
 
+  /**
+   * v2.5: Response inspection — scan tool RESPONSES for prompt injection and data exfiltration.
+   * Unlike request evaluation, response inspection is informational (warn, not block)
+   * since blocking a response mid-stream would corrupt the JSON-RPC state.
+   */
+  private static RESPONSE_INJECTION_PATTERNS: RegExp[] = [
+    /(?:ignore|disregard|forget)\s+(?:previous|all|above|your)\s+(?:instructions?|training|rules|constraints)/i,
+    /(?:system|assistant):\s*(?:you\s+are|your\s+new\s+role|override)/i,
+    /\b(jailbreak|DAN|developer\s*mode)\b/i,
+    /now\s+act\s+as/i,
+    /<\|(?:endoftext|im_start|im_end)\|>/,
+    /\[\[INJECT\]\]/i,
+    /\b(I\s*gnore|D\s*isregard|F\s*orget)\s+(?:previous|all|your)\s+(?:instructions?|training)/i,
+  ];
+
+  private static RESPONSE_EXFILTRATION_PATTERNS: RegExp[] = [
+    /\b(?:curl|wget|fetch|XMLHttpRequest|axios)\b.*\b(?:https?:\/\/[^\s"']+)/i,
+    /\?token=[A-Za-z0-9\-_]{20,}/i,
+    /\b(?:send|post|upload|transmit)\b.*\b(?:secret|key|token|password|credential)/i,
+  ];
+
+  evaluateResponse(
+    toolName: string,
+    serverName: string,
+    responseBody: string,
+  ): { clean: boolean; detections: string[] } {
+    const detections: string[] = [];
+
+    // ── Prompt injection heuristics ──────────────────────
+    for (const pattern of PolicyEngine.RESPONSE_INJECTION_PATTERNS) {
+      if (pattern.test(responseBody)) {
+        detections.push(`Prompt injection: response matches '${pattern.source}'`);
+      }
+    }
+
+    // ── Data exfiltration heuristics ─────────────────────
+    for (const pattern of PolicyEngine.RESPONSE_EXFILTRATION_PATTERNS) {
+      if (pattern.test(responseBody)) {
+        detections.push(`Data exfiltration: response matches '${pattern.source}'`);
+      }
+    }
+
+    // ── Base64 blob detection (potential encoded payloads) ─
+    const b64chunks = [...responseBody.matchAll(/[A-Za-z0-9+/]{100,}={0,2}/g)];
+    for (const chunk of b64chunks) {
+      try {
+        const decoded = Buffer.from(chunk[0], 'base64').toString('utf-8');
+        if (/\b(bash|sh|cmd|powershell|eval|exec|curl|wget)\b/.test(decoded)) {
+          detections.push('Base64-encoded shell command detected in response');
+          break; // One detection per response is enough for base64 scanning
+        }
+      } catch {
+        // Not valid base64 — ignore
+      }
+    }
+
+    return { clean: detections.length === 0, detections };
+  }
+
   /** Expose the shell tokenizer for testing */
   getShellTokenizer(): ShellTokenizer {
     return this.shellTokenizer;

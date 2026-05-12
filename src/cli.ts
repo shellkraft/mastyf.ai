@@ -159,6 +159,7 @@ program
   .option('-c, --config <path>', 'Path to an MCP config file')
   .option('-a, --all', 'Aggregate all discoverable config files')
   .option('-s, --server <name>', 'Filter to a specific server')
+  .option('-f, --format <format>', 'Output format: text (default) or json', 'text')
   .option('--threshold-latency <ms>', 'Exit code 2 if any server exceeds latency threshold', parseInt)
   .option('--fail-on-overload', 'Exit code 1 if any server has tool overload')
   .action(async (opts: HealthOptions) => {
