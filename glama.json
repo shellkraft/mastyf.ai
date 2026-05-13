@@ -1,6 +1,6 @@
 {
   "name": "mcp-guardian",
-  "version": "2.3.19",
+  "version": "2.3.20",
   "description": "Runtime security, cost governance, and health monitoring proxy for MCP infrastructure — three-layer detection engine (regex → schema → LLM), YAML policy engine with hot-reload, 50+ secret patterns + Shannon entropy, AST command validation, JWT algorithm pinning, default-deny fail-closed, K8s Helm with probes and NetworkPolicy",
   "category": "Security",
   "tags": [
