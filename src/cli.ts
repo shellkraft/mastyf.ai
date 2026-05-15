@@ -13,7 +13,7 @@ import { PolicyConfig } from './policy/policy-types.js';
 import { OAuthValidator } from './auth/oauth.js';
 import { AuthConfig } from './auth/auth-types.js';
 import { startMetricsServer } from './utils/metrics.js';
-import { startDashboardServer } from './utils/dashboard-server.js';
+import { startDashboardServer, setDashboardDataSource } from './utils/dashboard-server.js';
 import { DashboardAuth } from './auth/dashboard-auth.js';
 import { initTracing } from './utils/tracing.js';
 import { createContainer } from './container.js';
@@ -243,6 +243,15 @@ program
   });
 
 program
+  .command('tui')
+  .description('Launch interactive terminal dashboard with real-time metrics, AI insights, and audit trails')
+  .option('--dashboard-url <url>', 'URL of the Guardian dashboard server (default: http://localhost:4000)')
+  .action(async (opts: { dashboardUrl?: string }) => {
+    const { startTui } = await import('./tui/app.js');
+    await startTui(opts.dashboardUrl);
+  });
+
+program
   .command('proxy')
   .description('Start MCP Guardian proxy with optional OAuth 2.1 authentication and active policy enforcement')
   .option('-c, --config <path>', 'Path to MCP config file')
@@ -401,9 +410,18 @@ program
     const metricsPort = parseInt(process.env['METRICS_PORT'] || '9090', 10);
     startMetricsServer(metricsPort).catch(() => {});
 
+    // Wire dashboard to real HistoryDatabase for live API data
+    setDashboardDataSource(db);
+
     // Start dashboard server if enabled (pass policy watcher for live data)
     const dashboardPort = parseInt(process.env['DASHBOARD_PORT'] || '4000', 10);
     startDashboardServer(dashboardPort, policyWatcher).catch(() => {});
+
+    // ── Start AI Engine for real-time learning and threat intel ──
+    const { initializeAiEngine } = await import('./ai/suggestion-engine.js');
+    initializeAiEngine(db, servers).catch((err: any) => {
+      console.error(chalk.yellow(`AI Engine start warning: ${err?.message}`));
+    });
 
     console.error(chalk.green('MCP Guardian proxy running. Press Ctrl+C to stop.'));
     const cleanup = () => {

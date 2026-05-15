@@ -1,0 +1,44 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.rudraneel93/mcp-guardian",
+  "description": "Security, cost, and health governance proxy for MCP infrastructure",
+  "repository": {
+    "url": "https://github.com/rudraneel93/mcp-guardian",
+    "source": "github"
+  },
+  "version": "2.3.21",
+  "packages": [
+    {
+      "registryType": "npm",
+      "identifier": "@mcp-guardian/server",
+      "version": "2.3.21",
+      "transport": {
+        "type": "stdio"
+      },
+      "environmentVariables": [
+        {
+          "description": "Path to SQLite history database",
+          "isRequired": false,
+          "format": "string",
+          "isSecret": false,
+          "name": "MCP_GUARDIAN_DB_PATH",
+          "default": "~/.mcp-guardian/history.db"
+        },
+        {
+          "description": "Slack or Discord webhook for critical alerts",
+          "isRequired": false,
+          "format": "string",
+          "isSecret": true,
+          "name": "ALERT_WEBHOOK_URL"
+        },
+        {
+          "description": "Expose Prometheus metrics",
+          "isRequired": false,
+          "format": "string",
+          "isSecret": false,
+          "name": "METRICS_ENABLED"
+        }
+      ]
+    }
+  ]
+}

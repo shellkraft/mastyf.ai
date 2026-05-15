@@ -74,6 +74,21 @@ export class PostgresDatabase implements IDatabase {
       await client.query('CREATE INDEX IF NOT EXISTS idx_health_server ON health_checks(server_name)');
       await client.query('CREATE INDEX IF NOT EXISTS idx_call_server ON call_records(server_name)');
 
+      // Run unified aggregation migration
+      const { readFileSync } = await import('fs');
+      const { resolve, dirname } = await import('path');
+      const { fileURLToPath } = await import('url');
+      const __filename = fileURLToPath(import.meta.url);
+      const __dirname = dirname(__filename);
+      const migrationPath = resolve(__dirname, 'migrations', '002-unified-aggregation.sql');
+      try {
+        const migrationSql = readFileSync(migrationPath, 'utf-8');
+        await client.query(migrationSql);
+        Logger.info('PostgreSQL unified aggregation schema applied');
+      } catch (migErr: any) {
+        Logger.warn(`PostgreSQL aggregation migration skipped: ${migErr?.message}`);
+      }
+
       this.initialized = true;
       Logger.info('PostgreSQL database initialized');
     } finally {

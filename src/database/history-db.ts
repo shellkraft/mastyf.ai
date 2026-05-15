@@ -6,18 +6,15 @@
  * supports concurrent reads during writes, and has zero in-memory overhead.
  *
  * Fix 1 from the Production Readiness Audit (Part 7 — Remediation Blueprint).
+ * v2.3.24: Replaced proper-lockfile with simple PID-based lock to eliminate stale lock issues.
  */
 import Database from 'better-sqlite3';
 import { homedir } from 'os';
 import { join, dirname } from 'path';
-import { existsSync, mkdirSync, writeFileSync } from 'fs';
+import { existsSync, mkdirSync, writeFileSync, readFileSync, unlinkSync, rmdirSync } from 'fs';
 import { Logger } from '../utils/logger.js';
 import { ProxyCallRecord } from '../types.js';
 import { IDatabase } from './database-interface.js';
-import { createRequire } from 'node:module';
-const _require = createRequire(import.meta.url);
-// `proper-lockfile` has no published `@types/` — safe: API surface is tiny
-const lockfile = _require('proper-lockfile') as typeof import('proper-lockfile');
 
 export interface SecurityRecord {
   id: number;
@@ -49,11 +46,61 @@ export interface HealthRecord {
 
 const DEFAULT_DB_PATH = join(homedir(), '.mcp-guardian', 'history.db');
 
+/**
+ * Simple PID-based file lock — replaces proper-lockfile.
+ * Writes PID to a .pid file. On construction, checks if another process
+ * holds the lock (via kill(pid, 0)). If stale, cleans up and re-acquires.
+ */
+function acquireLock(dbPath: string): { lockPath: string; cleanup: () => void } {
+  const lockPath = dbPath + '.pid';
+
+  // Try to read existing PID
+  if (existsSync(lockPath)) {
+    try {
+      const existingPid = parseInt(readFileSync(lockPath, 'utf-8').trim(), 10);
+      if (!isNaN(existingPid) && existingPid > 0) {
+        // Check if process is still alive
+        let alive = false;
+        try {
+          process.kill(existingPid, 0);
+          alive = true;
+        } catch {
+          // Process does not exist — stale lock
+        }
+        if (alive && existingPid !== process.pid) {
+          // Another process is alive — give this instance a unique path
+          const uniquePath = dbPath.replace(/\.db$/, '-' + process.pid + '-' + Date.now() + '.db');
+          Logger.warn(`[HistoryDb] DB ${dbPath} locked by PID ${existingPid} — using unique path ${uniquePath}`);
+          return acquireLock(uniquePath);
+        }
+      }
+    } catch {
+      // Corrupt lock file — clean up
+    }
+    // Clean stale lock
+    try { unlinkSync(lockPath); } catch {}
+    // Also clean any leftover directory lock from proper-lockfile
+    const oldLockDir = dbPath + '.lock';
+    try {
+      if (existsSync(oldLockDir)) rmdirSync(oldLockDir, { recursive: true } as any);
+    } catch {}
+  }
+
+  // Acquire lock
+  writeFileSync(lockPath, String(process.pid));
+
+  return {
+    lockPath,
+    cleanup: () => {
+      try { if (existsSync(lockPath)) unlinkSync(lockPath); } catch {}
+    },
+  };
+}
+
 export class HistoryDatabase implements IDatabase {
   private db: Database.Database;
   private dbPath: string;
-  private lockfilePath: string = '';
-  private lockRelease: (() => Promise<void>) | null = null;
+  private lockCleanup: (() => void) | null = null;
   private PURGE_TTL_DAYS = 30;
   private purgeInterval: ReturnType<typeof setInterval> | null = null;
 
@@ -71,43 +118,26 @@ export class HistoryDatabase implements IDatabase {
     }
 
     this.dbPath = dbPathOrMemory ?? (process.env['MCP_GUARDIAN_DB_PATH'] || DEFAULT_DB_PATH);
-    this.lockfilePath = this.dbPath + '.lock';
     const dir = dirname(this.dbPath);
     if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
 
-    // GAP 6: Advisory file lock — prevent concurrent proxy instances
-    try {
-      if (!existsSync(this.dbPath)) {
-        writeFileSync(this.dbPath, '');
-      }
-      this.lockRelease = lockfile.lockSync(this.dbPath);
-    } catch (lockErr: any) {
-      // Stale lock from crashed container? Clean up and retry ONCE
-      const lockPath = this.dbPath + '.lock';
-      try {
-        if (existsSync(lockPath)) writeFileSync(lockPath, '');
-        this.lockRelease = lockfile.lockSync(this.dbPath);
-        Logger.warn(`[HistoryDb] Stale lock cleaned — acquired fresh lock on ${this.dbPath}`);
-      } catch {
-        throw new Error(
-          `[mcp-guardian] Cannot acquire DB lock on ${this.dbPath}. ` +
-          'Is another mcp-guardian proxy already running? ' +
-          `Original error: ${lockErr?.message || lockErr}. ` +
-          'Use MCP_GUARDIAN_DB_PATH to set a separate DB per instance.'
-        );
-      }
+    // Acquire PID-based lock
+    const { lockPath, cleanup } = acquireLock(this.dbPath);
+    this.lockCleanup = cleanup;
+
+    // Create DB file if it doesn't exist
+    if (!existsSync(this.dbPath)) {
+      writeFileSync(this.dbPath, '');
     }
 
     this.db = new Database(this.dbPath);
-
-    // Enable WAL mode for concurrent reads and non-blocking writes
     this.db.pragma('journal_mode = WAL');
-    this.db.pragma('synchronous = NORMAL'); // safe with WAL
+    this.db.pragma('synchronous = NORMAL');
     this.db.pragma('foreign_keys = ON');
 
     this.migrate();
     this.startPurgeInterval();
-    Logger.info(`[HistoryDb] Opened: ${this.dbPath} (WAL mode, lock acquired)`);
+    Logger.info(`[HistoryDb] Opened: ${this.dbPath} (WAL mode, PID ${process.pid})`);
   }
 
   async initialize(): Promise<void> {
@@ -162,8 +192,6 @@ export class HistoryDatabase implements IDatabase {
     `);
   }
 
-  // ── Call records (synchronous writes — no flush/debounce needed) ────────
-
   async addCallRecord(record: ProxyCallRecord): Promise<void> {
     const stmt = this.db.prepare(
       'INSERT INTO call_records (server_name, tool_name, request_tokens, response_tokens, total_tokens, duration_ms) VALUES (@serverName, @toolName, @requestTokens, @responseTokens, @totalTokens, @durationMs)'
@@ -182,7 +210,6 @@ export class HistoryDatabase implements IDatabase {
     const rows = this.db
       .prepare('SELECT * FROM call_records WHERE server_name = ? ORDER BY id DESC LIMIT ?')
       .all(serverName, limit) as Array<Record<string, unknown>>;
-    // Map snake_case SQLite columns to camelCase ProxyCallRecord fields
     return rows.map((row: any) => ({
       serverName: row.server_name ?? '',
       toolName: row.tool_name ?? '',
@@ -194,13 +221,9 @@ export class HistoryDatabase implements IDatabase {
     }));
   }
 
-  /** Execute callback within a database transaction. If the callback throws, the transaction is rolled back. */
   async transaction<T>(fn: () => Promise<T> | T): Promise<T> {
-    // Wrap sync callback for better-sqlite3's synchronous transaction support
     const txn = this.db.transaction(() => {
       const result = fn();
-      // If fn returns a Promise, we can't use better-sqlite3's synchronous transaction
-      // — fall back to awaiting the Promise and returning the value
       if (result instanceof Promise) {
         throw new Error('Async callbacks not supported in SQLite transactions — use synchronous operations');
       }
@@ -209,11 +232,7 @@ export class HistoryDatabase implements IDatabase {
     return txn();
   }
 
-  async flush(): Promise<void> {
-    // No-op with better-sqlite3 — writes are synchronous
-  }
-
-  // ── Security scans ──────────────────────────────────────────────────────
+  async flush(): Promise<void> {}
 
   async addSecurityScan(serverName: string, score: number, cvesFound: number, details: unknown): Promise<void> {
     this.db
@@ -235,15 +254,12 @@ export class HistoryDatabase implements IDatabase {
       .all(serverName, limit) as SecurityRecord[];
   }
 
-  /** Returns a deduplicated list of all server names that have been scanned. */
   async getDistinctScannedServers(): Promise<string[]> {
     const rows = this.db
       .prepare('SELECT DISTINCT server_name FROM security_scans ORDER BY server_name')
       .all() as Array<{ server_name: string }>;
     return rows.map((r) => r.server_name);
   }
-
-  // ── Cost records ─────────────────────────────────────────────────────────
 
   async addCostRecord(serverName: string, tokensUsed: number, estimatedCostUSD: number): Promise<void> {
     this.db
@@ -278,8 +294,6 @@ export class HistoryDatabase implements IDatabase {
     return row?.total ?? null;
   }
 
-  // ── Health checks ────────────────────────────────────────────────────────
-
   async addHealthCheck(serverName: string, latencyMs: number, success: boolean, toolCount: number): Promise<void> {
     this.db
       .prepare('INSERT INTO health_checks (server_name, latency_ms, success, tool_count) VALUES (?, ?, ?, ?)')
@@ -294,10 +308,6 @@ export class HistoryDatabase implements IDatabase {
     );
   }
 
-  /**
-   * Returns the average success rate from the last 10 health checks,
-   * or null when no health data exists — no fabricated 100% default.
-   */
   async getRecentSuccessRate(serverName: string): Promise<number | null> {
     const row = this.db
       .prepare('SELECT AVG(success) as avg FROM health_checks WHERE server_name = ? ORDER BY id DESC LIMIT 10')
@@ -305,13 +315,11 @@ export class HistoryDatabase implements IDatabase {
     return row?.avg ?? null;
   }
 
-  // ── Maintenance ──────────────────────────────────────────────────────────
-
   private startPurgeInterval(): void {
     if (this.dbPath === ':memory:') return;
     this.purgeInterval = setInterval(() => {
       this.purge(this.PURGE_TTL_DAYS);
-    }, 3_600_000); // hourly
+    }, 3_600_000);
   }
 
   purge(ttlDays: number = 30): void {
@@ -333,6 +341,7 @@ export class HistoryDatabase implements IDatabase {
     try {
       this.db.pragma('wal_checkpoint(TRUNCATE)');
       this.db.close();
+      if (this.lockCleanup) this.lockCleanup();
       Logger.info('[HistoryDb] Closed and WAL checkpointed');
     } catch (err: any) {
       Logger.error(`[HistoryDb] Error closing: ${err?.message}`);
