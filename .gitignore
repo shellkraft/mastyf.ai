@@ -7,5 +7,7 @@ dist/
 package-lock.json
 coverage/
 .turbo/
+.threat-state.json
+.ai-learning.json
 :memory:
 :memory:
