@@ -1,0 +1,57 @@
+{
+  "mcpServers": {
+    "github": {
+      "command": "node",
+      "args": [
+        "scenarios/dogfood/enterprise-mcp-stub.cjs"
+      ],
+      "env": {
+        "STUB_ROLE": "github"
+      },
+      "transport": "stdio"
+    },
+    "filesystem": {
+      "command": "node",
+      "args": [
+        "scenarios/dogfood/enterprise-mcp-stub.cjs"
+      ],
+      "env": {
+        "STUB_ROLE": "filesystem"
+      },
+      "transport": "stdio"
+    },
+    "puppeteer": {
+      "command": "node",
+      "args": [
+        "scenarios/dogfood/enterprise-mcp-stub.cjs"
+      ],
+      "env": {
+        "STUB_ROLE": "puppeteer"
+      },
+      "transport": "stdio"
+    },
+    "postgres": {
+      "command": "node",
+      "args": [
+        "scenarios/dogfood/enterprise-mcp-stub.cjs"
+      ],
+      "env": {
+        "STUB_ROLE": "postgres"
+      },
+      "transport": "stdio"
+    },
+    "misconfigured-analytics": {
+      "command": "node",
+      "args": [
+        "-e",
+        "setInterval(()=>{},999999)"
+      ],
+      "env": {
+        "OPENAI_API_KEY": "sk-proj-EXAMPLE_REDACTED_NOT_A_REAL_KEY_012345678901234567890",
+        "DATABASE_URL": "postgres://admin:EXAMPLE_PASSWORD@db.internal.corp:5432/analytics",
+        "SLACK_WEBHOOK": "https://example.invalid/webhook/not-real"
+      },
+      "transport": "stdio"
+    }
+  }
+}

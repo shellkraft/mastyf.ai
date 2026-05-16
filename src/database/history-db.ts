@@ -9,8 +9,8 @@
  * v2.3.24: Replaced proper-lockfile with simple PID-based lock to eliminate stale lock issues.
  */
 import Database from 'better-sqlite3';
-import { homedir } from 'os';
 import { join, dirname } from 'path';
+import { resolveGuardianDbPath } from '../utils/guardian-db-path.js';
 import { existsSync, mkdirSync, writeFileSync, readFileSync, unlinkSync, rmSync } from 'fs';
 import { Logger } from '../utils/logger.js';
 import { ProxyCallRecord } from '../types.js';
@@ -44,14 +44,20 @@ export interface HealthRecord {
   created_at: string;
 }
 
-const DEFAULT_DB_PATH = join(homedir(), '.mcp-guardian', 'history.db');
-
 /**
  * Simple PID-based file lock — replaces proper-lockfile.
  * Writes PID to a .pid file. On construction, checks if another process
  * holds the lock (via kill(pid, 0)). If stale, cleans up and re-acquires.
  */
-function acquireLock(dbPath: string): { lockPath: string; cleanup: () => void } {
+export interface HistoryDatabaseOptions {
+  /** Share the canonical DB read-only while another process holds the write lock (TUI, doctor). */
+  readOnly?: boolean;
+}
+
+function acquireLock(
+  dbPath: string,
+  readOnly = false,
+): { lockPath: string; cleanup: () => void; dbPath: string; readOnly: boolean; secondaryWriter: boolean } {
   const lockPath = dbPath + '.pid';
 
   // Try to read existing PID
@@ -68,10 +74,20 @@ function acquireLock(dbPath: string): { lockPath: string; cleanup: () => void } 
           // Process does not exist — stale lock
         }
         if (alive && existingPid !== process.pid) {
-          // Another process is alive — give this instance a unique path
-          const uniquePath = dbPath.replace(/\.db$/, '-' + process.pid + '-' + Date.now() + '.db');
-          Logger.warn(`[HistoryDb] DB ${dbPath} locked by PID ${existingPid} — using unique path ${uniquePath}`);
-          return acquireLock(uniquePath);
+          if (readOnly) {
+            Logger.info(
+              `[HistoryDb] Opening ${dbPath} read-only (writer PID ${existingPid})`,
+            );
+            return { lockPath: '', cleanup: () => {}, dbPath, readOnly: true, secondaryWriter: false };
+          }
+          // Share canonical DB via WAL + busy_timeout (TUI/demo/proxy observe same file)
+          Logger.info(
+            `[HistoryDb] Opening ${dbPath} as secondary writer (primary PID ${existingPid})`,
+          );
+          return { lockPath: '', cleanup: () => {}, dbPath, readOnly: false, secondaryWriter: true };
+        }
+        if (!alive) {
+          Logger.info(`[HistoryDb] Removed stale lock for ${dbPath} (PID ${existingPid} not running)`);
         }
       }
     } catch {
@@ -91,6 +107,9 @@ function acquireLock(dbPath: string): { lockPath: string; cleanup: () => void } 
 
   return {
     lockPath,
+    dbPath,
+    readOnly: false,
+    secondaryWriter: false,
     cleanup: () => {
       try { if (existsSync(lockPath)) unlinkSync(lockPath); } catch {}
     },
@@ -100,14 +119,16 @@ function acquireLock(dbPath: string): { lockPath: string; cleanup: () => void } 
 export class HistoryDatabase implements IDatabase {
   private db: Database.Database;
   private dbPath: string;
+  private readonly openedReadOnly: boolean;
   private lockCleanup: (() => void) | null = null;
   private PURGE_TTL_DAYS = 30;
   private purgeInterval: ReturnType<typeof setInterval> | null = null;
 
-  constructor(dbPathOrMemory?: string) {
+  constructor(dbPathOrMemory?: string, options?: HistoryDatabaseOptions) {
     // :memory: support is retained for tests
     if (dbPathOrMemory === ':memory:') {
       this.dbPath = ':memory:';
+      this.openedReadOnly = false;
       this.db = new Database(':memory:');
       this.db.pragma('journal_mode = WAL');
       this.db.pragma('synchronous = NORMAL');
@@ -117,31 +138,56 @@ export class HistoryDatabase implements IDatabase {
       return;
     }
 
-    this.dbPath = dbPathOrMemory ?? (process.env['MCP_GUARDIAN_DB_PATH'] || DEFAULT_DB_PATH);
-    const dir = dirname(this.dbPath);
+    const requestedPath = resolveGuardianDbPath(dbPathOrMemory);
+    const dir = dirname(requestedPath);
     if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
 
-    // Acquire PID-based lock
-    const { lockPath, cleanup } = acquireLock(this.dbPath);
-    this.lockCleanup = cleanup;
+    const readOnly = options?.readOnly === true;
+    const { cleanup, dbPath: effectivePath, readOnly: openedReadOnly, secondaryWriter } =
+      acquireLock(requestedPath, readOnly);
+    this.dbPath = effectivePath;
+    this.openedReadOnly = openedReadOnly;
 
-    // Create DB file if it doesn't exist
-    if (!existsSync(this.dbPath)) {
-      writeFileSync(this.dbPath, '');
+    if (!openedReadOnly && !secondaryWriter) {
+      this.lockCleanup = cleanup;
+      if (!existsSync(this.dbPath)) {
+        writeFileSync(this.dbPath, '');
+      }
+    } else if (secondaryWriter) {
+      if (!existsSync(this.dbPath)) {
+        throw new Error(`[HistoryDb] Cannot open secondary writer — ${this.dbPath} does not exist`);
+      }
     }
 
-    this.db = new Database(this.dbPath);
+    this.db = openedReadOnly
+      ? new Database(this.dbPath, { readonly: true, fileMustExist: true })
+      : new Database(this.dbPath);
     this.db.pragma('journal_mode = WAL');
-    this.db.pragma('synchronous = NORMAL');
+    this.db.pragma('busy_timeout = 5000');
+    if (!openedReadOnly) {
+      this.db.pragma('synchronous = NORMAL');
+    }
     this.db.pragma('foreign_keys = ON');
 
-    this.migrate();
-    this.startPurgeInterval();
-    Logger.info(`[HistoryDb] Opened: ${this.dbPath} (WAL mode, PID ${process.pid})`);
+    if (!openedReadOnly) {
+      this.migrate();
+      this.startPurgeInterval();
+    }
+    Logger.info(
+      `[HistoryDb] Opened: ${this.dbPath} (${openedReadOnly ? 'read-only, ' : ''}WAL mode, PID ${process.pid})`,
+    );
   }
 
   async initialize(): Promise<void> {
     // Database is already initialised in constructor
+  }
+
+  getDbPath(): string {
+    return this.dbPath;
+  }
+
+  isReadOnly(): boolean {
+    return this.openedReadOnly;
   }
 
   private migrate(): void {
@@ -190,11 +236,35 @@ export class HistoryDatabase implements IDatabase {
       CREATE INDEX IF NOT EXISTS idx_security_scans_server
         ON security_scans(server_name, created_at DESC);
     `);
+    this.migrateCallRecordsColumns();
+  }
+
+  private migrateCallRecordsColumns(): void {
+    const cols = this.db.prepare('PRAGMA table_info(call_records)').all() as Array<{ name: string }>;
+    const names = new Set(cols.map((c) => c.name));
+    if (!names.has('blocked')) {
+      this.db.exec('ALTER TABLE call_records ADD COLUMN blocked INTEGER NOT NULL DEFAULT 0');
+    }
+    if (!names.has('block_rule')) {
+      this.db.exec('ALTER TABLE call_records ADD COLUMN block_rule TEXT');
+    }
+    if (!names.has('block_reason')) {
+      this.db.exec('ALTER TABLE call_records ADD COLUMN block_reason TEXT');
+    }
+    if (!names.has('model')) {
+      this.db.exec('ALTER TABLE call_records ADD COLUMN model TEXT');
+    }
+    if (!names.has('cost_usd')) {
+      this.db.exec('ALTER TABLE call_records ADD COLUMN cost_usd REAL');
+    }
+    if (!names.has('pricing_source')) {
+      this.db.exec('ALTER TABLE call_records ADD COLUMN pricing_source TEXT');
+    }
   }
 
   async addCallRecord(record: ProxyCallRecord): Promise<void> {
     const stmt = this.db.prepare(
-      'INSERT INTO call_records (server_name, tool_name, request_tokens, response_tokens, total_tokens, duration_ms) VALUES (@serverName, @toolName, @requestTokens, @responseTokens, @totalTokens, @durationMs)'
+      'INSERT INTO call_records (server_name, tool_name, request_tokens, response_tokens, total_tokens, duration_ms, blocked, block_rule, block_reason, model, cost_usd, pricing_source) VALUES (@serverName, @toolName, @requestTokens, @responseTokens, @totalTokens, @durationMs, @blocked, @blockRule, @blockReason, @model, @costUsd, @pricingSource)'
     );
     stmt.run({
       serverName: record.serverName,
@@ -203,6 +273,12 @@ export class HistoryDatabase implements IDatabase {
       responseTokens: record.responseTokens,
       totalTokens: record.totalTokens,
       durationMs: record.durationMs,
+      blocked: record.blocked ? 1 : 0,
+      blockRule: record.blockRule ?? null,
+      blockReason: record.blockReason ?? null,
+      model: record.model ?? null,
+      costUsd: record.costUsd ?? null,
+      pricingSource: record.pricingSource ?? null,
     });
   }
 
@@ -218,6 +294,12 @@ export class HistoryDatabase implements IDatabase {
       totalTokens: row.total_tokens ?? 0,
       durationMs: row.duration_ms ?? 0,
       timestamp: row.created_at ?? new Date().toISOString(),
+      model: row.model ?? undefined,
+      costUsd: row.cost_usd != null ? Number(row.cost_usd) : undefined,
+      pricingSource: row.pricing_source ?? undefined,
+      blocked: Boolean(row.blocked),
+      blockRule: row.block_rule ?? undefined,
+      blockReason: row.block_reason ?? undefined,
     }));
   }
 
@@ -257,6 +339,19 @@ export class HistoryDatabase implements IDatabase {
   async getDistinctScannedServers(): Promise<string[]> {
     const rows = this.db
       .prepare('SELECT DISTINCT server_name FROM security_scans ORDER BY server_name')
+      .all() as Array<{ server_name: string }>;
+    return rows.map((r) => r.server_name);
+  }
+
+  async getDistinctActiveServers(): Promise<string[]> {
+    const rows = this.db
+      .prepare(
+        `SELECT DISTINCT server_name FROM (
+           SELECT server_name FROM security_scans
+           UNION
+           SELECT server_name FROM call_records
+         ) ORDER BY server_name`,
+      )
       .all() as Array<{ server_name: string }>;
     return rows.map((r) => r.server_name);
   }
@@ -347,10 +442,12 @@ export class HistoryDatabase implements IDatabase {
       this.purgeInterval = null;
     }
     try {
-      this.db.pragma('wal_checkpoint(TRUNCATE)');
+      if (!this.openedReadOnly) {
+        this.db.pragma('wal_checkpoint(TRUNCATE)');
+      }
       this.db.close();
       if (this.lockCleanup) this.lockCleanup();
-      Logger.info('[HistoryDb] Closed and WAL checkpointed');
+      Logger.info(`[HistoryDb] Closed${this.openedReadOnly ? '' : ' and WAL checkpointed'}`);
     } catch (err: any) {
       Logger.error(`[HistoryDb] Error closing: ${err?.message}`);
     }

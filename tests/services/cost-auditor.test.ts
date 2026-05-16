@@ -24,16 +24,19 @@ describe('CostAuditor', () => {
       serverName: 'test', toolName: 'echo',
       requestTokens: 100, responseTokens: 200, totalTokens: 300,
       durationMs: 50, timestamp: new Date().toISOString(),
+      model: 'gpt-4o', costUsd: 0.001, pricingSource: 'litellm',
     });
     await db.addCallRecord({
       serverName: 'test', toolName: 'echo',
       requestTokens: 150, responseTokens: 250, totalTokens: 400,
       durationMs: 60, timestamp: new Date().toISOString(),
+      model: 'gpt-4o', costUsd: 0.002, pricingSource: 'litellm',
     });
     await db.addCallRecord({
       serverName: 'test', toolName: 'add',
       requestTokens: 80, responseTokens: 20, totalTokens: 100,
       durationMs: 30, timestamp: new Date().toISOString(),
+      model: 'gpt-4o', costUsd: 0.0005, pricingSource: 'litellm',
     });
     db.flush();
 
@@ -41,6 +44,7 @@ describe('CostAuditor', () => {
     expect(report.tokensUsed).toBe(800);
     expect(report.inputTokens).toBe(330);
     expect(report.outputTokens).toBe(470);
+    expect(report.actualCostUSD).toBeCloseTo(0.0035, 4);
     expect(report.toolBreakdown).toHaveLength(2);
 
     const echo = report.toolBreakdown.find((t) => t.toolName === 'echo');
@@ -65,6 +69,7 @@ describe('CostAuditor', () => {
       serverName: 'single', toolName: 'search',
       requestTokens: 500, responseTokens: 1000, totalTokens: 1500,
       durationMs: 100, timestamp: new Date().toISOString(),
+      model: 'claude-3-5-sonnet', costUsd: 0.02, pricingSource: 'cline',
     });
     db.flush();
 
@@ -74,6 +79,7 @@ describe('CostAuditor', () => {
     expect(report.outputTokens).toBe(1000);
     expect(report.toolBreakdown).toHaveLength(1);
     expect(report.toolBreakdown[0].tokens).toBe(1500);
+    expect(report.actualCostUSD).toBe(0.02);
 
     db.close();
   });

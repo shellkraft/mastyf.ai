@@ -192,8 +192,8 @@ Verify integration: `./scripts/verify-live-integration.sh`
 - **Live JSON-RPC probes** — Latency, success rate, tool count
 - **Circuit breaker** — CLOSED / OPEN / HALF_OPEN
 - **Prometheus** — `/metrics`, `/healthz`, `/readyz` on port 9090
-- **Web dashboard** — Real-time API on port 4000 (WebSocket push)
-- **Interactive TUI** — Terminal dashboard with security, cost, health, AI, audit tabs
+- **Web dashboard** — REST + WebSocket API on port 4000 (not a full browser SPA until v2.6)
+- **Interactive TUI** — Terminal dashboard (security, cost, health, AI, audit); **primary live-ops UI in v2.5.x**
 - **OpenTelemetry** — OTLP tracing
 - **SIEM hooks** — Structured JSON (`policy_decision`, `tool_blocked`) via `MCP_GUARDIAN_SIEM_*`
 - **Webhook alerting** — Slack/Discord for policy blocks
@@ -210,7 +210,7 @@ Verify integration: `./scripts/verify-live-integration.sh`
 
 ### Architecture
 - **pnpm monorepo** — `packages/core`, `packages/cli`, `packages/server`, root `src/`
-- **better-sqlite3** — WAL mode, PID-based locking, migrations, 30-day purge
+- **better-sqlite3** — WAL mode, primary writer + read-only TUI observers on the same file, migrations, 30-day purge
 - **Pluggable secrets** — env, HashiCorp Vault, AWS Secrets Manager
 - **Graceful shutdown** — WAL checkpoint, connection flush
 
@@ -279,10 +279,13 @@ Modes: `audit` | `warn` | `block`. Wrapper script: `scripts/guardian-proxy.sh` (
 
 ```bash
 mcp-guardian tui
+mcp-guardian tui --policy default-policy.yaml
 mcp-guardian tui --dashboard-url http://localhost:4000
 ```
 
-Keys: `1`–`8` tabs, `Tab` next, `r` refresh, `Esc` quit. Reads `~/.mcp-guardian/history.db` and AI state files.
+Keys: `1`–`8` tabs, `Tab` next, `r` refresh, `Esc` quit. AI tab: `n` next suggestion, `a` accept, `x` reject.
+
+Reads **`MCP_GUARDIAN_DB_PATH`** (default `~/.mcp-guardian/history.db`) in **read-only** mode so it can run beside a live proxy. Polls every **1.5s**; connects to **`ws://127.0.0.1:4000/ws`** only when a proxy (or dashboard) is actually listening — otherwise you will see `WS off (poll 1.5s)`, which is normal.
 
 ---
 
@@ -318,11 +321,66 @@ policy:
 
 ## Interactive TUI
 
+The TUI is the **primary live-ops UI in v2.5.x**. The browser dashboard on port 4000 is a **REST + WebSocket API** (metrics, audit, policy) — not a full SPA until v2.6. If you want a terminal view of what Guardian actually recorded, use the TUI.
+
 ```bash
-mcp-guardian tui
+pnpm run build
+mcp-guardian doctor --policy default-policy.yaml   # DB path, policy, AI flags
+
+# Terminal 1 — at least one wrapped proxy (or echo-test) writing history.db
+mcp-guardian proxy --config mcp.json --policy default-policy.yaml
+
+# Terminal 2 — dashboard (same DB, read-only)
+pnpm run tui
 ```
 
-Tabs: Overview, Security, Cost, Health, AI Engine, Audit Trail, Policy, Instances. Polls local DB every 3s. Seed demo data: `node scripts/real-life-tui-prep.cjs`.
+### What the TUI shows (honestly)
+
+| Tab | Source | Caveats |
+|-----|--------|---------|
+| Overview / Audit | `call_records` in SQLite | **Real data** from proxied `tools/call` only. No traffic → zeros. |
+| Security | Latest `security_scans` per server | Scans can score **0/100** when CVE data is harsh — that is not “mock,” it is scan output. |
+| Cost | Token fields on call records | **$0** until calls carry priced models/tokens. |
+| Instances | One row per **MCP server name** in DB | Not “Guardian processes.” `echo-test` with scans but **no calls** still appears; **Servers w/ traffic** counts servers with `call_records` only. |
+| AI Engine | Learning cycle + pending suggestions | **No fake TP/FP rates** until ≥5 labeled accept/reject outcomes. Suggestions can be **empty** on stable traffic (no anomalies). |
+| FULL ANALYSIS | Rebuilt from DB when records exist | Ignores stale `~/.mcp-guardian/.ai-report.json` when live calls are present. |
+
+### Live updates — what actually works
+
+1. **Same database file.** TUI and proxy must use the **same** `MCP_GUARDIAN_DB_PATH`. If you see counts stuck at 21 while a script runs, check the demo/proxy log: it must say `history.db`, not `history-<pid>-<timestamp>.db`.
+2. **WebSocket (fastest).** Start the proxy first (`GUARDIAN_WS_ENABLED=true` by default). TUI status should show **`WS live`**. Port **4000** must be free; otherwise the proxy runs without WS and the TUI polls only.
+3. **Polling (fallback).** Read-only reopen every 1.5s picks up WAL commits from the proxy. Good enough for local dev; not a replacement for a shared Postgres tier in production.
+
+### Multi-server traffic (local demo)
+
+The stdio proxy handles **one MCP server per process**. Four servers in the wild means **four wrapped proxies** (or `wrap`), all pointing at the same `MCP_GUARDIAN_DB_PATH`.
+
+For a **single-machine smoke test** without editing four configs:
+
+```bash
+# Terminal 1
+pnpm run tui
+
+# Terminal 2 — replays 21 corpus calls (pass + block) into the SAME history.db
+pnpm run live:tui-demo                        # stream: ~1 call / 1.5s (watch counts climb)
+node scripts/run-live-tui-demo.cjs            # one-shot burst (all 21 calls quickly)
+```
+
+This uses in-process proxies + `scenarios/dogfood/enterprise-mcp-stub.cjs` — **not** your real GitHub/Postgres MCP binaries. It proves policy + DB + TUI wiring; it does not prove your production MCP servers.
+
+```bash
+pnpm run dogfood    # sandboxed CI scenario (separate DB under scenarios/dogfood/sandbox)
+```
+
+**Do not** use `scripts/real-life-tui-prep.cjs` for “live” demos — it used to seed fake AI JSON; that seeding was removed. Prefer `live:tui-demo` or real proxy traffic.
+
+### Limitations (read this before demoing to leadership)
+
+- **Not a multi-proxy control plane.** One TUI process observes one SQLite file (or Postgres if configured). It does not discover other hosts or aggregate fleet-wide instances yet.
+- **“6 inst” ≠ 6 live proxies.** The status bar counts **server names** known to the DB (calls + scans). Only **Servers w/ traffic** reflects tool calls.
+- **WS off** is common if nothing listens on `:4000` or an old process holds the port — fix by stopping stray `node dist/cli.js proxy` processes, not by assuming the TUI is broken.
+- **Learning while TUI is open** does not write to the DB (read-only). Run learning on the proxy process or restart TUI after `GUARDIAN_TUI_SKIP_LEARNING=true` if you only want display.
+- **Docker:** bind-mount the same `history.db` into the container and the host TUI, or you will see different numbers on each side.
 
 ---
 
@@ -379,7 +437,17 @@ docker run -v $(pwd)/mcp.json:/etc/mcp-guardian/mcp.json \
 | `GUARDIAN_STRICT_MODE` | `false` | Fail startup without Redis in K8s |
 | `GUARDIAN_TENANT_ID` | `default` | Tenant label for audit/rate limits |
 | `GUARDIAN_ALLOW_MODE_OVERRIDE` | `false` | Allow CLI `--blocking-mode` override |
-| `GUARDIAN_EXPERIMENTAL_AI` | `false` | AI suggestion engine |
+| `GUARDIAN_AI_ENABLED` | `true` | AI learning/suggestions (`false` to disable) |
+| `GUARDIAN_AI_AUTO_APPLY` | `false` | Auto-apply high-confidence rules (`true` = risky) |
+| `GUARDIAN_EXPERIMENTAL_AI` | — | Legacy alias for `GUARDIAN_AI_ENABLED=true` |
+| `GUARDIAN_AI_USE_DB_SNAPSHOTS` | `false` | Fast learning cycles from DB only (no live OSV) |
+| `GUARDIAN_TUI_SKIP_LEARNING` | `false` | TUI display-only (no learning cycle on poll) |
+| `GUARDIAN_TUI_ACTIVE_WINDOW_MS` | `900000` (15m) | “ACTIVE” vs “IDLE” on Instances tab (recent call window) |
+| `GUARDIAN_TUI_LLM` | `true` | Optional analyst note via LLM on Overview |
+| `GUARDIAN_WS_ENABLED` | `true` (proxy) | WebSocket push at `/ws` for TUI |
+| `GUARDIAN_DASHBOARD_URL` | `http://127.0.0.1:4000` | TUI WebSocket + metrics API base URL |
+| `GUARDIAN_SKIP_PREFLIGHT_SCAN` | `false` | Skip background CVE scan on proxy start |
+| `GUARDIAN_BLOCK_ON_CVE` | `true` | Block tools/call when CVEs exceed threshold |
 | `POLICY_AUDIT_ENABLED` | `false` | Policy change JSONL audit |
 | `GUARDIAN_AUDIT_SYNC_ENABLED` | `false` | Sync SQLite → PostgreSQL |
 | `OPA_URL` | — | OPA decision endpoint |
@@ -424,7 +492,9 @@ git clone https://github.com/rudraneel93/mcp-guardian.git
 cd mcp-guardian
 pnpm install && pnpm build && pnpm test
 ./scripts/verify-live-integration.sh
-pnpm eval    # red-team corpus
+pnpm run dogfood          # sandboxed multi-server scenario (CI)
+pnpm run live:tui-demo    # write shared ~/.mcp-guardian/history.db for TUI smoke test
+pnpm eval                 # red-team corpus
 ```
 
 Monorepo layout: [packages/PACKAGING.md](packages/PACKAGING.md)
@@ -455,7 +525,20 @@ Clients don’t send JWTs natively. Use audit mode, `AUTH_TOKEN` in `guardian-co
 
 ### TUI vs Docker database?
 
-TUI reads `~/.mcp-guardian/history.db`. Docker uses `/data` unless you bind-mount the same path.
+TUI reads `~/.mcp-guardian/history.db` (or `MCP_GUARDIAN_DB_PATH`). Docker uses `/data` unless you bind-mount the **same file** into the container and host. Different paths = different numbers — not a sync bug.
+
+### Why does the TUI show 0 records or frozen counts?
+
+Usually one of:
+
+1. **Wrong DB file** — another process wrote to `history-<pid>-<timestamp>.db` while the TUI reads `history.db`. Run `mcp-guardian doctor`, check the TUI footer `DB:` line, and ensure proxy/demo/proxy logs reference the same path.
+2. **No proxied traffic yet** — scan-only data does not create `call_records`. Run a wrapped server or `pnpm run live:tui-demo`.
+3. **Stale build** — `pnpm run build` after pulling; the TUI runs `dist/cli.js`, not TypeScript sources.
+4. **Port 4000 busy** — proxy skips dashboard/WS; TUI falls back to polling (still works if the DB is shared).
+
+### Why does FULL ANALYSIS disagree with the summary?
+
+Older builds cached text in `~/.mcp-guardian/.ai-report.json` from a single-server run. Current builds regenerate analysis from the DB when `call_records` exist. Delete `.ai-report.json` if you still see mismatches after upgrading.
 
 ### Multi-replica?
 
@@ -481,12 +564,15 @@ See [CONTRIBUTING.md](CONTRIBUTING.md). Run `pnpm install && pnpm build && pnpm 
 - Docker Compose + `docker-entrypoint.sh` volume permissions
 - PostgreSQL, Redis sessions, OPA, tenant admin API
 - Helm: Redis, ServiceMonitor, backup CronJob, developer example values
-- TUI, compliance docs, supply-chain / GHCR CI
-- Interactive TUI + real-life scenario scripts
+- TUI (read-only DB observer, per-server Instances tab, live analysis from `call_records`)
+- `pnpm run live:tui-demo` for local multi-server smoke tests
+- Compliance docs, supply-chain / GHCR CI
 
 ### v2.6 (planned)
+- **Browser SPA** on existing `/api` + WebSocket (today: TUI + raw API only)
 - Inbound HTTP/SSE gateway for remote MCP URLs
 - Multi-proxy stdin routing fix (server-name metadata)
+- Fleet / multi-instance aggregation (TUI today = single SQLite file)
 - Enhanced SIEM exporters (Datadog/Splunk templates)
 - `mcp-guardian certs init` for mTLS
 

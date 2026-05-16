@@ -9,5 +9,7 @@ coverage/
 .turbo/
 .threat-state.json
 .ai-learning.json
-:memory:
+default-policy-auto-generated.yaml
+scenarios/dogfood/output/
+scenarios/dogfood/sandbox/
 :memory:

@@ -133,9 +133,21 @@ export class PolicyEngine {
     const semanticDecision = this.evaluateSemanticShell(shellRisk, context.toolName);
     if (semanticDecision) return semanticDecision;
 
+    let permittedByAllowlist = false;
     for (const rule of this.rules) {
+      if (rule.tools?.allow?.length && rule.tools.allow.includes(normalizedContext.toolName)) {
+        permittedByAllowlist = true;
+      }
       const decision = this.evaluateRule(rule, normalizedContext, { argsStr }, options?.skipLocalRateLimit);
       if (decision) return decision;
+    }
+
+    if (permittedByAllowlist) {
+      return {
+        action: 'pass',
+        rule: 'allowlist',
+        reason: `Tool '${normalizedContext.toolName}' is allowlisted and passed policy checks`,
+      };
     }
 
     // GAP 14: default_action when no rule matches — omit for fail-open (rule-only policies);
@@ -187,7 +199,8 @@ export class PolicyEngine {
     if (rule.tools) {
       if (rule.tools.allow && rule.tools.allow.length > 0) {
         if (rule.tools.allow.includes(ctx.toolName)) {
-          return { action: 'pass', rule: rule.name, reason: `Tool '${ctx.toolName}' is in allowlist` };
+          // Allowed tool — keep evaluating pattern/deny/rate rules below.
+          return null;
         }
         return { action: this.resolveAction(rule.action), rule: rule.name, reason: `Tool '${ctx.toolName}' not in allowlist: [${rule.tools.allow.join(', ')}]` };
       }
@@ -310,6 +323,14 @@ export class PolicyEngine {
 
   getMode(): PolicyMode {
     return this.mode;
+  }
+
+  getRules(): ReadonlyArray<PolicyConfig['policy']['rules'][number]> {
+    return this.rules;
+  }
+
+  getRuleCount(): number {
+    return this.rules.length;
   }
 
   /**

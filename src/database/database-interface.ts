@@ -11,7 +11,11 @@ export interface IDatabase {
   addSecurityScan(serverName: string, score: number, cveCount: number, details: unknown): Promise<void>;
   getLatestSecurityScan(serverName: string): Promise<unknown | null>;
   getDistinctScannedServers(): Promise<string[]>;
+  /** Union of servers seen in security_scans and call_records (for TUI/dashboard). */
+  getDistinctActiveServers(): Promise<string[]>;
   addCostRecord(serverName: string, tokens: number, cost: number): Promise<void>;
+  getTotalCost?(serverName?: string): Promise<number | null>;
+  getLatestHealthCheck?(serverName: string): Promise<{ latency_ms?: number; tool_count?: number } | null>;
   addHealthCheck(serverName: string, latency: number, success: boolean, toolCount: number): Promise<void>;
   addCallRecord(record: ProxyCallRecord): Promise<void>;
   getCallRecordsForServer(serverName: string): Promise<ProxyCallRecord[]>;

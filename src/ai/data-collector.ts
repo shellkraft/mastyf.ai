@@ -1,4 +1,5 @@
 import { HistoryDatabase } from '../database/history-db.js';
+import { getAllActiveServerNames, parseSecurityScanDetails } from '../utils/db-aggregate.js';
 import { ProxyCallRecord, CostReport, SecurityReport, HealthReport, McpServerConfig } from '../types.js';
 import { SecurityScanner } from '../services/security-scanner.js';
 import { CostAuditor } from '../services/cost-auditor.js';
@@ -66,7 +67,7 @@ export class DataCollector {
   async collectCallRecords(serverName?: string): Promise<ProxyCallRecord[]> {
     try {
       if (serverName) return await this.db.getCallRecordsForServer(serverName);
-      const servers = await this.db.getDistinctScannedServers();
+      const servers = await getAllActiveServerNames(this.db);
       if (servers.length === 0) return [];
       const all: ProxyCallRecord[] = [];
       for (const srv of servers) {
@@ -91,13 +92,26 @@ export class DataCollector {
   }
 
   async collectSecurityReports(servers: McpServerConfig[]): Promise<SecurityReport[]> {
-    if (!this.securityScanner) return [];
-    try {
-      return await Promise.all(servers.map(s => this.securityScanner!.scanServer(s)));
-    } catch (err: any) {
-      Logger.warn(`[DataCollector] securityReports failed: ${err?.message}`);
-      return [];
+    if (this.securityScanner) {
+      try {
+        return await Promise.all(servers.map(s => this.securityScanner!.scanServer(s)));
+      } catch (err: any) {
+        Logger.warn(`[DataCollector] securityReports failed: ${err?.message}`);
+        return [];
+      }
     }
+    return this.collectSecurityReportsFromDb(servers);
+  }
+
+  private async collectSecurityReportsFromDb(servers: McpServerConfig[]): Promise<SecurityReport[]> {
+    const reports: SecurityReport[] = [];
+    for (const s of servers) {
+      const scan = await this.db.getLatestSecurityScan(s.name);
+      if (!scan) continue;
+      const parsed = parseSecurityScanDetails(scan as unknown as Record<string, unknown>);
+      if (parsed) reports.push(parsed);
+    }
+    return reports;
   }
 
   async collectCostReports(servers: McpServerConfig[]): Promise<CostReport[]> {
@@ -111,13 +125,34 @@ export class DataCollector {
   }
 
   async collectHealthReports(servers: McpServerConfig[]): Promise<HealthReport[]> {
-    if (!this.healthMonitor) return [];
-    try {
-      return await Promise.all(servers.map(s => this.healthMonitor!.checkServer(s)));
-    } catch (err: any) {
-      Logger.warn(`[DataCollector] healthReports failed: ${err?.message}`);
-      return [];
+    if (this.healthMonitor) {
+      try {
+        return await Promise.all(servers.map(s => this.healthMonitor!.checkServer(s)));
+      } catch (err: any) {
+        Logger.warn(`[DataCollector] healthReports failed: ${err?.message}`);
+        return [];
+      }
     }
+    return this.collectHealthReportsFromDb(servers);
+  }
+
+  private async collectHealthReportsFromDb(servers: McpServerConfig[]): Promise<HealthReport[]> {
+    const reports: HealthReport[] = [];
+    for (const s of servers) {
+      const hc = await this.db.getLatestHealthCheck(s.name);
+      if (!hc) continue;
+      const toolCount = hc.tool_count ?? 0;
+      reports.push({
+        serverName: s.name,
+        latencyMs: hc.latency_ms,
+        successRate: hc.success ? 1 : 0,
+        contextPressure: Math.min(toolCount / 20, 1),
+        toolCount,
+        overloadWarning: toolCount > 15,
+        recommendations: toolCount > 15 ? ['Tool overload detected'] : [],
+      });
+    }
+    return reports;
   }
 
   async collectAll(servers: McpServerConfig[]): Promise<GovernanceSnapshot> {
@@ -132,7 +167,7 @@ export class DataCollector {
     const activeServers = [...new Set(servers.map(s => s.name))];
     const totalCalls = callRecords.length;
     const totalTokens = callRecords.reduce((s, r) => s + r.totalTokens, 0);
-    const estimatedTotalCost = costReports.reduce((s, r) => s + r.estimatedCostUSD, 0);
+    const estimatedTotalCost = costReports.reduce((s, r) => s + (r.actualCostUSD ?? r.estimatedCostUSD), 0);
     const totalLatency = callRecords.reduce((s, r) => s + r.durationMs, 0);
     const avgLatency = totalCalls > 0 ? Math.round(totalLatency / totalCalls) : 0;
     const blocked = decisions.filter(d => d.action === 'block').length;
@@ -150,7 +185,7 @@ export class DataCollector {
       servers: serverIndex,
       metadata: {
         totalCalls, totalTokens, estimatedTotalCost, activeServers,
-        pricingModel: this.costAuditor?.getPricingModel?.() || 'unknown',
+        pricingModel: this.costAuditor ? await this.costAuditor.getPricingModel() : 'unknown',
         averageLatencyMs: avgLatency,
         blockedCalls: blocked,
         flaggedCalls: flagged,

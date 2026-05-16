@@ -1,6 +1,9 @@
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
-import { join, dirname } from 'path';
+import { dirname } from 'path';
 import { Logger } from '../utils/logger.js';
+import { resolveAiLearningStatePath } from './ai-paths.js';
+
+export { resolveAiLearningStatePath } from './ai-paths.js';
 
 export interface LearningOutcome {
   suggestionId: string;
@@ -19,15 +22,27 @@ export interface LearningState {
   adaptiveThreshold: number;
   moduleWeights: Record<string, number>;
   lastUpdated: string;
+  /** Set after each successful learning cycle (never fabricated). */
+  learningInitialized?: boolean;
+  lastCycleAt?: string;
+  cyclesCompleted?: number;
+  recordsAnalyzed?: number;
+  baselinesLearned?: number;
+  suggestionsGenerated?: number;
 }
 
-const DEFAULT_STATE: LearningState = {
+const FRESH_STATE: LearningState = {
   outcomes: [],
   falsePositiveRate: 0,
   truePositiveRate: 0,
   adaptiveThreshold: 0.85,
   moduleWeights: { baseline: 1.0, cost: 1.0, threat: 1.0, assist: 1.0 },
   lastUpdated: new Date().toISOString(),
+  learningInitialized: false,
+  cyclesCompleted: 0,
+  recordsAnalyzed: 0,
+  baselinesLearned: 0,
+  suggestionsGenerated: 0,
 };
 
 /**
@@ -41,7 +56,7 @@ export class SelfImprovement {
   private sharedStore: any = null; // AuditTrailSync for PG-backed state
 
   constructor(statePath?: string, sharedStore?: any) {
-    this.statePath = statePath || join(dirname(new URL(import.meta.url).pathname), '..', '..', '.ai-learning.json');
+    this.statePath = statePath || resolveAiLearningStatePath();
     this.sharedStore = sharedStore || null;
     this.state = this.loadState();
   }
@@ -65,15 +80,33 @@ export class SelfImprovement {
         const raw = readFileSync(this.statePath, 'utf-8');
         const parsed = JSON.parse(raw);
         return {
-          ...DEFAULT_STATE,
+          ...FRESH_STATE,
           ...parsed,
           outcomes: Array.isArray(parsed.outcomes) ? parsed.outcomes.slice(-500) : [],
         };
       }
     } catch {
-      Logger.info('[SelfImprovement] Starting with fresh learning state');
+      Logger.info('[SelfImprovement] No prior learning state file');
     }
-    return { ...DEFAULT_STATE };
+    return { ...FRESH_STATE };
+  }
+
+  /** Persist measurable results after each learning cycle (independent of auto-apply). */
+  recordCycleComplete(summary: {
+    recordsAnalyzed: number;
+    baselinesLearned: number;
+    suggestionsGenerated: number;
+  }): void {
+    this.state.learningInitialized = true;
+    this.state.lastCycleAt = new Date().toISOString();
+    this.state.cyclesCompleted = (this.state.cyclesCompleted || 0) + 1;
+    this.state.recordsAnalyzed = summary.recordsAnalyzed;
+    this.state.baselinesLearned = summary.baselinesLearned;
+    this.state.suggestionsGenerated = summary.suggestionsGenerated;
+    this.saveState();
+    Logger.info(
+      `[SelfImprovement] Cycle #${this.state.cyclesCompleted} persisted: ${summary.recordsAnalyzed} records, ${summary.baselinesLearned} baselines, ${summary.suggestionsGenerated} suggestions`,
+    );
   }
 
   private saveState(): void {

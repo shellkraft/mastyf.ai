@@ -2,20 +2,50 @@
  * Data Fetcher — reads from HistoryDatabase + AI files + LLM for descriptive analysis.
  */
 import { HistoryDatabase } from '../database/history-db.js';
+import {
+  aggregateInstancesByServer,
+  getAllActiveServerNames,
+  loadAllCallRecords,
+  securityRowFromScan,
+  summarizeRecords,
+} from '../utils/db-aggregate.js';
+import { getRuntimeModelPricing } from '../services/runtime-model-pricing.js';
+import {
+  computeCostTrend,
+  fetchCircuitBreakerStates,
+  fetchDashboardMetrics,
+  loadPolicySnapshot,
+} from '../utils/tui-sources.js';
 import { readFileSync, existsSync } from 'fs';
-import { resolve, dirname } from 'path';
+import { resolveGuardianDbPath } from '../utils/guardian-db-path.js';
+import {
+  resolveAiLearningStatePath,
+  resolveAiPendingSuggestionsPath,
+  resolveAiReportPath,
+  resolveAiBaselinesPath,
+} from '../ai/ai-paths.js';
+import { computeBurnRatePerHour, computeProjectedMonthly } from '../utils/cost-metrics.js';
+import { isAiLearningEnabled } from '../utils/ai-enabled.js';
+import { Logger } from '../utils/logger.js';
+import type { LearningState } from '../ai/self-improvement.js';
+import type { BaselineProfile } from '../ai/baseline-learner.js';
 import { homedir } from 'os';
-import { fileURLToPath } from 'url';
-import { isExperimentalAiEnabled } from '../utils/experimental-ai.js';
+import { join, resolve } from 'path';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-const HOME = homedir();
-const GUARDIAN_DIR = resolve(HOME, '.mcp-guardian');
+const GUARDIAN_DIR = join(homedir(), '.mcp-guardian');
+
+export interface TuiMeta {
+  dbPath: string;
+  recordCount: number;
+  wsConnected: boolean;
+  dbReadOnly: boolean;
+  fetchError: string | null;
+}
 
 export interface TuiData {
   overview: OverviewData; security: SecurityData; cost: CostData;
   health: HealthData; ai: AiData; audit: AuditData; policy: PolicyData; instances: InstanceData[];
+  meta: TuiMeta;
 }
 export interface OverviewData {
   totalInstances: number; activeInstances: number; totalRequests: number;
@@ -27,17 +57,34 @@ export interface SecurityData {
   overallScore: number; worstOffenders: string[]; activeThreats: number; lastScan: string;
 }
 export interface CostData {
-  servers: { name: string; tokens: number; cost: number; trend: string }[];
+  servers: { name: string; tokens: number; cost: number; trend: string; unpriced?: number; models?: string[] }[];
   totalCost: number; projectedMonthly: number; budgetAlerts: string[]; pricingModel: string;
+  unpricedCalls: number; pricedCalls: number;
 }
 export interface HealthData {
   servers: { name: string; latency: number; successRate: number; tools: number; circuitBreaker: string }[];
   atRisk: string[]; avgLatency: number; totalTools: number;
 }
+export interface AiLearningDisplay {
+  adaptiveThreshold: number;
+  truePositiveRate: number | null;
+  falsePositiveRate: number | null;
+  moduleWeights: Record<string, number>;
+  learningInitialized: boolean;
+  lastCycleAt: string | null;
+  cyclesCompleted: number;
+  recordsAnalyzed: number;
+  baselinesLearned: number;
+  suggestionsGenerated: number;
+  labeledOutcomes: number;
+}
+
 export interface AiData {
-  suggestions: any[]; baselines: any[];
-  learningState: { adaptiveThreshold: number; truePositiveRate: number; falsePositiveRate: number; moduleWeights: Record<string, number> };
-  threats: any[]; report: any;
+  suggestions: any[];
+  baselines: BaselineProfile[];
+  learningState: AiLearningDisplay;
+  threats: any[];
+  report: Record<string, unknown> | null;
   analysis: string;
 }
 export interface AuditData { events: any[]; total: number; blocked: number; passed: number; flagged: number; }
@@ -48,152 +95,416 @@ export interface InstanceData {
   blockedRequests: number; totalCostUsd: number; avgLatencyMs: number;
 }
 
-const PRICING = { input: 2.50, output: 10.00 };
-
 export class DataFetcher {
   private db: HistoryDatabase;
+  private dbPath: string;
   private cache: TuiData | null = null;
   private listeners: Set<() => void> = new Set();
   private pollTimer: ReturnType<typeof setInterval> | null = null;
   private lastAnalysis = '';
+  private dashboardUrl: string | undefined;
+  private ws: { close: () => void } | null = null;
+  private wsConnected = false;
+  private learningInFlight = false;
+  private learningRan = false;
+  private lastFetchError: string | null = null;
+  private dbReadOnly = false;
 
-  constructor(_dashboardUrl?: string) {
-    this.db = new HistoryDatabase();
+  constructor(dashboardUrl?: string) {
+    const requestedPath = resolveGuardianDbPath();
+    this.db = new HistoryDatabase(requestedPath, { readOnly: true });
+    this.dbPath = this.db.getDbPath();
+    this.dbReadOnly = this.db.isReadOnly();
+    this.dashboardUrl = dashboardUrl || process.env.GUARDIAN_DASHBOARD_URL;
   }
 
   getData(): TuiData | null { return this.cache; }
+  getDbPath(): string { return this.dbPath; }
+  isWsConnected(): boolean { return this.wsConnected; }
   onChange(cb: () => void): () => void { this.listeners.add(cb); return () => { this.listeners.delete(cb); }; }
   private notify() { for (const l of this.listeners) { try { l(); } catch {} } }
-  connectWebSocket() {}
 
-  async fetchAll(): Promise<TuiData> {
+  connectWebSocket(): void {
+    const base = this.dashboardUrl || process.env.GUARDIAN_DASHBOARD_URL || 'http://127.0.0.1:4000';
+    let wsUrl: string;
     try {
-      const servers = await this.db.getDistinctScannedServers();
+      const u = new URL(base);
+      u.protocol = u.protocol === 'https:' ? 'wss:' : 'ws:';
+      u.pathname = '/ws';
+      wsUrl = u.toString();
+    } catch {
+      return;
+    }
 
-      let allRecords: any[] = [];
-      let totalRequests = 0, totalInput = 0, totalOutput = 0, totalAll = 0, totalLatency = 0;
-      for (const srv of servers) {
-        const recs = await this.db.getCallRecordsForServer(srv);
-        for (const r of recs) {
-          totalRequests++;
-          totalInput += (r as any).requestTokens || 0;
-          totalOutput += (r as any).responseTokens || 0;
-          totalAll += (r as any).totalTokens || 0;
-          totalLatency += (r as any).durationMs || 0;
-          allRecords.push(r);
-        }
+    void import('ws').then(({ default: WebSocket }) => {
+      const socket = new WebSocket(wsUrl);
+      this.ws = socket;
+      socket.on('open', () => {
+        this.wsConnected = true;
+        socket.send(JSON.stringify({
+          type: 'subscribe',
+          channels: ['policy', 'health', 'metrics', 'audit', 'ai', 'cost', 'instances'],
+        }));
+        this.notify();
+      });
+      socket.on('message', () => {
+        this.fetchAll().catch(() => {});
+      });
+      socket.on('close', () => {
+        this.wsConnected = false;
+        this.notify();
+      });
+      socket.on('error', () => {
+        this.wsConnected = false;
+      });
+    }).catch(() => {});
+  }
+
+  /** Re-open read-only handle so WAL commits from proxy/demo are visible while polling. */
+  private refreshReadOnlyConnection(): void {
+    if (!this.dbReadOnly) return;
+    const path = resolveGuardianDbPath();
+    try {
+      this.db.close();
+    } catch {}
+    this.db = new HistoryDatabase(path, { readOnly: true });
+    this.dbPath = this.db.getDbPath();
+  }
+
+  async fetchAll(opts?: { skipLearning?: boolean }): Promise<TuiData> {
+    try {
+      if (this.dbReadOnly) {
+        this.refreshReadOnlyConnection();
+      }
+      const servers = await getAllActiveServerNames(this.db);
+      const allRecords = await loadAllCallRecords(this.db, servers);
+      const sum = summarizeRecords(allRecords);
+      let totalRequests = sum.total;
+      let blockedCount = sum.blocked;
+      let costUSD = sum.costUsd;
+      let avgLatency = totalRequests > 0 ? Math.round(sum.totalLatency / totalRequests) : 0;
+      let passRate = totalRequests > 0 ? Math.round((sum.passed / totalRequests) * 100) : 100;
+
+      const [cbStates, dashboardMetrics, policySnap] = await Promise.all([
+        fetchCircuitBreakerStates(),
+        this.dashboardUrl ? fetchDashboardMetrics(this.dashboardUrl) : Promise.resolve(null),
+        Promise.resolve(loadPolicySnapshot()),
+      ]);
+
+      // Prefer DB snapshot; only fill gaps from dashboard API (avoid WS/proxy zeros wiping live DB data)
+      if (dashboardMetrics && totalRequests === 0) {
+        if (dashboardMetrics.totalRequests != null) totalRequests = dashboardMetrics.totalRequests;
+        if (dashboardMetrics.blockedRequests != null) blockedCount = dashboardMetrics.blockedRequests;
+        if (dashboardMetrics.totalCost != null) costUSD = dashboardMetrics.totalCost;
+        if (dashboardMetrics.avgLatencyMs != null) avgLatency = dashboardMetrics.avgLatencyMs;
+        if (dashboardMetrics.passRate != null) passRate = dashboardMetrics.passRate;
       }
 
-      const costUSD = (totalInput / 1_000_000) * PRICING.input + (totalOutput / 1_000_000) * PRICING.output;
-      const avgLatency = totalRequests > 0 ? Math.round(totalLatency / totalRequests) : 0;
-
-      const secReports: any[] = []; let totalScore = 0;
+      const secReports: any[] = []; let totalScore = 0; let activeThreats = 0; let lastScan = 'N/A';
       for (const srv of servers) {
         const scan = await this.db.getLatestSecurityScan(srv);
         if (scan) {
-          const s = scan as any;
-          secReports.push({ name: s.server_name || srv, score: s.score || 0, cves: s.cve_count || 0,
-            critical: (s.details?.cves || []).filter((c: any) => c.severity === 'CRITICAL').length,
-            auth: !!(s.details?.authStatus?.hasAuthentication) });
-          totalScore += s.score || 0;
+          const row = securityRowFromScan(scan as unknown as Record<string, unknown>, srv);
+          secReports.push({ name: row.name, score: row.score, cves: row.cves, critical: row.critical, auth: row.auth });
+          totalScore += row.score;
+          activeThreats += row.critical + row.high;
+          if (scan.created_at && (lastScan === 'N/A' || scan.created_at > lastScan)) {
+            lastScan = scan.created_at;
+          }
         } else { secReports.push({ name: srv, score: 0, cves: 0, critical: 0, auth: false }); }
       }
 
+      const activePricing = await getRuntimeModelPricing().getActivePricing();
+      const pricingModel = activePricing
+        ? `${activePricing.displayName} — $${activePricing.inputPerM}/M in, $${activePricing.outputPerM}/M out (${activePricing.source}${activePricing.isLive ? ', live' : ''})`
+        : sum.pricedCalls > 0
+          ? `per-call rates (${sum.models.join(', ') || 'mixed'})`
+          : 'unpriced — open Cline/Cursor or set GUARDIAN_MODEL';
+
       const costReports: any[] = [];
       for (const srv of servers) {
-        const srecs = allRecords.filter((r: any) => r.serverName === srv);
-        const tokens = srecs.reduce((s: number, r: any) => s + (r.totalTokens || 0), 0);
-        const inT = srecs.reduce((s: number, r: any) => s + (r.requestTokens || 0), 0);
-        const outT = srecs.reduce((s: number, r: any) => s + (r.responseTokens || 0), 0);
-        costReports.push({ name: srv, tokens, cost: (inT / 1e6) * PRICING.input + (outT / 1e6) * PRICING.output, trend: 'flat' });
+        const srecs = allRecords.filter((r) => r.serverName === srv);
+        const srvSum = summarizeRecords(srecs);
+        costReports.push({
+          name: srv,
+          tokens: srvSum.totalInput + srvSum.totalOutput,
+          cost: srvSum.costUsd,
+          trend: computeCostTrend(srecs),
+          unpriced: srvSum.unpricedCalls,
+          models: srvSum.models,
+        });
       }
+      costUSD = sum.costUsd;
 
       const healthReports: any[] = [];
+      let totalTools = 0;
       for (const srv of servers) {
-        const srecs = allRecords.filter((r: any) => r.serverName === srv);
-        const sLat = srecs.length > 0 ? Math.round(srecs.reduce((s: number, r: any) => s + ((r as any).durationMs || 0), 0) / srecs.length) : 0;
+        const srecs = allRecords.filter((r) => r.serverName === srv);
+        const callLat = srecs.length > 0 ? Math.round(srecs.reduce((s, r) => s + (r.durationMs || 0), 0) / srecs.length) : 0;
         const sr = await this.db.getRecentSuccessRate(srv);
-        healthReports.push({ name: srv, latency: sLat, successRate: (sr || 1) * 100, tools: 3, circuitBreaker: 'closed' });
+        const hc = await this.db.getLatestHealthCheck(srv);
+        const latency = hc?.latency_ms ?? callLat;
+        const tools = hc?.tool_count ?? 0;
+        totalTools += tools;
+        const cb = cbStates.get(srv) ?? 'closed';
+        healthReports.push({
+          name: srv,
+          latency,
+          successRate: (sr ?? 1) * 100,
+          tools,
+          circuitBreaker: cb,
+        });
       }
 
-      const auditEvents = allRecords.slice(0, 15).map((r: any) => ({
+      const sortedAudit = [...allRecords].sort((a, b) => (b.timestamp || '').localeCompare(a.timestamp || ''));
+      const auditEvents = sortedAudit.slice(0, 15).map((r) => ({
         timestamp: r.timestamp || '', server_name: r.serverName, tool_name: r.toolName,
-        action: 'pass', request_tokens: r.requestTokens || 0, total_tokens: r.totalTokens || 0,
+        action: r.blocked ? 'block' : 'pass', rule: r.blockRule, reason: r.blockReason,
+        request_tokens: r.requestTokens || 0, total_tokens: r.totalTokens || 0,
       }));
 
-      let aiState = { adaptiveThreshold: 0.82, truePositiveRate: 0.67, falsePositiveRate: 0.33, moduleWeights: { baseline: 0.95, cost: 0.87, threat: 1.0, assist: 1.0 } as Record<string, number> };
       let suggestions: any[] = [];
       let threats: any[] = [];
+      let baselines: BaselineProfile[] = [];
+      const aiState = this.loadLearningDisplay();
 
       try {
-        const aiPath = resolve(GUARDIAN_DIR, '.ai-learning.json');
-        if (existsSync(aiPath)) {
-          const st = JSON.parse(readFileSync(aiPath, 'utf-8'));
-          aiState.adaptiveThreshold = st.adaptiveThreshold || 0.85;
-          aiState.truePositiveRate = st.truePositiveRate || 0;
-          aiState.falsePositiveRate = st.falsePositiveRate || 0;
-          if (st.moduleWeights) aiState.moduleWeights = st.moduleWeights;
-          if (st.outcomes) suggestions = st.outcomes;
+        const baselinePath = resolveAiBaselinesPath();
+        if (existsSync(baselinePath)) {
+          const parsed = JSON.parse(readFileSync(baselinePath, 'utf-8')) as { baselines?: BaselineProfile[] };
+          if (Array.isArray(parsed.baselines)) baselines = parsed.baselines;
         }
       } catch {}
 
       try {
-        const threatPath = resolve(GUARDIAN_DIR, '.threat-state.json');
-        if (existsSync(threatPath)) {
-          const st = JSON.parse(readFileSync(threatPath, 'utf-8'));
-          if (st.ids && Array.isArray(st.ids)) {
-            threats = st.ids.map((id: string) => ({
-              id, source: id.startsWith('osv-') ? 'OSV' : id.startsWith('gh-') ? 'GitHub' : 'NVD',
-              severity: 'HIGH',
-            }));
+        const pendingPath = resolveAiPendingSuggestionsPath();
+        if (existsSync(pendingPath)) {
+          const pending = JSON.parse(readFileSync(pendingPath, 'utf-8'));
+          if (Array.isArray(pending.suggestions)) suggestions = pending.suggestions;
+        }
+      } catch {}
+
+      // Threats from live learning state only — skip legacy seed file .threat-state.json
+      if (aiState.learningInitialized && Array.isArray((aiState as { threatIds?: string[] }).threatIds)) {
+        threats = ((aiState as { threatIds?: string[] }).threatIds || []).map((id: string) => ({
+          id,
+          source: id.startsWith('osv-') ? 'OSV' : id.startsWith('gh-') ? 'GitHub' : 'NVD',
+          severity: 'HIGH',
+        }));
+      }
+
+      const overallScore = secReports.length > 0 ? Math.round(totalScore / secReports.length) : 0;
+      let savedReport: Record<string, unknown> | null = null;
+      let analysis = '';
+
+      // Always derive analysis from the current DB snapshot when we have traffic.
+      // Saved ~/.mcp-guardian/.ai-report.json is often stale (e.g. single echo-test run).
+      if (totalRequests > 0) {
+        analysis = this.buildDeterministicAnalysis({
+          totalRequests,
+          blockedCount,
+          passRate,
+          costUSD,
+          avgLatency,
+          servers: secReports,
+          costServers: costReports,
+          healthServers: healthReports,
+          overallScore,
+          threats,
+          aiState,
+          policyMode: policySnap.mode,
+          activeRules: policySnap.activeRules,
+          suggestions,
+          auditEvents,
+          topTools: this.getTopTools(allRecords),
+        });
+      } else {
+        try {
+          const reportPath = resolveAiReportPath();
+          if (existsSync(reportPath)) {
+            const parsed = JSON.parse(readFileSync(reportPath, 'utf-8')) as {
+              plainText?: string;
+              report?: Record<string, unknown>;
+            };
+            if (parsed.plainText) analysis = parsed.plainText;
+            if (parsed.report) savedReport = parsed.report;
           }
-        }
-      } catch {}
+        } catch {}
+      }
 
-      // Use cached analysis first so TUI renders immediately
-      let analysis = this.lastAnalysis || '';
+      this.lastAnalysis = analysis;
 
-      if (isExperimentalAiEnabled()) {
+      if (!opts?.skipLearning) {
+        void this.ensureLearningCycle(allRecords.length);
+      }
+
+      const llmEnabled = process.env.GUARDIAN_TUI_LLM !== 'false' && process.env.GUARDIAN_LLM_ENABLED !== 'false';
+      if (llmEnabled && totalRequests > 0) {
         const topTools = this.getTopTools(allRecords);
-        const securityIssues = secReports.filter((r: any) => r.score < 70).map((r: any) => r.name);
-        const prompt = this.buildAnalysisPrompt(totalRequests, costUSD, avgLatency, servers.length, threats, aiState, topTools, securityIssues, allRecords);
+        const securityIssues = secReports.filter((r: { score: number }) => r.score < 70).map((r: { name: string }) => r.name);
+        const prompt = this.buildAnalysisPrompt(
+          totalRequests, costUSD, avgLatency, servers.length, threats, aiState, topTools, securityIssues, allRecords,
+        );
         import('../ai/llm-assistant.js').then(({ LlmAssistant }) => {
           new LlmAssistant().generate(
-            'You are an MCP security operations analyst. Write a concise 3-4 sentence security/cost assessment of this MCP proxy deployment. Be direct, specify actual risks, and recommend one action. No disclaimers.',
-            prompt,
-          ).then(result => {
+            'You are an MCP security operations analyst. Add a short "Analyst note" (3-4 sentences) after the facts below. Be direct. No disclaimers.',
+            `${prompt}\n\n---\nExisting analysis:\n${analysis.slice(0, 2000)}`,
+          ).then((result) => {
             if (result?.text) {
-              this.lastAnalysis = result.text;
-              if (this.cache) { this.cache.ai.analysis = result.text; this.notify(); }
+              const note = result.text.trim();
+              this.lastAnalysis = `${analysis}\n\nANALYST NOTE\n${note}`;
+              if (this.cache) {
+                this.cache.ai.analysis = this.lastAnalysis;
+                this.notify();
+              }
             }
           }).catch(() => {});
         }).catch(() => {});
       }
 
+      const instances = aggregateInstancesByServer(allRecords, servers);
+      // "Active" in overview = servers with recorded traffic (not just last-N-min heartbeat)
+      const activeInstanceCount = instances.filter((i) => i.totalRequests > 0).length;
+
       this.cache = {
-        overview: { totalInstances: 1, activeInstances: 1, totalRequests, blockedRequests: 0, passRate: 100, totalCostUsd: costUSD, burnRatePerHour: totalRequests > 0 ? (costUSD / totalRequests) * 100 : 0, avgLatencyMs: avgLatency, activeServers: servers.length, lastUpdated: new Date().toISOString() },
-        security: { servers: secReports, overallScore: secReports.length > 0 ? Math.round(totalScore / secReports.length) : 0, worstOffenders: secReports.filter((r: any) => r.score < 50).map((r: any) => r.name), activeThreats: threats.length, lastScan: new Date().toISOString() },
-        cost: { servers: costReports, totalCost: costUSD, projectedMonthly: costUSD * 30, budgetAlerts: costUSD > 5 ? ['Monthly spend exceeding $150 budget threshold'] : [], pricingModel: 'gpt-4o ($2.50/$10.00 per 1M)' },
-        health: { servers: healthReports, atRisk: healthReports.filter((h: any) => h.latency > 200 || h.successRate < 70).map((h: any) => h.name), avgLatency, totalTools: servers.length * 3 },
-        ai: { suggestions, baselines: [], learningState: aiState, threats, report: null, analysis },
-        audit: { events: auditEvents, total: auditEvents.length, blocked: 0, passed: auditEvents.length, flagged: 0 },
-        policy: { mode: 'audit', activeRules: 0, autoGeneratedRules: [], rules: [] },
-        instances: [{ instanceId: `guardian-${process.pid}`, instanceName: 'localhost', status: 'active', hostname: 'localhost', version: '2.3.24', lastHeartbeat: new Date().toISOString(), totalRequests, blockedRequests: 0, totalCostUsd: costUSD, avgLatencyMs: avgLatency }],
+        overview: {
+          totalInstances: instances.length,
+          activeInstances: activeInstanceCount,
+          totalRequests,
+          blockedRequests: blockedCount,
+          passRate,
+          totalCostUsd: costUSD,
+          burnRatePerHour: computeBurnRatePerHour(costUSD, allRecords),
+          avgLatencyMs: avgLatency,
+          activeServers: servers.length,
+          lastUpdated: new Date().toISOString(),
+        },
+        security: { servers: secReports, overallScore, worstOffenders: secReports.filter((r: any) => r.score < 50).map((r: any) => r.name), activeThreats: activeThreats + threats.length, lastScan },
+        cost: {
+          servers: costReports,
+          totalCost: costUSD,
+          projectedMonthly: computeProjectedMonthly(costUSD, allRecords),
+          budgetAlerts: sum.unpricedCalls > 0
+            ? [`${sum.unpricedCalls} call(s) without resolved model pricing`]
+            : [],
+          pricingModel,
+          unpricedCalls: sum.unpricedCalls,
+          pricedCalls: sum.pricedCalls,
+        },
+        health: { servers: healthReports, atRisk: healthReports.filter((h: any) => h.latency > 200 || h.successRate < 70).map((h: any) => h.name), avgLatency, totalTools },
+        ai: { suggestions, baselines, learningState: aiState, threats, report: savedReport, analysis },
+        audit: { events: auditEvents, total: totalRequests, blocked: blockedCount, passed: sum.passed, flagged: 0 },
+        policy: { mode: policySnap.mode, activeRules: policySnap.activeRules, autoGeneratedRules: policySnap.autoGeneratedRules, rules: policySnap.rules },
+        instances,
+        meta: {
+          dbPath: this.dbPath,
+          recordCount: allRecords.length,
+          wsConnected: this.wsConnected,
+          dbReadOnly: this.dbReadOnly,
+          fetchError: null,
+        },
       };
-    } catch {
+      this.lastFetchError = null;
+    } catch (err) {
+      this.lastFetchError = err instanceof Error ? err.message : String(err);
+      Logger.warn(`[TUI] fetchAll failed: ${this.lastFetchError}`);
       this.cache = {
         overview: { totalInstances: 0, activeInstances: 0, totalRequests: 0, blockedRequests: 0, passRate: 100, totalCostUsd: 0, burnRatePerHour: 0, avgLatencyMs: 0, activeServers: 0, lastUpdated: '' },
         security: { servers: [], overallScore: 0, worstOffenders: [], activeThreats: 0, lastScan: 'N/A' },
-        cost: { servers: [], totalCost: 0, projectedMonthly: 0, budgetAlerts: [], pricingModel: '' },
+        cost: { servers: [], totalCost: 0, projectedMonthly: 0, budgetAlerts: [], pricingModel: '', unpricedCalls: 0, pricedCalls: 0 },
         health: { servers: [], atRisk: [], avgLatency: 0, totalTools: 0 },
-        ai: { suggestions: [], baselines: [], learningState: { adaptiveThreshold: 0.85, truePositiveRate: 0, falsePositiveRate: 0, moduleWeights: {} }, threats: [], report: null, analysis: '' },
+        ai: { suggestions: [], baselines: [], learningState: this.loadLearningDisplay(), threats: [], report: null, analysis: '' },
         audit: { events: [], total: 0, blocked: 0, passed: 0, flagged: 0 },
         policy: { mode: 'none', activeRules: 0, autoGeneratedRules: [], rules: [] },
         instances: [],
+        meta: {
+          dbPath: this.dbPath,
+          recordCount: 0,
+          wsConnected: this.wsConnected,
+          dbReadOnly: this.dbReadOnly,
+          fetchError: this.lastFetchError,
+        },
       };
     }
     this.notify();
     return this.cache;
+  }
+
+  async recordSuggestionOutcome(
+    suggestion: { id?: string; ruleName?: string; source?: string; confidence?: number },
+    action: 'applied' | 'rejected',
+  ): Promise<void> {
+    const { recordSuggestionOutcome } = await import('../ai/suggestion-engine.js');
+    await recordSuggestionOutcome(suggestion.id || suggestion.ruleName || 'unknown', action, {
+      ruleName: suggestion.ruleName || suggestion.id || 'unknown',
+      source: (suggestion.source as 'baseline' | 'cost' | 'threat' | 'assist' | 'pattern') || 'baseline',
+      confidence: suggestion.confidence ?? 0.5,
+    });
+    await this.fetchAll();
+  }
+
+  private loadLearningDisplay(): AiLearningDisplay {
+    const empty: AiLearningDisplay = {
+      adaptiveThreshold: 0.85,
+      truePositiveRate: null,
+      falsePositiveRate: null,
+      moduleWeights: {},
+      learningInitialized: false,
+      lastCycleAt: null,
+      cyclesCompleted: 0,
+      recordsAnalyzed: 0,
+      baselinesLearned: 0,
+      suggestionsGenerated: 0,
+      labeledOutcomes: 0,
+    };
+    try {
+      const aiPath = resolveAiLearningStatePath();
+      if (!existsSync(aiPath)) return empty;
+      const st = JSON.parse(readFileSync(aiPath, 'utf-8')) as LearningState;
+      const outcomes = Array.isArray(st.outcomes) ? st.outcomes : [];
+      const labeled = outcomes.filter((o) => o.action === 'applied' || o.action === 'rejected').length;
+      const hasRates = labeled >= 5;
+      return {
+        adaptiveThreshold: typeof st.adaptiveThreshold === 'number' ? st.adaptiveThreshold : 0.85,
+        truePositiveRate: hasRates ? st.truePositiveRate : null,
+        falsePositiveRate: hasRates ? st.falsePositiveRate : null,
+        moduleWeights: st.moduleWeights && Object.keys(st.moduleWeights).length > 0
+          ? st.moduleWeights
+          : {},
+        learningInitialized: !!st.learningInitialized,
+        lastCycleAt: st.lastCycleAt || null,
+        cyclesCompleted: st.cyclesCompleted ?? 0,
+        recordsAnalyzed: st.recordsAnalyzed ?? 0,
+        baselinesLearned: st.baselinesLearned ?? 0,
+        suggestionsGenerated: st.suggestionsGenerated ?? 0,
+        labeledOutcomes: labeled,
+      };
+    } catch {
+      return empty;
+    }
+  }
+
+  private async ensureLearningCycle(recordCount: number): Promise<void> {
+    if (this.dbReadOnly || !isAiLearningEnabled() || recordCount === 0) return;
+    if (process.env.GUARDIAN_TUI_SKIP_LEARNING === 'true') return;
+    if (this.learningInFlight) return;
+    const state = this.loadLearningDisplay();
+    const staleMs = parseInt(process.env.GUARDIAN_TUI_LEARNING_INTERVAL_MS || '60000', 10);
+    if (this.learningRan && state.lastCycleAt) {
+      const age = Date.now() - new Date(state.lastCycleAt).getTime();
+      if (age < staleMs) return;
+    }
+    this.learningInFlight = true;
+    try {
+      const { runLearningCycleForDb } = await import('../ai/suggestion-engine.js');
+      await runLearningCycleForDb(this.db);
+      this.learningRan = true;
+      await this.fetchAll({ skipLearning: true });
+    } catch {
+      // Next poll will retry
+    } finally {
+      this.learningInFlight = false;
+    }
   }
 
   private getTopTools(records: any[]): { name: string; count: number; totalTokens: number }[] {
@@ -209,6 +520,103 @@ export class DataFetcher {
       .map(([name, v]) => ({ name, count: v.count, totalTokens: v.totalTokens }))
       .sort((a, b) => b.totalTokens - a.totalTokens)
       .slice(0, 5);
+  }
+
+  private buildDeterministicAnalysis(input: {
+    totalRequests: number;
+    blockedCount: number;
+    passRate: number;
+    costUSD: number;
+    avgLatency: number;
+    overallScore: number;
+    servers: { name: string; score: number; cves: number; critical: number; auth: boolean }[];
+    costServers: { name: string; tokens: number; cost: number; trend: string }[];
+    healthServers: { name: string; latency: number; successRate: number; tools: number; circuitBreaker: string }[];
+    threats: { id: string; severity?: string; source?: string }[];
+    aiState: AiLearningDisplay;
+    policyMode: string;
+    activeRules: number;
+    suggestions: { ruleName?: string; confidence?: number; reason?: string }[];
+    auditEvents: { action: string; tool_name?: string; server_name?: string; rule?: string }[];
+    topTools: { name: string; count: number; totalTokens: number }[];
+  }): string {
+    const lines: string[] = [];
+    lines.push('MCP Guardian — Live Deployment Analysis');
+    lines.push(`Generated: ${new Date().toISOString()}`);
+    lines.push('');
+    lines.push('TRAFFIC & POLICY');
+    lines.push(`  Total tool calls: ${input.totalRequests}`);
+    lines.push(`  Blocked: ${input.blockedCount}  Passed: ${input.totalRequests - input.blockedCount}`);
+    lines.push(`  Pass rate: ${input.passRate.toFixed(1)}%`);
+    lines.push(`  Policy mode: ${input.policyMode} (${input.activeRules} active rules)`);
+    lines.push('');
+    lines.push('COST');
+    lines.push(`  Total cost: $${input.costUSD.toFixed(4)}`);
+    lines.push(`  Average latency: ${input.avgLatency}ms`);
+    for (const c of input.costServers) {
+      lines.push(`  ${c.name}: $${c.cost.toFixed(4)}, ${c.tokens.toLocaleString()} tokens, trend ${c.trend}`);
+    }
+    lines.push('');
+    lines.push('SECURITY');
+    lines.push(`  Overall score: ${input.overallScore}/100`);
+    for (const s of input.servers) {
+      lines.push(
+        `  ${s.name}: ${s.score}/100, ${s.cves} CVE(s), ${s.critical} critical, auth ${s.auth ? 'yes' : 'no'}`,
+      );
+    }
+    if (input.threats.length > 0) {
+      lines.push('');
+      lines.push('THREAT INTELLIGENCE');
+      for (const t of input.threats.slice(0, 8)) {
+        lines.push(`  ${t.id} (${t.source || 'unknown'}, ${t.severity || 'N/A'})`);
+      }
+    }
+    lines.push('');
+    lines.push('HEALTH');
+    for (const h of input.healthServers) {
+      lines.push(
+        `  ${h.name}: ${h.latency}ms, ${h.successRate.toFixed(0)}% success, ${h.tools} tools, breaker ${h.circuitBreaker}`,
+      );
+    }
+    if (input.topTools.length > 0) {
+      lines.push('');
+      lines.push('TOP TOOLS BY USAGE');
+      for (const t of input.topTools) {
+        lines.push(`  ${t.name}: ${t.count} calls, ${t.totalTokens.toLocaleString()} tokens`);
+      }
+    }
+    if (input.suggestions.length > 0) {
+      lines.push('');
+      lines.push('AI SUGGESTIONS (pending review)');
+      for (const s of input.suggestions.slice(0, 8)) {
+        const pct = ((s.confidence ?? 0) * 100).toFixed(0);
+        lines.push(`  [${pct}%] ${s.ruleName || 'rule'} — ${(s.reason || '').slice(0, 80)}`);
+      }
+    }
+    lines.push('');
+    lines.push('AI LEARNING STATE');
+    lines.push(`  Adaptive threshold: ${input.aiState.adaptiveThreshold.toFixed(2)}`);
+    lines.push(`  Learning cycles: ${input.aiState.cyclesCompleted} (last: ${input.aiState.lastCycleAt || 'never'})`);
+    lines.push(`  Baselines learned: ${input.aiState.baselinesLearned}`);
+    if (input.aiState.truePositiveRate != null) {
+      lines.push(`  True positive rate: ${(input.aiState.truePositiveRate * 100).toFixed(0)}%`);
+      lines.push(`  False positive rate: ${((input.aiState.falsePositiveRate ?? 0) * 100).toFixed(0)}%`);
+    } else {
+      lines.push(`  True/false positive rates: N/A (${input.aiState.labeledOutcomes} labeled outcomes)`);
+    }
+    const recentBlocks = input.auditEvents.filter((e) => e.action === 'block').slice(0, 5);
+    if (recentBlocks.length > 0) {
+      lines.push('');
+      lines.push('RECENT BLOCKS');
+      for (const e of recentBlocks) {
+        lines.push(`  ${e.server_name || '?'} / ${e.tool_name || '?'} — rule ${e.rule || 'unknown'}`);
+      }
+    }
+    if (input.totalRequests === 0) {
+      lines.push('');
+      lines.push('No call records yet. Run the proxy or: pnpm run dogfood');
+    }
+    return lines.join('\n');
   }
 
   private buildAnalysisPrompt(
@@ -238,6 +646,10 @@ Provide a brief operational security and cost assessment.`;
   }
   stop() {
     if (this.pollTimer) { clearInterval(this.pollTimer); this.pollTimer = null; }
+    if (this.ws) {
+      try { this.ws.close(); } catch {}
+      this.ws = null;
+    }
     this.listeners.clear();
     try { this.db.close(); } catch {}
   }

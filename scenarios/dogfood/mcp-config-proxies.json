@@ -1,0 +1,44 @@
+{
+  "mcpServers": {
+    "github": {
+      "command": "node",
+      "args": [
+        "scenarios/dogfood/enterprise-mcp-stub.cjs"
+      ],
+      "env": {
+        "STUB_ROLE": "github"
+      },
+      "transport": "stdio"
+    },
+    "filesystem": {
+      "command": "node",
+      "args": [
+        "scenarios/dogfood/enterprise-mcp-stub.cjs"
+      ],
+      "env": {
+        "STUB_ROLE": "filesystem"
+      },
+      "transport": "stdio"
+    },
+    "puppeteer": {
+      "command": "node",
+      "args": [
+        "scenarios/dogfood/enterprise-mcp-stub.cjs"
+      ],
+      "env": {
+        "STUB_ROLE": "puppeteer"
+      },
+      "transport": "stdio"
+    },
+    "postgres": {
+      "command": "node",
+      "args": [
+        "scenarios/dogfood/enterprise-mcp-stub.cjs"
+      ],
+      "env": {
+        "STUB_ROLE": "postgres"
+      },
+      "transport": "stdio"
+    }
+  }
+}

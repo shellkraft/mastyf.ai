@@ -1,5 +1,54 @@
 <!DOCTYPE html>
 <html lang="en">
-<head><meta charset="UTF-8"><title>MCP Guardian</title></head>
-<body><h1>MCP Guardian Dashboard</h1><p>Use the CLI/TUI or API endpoints.</p></body>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MCP Guardian — API &amp; TUI</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 52rem; margin: 2rem auto; padding: 0 1rem; line-height: 1.5; }
+    code { background: #f4f4f5; padding: 0.1em 0.35em; border-radius: 4px; }
+    pre { background: #18181b; color: #e4e4e7; padding: 1rem; overflow-x: auto; border-radius: 8px; }
+    h2 { margin-top: 2rem; }
+    .note { background: #fef9c3; border: 1px solid #fde047; padding: 0.75rem 1rem; border-radius: 8px; }
+  </style>
+</head>
+<body>
+  <h1>MCP Guardian</h1>
+  <p class="note">
+    There is no separate web SPA in v2.5.x. Use the <strong>terminal UI</strong> for live observability,
+    or call the REST/WebSocket APIs below. A full browser dashboard is planned for v2.6.
+  </p>
+
+  <h2>Terminal UI (recommended)</h2>
+  <pre>pnpm run dogfood    # populate sandbox DB with real proxy traffic
+pnpm run tui        # live TUI (WebSocket when proxy/dashboard WS is running)</pre>
+  <pre>mcp-guardian doctor
+mcp-guardian tui --dashboard-url http://127.0.0.1:4000</pre>
+
+  <h2>WebSocket (live push)</h2>
+  <p>Connect to <code>ws://localhost:4000/ws</code> and send:</p>
+  <pre>{"type":"subscribe","channels":["policy","health","metrics","audit","ai","cost"]}</pre>
+  <p>Enabled when the proxy runs (<code>GUARDIAN_WS_ENABLED</code> defaults to true). Full REST API requires <code>DASHBOARD_ENABLED=true</code>.</p>
+
+  <h2>REST API (when DASHBOARD_ENABLED=true)</h2>
+  <ul>
+    <li><code>GET /api/security</code> — security scans</li>
+    <li><code>GET /api/cost</code> — cost aggregates</li>
+    <li><code>GET /api/health</code> — health checks</li>
+    <li><code>GET /api/instances</code> — instance summary</li>
+    <li><code>POST /api/policy/suggestions/accept</code> — accept AI suggestion</li>
+    <li><code>POST /api/policy/suggestions/reject</code> — reject AI suggestion</li>
+  </ul>
+  <pre>curl -s http://127.0.0.1:4000/api/instances | jq .
+curl -s -X POST http://127.0.0.1:4000/api/policy/suggestions/accept \
+  -H 'Content-Type: application/json' \
+  -d '{"suggestionId":"baseline-1","ruleName":"rate-limit-burst","source":"baseline","confidence":0.9}'</pre>
+
+  <h2>Environment</h2>
+  <ul>
+    <li><code>MCP_GUARDIAN_DB_PATH</code> — SQLite path (default <code>~/.mcp-guardian/history.db</code>)</li>
+    <li><code>GUARDIAN_EXPERIMENTAL_AI=true</code> — adaptive learning on proxy/scan/report</li>
+    <li><code>GUARDIAN_AI_USE_DB_SNAPSHOTS=true</code> — fast learning cycles without live OSV probes</li>
+  </ul>
+</body>
 </html>

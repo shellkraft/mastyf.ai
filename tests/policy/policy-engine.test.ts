@@ -154,7 +154,31 @@ describe('PolicyEngine', () => {
     expect(allowEngine.evaluate(makeContext({ toolName: 'unknown_tool' })).action).toBe('block');
   });
 
-  it('should return pass for no matching rules', () => {
+  it('should still apply pattern rules to allowlisted tools', () => {
+    const config: PolicyConfig = {
+      version: '1.0',
+      policy: {
+        mode: 'block',
+        rules: [
+          {
+            name: 'only-safe-tools',
+            action: 'block',
+            tools: { allow: ['search'] },
+          },
+          {
+            name: 'block-shell-injection',
+            action: 'block',
+            patterns: ['rm\\s+-rf'],
+          },
+        ],
+      },
+    };
+    const engine = new PolicyEngine(config);
+    expect(engine.evaluate(makeContext({ toolName: 'search', arguments: { query: 'hello' } })).action).toBe('pass');
+    expect(engine.evaluate(makeContext({ toolName: 'search', arguments: { query: 'rm -rf /' } })).action).toBe('block');
+  });
+
+  it('should fail-open when no rules and default_action omitted', () => {
     const emptyConfig: PolicyConfig = {
       version: '1.0',
       policy: { mode: 'block', rules: [] },
@@ -162,6 +186,17 @@ describe('PolicyEngine', () => {
     const emptyEngine = new PolicyEngine(emptyConfig);
     const decision = emptyEngine.evaluate(makeContext({ toolName: 'any_tool' }));
     expect(decision.action).toBe('pass');
+    expect(decision.rule).toBe('default');
+  });
+
+  it('should fail-closed when default_action is block and no rules match', () => {
+    const failClosedConfig: PolicyConfig = {
+      version: '1.0',
+      policy: { mode: 'block', default_action: 'block', rules: [] },
+    };
+    const engine = new PolicyEngine(failClosedConfig);
+    const decision = engine.evaluate(makeContext({ toolName: 'any_tool' }));
+    expect(decision.action).toBe('block');
     expect(decision.rule).toBe('default');
   });
 });

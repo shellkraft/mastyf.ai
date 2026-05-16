@@ -4,6 +4,7 @@ import { EventEmitter } from 'events';
 import { PolicyEngine } from '../policy/policy-engine.js';
 import { TokenCounter } from '../utils/token-counter.js';
 import { Logger } from '../utils/logger.js';
+import { persistCallRecord } from '../utils/call-record-cost.js';
 
 interface SseProxyOptions {
   upstreamUrl: string;
@@ -78,7 +79,7 @@ export class SseProxyServer extends EventEmitter {
       };
       try {
         // Fire-and-forget best-effort; errors are logged but non-critical
-        this.opts.db.addCallRecord(record).catch(err => {
+        persistCallRecord(this.opts.db, record, jsonRpcRequest).catch((err: Error) => {
           Logger.warn(`[sse-proxy:${this.opts.serverName}] Failed to record call: ${err?.message}`);
         });
       } catch { /* best-effort — only catches synchronous errors in record construction */ }

@@ -17,6 +17,8 @@ import { detectPromptInjection } from '../scanners/prompt-injection-detector.js'
 import { scanForSecrets } from '../scanners/secret-scanner.js';
 import * as Metrics from '../utils/metrics.js';
 import { alertPolicyBlock } from '../alerting/webhook-alerter.js';
+import { evaluateCveGate } from '../utils/cve-gate.js';
+import { persistCallRecord } from '../utils/call-record-cost.js';
 
 const MAX_PAYLOAD_BYTES = parseInt(
   process.env['MCP_GUARDIAN_MAX_PAYLOAD_BYTES'] ?? '10485760', // 10 MB default
@@ -204,7 +206,8 @@ export class McpProxyServer {
             durationMs: proxyLatencyMs,
             timestamp: new Date().toISOString(),
           };
-          this.db.addCallRecord(record).catch((err) =>
+          const reqMsg = { params: { name: this.requestToolName, arguments: this.requestArguments } };
+          persistCallRecord(this.db, record, reqMsg).catch((err) =>
             Logger.debug(`Proxy: failed to store call record: ${err?.message}`)
           );
           this.circuitBreaker.recordSuccess();
@@ -279,7 +282,7 @@ export class McpProxyServer {
                 durationMs: Date.now() - this.requestStartTime,
                 timestamp: new Date().toISOString(),
               };
-              this.db.addCallRecord(blockedRecord).catch(() => {});
+              persistCallRecord(this.db, { ...blockedRecord, blocked: true, blockRule: 'response-inspection' }).catch(() => {});
               Metrics.blockedRequestsTotal.inc({
                 server_name: this.serverName,
                 block_reason: hasCritical ? 'response_injection_critical' : 'response_injection_high',
@@ -331,6 +334,30 @@ export class McpProxyServer {
       error: { code, message, data },
     });
     process.stdout.write(errorResponse + '\n');
+  }
+
+  private recordDeniedCall(
+    toolName: string,
+    requestTokens: number,
+    durationMs: number,
+    blockRule: string,
+    blockReason: string,
+  ): void {
+    const record: ProxyCallRecord = {
+      serverName: this.serverName,
+      toolName,
+      requestTokens,
+      responseTokens: 0,
+      totalTokens: requestTokens,
+      durationMs,
+      timestamp: new Date().toISOString(),
+      blocked: true,
+      blockRule,
+      blockReason,
+    };
+    persistCallRecord(this.db, record).catch((err) =>
+      Logger.debug(`Proxy: failed to store denied call record: ${err?.message}`)
+    );
   }
 
   /**
@@ -388,10 +415,12 @@ export class McpProxyServer {
 
             // DLP block in blocking mode — stop exfiltration before it reaches the server
             if (this.policyEngine?.getMode() === 'block') {
+              const dlpReason = `${secretFindings.length} potential secret(s) detected in '${toolName}' arguments. Detected: ${secretSummary}`;
+              this.recordDeniedCall(toolName, this.requestTokens, Date.now() - proxyStartTime, 'secret-scan', dlpReason);
               this.sendError(
                 msg.id, -32001,
-                `Blocked: ${secretFindings.length} potential secret(s) detected in '${toolName}' arguments. ` +
-                `Detected: ${secretSummary}. Use policy mode 'audit' to log only.`
+                `Blocked by MCP Guardian policy: ${dlpReason}`,
+                { rule: 'secret-scan', policy: 'block' },
               );
               StructuredLogger.info({
                 event: 'request_denied',
@@ -484,6 +513,30 @@ export class McpProxyServer {
           }
         }
 
+        // ── CVE gate (latest security_scans row; run preflight or `mcp-guardian scan`) ──
+        if (this.policyEngine?.getMode() === 'block') {
+          const cveGate = await evaluateCveGate(this.db, this.serverName);
+          if (cveGate.block) {
+            const cveReason = cveGate.reason || 'CVE policy violation';
+            this.recordDeniedCall(toolName, this.requestTokens, Date.now() - proxyStartTime, 'cve-gate', cveReason);
+            StructuredLogger.info({
+              event: 'request_denied',
+              requestId,
+              serverName: this.serverName,
+              toolName,
+              blockReason: `cve:${cveReason}`,
+              proxyLatencyMs: Date.now() - proxyStartTime,
+            });
+            Metrics.blockedRequestsTotal.inc({ server_name: this.serverName, block_reason: 'cve_gate', rule: 'cve-gate' });
+            Metrics.requestsTotal.inc({ server_name: this.serverName, decision: 'block', authn_success: String(authnSuccess) });
+            this.sendError(msg.id, -32001, `Blocked by MCP Guardian CVE policy: ${cveReason}`, {
+              rule: 'cve-gate',
+              policy: 'block',
+            });
+            return;
+          }
+        }
+
         // ── Circuit breaker check ───────────────────────────
         if (!this.circuitBreaker.allowRequest()) {
           StructuredLogger.info({
@@ -525,9 +578,14 @@ export class McpProxyServer {
             context,
           });
 
-          if (decision.action === 'block') {
+          const policyMode = this.policyEngine.getMode();
+          const shouldDeny = decision.action === 'block'
+            || (decision.action === 'flag' && policyMode === 'block');
+
+          if (shouldDeny) {
             authzAllowed = false;
             blockReason = `policy:${decision.rule}:${decision.reason}`;
+            this.recordDeniedCall(toolName, this.requestTokens, Date.now() - proxyStartTime, decision.rule, decision.reason);
 
             StructuredLogger.logBlocked({
               event: 'tool_blocked',
@@ -554,7 +612,7 @@ export class McpProxyServer {
             void alertPolicyBlock(this.serverName, toolName, decision.rule, decision.reason, requestId);
             this.sendError(msg.id, -32001, `Blocked by MCP Guardian policy: ${decision.reason}`, {
               rule: decision.rule,
-              policy: this.policyEngine.getMode(),
+              policy: policyMode,
             });
             return;
           }

@@ -12,6 +12,7 @@ export interface IHistoryDb {
   getCallRecordsForServer(serverName: string): Promise<Record<string, unknown>[]>;
   getLatestSecurityScan(serverName: string): Promise<Record<string, unknown> | null>;
   getDistinctScannedServers(): Promise<string[]>;
+  getDistinctActiveServers?(): Promise<string[]>;
   close(): void;
 }
 

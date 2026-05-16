@@ -53,6 +53,19 @@ export class PatternRecognizer {
       }
     }
 
+    // ── Moderate security score — hardening opportunity ─────
+    for (const sec of snapshot.securityReports) {
+      if (sec.score >= 30 && sec.score < 70) {
+        insights.push({
+          type: 'security-hardening',
+          severity: 'info',
+          description: `${sec.serverName} security score is ${sec.score}/100 (below 70). Review tool permissions, CVEs, and policy rules before production use.`,
+          correlatedLayers: ['security'],
+          confidence: 0.65,
+        });
+      }
+    }
+
     // ── Security risk + high cost = urgent ─────
     for (const sec of snapshot.securityReports) {
       if (sec.score < 30) {

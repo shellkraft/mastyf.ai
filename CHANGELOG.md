@@ -2,6 +2,42 @@
 
 All notable changes to MCP Guardian will be documented in this file.
 
+## [2.5.2] - 2026-05-16
+
+### Added
+- **TUI-first observability** — Read-only SQLite access while proxy writes; per-server Instances tab; live FULL ANALYSIS from `call_records` (not stale `.ai-report.json`).
+- **`mcp-guardian doctor`** — Checks DB path, policy, and AI flags.
+- **`pnpm run live:tui-demo`** — Multi-server corpus replay into shared `history.db` for local TUI smoke tests.
+- **Dogfood CI** — Sandboxed scenario in GitHub Actions; `scenarios/dogfood/` harness and enterprise stub.
+- **Shared DB utilities** — `guardian-db-path`, `db-aggregate`, CVE gate, preflight scan, runtime model pricing, WebSocket dashboard events.
+
+### Fixed
+- **SQLite concurrency** — TUI opens canonical DB read-only; secondary writers share WAL + `busy_timeout` instead of forked `history-<pid>.db` files.
+- **Dashboard EADDRINUSE** — Proxy continues if port 4000 is busy (warns; WS optional).
+- **AI learning** — Persists cycle state and baselines; preventive suggestions when traffic is stable; learning on by default (`GUARDIAN_AI_ENABLED=false` to disable).
+- **TUI poll** — 1.5s refresh with read-only reconnect; dashboard metrics no longer zero live DB counts.
+
+### Docs
+- README: honest TUI limitations, live-update troubleshooting, `live:tui-demo` vs dogfood vs production wrap.
+
+## [2.5.1] - 2026-05-16
+
+### Fixed (dogfood / observability)
+- **Denied call records** — Policy and DLP blocks are persisted to `history.db` with `blocked`, `block_rule`, and `block_reason` for audit/TUI/dashboard accuracy.
+- **Policy rule order** — `deny-dangerous-tools` runs before allowlist; path-traversal (`..`) runs before shell-injection; `/etc/passwd` removed from shell patterns so traversal attribution is correct.
+- **`flag` in block mode** — Rate-limit and token-budget `flag` rules now deny requests when policy mode is `block`.
+- **DLP error shape** — Secret blocks return consistent `Blocked by MCP Guardian policy` message with `data.rule: secret-scan`.
+- **Dogfood harness** — Full CLI corpus replay per server, expected-rule assertions, DB blocked-count gate, Phase 4 summary output.
+
+### Fixed (P0 — security audit)
+- **AWS DLP** — Secret scanner entropy check now runs on the full matched secret, not a 4-char prefix capture group; AWS access keys (e.g. `AKIAIOSFODNN7EXAMPLE`) are detected again.
+- **Fail-closed default policy** — `default-policy.yaml` uses `default_action: block` with an explicit tool allowlist.
+- **Multi-stdio guard** — Proxy CLI exits with an error when multiple stdio servers are configured in one process (prevents stdin broadcast).
+- **`--blocking-mode`** — Mode override applies in memory only; no longer rewrites the policy YAML on disk.
+
+### Security
+- Bump `@modelcontextprotocol/sdk` to ^1.25.2 (resolves ReDoS and related advisories in the pinned 1.0.x line).
+
 ## [2.3.24] - 2026-05-14
 
 ### Fixed

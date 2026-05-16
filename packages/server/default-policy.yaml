@@ -1,25 +1,10 @@
 version: '1.0'
 policy:
   mode: block
-  default_action: pass
+  # Fail-closed: unmatched tools are blocked unless explicitly allowlisted below.
+  default_action: block
   semantic_shell: true
   rules:
-    - name: block-shell-injection
-      description: Block tool calls containing shell injection or command chaining
-      action: block
-      patterns:
-        - curl\s|wget\s
-        - rm\s+-rf
-        - ;\s*\w
-        - '&&|\|\|'
-        - \$\{
-        - '`[^`]+`'
-        - /etc/passwd|/etc/shadow
-    - name: block-path-traversal
-      description: Block tool calls with path traversal attempts
-      action: block
-      patterns:
-        - \.\.
     - name: deny-dangerous-tools
       description: Explicitly deny tools that can execute arbitrary code
       action: block
@@ -30,11 +15,46 @@ policy:
           - sh
           - eval
           - exec
+          - execute
           - system
           - spawn
           - fork
           - popen
           - source
+    - name: allowlist-common-tools
+      description: Permit known read/query tools; all others blocked by default_action
+      action: block
+      tools:
+        allow:
+          - read_file
+          - read_text_file
+          - list_directory
+          - list_files
+          - get_file_contents
+          - search
+          - search_files
+          - search_repositories
+          - list_tables
+          - query
+          - echo
+          - write_to_file
+          - puppeteer_navigate
+          - puppeteer_screenshot
+    - name: block-path-traversal
+      description: Block tool calls with path traversal attempts
+      action: block
+      patterns:
+        - \.\.
+    - name: block-shell-injection
+      description: Block tool calls containing shell injection or command chaining
+      action: block
+      patterns:
+        - curl\s|wget\s
+        - rm\s+-rf
+        - ;\s*\w
+        - '&&|\|\|'
+        - \$\{
+        - '`[^`]+`'
     - name: rate-limit-tool-calls
       description: Limit tool calls to 120 per minute per server+tool
       action: flag

@@ -14,6 +14,7 @@ describe('Proxy-to-Audit Integration', () => {
   };
 
   it('should capture real tokens via proxy and produce accurate cost report', async () => {
+    process.env.GUARDIAN_MODEL = 'gpt-4o';
     const db = new HistoryDatabase(':memory:');
     const pricing = new PricingClient();
 
@@ -58,7 +59,7 @@ describe('Proxy-to-Audit Integration', () => {
     // Assertions: proxy must have stored real token data
     expect(report.tokensUsed).toBeGreaterThan(0);
     expect(report.toolBreakdown.length).toBeGreaterThanOrEqual(1);
-    expect(report.estimatedCostUSD).toBeGreaterThan(0);
+    expect(report.actualCostUSD).toBeGreaterThan(0);
     expect(report.inputTokens).toBeGreaterThan(0);
     expect(report.outputTokens).toBeGreaterThan(0);
 

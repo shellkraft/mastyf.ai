@@ -73,6 +73,12 @@ export class PostgresDatabase implements IDatabase {
       await client.query('CREATE INDEX IF NOT EXISTS idx_cost_server ON cost_records(server_name)');
       await client.query('CREATE INDEX IF NOT EXISTS idx_health_server ON health_checks(server_name)');
       await client.query('CREATE INDEX IF NOT EXISTS idx_call_server ON call_records(server_name)');
+      await client.query('ALTER TABLE call_records ADD COLUMN IF NOT EXISTS blocked BOOLEAN NOT NULL DEFAULT false');
+      await client.query('ALTER TABLE call_records ADD COLUMN IF NOT EXISTS block_rule TEXT');
+      await client.query('ALTER TABLE call_records ADD COLUMN IF NOT EXISTS block_reason TEXT');
+      await client.query('ALTER TABLE call_records ADD COLUMN IF NOT EXISTS model TEXT');
+      await client.query('ALTER TABLE call_records ADD COLUMN IF NOT EXISTS cost_usd REAL');
+      await client.query('ALTER TABLE call_records ADD COLUMN IF NOT EXISTS pricing_source TEXT');
 
       // Run unified aggregation migration
       const { readFileSync } = await import('fs');
@@ -140,6 +146,17 @@ export class PostgresDatabase implements IDatabase {
     return result.rows.map((r: any) => r.server_name);
   }
 
+  async getDistinctActiveServers(): Promise<string[]> {
+    const result = await this.pool.query(
+      `SELECT DISTINCT server_name FROM (
+         SELECT server_name FROM security_scans
+         UNION
+         SELECT server_name FROM call_records
+       ) AS active ORDER BY server_name`,
+    );
+    return result.rows.map((r: { server_name: string }) => r.server_name);
+  }
+
   async addCostRecord(serverName: string, tokens: number, cost: number): Promise<void> {
     await this.pool.query(
       'INSERT INTO cost_records (server_name, tokens_used, cost_usd) VALUES ($1, $2, $3)',
@@ -156,14 +173,27 @@ export class PostgresDatabase implements IDatabase {
 
   async addCallRecord(record: ProxyCallRecord): Promise<void> {
     await this.pool.query(
-      'INSERT INTO call_records (server_name, tool_name, request_tokens, response_tokens, total_tokens, duration_ms) VALUES ($1, $2, $3, $4, $5, $6)',
-      [record.serverName, record.toolName, record.requestTokens, record.responseTokens, record.totalTokens, record.durationMs]
+      'INSERT INTO call_records (server_name, tool_name, request_tokens, response_tokens, total_tokens, duration_ms, blocked, block_rule, block_reason, model, cost_usd, pricing_source) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)',
+      [
+        record.serverName,
+        record.toolName,
+        record.requestTokens,
+        record.responseTokens,
+        record.totalTokens,
+        record.durationMs,
+        Boolean(record.blocked),
+        record.blockRule ?? null,
+        record.blockReason ?? null,
+        record.model ?? null,
+        record.costUsd ?? null,
+        record.pricingSource ?? null,
+      ]
     );
   }
 
   async getCallRecordsForServer(serverName: string): Promise<ProxyCallRecord[]> {
     const result = await this.pool.query(
-      'SELECT server_name, tool_name, request_tokens, response_tokens, total_tokens, duration_ms, timestamp::text FROM call_records WHERE server_name = $1',
+      'SELECT server_name, tool_name, request_tokens, response_tokens, total_tokens, duration_ms, timestamp::text, blocked, block_rule, block_reason, model, cost_usd, pricing_source FROM call_records WHERE server_name = $1',
       [serverName]
     );
     return result.rows.map((row: any) => ({
@@ -174,6 +204,12 @@ export class PostgresDatabase implements IDatabase {
       totalTokens: row.total_tokens,
       durationMs: row.duration_ms,
       timestamp: row.timestamp,
+      model: row.model ?? undefined,
+      costUsd: row.cost_usd != null ? Number(row.cost_usd) : undefined,
+      pricingSource: row.pricing_source ?? undefined,
+      blocked: Boolean(row.blocked),
+      blockRule: row.block_rule ?? undefined,
+      blockReason: row.block_reason ?? undefined,
     }));
   }
 

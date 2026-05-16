@@ -1,44 +1,27 @@
 import { CostReport, ToolCost, McpServerConfig, ProxyCallRecord } from '../types.js';
 import { TokenCounter } from '../utils/token-counter.js';
-import { PricingClient } from '../clients/pricing-client.js';
 import { IDatabase } from '../database/database-interface.js';
 import { Logger } from '../utils/logger.js';
+import { getRuntimeModelPricing } from './runtime-model-pricing.js';
 
 export class CostAuditor {
   private tokenCounter: TokenCounter;
-  private pricing: PricingClient;
   private db: IDatabase | undefined;
-  private pricingModel: string;
 
-  constructor(pricingClient?: PricingClient, db?: IDatabase, pricingModel?: string) {
+  constructor(_pricingClient?: unknown, db?: IDatabase, _pricingModel?: string) {
     this.tokenCounter = new TokenCounter();
-    this.pricing = pricingClient || new PricingClient();
     this.db = db;
-    this.pricingModel = pricingModel || process.env['MCP_PRICING_MODEL'] || 'gpt-4o';
   }
 
-  /** Dynamically change the pricing model for cost estimation. */
-  setPricingModel(model: string): void {
-    this.pricingModel = model;
-  }
-
-  /** Returns the currently active pricing model. */
-  getPricingModel(): string {
-    return this.pricingModel;
+  async getPricingModel(): Promise<string> {
+    const active = await getRuntimeModelPricing().getActivePricing();
+    if (active) return `${active.displayName} (${active.source})`;
+    return process.env.GUARDIAN_MODEL || process.env.ANTHROPIC_MODEL || 'no model detected';
   }
 
   async auditServer(server: McpServerConfig): Promise<CostReport> {
     if (!this.db) {
-      return {
-        serverName: server.name,
-        tokensUsed: 0,
-        inputTokens: 0,
-        outputTokens: 0,
-        estimatedCostUSD: 0,
-        pricingModel: 'unknown',
-        toolBreakdown: [],
-        note: 'Database not available. Ensure the proxy has been configured.',
-      };
+      return this.emptyReport(server.name, 'Database not available. Ensure the proxy has been configured.');
     }
 
     try {
@@ -46,63 +29,98 @@ export class CostAuditor {
       if (records.length > 0) {
         return this.buildReportFromRecords(server.name, records);
       }
-    } catch (err: any) {
-      Logger.warn(`Cost audit: DB read failed for ${server.name}: ${err?.message}`);
+    } catch (err: unknown) {
+      Logger.warn(`Cost audit: DB read failed for ${server.name}: ${err instanceof Error ? err.message : String(err)}`);
     }
 
+    return this.emptyReport(server.name, 'No recorded call data. Use `mcp-guardian proxy` to capture real token usage.');
+  }
+
+  private emptyReport(serverName: string, note: string): CostReport {
     return {
-      serverName: server.name,
+      serverName,
       tokensUsed: 0,
       inputTokens: 0,
       outputTokens: 0,
       estimatedCostUSD: 0,
-      pricingModel: 'unknown',
+      actualCostUSD: 0,
+      pricingModel: 'none',
+      pricingSources: [],
       toolBreakdown: [],
-      note: 'No recorded call data. Use `mcp-guardian proxy` to capture real token usage.',
+      unpricedCalls: 0,
+      note,
     };
   }
 
-  private buildReportFromRecords(serverName: string, records: ProxyCallRecord[]): CostReport {
-    const model = this.pricingModel;
-    const toolMap = new Map<string, { inputTokens: number; outputTokens: number; calls: number }>();
+  private async buildReportFromRecords(serverName: string, records: ProxyCallRecord[]): Promise<CostReport> {
+    const pricing = getRuntimeModelPricing();
+    const toolMap = new Map<string, { inputTokens: number; outputTokens: number; calls: number; cost: number; models: Set<string> }>();
+    const sources = new Set<string>();
+    let totalInput = 0;
+    let totalOutput = 0;
+    let actualCostUSD = 0;
+    let unpricedCalls = 0;
+    const active = await pricing.getActivePricing();
+    const pricingModel = active?.displayName || active?.modelId || 'unresolved';
 
     for (const r of records) {
-      const existing = toolMap.get(r.toolName) || { inputTokens: 0, outputTokens: 0, calls: 0 };
+      const existing = toolMap.get(r.toolName) || {
+        inputTokens: 0, outputTokens: 0, calls: 0, cost: 0, models: new Set<string>(),
+      };
       existing.inputTokens += r.requestTokens;
       existing.outputTokens += r.responseTokens;
       existing.calls += 1;
+
+      let callCost = r.costUsd ?? 0;
+      if (callCost <= 0 && r.model) {
+        const resolved = await pricing.resolveModelId(r.model);
+        if (resolved) {
+          callCost = pricing.computeCost(r.requestTokens, r.responseTokens, resolved).costUsd;
+          if (callCost > 0) sources.add(resolved.source);
+        }
+      } else if (callCost > 0 && r.pricingSource) {
+        sources.add(r.pricingSource);
+      }
+
+      if (callCost > 0) {
+        existing.cost += callCost;
+        actualCostUSD += callCost;
+      } else if ((r.requestTokens || 0) + (r.responseTokens || 0) > 0) {
+        unpricedCalls++;
+      }
+
+      if (r.model) existing.models.add(r.model);
       toolMap.set(r.toolName, existing);
+      totalInput += r.requestTokens;
+      totalOutput += r.responseTokens;
     }
+
+    if (active) sources.add(active.source);
 
     const breakdown: ToolCost[] = [];
-    let totalInput = 0;
-    let totalOutput = 0;
-
     for (const [toolName, data] of toolMap) {
-      const totalTokens = data.inputTokens + data.outputTokens;
-      const inputCost = this.pricing.estimateCost(model, data.inputTokens, 0);
-      const outputCost = this.pricing.estimateCost(model, 0, data.outputTokens);
-      const cost = (inputCost ?? 0) + (outputCost ?? 0);
-
       breakdown.push({
         toolName,
-        tokens: totalTokens,
+        tokens: data.inputTokens + data.outputTokens,
         calls: data.calls,
-        cost: Math.round(cost * 10000) / 10000,
+        cost: Math.round(data.cost * 10000) / 10000,
       });
-      totalInput += data.inputTokens;
-      totalOutput += data.outputTokens;
     }
 
-    const totalCost = breakdown.reduce((sum, t) => sum + t.cost, 0);
     return {
       serverName,
       tokensUsed: totalInput + totalOutput,
       inputTokens: totalInput,
       outputTokens: totalOutput,
-      estimatedCostUSD: Math.round(totalCost * 10000) / 10000,
-      pricingModel: model,
+      estimatedCostUSD: Math.round(actualCostUSD * 10000) / 10000,
+      actualCostUSD: Math.round(actualCostUSD * 10000) / 10000,
+      pricingModel,
+      pricingSources: [...sources],
       toolBreakdown: breakdown,
+      unpricedCalls,
+      note: unpricedCalls > 0
+        ? `${unpricedCalls} call(s) could not be priced — ensure Cline is active or set GUARDIAN_MODEL`
+        : undefined,
     };
   }
 

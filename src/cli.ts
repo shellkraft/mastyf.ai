@@ -21,6 +21,9 @@ import { createContainer } from './container.js';
 import { bootstrapCompliance, shutdownEnterprise } from './utils/enterprise-bootstrap.js';
 import { createDatabase } from './database/create-database.js';
 import { bootstrapSecrets } from './utils/enterprise-bootstrap.js';
+import { broadcastDashboardEvent } from './utils/dashboard-events.js';
+import { triggerLearningCycleIfEnabled } from './ai/suggestion-engine.js';
+import { isAiLearningEnabled } from './utils/ai-enabled.js';
 
 // ── Typed option interfaces ──────────────────────────────────────────
 interface ScanOptions {
@@ -123,6 +126,12 @@ program
     const container = await createContainer();
     const reports = await Promise.all(servers.map((s) => container.securityScanner.scanServer(s)));
     await Promise.all(reports.map((r) => container.db.addSecurityScan(r.serverName, r.score, r.cves.length, r)));
+    await triggerLearningCycleIfEnabled(container.db, servers);
+    broadcastDashboardEvent({
+      type: 'health-change',
+      payload: { source: 'scan', servers: reports.length },
+      timestamp: Date.now(),
+    });
     container.db.close();
 
     console.log(new ReportGenerator().formatSecurityReports(reports));
@@ -145,6 +154,7 @@ program
     const results = await Promise.all(filtered.map((s) => container.costAuditor.auditServer(s)));
     container.costAuditor.dispose();
     await Promise.all(results.map((r) => container.db.addCostRecord(r.serverName, r.tokensUsed, r.estimatedCostUSD)));
+    await triggerLearningCycleIfEnabled(container.db, filtered);
     container.db.close();
 
     console.log(new ReportGenerator().formatCostReports(results));
@@ -175,6 +185,7 @@ program
     const container = await createContainer();
     const results = await Promise.all(filtered.map((s) => container.healthMonitor.checkServer(s)));
     await Promise.all(results.map((r) => container.db.addHealthCheck(r.serverName, r.latencyMs, r.successRate > 0.5, r.toolCount)));
+    await triggerLearningCycleIfEnabled(container.db, filtered);
     container.db.close();
 
     console.log(new ReportGenerator().formatHealthReports(results));
@@ -222,6 +233,12 @@ program
       ...costs.map((r) => container.db.addCostRecord(r.serverName, r.tokensUsed, r.estimatedCostUSD)),
       ...health.map((r) => container.db.addHealthCheck(r.serverName, r.latencyMs, r.successRate > 0.5, r.toolCount)),
     ]);
+    await triggerLearningCycleIfEnabled(container.db, servers);
+    broadcastDashboardEvent({
+      type: 'health-change',
+      payload: { source: 'report', servers: servers.length },
+      timestamp: Date.now(),
+    });
     container.db.close();
 
     const costScores = costs.map(c => ({ estimatedCostUSD: c.estimatedCostUSD, pricingModel: c.pricingModel }));
@@ -300,10 +317,23 @@ program
   });
 
 program
+  .command('doctor')
+  .description('Check DB path, policy, dashboard/AI env — quick onboarding diagnostics')
+  .option('--policy <path>', 'Policy YAML to verify', 'default-policy.yaml')
+  .option('-c, --config <path>', 'Optional MCP config path to verify')
+  .action((opts: { policy: string; config?: string }) => {
+    import('./utils/doctor.js').then(({ runDoctor }) => {
+      process.exit(runDoctor({ policyPath: opts.policy, configPath: opts.config }));
+    });
+  });
+
+program
   .command('tui')
   .description('Launch interactive terminal dashboard with real-time metrics, AI insights, and audit trails')
-  .option('--dashboard-url <url>', 'URL of the Guardian dashboard server (default: http://localhost:4000)')
-  .action(async (opts: { dashboardUrl?: string }) => {
+  .option('--dashboard-url <url>', 'Merge live metrics from dashboard API (default: GUARDIAN_DASHBOARD_URL or http://localhost:4000)')
+  .option('--policy <path>', 'Policy YAML for Policy tab (default: GUARDIAN_POLICY_PATH / default-policy.yaml)')
+  .action(async (opts: { dashboardUrl?: string; policy?: string }) => {
+    if (opts.policy) process.env.GUARDIAN_POLICY_PATH = opts.policy;
     const { startTui } = await import('./tui/app.js');
     await startTui(opts.dashboardUrl);
   });
@@ -324,6 +354,17 @@ program
 
     const servers = ConfigParser.parse(paths[0]);
     if (servers.length === 0) { console.error(chalk.yellow('No servers found in config.')); process.exit(0); }
+
+    const stdioServerCount = servers.filter((s) => s.command).length;
+    if (stdioServerCount > 1) {
+      console.error(chalk.red(
+        'Multiple stdio MCP servers in one proxy process are not supported.\n' +
+        `  Found ${stdioServerCount} servers with "command" in ${paths[0]}.\n` +
+        '  Use `mcp-guardian wrap` (one proxy per server) or pass a single-server config.\n' +
+        '  See docs/REAL_WORLD_INTEGRATION.md',
+      ));
+      process.exit(1);
+    }
 
     // ── --dry-run: simulate policy against historical call_records ──
     if (opts.dryRun) {
@@ -426,22 +467,15 @@ program
           if (process.env['GUARDIAN_ALLOW_MODE_OVERRIDE'] !== 'true') {
             console.error(chalk.red(`--blocking-mode override requires GUARDIAN_ALLOW_MODE_OVERRIDE=true to be set. Policy mode will remain: ${policyEngine.getMode()}`));
           } else {
-            // Re-create engine with overridden mode and re-seed the watcher
             const { readFileSync } = await import('fs');
             const { load } = await import('js-yaml');
-            const policyYaml = readFileSync(opts.policy, 'utf-8');
-            const policyConfig = load(policyYaml) as PolicyConfig;
+            const policyConfig = load(readFileSync(opts.policy, 'utf-8')) as PolicyConfig;
             policyConfig.policy.mode = opts.blockingMode as 'audit' | 'warn' | 'block';
             policyEngine = new PolicyEngine(policyConfig);
-            // Re-seed watcher so hot-reload continues to work with the overridden mode
-            if (policyWatcher) {
-              policyWatcher.close();
-              // Rewrite YAML with overridden mode, then re-watch
-              const { writeFileSync } = await import('fs');
-              const { dump } = await import('js-yaml');
-              writeFileSync(opts.policy, dump(policyConfig));
-              policyWatcher = new PolicyWatcher(opts.policy);
-            }
+            useWatcherForManager = false;
+            console.error(chalk.yellow(
+              `Policy mode overridden in memory only (file on disk unchanged): ${opts.blockingMode}`,
+            ));
           }
         }
         console.error(chalk.green(`Policy loaded: ${opts.policy} (mode: ${policyEngine?.getMode() || 'none'})`));
@@ -462,6 +496,9 @@ program
     const manager = new ProxyManager(db, useWatcherForManager ? policyWatcher : policyEngine, authValidator);
     await manager.startAll(servers);
 
+    const { runPreflightScanAndHealth } = await import('./utils/preflight-scan.js');
+    runPreflightScanAndHealth(servers, db);
+
     // Start OpenTelemetry tracing if configured
     initTracing().catch(() => {});
 
@@ -472,15 +509,23 @@ program
     // Wire dashboard to real HistoryDatabase for live API data
     setDashboardDataSource(db);
 
-    // Start dashboard server if enabled (pass policy watcher for live data)
+    // WebSocket for TUI live updates (full dashboard API optional via DASHBOARD_ENABLED=true)
+    if (process.env['GUARDIAN_WS_ENABLED'] === undefined) {
+      process.env['GUARDIAN_WS_ENABLED'] = 'true';
+    }
     const dashboardPort = parseInt(process.env['DASHBOARD_PORT'] || '4000', 10);
-    startDashboardServer(dashboardPort, policyWatcher).catch(() => {});
+    startDashboardServer(dashboardPort, policyWatcher).catch((err: unknown) => {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error(chalk.yellow(`Dashboard/WS server warning: ${msg}`));
+    });
 
-    if (process.env['GUARDIAN_EXPERIMENTAL_AI'] === 'true') {
+    if (isAiLearningEnabled()) {
       const { initializeAiEngine } = await import('./ai/suggestion-engine.js');
       initializeAiEngine(db, servers).catch((err: any) => {
-        console.error(chalk.yellow(`AI Engine start warning: ${err?.message}`));
+        console.error(chalk.yellow(`AI learning engine warning: ${err?.message}`));
       });
+    } else {
+      console.error(chalk.dim('AI learning disabled (GUARDIAN_AI_ENABLED=false)'));
     }
 
     console.error(chalk.green('MCP Guardian proxy running. Press Ctrl+C to stop.'));
@@ -494,27 +539,21 @@ program
     process.on('SIGTERM', cleanup);
 
     const proxies = manager.getProxies();
-    if (proxies.length > 0) {
-      // Route stdin to the appropriate proxy based on the message content
+    if (proxies.length > 1) {
+      console.error(chalk.red('Internal error: multiple stdio proxies started; expected at most one.'));
+      process.exit(1);
+    }
+    if (proxies.length === 1) {
       process.stdin.setEncoding('utf-8');
       let buffer = '';
       process.stdin.on('data', (chunk: string) => {
         buffer += chunk;
-        // Process complete lines (JSON-RPC is line-delimited)
         while (buffer.includes('\n')) {
           const newlineIdx = buffer.indexOf('\n');
           const line = buffer.slice(0, newlineIdx).trim();
           buffer = buffer.slice(newlineIdx + 1);
           if (!line) continue;
-          // Route to the first proxy (single proxy is the common case)
-          if (proxies.length === 1) {
-            proxies[0].handleClientInput(line);
-          } else {
-            // Multi-proxy: route based on server_name in the payload
-            for (const proxy of proxies) {
-              proxy.handleClientInput(line);
-            }
-          }
+          proxies[0].handleClientInput(line);
         }
       });
     }

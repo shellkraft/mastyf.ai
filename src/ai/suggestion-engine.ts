@@ -8,10 +8,16 @@ import { SelfImprovement, LearningOutcome } from './self-improvement.js';
 import { ComprehensiveReporter, ComprehensiveReport } from './comprehensive-reporter.js';
 import { PolicyRule } from '../policy/policy-types.js';
 import { PolicyWatcher } from '../policy/policy-watcher.js';
-import { McpServerConfig } from '../types.js';
+import type { McpServerConfig } from '../types.js';
 import { PricingClient } from '../clients/pricing-client.js';
 import { Logger } from '../utils/logger.js';
-import { writeFileSync } from 'fs';
+import { writeFileSync, mkdirSync, existsSync } from 'fs';
+import { dirname } from 'path';
+import { resolveAiPendingSuggestionsPath, resolveAiReportPath } from './ai-paths.js';
+import { broadcastDashboardEvent } from '../utils/dashboard-events.js';
+import { isAiAutoApplyEnabled, isAiLearningEnabled } from '../utils/ai-enabled.js';
+import { getAllActiveServerNames } from '../utils/db-aggregate.js';
+import { HistoryDatabase } from '../database/history-db.js';
 
 export interface UnifiedSuggestion {
   id: string;
@@ -99,7 +105,11 @@ export class SuggestionEngine {
 
     if (this.config.enabledModules.includes('baseline')) {
       const anomalySuggestions = this.baselineLearner.suggestRules(snapshot.callRecords);
-      for (const s of anomalySuggestions) {
+      const preventiveSuggestions =
+        anomalySuggestions.length === 0
+          ? this.baselineLearner.suggestPreventiveRules(3)
+          : [];
+      for (const s of [...anomalySuggestions, ...preventiveSuggestions]) {
         allSuggestions.push(this.toUnified(s));
       }
     }
@@ -167,24 +177,25 @@ export class SuggestionEngine {
     // Sort by confidence descending
     allSuggestions.sort((a, b) => b.confidence - a.confidence);
 
-    // ── 6. Auto-apply high-confidence suggestions ────────
-    // Use config.autoApplyThreshold as fallback when adaptive threshold is not yet tuned
-    const threshold = this.selfImprovement.getAdaptiveThreshold() || this.config.autoApplyThreshold;
-    const autoApply = allSuggestions.filter(s => s.confidence >= threshold);
-    if (autoApply.length > 0) {
-      this.autoApplyRules(autoApply);
-    }
-
-    // Record outcomes for auto-applied rules
-    for (const s of autoApply) {
-      this.selfImprovement.recordOutcome({
-        suggestionId: s.id,
-        ruleName: s.rule.name,
-        source: s.source,
-        action: 'applied',
-        confidence: s.confidence,
-        timestamp: new Date().toISOString(),
-      });
+    // ── 6. Auto-apply (opt-in only) ───────────────────────
+    const autoApply: UnifiedSuggestion[] = [];
+    if (isAiAutoApplyEnabled()) {
+      const threshold = this.selfImprovement.getAdaptiveThreshold() || this.config.autoApplyThreshold;
+      const toApply = allSuggestions.filter(s => s.confidence >= threshold);
+      if (toApply.length > 0) {
+        this.autoApplyRules(toApply);
+        autoApply.push(...toApply);
+      }
+      for (const s of autoApply) {
+        this.selfImprovement.recordOutcome({
+          suggestionId: s.id,
+          ruleName: s.rule.name,
+          source: s.source,
+          action: 'applied',
+          confidence: s.confidence,
+          timestamp: new Date().toISOString(),
+        });
+      }
     }
 
     // ── 7. Prune ineffective rules ──────────────────────
@@ -192,6 +203,12 @@ export class SuggestionEngine {
 
     // ── 8. Generate comprehensive report ─────────────────
     const baselines = this.baselineLearner.getAllBaselines();
+    this.baselineLearner.saveToFile();
+    this.selfImprovement.recordCycleComplete({
+      recordsAnalyzed: snapshot.callRecords.length,
+      baselinesLearned: baselines.length,
+      suggestionsGenerated: allSuggestions.length,
+    });
     const autoRuleNames = autoApply.map(s => s.rule.name);
     const report = this.reporter.generateFullReport(
       snapshot, baselines, insights, temporal,
@@ -200,7 +217,82 @@ export class SuggestionEngine {
 
     Logger.info(`[SuggestionEngine] Cycle complete: ${allSuggestions.length} suggestions, ${autoApply.length} auto-applied, ${insights.length} insights`);
 
+    this.savePendingSuggestions(allSuggestions);
+    this.saveComprehensiveReport(report);
+    broadcastDashboardEvent({
+      type: 'ai:suggestions',
+      payload: { suggestions: allSuggestions, autoApplied: autoApply.length },
+      timestamp: Date.now(),
+    });
+    broadcastDashboardEvent({
+      type: 'ai:report',
+      payload: { updatedAt: report.timestamp },
+      timestamp: Date.now(),
+    });
+
     return { suggestions: allSuggestions, autoApplied: autoApply, insights, report };
+  }
+
+  private saveComprehensiveReport(report: ComprehensiveReport): void {
+    try {
+      const plainText = this.reporter.toPlainText(report);
+      const path = resolveAiReportPath();
+      const dir = dirname(path);
+      if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
+      writeFileSync(path, JSON.stringify({
+        updatedAt: report.timestamp,
+        plainText,
+        report,
+      }, null, 2));
+      writeFileSync(path.replace(/\.json$/, '.txt'), plainText);
+    } catch (err: unknown) {
+      Logger.debug(
+        `[SuggestionEngine] Failed to save report: ${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
+  }
+
+  /** Persist latest suggestions for TUI/dashboard (not yet accepted/rejected). */
+  private savePendingSuggestions(suggestions: UnifiedSuggestion[]): void {
+    try {
+      const path = resolveAiPendingSuggestionsPath();
+      const dir = dirname(path);
+      if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
+      writeFileSync(path, JSON.stringify({
+        updatedAt: new Date().toISOString(),
+        suggestions: suggestions.map((s) => ({
+          id: s.id,
+          ruleName: s.rule.name,
+          confidence: s.confidence,
+          reason: s.reason,
+          source: s.source,
+          estimatedSavings: s.estimatedSavings,
+        })),
+      }, null, 2));
+    } catch (err: unknown) {
+      Logger.debug(`[SuggestionEngine] Failed to save pending suggestions: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
+
+  /** Record user accept/reject from TUI or dashboard API. */
+  recordUserOutcome(
+    suggestionId: string,
+    action: 'applied' | 'rejected',
+    meta: { ruleName: string; source: LearningOutcome['source']; confidence: number },
+  ): void {
+    this.selfImprovement.recordOutcome({
+      suggestionId,
+      ruleName: meta.ruleName,
+      source: meta.source,
+      action,
+      confidence: meta.confidence,
+      timestamp: new Date().toISOString(),
+    });
+    broadcastDashboardEvent({
+      type: 'ai:state',
+      payload: { state: this.selfImprovement.getState() },
+      timestamp: Date.now(),
+    });
   }
 
   /** Generate a comprehensive report (alias for convenience) */
@@ -344,33 +436,119 @@ export async function initializeAiEngine(
 
   const pricingClient = new PricingClient();
   const costAuditor = new CostAuditor(pricingClient, historyDb);
-  const collector = new DataCollector(historyDb);
+  const useDbSnapshots =
+    process.env.GUARDIAN_AI_USE_DB_SNAPSHOTS !== 'false'
+    || process.env.GUARDIAN_AI_SKIP_EXTERNAL_FETCH === 'true';
+  let collector: InstanceType<typeof DataCollector>;
+  if (useDbSnapshots) {
+    collector = new DataCollector(historyDb, undefined, costAuditor, undefined, pricingClient);
+  } else {
+    const { SecurityScanner } = await import('../services/security-scanner.js');
+    const { HealthMonitor } = await import('../services/health-monitor.js');
+    collector = new DataCollector(
+      historyDb,
+      new SecurityScanner(),
+      costAuditor,
+      new HealthMonitor(historyDb),
+      pricingClient,
+    );
+  }
   const baselineLearner = new BaselineLearner();
+  baselineLearner.loadFromFile();
   const costOptimizer = new CostOptimizer(historyDb, costAuditor);
   const threatIntel = new ThreatIntel();
   const policyAssist = new PolicyAssist();
   const patternRecognizer = new PatternRecognizer();
-  const selfImprovement = new SelfImprovement();
+  const { resolveAiLearningStatePath } = await import('./self-improvement.js');
+  const selfImprovement = new SelfImprovement(resolveAiLearningStatePath());
+
+  const engineConfig: Partial<SuggestionEngineConfig> = {
+    analysisIntervalMs: parseInt(process.env.GUARDIAN_AI_ANALYSIS_INTERVAL_MS || String(15 * 60 * 1000), 10),
+    autoApplyThreshold: parseFloat(process.env.GUARDIAN_AI_AUTO_APPLY_THRESHOLD || '0.85'),
+    policyOutputPath: process.env.GUARDIAN_AI_POLICY_OUTPUT || './default-policy-auto-generated.yaml',
+  };
 
   const engine = new SuggestionEngine(
     collector, baselineLearner, costOptimizer,
     threatIntel, policyAssist, patternRecognizer, selfImprovement,
+    engineConfig,
   );
   engine.setServers(servers);
 
-  // Start periodic analysis (default: every 15 minutes, controlled by DEFAULT_CONFIG.analysisIntervalMs)
-  engine.startPeriodicAnalysis();
+  if (process.env.GUARDIAN_AI_DISABLE_PERIODIC !== 'true') {
+    engine.startPeriodicAnalysis();
+  }
 
-  // Start live threat feed polling
-  threatIntel.startLivePolling();
+  if (!useDbSnapshots && process.env.GUARDIAN_AI_DISABLE_THREAT_POLL !== 'true') {
+    threatIntel.startLivePolling();
+  }
 
   globalEngine = engine;
   Logger.info('[SuggestionEngine] AI Engine initialized with live data sources');
 
-  // Run initial learning cycle immediately
-  engine.runLearningCycle().catch(err => {
-    Logger.warn(`[SuggestionEngine] Initial learning cycle failed: ${err?.message}`);
-  });
+  if (process.env.GUARDIAN_AI_SKIP_INITIAL_CYCLE !== 'true') {
+    engine.runLearningCycle().catch(err => {
+      Logger.warn(`[SuggestionEngine] Initial learning cycle failed: ${err?.message}`);
+    });
+  }
 
   return engine;
+}
+
+/** Build minimal server configs from DB server names. */
+export function serversFromNames(names: string[]): McpServerConfig[] {
+  return names.map((name) => ({ name, transport: 'stdio' as const }));
+}
+
+/** Run learning cycle against the history database (proxy, TUI, scan hooks). */
+export async function runLearningCycleForDb(
+  historyDb?: HistoryDatabase,
+  servers?: McpServerConfig[],
+): Promise<ReturnType<SuggestionEngine['runLearningCycle']> | null> {
+  if (!isAiLearningEnabled()) return null;
+
+  const db = historyDb || new HistoryDatabase();
+  const names = servers?.map((s) => s.name) ?? await getAllActiveServerNames(db);
+  if (names.length === 0) {
+    Logger.warn('[SuggestionEngine] No servers in DB — skipping learning cycle');
+    return null;
+  }
+  const resolvedServers = servers?.length ? servers : serversFromNames(names);
+
+  let engine = globalEngine;
+  if (!engine) {
+    engine = await initializeAiEngine(db, resolvedServers);
+  } else {
+    engine.setServers(resolvedServers);
+  }
+  return engine.runLearningCycle();
+}
+
+/** Run one learning cycle when AI learning is enabled (scan/audit/report hooks). */
+export async function triggerLearningCycleIfEnabled(
+  historyDb?: unknown,
+  servers: McpServerConfig[] = [],
+): Promise<void> {
+  if (!isAiLearningEnabled()) return;
+  await runLearningCycleForDb(historyDb as HistoryDatabase, servers);
+}
+
+export async function recordSuggestionOutcome(
+  suggestionId: string,
+  action: 'applied' | 'rejected',
+  meta: { ruleName: string; source: LearningOutcome['source']; confidence: number },
+): Promise<void> {
+  if (globalEngine) {
+    globalEngine.recordUserOutcome(suggestionId, action, meta);
+    return;
+  }
+  const { SelfImprovement } = await import('./self-improvement.js');
+  new SelfImprovement().recordOutcome({
+    suggestionId,
+    ruleName: meta.ruleName,
+    source: meta.source,
+    action,
+    confidence: meta.confidence,
+    timestamp: new Date().toISOString(),
+  });
 }

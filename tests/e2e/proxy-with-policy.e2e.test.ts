@@ -10,7 +10,9 @@ import { spawn, ChildProcess } from 'child_process';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { createInterface } from 'readline';
-import { writeFileSync, unlinkSync } from 'fs';
+import { writeFileSync, unlinkSync, mkdtempSync } from 'fs';
+import { join } from 'path';
+import { tmpdir } from 'os';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -19,6 +21,8 @@ const PROJECT_ROOT = path.resolve(__dirname, '..', '..');
 const DEFAULT_POLICY = path.resolve(PROJECT_ROOT, 'default-policy.yaml');
 const ECHO_SERVER = path.resolve(PROJECT_ROOT, 'benchmarks', 'fixtures', 'echo-server.cjs');
 const TEST_CONFIG_PATH = path.resolve(__dirname, 'test-config.json');
+const E2E_DB_PATH = process.env.MCP_GUARDIAN_DB_PATH
+  || join(mkdtempSync(join(tmpdir(), 'mcp-guardian-e2e-')), 'history.db');
 
 function createTestConfig(): void {
   const config = {
@@ -59,12 +63,26 @@ describe('E2E: Proxy with default-policy.yaml', () => {
   let stderr = '';
 
   afterAll(() => {
-    if (rl) rl.close();
-    if (proc) { proc.kill(); proc = null; }
+    stopProxy();
     cleanupTestConfig();
   });
 
+  function stopProxy(): void {
+    if (rl) {
+      rl.close();
+      rl.removeAllListeners();
+      rl = null;
+    }
+    if (proc) {
+      proc.kill();
+      proc = null;
+    }
+    responses = [];
+    stderr = '';
+  }
+
   async function startProxy(): Promise<void> {
+    stopProxy();
     createTestConfig();
 
     return new Promise((_resolve, reject) => {
@@ -78,7 +96,10 @@ describe('E2E: Proxy with default-policy.yaml', () => {
         stdio: ['pipe', 'pipe', 'pipe'],
         env: {
           ...process.env,
+          MCP_GUARDIAN_DB_PATH: E2E_DB_PATH,
           DASHBOARD_ENABLED: 'false',
+          GUARDIAN_WS_ENABLED: 'false',
+          GUARDIAN_SKIP_PREFLIGHT_SCAN: 'true',
           METRICS_ENABLED: 'false',
           GUARDIAN_ALLOW_MODE_OVERRIDE: 'true',
         },
@@ -149,7 +170,7 @@ describe('E2E: Proxy with default-policy.yaml', () => {
     expect(resp).toBeDefined();
     expect(resp!.error).toBeDefined();
     expect(resp!.error!.code).toBe(-32001);
-    expect(resp!.error!.message).toContain('denied');
+    expect(resp!.error!.message).toMatch(/denied|not in allowlist|explicitly denied/i);
   });
 
   testIt('should block rm -rf (shell injection pattern)', async () => {
@@ -159,6 +180,7 @@ describe('E2E: Proxy with default-policy.yaml', () => {
     expect(resp).toBeDefined();
     expect(resp!.error).toBeDefined();
     expect(resp!.error!.code).toBe(-32001);
+    expect(resp!.error!.message).toMatch(/shell|pattern|injection|rm/i);
   });
 
   testIt('should block curl in arguments', async () => {
@@ -167,7 +189,8 @@ describe('E2E: Proxy with default-policy.yaml', () => {
     const resp = await waitForResponse('4');
     expect(resp).toBeDefined();
     expect(resp!.error).toBeDefined();
-    expect(resp!.error!.code).toBe(-32001);
+    expect([-32001, -32002]).toContain(resp!.error!.code);
+    expect(resp!.error!.message).toMatch(/curl|Blocked|policy|secret/i);
   });
 
   testIt('should block path traversal', async () => {
@@ -177,5 +200,6 @@ describe('E2E: Proxy with default-policy.yaml', () => {
     expect(resp).toBeDefined();
     expect(resp!.error).toBeDefined();
     expect(resp!.error!.code).toBe(-32001);
+    expect(resp!.error!.message).toMatch(/\.\.|traversal|pattern/i);
   });
 });

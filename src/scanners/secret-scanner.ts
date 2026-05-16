@@ -18,7 +18,7 @@ interface SecretRule {
 
 const SECRET_RULES: SecretRule[] = [
   // AWS
-  { id: 'aws-access-key', provider: 'AWS', severity: 'HIGH', flags: '', regex: '(?<![A-Z0-9])(AKIA|ASIA|AROA|ABIA|ACCA)[A-Z0-9]{16}(?![A-Z0-9])', entropy: 3.0 },
+  { id: 'aws-access-key', provider: 'AWS', severity: 'HIGH', flags: '', regex: '(?<![A-Z0-9])(?:AKIA|ASIA|AROA|ABIA|ACCA)[A-Z0-9]{16}(?![A-Z0-9])', entropy: 3.0 },
   { id: 'aws-secret-key', provider: 'AWS', severity: 'HIGH', flags: 'i', regex: "aws.{0,20}secret.{0,20}['\\\"]([A-Za-z0-9/+]{40})['\\\"]" },
   // GitHub
   { id: 'github-pat-classic', provider: 'GitHub', severity: 'HIGH', flags: '', regex: 'ghp_[A-Za-z0-9]{36}' },
@@ -98,6 +98,22 @@ function redact(value: string): string {
   return value.slice(0, 4) + '****' + value.slice(-4);
 }
 
+/** Entropy must run on the full secret, not accidental prefix-only capture groups (e.g. AWS "AKIA"). */
+function entropyCheckSubject(match: RegExpMatchArray): string {
+  const full = match[0];
+  const captured = match[1];
+  if (!captured) return full;
+  if (captured.length < 8 || captured.length < full.length * 0.5) return full;
+  return captured;
+}
+
+function displaySubject(match: RegExpMatchArray): string {
+  const full = match[0];
+  const captured = match[1];
+  if (!captured || captured.length < full.length * 0.5) return full;
+  return captured;
+}
+
 export function scanForSecrets(target: string, context: string): SecretFinding[] {
   const findings: SecretFinding[] = [];
   for (const rule of getRules()) {
@@ -105,8 +121,9 @@ export function scanForSecrets(target: string, context: string): SecretFinding[]
     const globalRegex = new RegExp(rule.regex.source, rule.regex.flags + (rule.regex.flags.includes('g') ? '' : 'g'));
     const matches = target.matchAll(globalRegex);
     for (const match of matches) {
-      const matchedValue = match[1] ?? match[0];
-      if (rule.entropy !== undefined && shannonEntropy(matchedValue) < rule.entropy) continue;
+      const entropySubject = entropyCheckSubject(match);
+      if (rule.entropy !== undefined && shannonEntropy(entropySubject) < rule.entropy) continue;
+      const matchedValue = displaySubject(match);
       // Test exclusions against the matched substring, not the entire target
       if (rule.exclusions?.some(fp => fp.test(matchedValue))) continue;
       findings.push({

@@ -34,6 +34,9 @@ export class WsBroadcaster {
 
   constructor(server: Server) {
     this.wss = new WebSocketServer({ server, path: '/ws' });
+    this.wss.on('error', (err) => {
+      Logger.warn(`[dashboard] WebSocket server error: ${err.message}`);
+    });
 
     this.wss.on('connection', (ws) => {
       this.clients.add(ws);

@@ -104,7 +104,7 @@ function seedAiState() {
     await db.addCostRecord(s.name, recs.reduce((a, r) => a + r.totalTokens, 0), 0.002 + Math.random() * 0.01);
   }
 
-  seedAiState();
+  // No seed/mock AI files — learning state comes from real proxy cycles only
   db.close();
 
   console.log(`\n   Recorded ${total} calls (${blocked} blocked by policy)`);

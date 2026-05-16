@@ -8,6 +8,15 @@ import { Logger } from './logger.js';
 import { PolicyWatcher } from '../policy/policy-watcher.js';
 import { DashboardAuth } from '../auth/dashboard-auth.js';
 import { Registry } from 'prom-client';
+import { WsBroadcaster } from '../dashboard/ws-broadcaster.js';
+import { setWsBroadcaster } from './dashboard-events.js';
+import {
+  getAllActiveServerNames,
+  loadAllCallRecords,
+  securityRowFromScan,
+  summarizeRecords,
+} from './db-aggregate.js';
+import { computeCostTrend, fetchCircuitBreakerStates } from './tui-sources.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -37,17 +46,22 @@ export async function startDashboardServer(
   port: number = 4000,
   policyWatcher?: PolicyWatcher,
   dashboardAuth?: DashboardAuth,
-): Promise<{ auth: DashboardAuth; server: ReturnType<typeof createServer> }> {
-  if (process.env['DASHBOARD_ENABLED'] !== 'true') {
-    Logger.debug('[dashboard] Dashboard server not enabled (set DASHBOARD_ENABLED=true)');
-    return { auth: dashboardAuth || new DashboardAuth({ enabled: false }), server: createServer((_req, res) => {
-      res.writeHead(200);
-      res.end();
-    }) };
+): Promise<{ auth: DashboardAuth; server: ReturnType<typeof createServer>; ws: WsBroadcaster | null }> {
+  const dashboardEnabled = process.env['DASHBOARD_ENABLED'] === 'true';
+  const wsEnabled = process.env['GUARDIAN_WS_ENABLED'] !== 'false';
+
+  if (!dashboardEnabled && !wsEnabled) {
+    Logger.debug('[dashboard] Dashboard/WS disabled (DASHBOARD_ENABLED or GUARDIAN_WS_ENABLED)');
+    setWsBroadcaster(null);
+    return {
+      auth: dashboardAuth || new DashboardAuth({ enabled: false }),
+      server: createServer((_req, res) => { res.writeHead(200); res.end(); }),
+      ws: null,
+    };
   }
 
   const auth = dashboardAuth || new DashboardAuth();
-  const authEnabled = auth.isEnabled();
+  const authEnabled = dashboardEnabled && auth.isEnabled();
 
   if (authEnabled) {
     Logger.info('[dashboard] Dashboard authentication enabled');
@@ -175,6 +189,17 @@ export async function startDashboardServer(
         return;
       }
 
+      if (!dashboardEnabled) {
+        setCors();
+        if (url === '/' || url === '/dashboard.html') {
+          res.writeHead(200, { 'Content-Type': 'text/html' });
+          res.end(dashboardHtml);
+          return;
+        }
+        writeJson(res, 404, { error: 'Dashboard API disabled; WebSocket at /ws only' });
+        return;
+      }
+
       const authResult = auth.authenticate({ url, headers: req.headers, method });
       if (!authResult.authenticated) {
         setCors();
@@ -242,11 +267,14 @@ export async function startDashboardServer(
         writeJson(res, 200, { status: 'ok' }); return;
       }
 
-      // ── AI APIs (experimental; set GUARDIAN_EXPERIMENTAL_AI=true) ──
-      if (url.startsWith('/api/ai/') && process.env['GUARDIAN_EXPERIMENTAL_AI'] !== 'true') {
-        setCors();
-        writeJson(res, 503, { error: 'Experimental AI disabled. Set GUARDIAN_EXPERIMENTAL_AI=true to enable.' });
-        return;
+      // ── AI APIs (set GUARDIAN_AI_ENABLED=false to disable) ──
+      if (url.startsWith('/api/ai/')) {
+        const { isAiLearningEnabled } = await import('./ai-enabled.js');
+        if (!isAiLearningEnabled()) {
+          setCors();
+          writeJson(res, 503, { error: 'AI learning disabled. Set GUARDIAN_AI_ENABLED=false to disable.' });
+          return;
+        }
       }
 
       if (url === '/api/ai/suggestions' && method === 'GET') {
@@ -312,9 +340,18 @@ export async function startDashboardServer(
         try {
           const db = runtimeHistoryDb;
           if (!db) { writeJson(res, 200, { totalInstances: 1, activeInstances: 1, totalRequests: 0 }); return; }
-          const srvs = await db.getDistinctScannedServers();
-          let tr = 0; for (const s of srvs) { tr += (await db.getCallRecordsForServer(s)).length; }
-          writeJson(res, 200, { totalInstances: 1, activeInstances: 1, totalRequests: tr, blockedRequests: 0, passedRequests: tr, totalCost: 0, avgLatencyMs: 0, activeServers: srvs.length, burnRatePerHour: 0, lastUpdated: new Date().toISOString() });
+          const srvs = await getAllActiveServerNames(db);
+          const records = await loadAllCallRecords(db, srvs);
+          const sum = summarizeRecords(records);
+          const avgLatency = sum.total > 0 ? Math.round(sum.totalLatency / sum.total) : 0;
+          const passRate = sum.total > 0 ? Math.round((sum.passed / sum.total) * 100) : 100;
+          writeJson(res, 200, {
+            totalInstances: 1, activeInstances: 1, totalRequests: sum.total,
+            blockedRequests: sum.blocked, passedRequests: sum.passed, totalCost: sum.costUsd,
+            avgLatencyMs: avgLatency, activeServers: srvs.length, passRate,
+            burnRatePerHour: sum.total > 0 ? (sum.costUsd / sum.total) * 100 : 0,
+            lastUpdated: new Date().toISOString(),
+          });
         } catch { writeJson(res, 200, { totalInstances: 1, totalRequests: 0 }); } return;
       }
 
@@ -322,9 +359,17 @@ export async function startDashboardServer(
         setCors();
         try {
           const db = runtimeHistoryDb; if (!db) { writeJson(res, 200, { events: [], total: 0, blocked: 0, passed: 0 }); return; }
-          const srvs = await db.getDistinctScannedServers(); const evts: any[] = [];
-          for (const srv of srvs.slice(0, 5)) { const recs = await db.getCallRecordsForServer(srv); for (const r of recs.slice(0, 10)) evts.push({ timestamp: r.timestamp, server_name: r.serverName, tool_name: r.toolName, action: 'pass', request_tokens: r.requestTokens, response_tokens: r.responseTokens, total_tokens: r.totalTokens, duration_ms: r.durationMs }); }
-          writeJson(res, 200, { events: evts, total: evts.length, blocked: 0, passed: evts.length, flagged: 0 });
+          const srvs = await getAllActiveServerNames(db);
+          const records = await loadAllCallRecords(db, srvs);
+          const sorted = [...records].sort((a, b) => (b.timestamp || '').localeCompare(a.timestamp || ''));
+          const evts = sorted.slice(0, 50).map((r) => ({
+            timestamp: r.timestamp, server_name: r.serverName, tool_name: r.toolName,
+            action: r.blocked ? 'block' : 'pass', rule: r.blockRule, reason: r.blockReason,
+            request_tokens: r.requestTokens, response_tokens: r.responseTokens,
+            total_tokens: r.totalTokens, duration_ms: r.durationMs,
+          }));
+          const blocked = records.filter((r) => r.blocked).length;
+          writeJson(res, 200, { events: evts, total: records.length, blocked, passed: records.length - blocked, flagged: 0 });
         } catch { writeJson(res, 200, { events: [], total: 0, blocked: 0, passed: 0 }); } return;
       }
 
@@ -332,13 +377,17 @@ export async function startDashboardServer(
         setCors();
         try {
           const db = runtimeHistoryDb; if (!db) { writeJson(res, 200, { serverReports: [], overallScore: 0, worstOffenders: [], activeThreats: 0 }); return; }
-          const srvs = await db.getDistinctScannedServers(); const reps: any[] = []; let ts = 0;
+          const srvs = await getAllActiveServerNames(db); const reps: any[] = []; let ts = 0; let activeThreats = 0; let lastScan = 'N/A';
           for (const srv of srvs) {
             const sc = await db.getLatestSecurityScan(srv);
-            if (sc) { reps.push({ name: sc.server_name || srv, score: sc.score || 50, cves: sc.cve_count || 0, critical: (sc.details?.cves || []).filter((c: any) => c.severity === 'CRITICAL').length, auth: !!(sc.details?.authStatus?.hasAuthentication) }); ts += sc.score || 50; }
-            else { reps.push({ name: srv, score: 0, cves: 0, critical: 0, auth: false }); }
+            if (sc) {
+              const row = securityRowFromScan(sc as Record<string, unknown>, srv);
+              reps.push(row); ts += row.score; activeThreats += row.critical + row.high;
+              const at = (sc as { created_at?: string }).created_at;
+              if (at && (lastScan === 'N/A' || at > lastScan)) lastScan = at;
+            } else { reps.push({ name: srv, score: 0, cves: 0, critical: 0, high: 0, auth: false }); }
           }
-          writeJson(res, 200, { serverReports: reps, overallScore: reps.length > 0 ? Math.round(ts / reps.length) : 0, worstOffenders: reps.filter((r: any) => r.score < 50).map((r: any) => r.name), activeThreats: 0, lastScan: new Date().toISOString() });
+          writeJson(res, 200, { serverReports: reps, overallScore: reps.length > 0 ? Math.round(ts / reps.length) : 0, worstOffenders: reps.filter((r: any) => r.score < 50).map((r: any) => r.name), activeThreats, lastScan });
         } catch { writeJson(res, 200, { serverReports: [], overallScore: 0, worstOffenders: [], activeThreats: 0 }); } return;
       }
 
@@ -346,9 +395,19 @@ export async function startDashboardServer(
         setCors();
         try {
           const db = runtimeHistoryDb; if (!db) { writeJson(res, 200, { serverReports: [], totalCost: 0, projectedMonthly: 0 }); return; }
-          const srvs = await db.getDistinctScannedServers(); const reps: any[] = [];
-          for (const srv of srvs) { const recs = await db.getCallRecordsForServer(srv); const tok = recs.reduce((s: number, r: any) => s + r.totalTokens, 0); reps.push({ name: srv, tokens: tok, cost: 0, trend: 'flat' }); }
-          writeJson(res, 200, { serverReports: reps, totalCost: 0, projectedMonthly: 0, budgetAlerts: [], pricingModel: 'live' });
+          const srvs = await getAllActiveServerNames(db); const reps: any[] = []; let totalCost = 0;
+          const { getRuntimeModelPricing } = await import('../services/runtime-model-pricing.js');
+          const active = await getRuntimeModelPricing().getActivePricing();
+          for (const srv of srvs) {
+            const recs = await db.getCallRecordsForServer(srv);
+            const sum = summarizeRecords(recs);
+            reps.push({ name: srv, tokens: sum.totalInput + sum.totalOutput, cost: sum.costUsd, trend: computeCostTrend(recs), unpriced: sum.unpricedCalls });
+            totalCost += sum.costUsd;
+          }
+          const pricingModel = active
+            ? `${active.displayName} (${active.source})`
+            : 'per-call stored rates';
+          writeJson(res, 200, { serverReports: reps, totalCost, projectedMonthly: totalCost * 30, budgetAlerts: totalCost > 5 ? ['Monthly spend exceeding $150 budget threshold'] : [], pricingModel });
         } catch { writeJson(res, 200, { serverReports: [], totalCost: 0, projectedMonthly: 0 }); } return;
       }
 
@@ -356,37 +415,116 @@ export async function startDashboardServer(
         setCors();
         try {
           const db = runtimeHistoryDb; if (!db) { writeJson(res, 200, { serverReports: [], atRisk: [], avgLatency: 0 }); return; }
-          const srvs = await db.getDistinctScannedServers(); const reps: any[] = [];
-          for (const srv of srvs) { const sr = await db.getRecentSuccessRate(srv); reps.push({ name: srv, latency: 0, successRate: (sr || 0) * 100, tools: 0, circuitBreaker: 'closed' }); }
-          writeJson(res, 200, { serverReports: reps, atRisk: [], avgLatency: 0, totalTools: 0 });
+          const srvs = await getAllActiveServerNames(db); const reps: any[] = []; let totalTools = 0; let latSum = 0; let latCount = 0;
+          const cbStates = await fetchCircuitBreakerStates();
+          for (const srv of srvs) {
+            const recs = await db.getCallRecordsForServer(srv);
+            const callLat = recs.length > 0 ? Math.round(recs.reduce((s: number, r: any) => s + (r.durationMs || 0), 0) / recs.length) : 0;
+            const sr = await db.getRecentSuccessRate(srv);
+            let latency = callLat;
+            let tools = 0;
+            if (typeof db.getLatestHealthCheck === 'function') {
+              const hc = await db.getLatestHealthCheck(srv);
+              if (hc) {
+                latency = hc.latency_ms ?? hc.latencyMs ?? callLat;
+                tools = hc.tool_count ?? hc.toolCount ?? 0;
+              }
+            }
+            totalTools += tools;
+            if (latency > 0) { latSum += latency; latCount++; }
+            reps.push({ name: srv, latency, successRate: (sr ?? 1) * 100, tools, circuitBreaker: cbStates.get(srv) ?? 'closed' });
+          }
+          const avgLatency = latCount > 0 ? Math.round(latSum / latCount) : 0;
+          const atRisk = reps.filter((h: any) => h.latency > 200 || h.successRate < 70).map((h: any) => h.name);
+          writeJson(res, 200, { serverReports: reps, atRisk, avgLatency, totalTools });
         } catch { writeJson(res, 200, { serverReports: [], atRisk: [], avgLatency: 0 }); } return;
       }
 
       if (url === '/api/instances' && method === 'GET') {
         setCors();
         try {
-          const db = runtimeHistoryDb; let tr = 0;
-          if (db) { const srvs = await db.getDistinctScannedServers(); for (const srv of srvs) { tr += (await db.getCallRecordsForServer(srv)).length; } }
-          writeJson(res, 200, [{ instanceId: process.env['GUARDIAN_INSTANCE_ID'] || `guardian-${process.pid}`, instanceName: process.env['HOSTNAME'] || 'localhost', status: 'active', hostname: process.env['HOSTNAME'] || 'unknown', version: process.env.npm_package_version || '2.3.24', lastHeartbeat: new Date().toISOString(), totalRequests: tr, blockedRequests: 0, totalCostUsd: 0, avgLatencyMs: 0 }]);
+          const db = runtimeHistoryDb;
+          let sum = { total: 0, blocked: 0, costUsd: 0, totalLatency: 0 };
+          if (db) {
+            const srvs = await getAllActiveServerNames(db);
+            const records = await loadAllCallRecords(db, srvs);
+            sum = summarizeRecords(records);
+          }
+          const avgLatency = sum.total > 0 ? Math.round(sum.totalLatency / sum.total) : 0;
+          writeJson(res, 200, [{ instanceId: process.env['GUARDIAN_INSTANCE_ID'] || `guardian-${process.pid}`, instanceName: process.env['HOSTNAME'] || 'localhost', status: 'active', hostname: process.env['HOSTNAME'] || 'unknown', version: process.env.npm_package_version || '2.3.24', lastHeartbeat: new Date().toISOString(), totalRequests: sum.total, blockedRequests: sum.blocked, totalCostUsd: sum.costUsd, avgLatencyMs: avgLatency }]);
         } catch { writeJson(res, 200, []); } return;
       }
 
-      if (url === '/api/policy/suggestions/accept' && method === 'POST') { setCors(); const b = await readBody(req); writeJson(res, 200, { status: 'accepted', id: b.suggestionId }); return; }
-      if (url === '/api/policy/suggestions/reject' && method === 'POST') { setCors(); const b2 = await readBody(req); writeJson(res, 200, { status: 'rejected', id: b2.suggestionId }); return; }
+      if (url === '/api/policy/suggestions/accept' && method === 'POST') {
+        setCors();
+        const b = await readBody(req);
+        const { recordSuggestionOutcome } = await import('../ai/suggestion-engine.js');
+        await recordSuggestionOutcome(String(b.suggestionId || ''), 'applied', {
+          ruleName: String(b.ruleName || b.suggestionId || 'unknown'),
+          source: (b.source as 'baseline' | 'cost' | 'threat' | 'assist' | 'pattern') || 'baseline',
+          confidence: typeof b.confidence === 'number' ? b.confidence : 0.5,
+        });
+        writeJson(res, 200, { status: 'accepted', id: b.suggestionId });
+        return;
+      }
+      if (url === '/api/policy/suggestions/reject' && method === 'POST') {
+        setCors();
+        const b2 = await readBody(req);
+        const { recordSuggestionOutcome } = await import('../ai/suggestion-engine.js');
+        await recordSuggestionOutcome(String(b2.suggestionId || ''), 'rejected', {
+          ruleName: String(b2.ruleName || b2.suggestionId || 'unknown'),
+          source: (b2.source as 'baseline' | 'cost' | 'threat' | 'assist' | 'pattern') || 'baseline',
+          confidence: typeof b2.confidence === 'number' ? b2.confidence : 0.5,
+        });
+        writeJson(res, 200, { status: 'rejected', id: b2.suggestionId });
+        return;
+      }
       if (url === '/api/logs' && method === 'GET') { setCors(); writeJson(res, 200, { logs: [], total: 0 }); return; }
 
       setCors(); writeJson(res, 404, { error: 'Not found' });
     } catch (err: any) { setCors(); writeJson(res, 500, { error: err?.message || 'Internal error' }); }
   });
 
-  await new Promise<void>((resolve, reject) => {
-    server.once('error', reject);
+  let ws: WsBroadcaster | null = null;
+
+  const listenPort = await new Promise<number | null>((resolve) => {
+    const onError = (err: NodeJS.ErrnoException) => {
+      if (err.code === 'EADDRINUSE') {
+        Logger.warn(
+          `[dashboard] Port ${port} already in use — proxy will run without local dashboard/WS. ` +
+            `Stop the other process or set DASHBOARD_PORT / GUARDIAN_WS_ENABLED=false.`,
+        );
+        resolve(null);
+        return;
+      }
+      Logger.warn(`[dashboard] Failed to bind port ${port}: ${err.message}`);
+      resolve(null);
+    };
+
+    server.once('error', onError);
     server.listen(port, () => {
-      server.removeListener('error', reject);
-      Logger.info(`[dashboard] Dashboard available at http://localhost:${port}${authEnabled ? ' (auth enabled)' : ''}`);
-      resolve();
+      server.removeListener('error', onError);
+      resolve(port);
     });
   });
 
-  return { auth, server };
+  if (listenPort === null) {
+    setWsBroadcaster(null);
+    try {
+      server.close();
+    } catch {
+      /* ignore */
+    }
+    return { auth, server, ws: null };
+  }
+
+  ws = new WsBroadcaster(server);
+  setWsBroadcaster(ws);
+  if (dashboardEnabled) {
+    ws.startDataPushLoop(parseInt(process.env['GUARDIAN_WS_PUSH_INTERVAL_MS'] || '5000', 10));
+  }
+  const mode = dashboardEnabled ? 'dashboard + WS' : 'WS only';
+  Logger.info(`[dashboard] ${mode} at http://localhost:${listenPort}/ws`);
+
+  return { auth, server, ws };
 }

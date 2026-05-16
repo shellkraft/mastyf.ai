@@ -30,12 +30,18 @@ describe('P0 Week 3: DLP on tool call arguments', () => {
     expect(findings.some(f => f.type === 'anthropic-api-key')).toBe(true);
   });
 
-  it.skip('should detect AWS access key in raw argument strings', () => {
-    // AWS regex requires exactly 16 [A-Z0-9] after prefix — test fixture needs exact length
-    // Real MCP args go through JSON.stringify, which is tested via the proxy integration
+  it('should detect AWS access key (canonical DLP sample) in raw strings', () => {
     const rawArgs = 'AKIAIOSFODNN7EXAMPLE';
     const findings = scanForSecrets(rawArgs, 'proxy:test-server:aws_op');
-    expect(findings.some(f => f.type === 'aws-access-key')).toBe(true);
+    expect(findings.some((f) => f.type === 'aws-access-key')).toBe(true);
+  });
+
+  it('should detect AWS access key in JSON-stringified tool arguments', () => {
+    const args = JSON.stringify({
+      content: 'export AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE',
+    });
+    const findings = scanForSecrets(args, 'proxy:test-server:write_file');
+    expect(findings.some((f) => f.type === 'aws-access-key')).toBe(true);
   });
 
   it('should detect database connection string with credentials', () => {

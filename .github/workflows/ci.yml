@@ -35,6 +35,32 @@ jobs:
       - name: Run tests with coverage
         run: pnpm vitest run --coverage
 
+  dogfood:
+    name: Dogfood scenario
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v3
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+      - run: npx tsc --project tsconfig.json
+      - run: pnpm run build
+
+      - name: Run sandboxed dogfood scenario
+        run: pnpm run dogfood
+        env:
+          GUARDIAN_BLOCK_ON_CVE: 'false'
+          GUARDIAN_SKIP_PREFLIGHT_SCAN: 'true'
+
   corpus-eval:
     name: Corpus Precision/Recall
     runs-on: ubuntu-latest

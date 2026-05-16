@@ -1,6 +1,6 @@
 {
   "name": "@mcp-guardian/server",
-  "version": "2.5.0",
+  "version": "2.5.2",
   "description": "Security, cost, and health governance proxy for MCP infrastructure — three-layer detection engine (regex + schema + LLM), monorepo, corpus, CI/CD",
   "type": "module",
   "files": [
@@ -55,6 +55,12 @@
     "build": "tsc --project tsconfig.json && turbo run build",
     "test": "vitest run && turbo run test",
     "typecheck": "turbo run typecheck",
+    "dogfood": "node scripts/run-dogfood-scenario.cjs",
+    "e2e:tui": "node scripts/run-e2e-tui.cjs",
+    "test:ai-live": "node scripts/run-live-ai-learning.cjs",
+    "tui": "node dist/cli.js tui --policy default-policy.yaml",
+    "live:tui-demo": "node scripts/run-live-tui-demo.cjs --stream",
+    "doctor": "node dist/cli.js doctor --policy default-policy.yaml",
     "eval": "tsx corpus/run-eval.ts",
     "eval:full": "ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY tsx corpus/run-eval.ts",
     "start": "node dist/index.js",
@@ -63,7 +69,7 @@
     "prepublishOnly": "npm run build && npm test"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "~1.0.4",
+    "@modelcontextprotocol/sdk": "^1.25.2",
     "@opentelemetry/api": "^1.9.1",
     "@opentelemetry/auto-instrumentations-node": "^0.75.0",
     "@opentelemetry/exporter-trace-otlp-http": "^0.217.0",
@@ -111,6 +117,9 @@
   "pnpm": {
     "onlyBuiltDependencies": [
       "better-sqlite3"
-    ]
+    ],
+    "overrides": {
+      "protobufjs": ">=8.0.2"
+    }
   }
 }

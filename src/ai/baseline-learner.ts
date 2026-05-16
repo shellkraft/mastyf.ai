@@ -1,7 +1,9 @@
+import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
+import { dirname } from 'path';
 import { ProxyCallRecord } from '../types.js';
-import { PolicyDecisionRecord } from './data-collector.js';
 import { PolicyRule, PolicyAction } from '../policy/policy-types.js';
 import { Logger } from '../utils/logger.js';
+import { resolveAiBaselinesPath } from './ai-paths.js';
 
 export interface BaselineProfile {
   serverName: string;
@@ -26,6 +28,11 @@ export interface AnomalySuggestion {
   confidence: number;
   reason: string;
   source: 'baseline';
+}
+
+function minBaselineSamples(): number {
+  const n = parseInt(process.env.GUARDIAN_AI_MIN_BASELINE_SAMPLES || '3', 10);
+  return Number.isFinite(n) && n >= 1 ? n : 3;
 }
 
 export class BaselineLearner {
@@ -148,7 +155,7 @@ export class BaselineLearner {
   ): { zScoreTokens: number; zScoreLatency: number; isAnomaly: boolean } {
     const key = `${live.serverName}:${live.toolName}`;
     const baseline = this.baselines.get(key);
-    if (!baseline || baseline.sampleCount < 5) {
+    if (!baseline || baseline.sampleCount < minBaselineSamples()) {
       return { zScoreTokens: 0, zScoreLatency: 0, isAnomaly: false };
     }
 
@@ -176,7 +183,7 @@ export class BaselineLearner {
 
     for (const [key, recs] of grouped) {
       const baseline = this.baselines.get(key);
-      if (!baseline || baseline.sampleCount < 5) continue;
+      if (!baseline || baseline.sampleCount < minBaselineSamples()) continue;
 
       const maxToken = Math.max(...recs.map(r => r.totalTokens));
       const zTokens = baseline.stddevTokens > 0
@@ -226,12 +233,70 @@ export class BaselineLearner {
     return suggestions;
   }
 
+  /**
+   * Preventive hardening from stable baselines when no spikes/rate anomalies were found.
+   * Surfaces actionable policy ideas so learning cycles are not empty for healthy traffic.
+   */
+  suggestPreventiveRules(maxSuggestions = 3): AnomalySuggestion[] {
+    const candidates = [...this.baselines.values()]
+      .filter(b => b.sampleCount >= minBaselineSamples() && b.avgTokens > 0)
+      .sort((a, b) => b.sampleCount - a.sampleCount);
+
+    const suggestions: AnomalySuggestion[] = [];
+    for (const baseline of candidates.slice(0, maxSuggestions)) {
+      const cap = Math.round(baseline.avgTokens + baseline.stddevTokens * 2);
+      suggestions.push({
+        rule: {
+          name: `preventive-token-cap-${baseline.serverName}-${baseline.toolName}`,
+          description: `Preventive token cap for ${baseline.toolName} on ${baseline.serverName} (n=${baseline.sampleCount}, mean=${baseline.avgTokens.toFixed(0)} tokens)`,
+          action: 'flag' as PolicyAction,
+          maxTokens: Math.max(cap, 1),
+        },
+        confidence: 0.55,
+        reason: `Stable baseline: flag calls above ~${cap} tokens (mean=${baseline.avgTokens.toFixed(0)}, σ=${baseline.stddevTokens.toFixed(0)})`,
+        source: 'baseline',
+      });
+    }
+    return suggestions;
+  }
+
   getBaseline(key: string): BaselineProfile | undefined {
     return this.baselines.get(key);
   }
 
   getAllBaselines(): BaselineProfile[] {
     return [...this.baselines.values()];
+  }
+
+  loadFromFile(path?: string): number {
+    const filePath = path || resolveAiBaselinesPath();
+    try {
+      if (!existsSync(filePath)) return 0;
+      const parsed = JSON.parse(readFileSync(filePath, 'utf-8')) as { baselines?: BaselineProfile[] };
+      if (!Array.isArray(parsed.baselines)) return 0;
+      for (const b of parsed.baselines) {
+        const key = `${b.serverName}:${b.toolName}`;
+        this.baselines.set(key, b);
+      }
+      return this.baselines.size;
+    } catch (err: unknown) {
+      Logger.warn(`[BaselineLearner] Failed to load baselines: ${err instanceof Error ? err.message : String(err)}`);
+      return 0;
+    }
+  }
+
+  saveToFile(path?: string): void {
+    const filePath = path || resolveAiBaselinesPath();
+    try {
+      const dir = dirname(filePath);
+      if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
+      writeFileSync(filePath, JSON.stringify({
+        updatedAt: new Date().toISOString(),
+        baselines: this.getAllBaselines(),
+      }, null, 2));
+    } catch (err: unknown) {
+      Logger.warn(`[BaselineLearner] Failed to save baselines: ${err instanceof Error ? err.message : String(err)}`);
+    }
   }
 
   // ── Internal helpers ──────────────────────────────────────────────────

@@ -61,8 +61,13 @@ export interface CostReport {
   inputTokens: number;
   outputTokens: number;
   estimatedCostUSD: number;
+  /** Sum of per-call costUsd from proxy records */
+  actualCostUSD: number;
   pricingModel: string;
+  /** How rates were resolved (cline client prices, litellm live, etc.) */
+  pricingSources: string[];
   toolBreakdown: ToolCost[];
+  unpricedCalls?: number;
   note?: string;
 }
 
@@ -95,6 +100,8 @@ export interface FullReport {
 /**
  * Recorded by the MCP proxy interceptor for real cost tracking.
  */
+export type PricingSource = 'cline' | 'cursor' | 'env' | 'message' | 'litellm' | 'unknown';
+
 export interface ProxyCallRecord {
   serverName: string;
   toolName: string;
@@ -103,4 +110,13 @@ export interface ProxyCallRecord {
   totalTokens: number;
   durationMs: number;
   timestamp: string;
+  /** LLM model billed for this call (detected at proxy time) */
+  model?: string;
+  /** USD cost from client or live provider rates — not a static estimate */
+  costUsd?: number;
+  pricingSource?: PricingSource;
+  /** True when the proxy denied the call (policy, DLP, auth) before upstream responded */
+  blocked?: boolean;
+  blockRule?: string;
+  blockReason?: string;
 }
