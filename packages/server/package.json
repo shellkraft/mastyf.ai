@@ -1,6 +1,6 @@
 {
   "name": "@mcp-guardian/server",
-  "version": "2.4.1",
+  "version": "2.4.2",
   "description": "MCP server exposing security scan tools to AI assistants",
   "type": "module",
   "main": "./dist/index.js",
@@ -18,5 +18,11 @@
     "vitest": "^1.6.0",
     "@types/node": "^20.0.0"
   },
-  "license": "MIT"
+  "license": "MIT",
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "readme": "README.md"
 }
