@@ -200,8 +200,8 @@ Verify integration: `./scripts/verify-live-integration.sh`
 - **Webhook alerting** — Slack/Discord for policy blocks
 
 ### Enterprise (v2.5)
-- **PostgreSQL backend** — `DB_TYPE=postgres` + `DATABASE_URL` for shared audit store
-- **Redis HA** — `REDIS_URL` for multi-replica rate limits and sessions (`GUARDIAN_STRICT_MODE`)
+- **PostgreSQL backend** — `DB_TYPE=postgres` + `DATABASE_URL` for shared audit store (**via PgBouncer** in HA — see [docs/SCALE_AND_RESILIENCE.md](docs/SCALE_AND_RESILIENCE.md))
+- **Redis HA** — `REDIS_URL` for multi-replica rate limits and sessions (`GUARDIAN_STRICT_MODE`); **single-region only** (>80ms cross-region RTT breaks locks)
 - **Tenant isolation** — `GUARDIAN_TENANT_ID`, admin API routes on dashboard
 - **Policy audit trail** — `POLICY_AUDIT_ENABLED` JSONL change log
 - **Compliance pack** — [docs/COMPLIANCE.md](docs/COMPLIANCE.md), [docs/PEN_TEST_SCOPE.md](docs/PEN_TEST_SCOPE.md)
@@ -441,7 +441,7 @@ Includes: Redis subchart, ServiceMonitor, ExternalSecrets, PDB, backup CronJob, 
 deploy/helm/mcp-guardian/examples/developer-cline-values.yaml
 ```
 
-See [deploy/PRODUCTION.md](deploy/PRODUCTION.md) for scaling, HA, and disaster recovery.
+See [deploy/PRODUCTION.md](deploy/PRODUCTION.md) for scaling and [docs/SCALE_AND_RESILIENCE.md](docs/SCALE_AND_RESILIENCE.md) for HA chaos-test results (PgBouncer required, cross-region limits).
 
 ```bash
 docker run -v $(pwd)/mcp.json:/etc/mcp-guardian/mcp.json \
@@ -458,8 +458,9 @@ docker run -v $(pwd)/mcp.json:/etc/mcp-guardian/mcp.json \
 |----------|---------|-------------|
 | `MCP_GUARDIAN_DB_PATH` | `~/.mcp-guardian/history.db` | SQLite path |
 | `DB_TYPE` | `sqlite` | Set `postgres` for shared store (requires optional `pg` package) |
-| `DATABASE_URL` | — | PostgreSQL connection string when `DB_TYPE=postgres` |
-| `REDIS_URL` | — | Required for multi-replica rate limits |
+| `DATABASE_URL` | — | PostgreSQL URL when `DB_TYPE=postgres`; **use PgBouncer** (`:6432`) for multi-replica K8s |
+| `GUARDIAN_REQUIRE_PGBOUNCER` | `false` | Exit if `DATABASE_URL` is not pooler-shaped |
+| `REDIS_URL` | — | Required for multi-replica rate limits (single-region; <80ms RTT) |
 | `GUARDIAN_STRICT_MODE` | `false` | Fail startup without Redis in K8s |
 | `GUARDIAN_TENANT_ID` | `default` | Tenant label for audit/rate limits |
 | `GUARDIAN_DISALLOW_MODE_OVERRIDE` | `false` | Set `true` to ignore CLI `--blocking-mode` |
@@ -592,7 +593,7 @@ Older builds cached text in `~/.mcp-guardian/.ai-report.json` from a single-serv
 
 ### Multi-replica?
 
-Set `REDIS_URL` and `GUARDIAN_STRICT_MODE=true`. Use PostgreSQL for shared audit (`DB_TYPE=postgres`).
+Set `REDIS_URL` and `GUARDIAN_STRICT_MODE=true`. Use PostgreSQL for shared audit (`DB_TYPE=postgres`) with **PgBouncer** in front (direct `:5432` exhausts `max_connections` under load). Optional: `GUARDIAN_REQUIRE_PGBOUNCER=true`. **Do not** run Redis active-active across regions (>80ms RTT breaks locks). See [docs/SCALE_AND_RESILIENCE.md](docs/SCALE_AND_RESILIENCE.md).
 
 ### How do I verify policy before block mode?
 
@@ -639,6 +640,6 @@ MIT — see [LICENSE](LICENSE).
 
 ---
 
-**Docs:** [Real-world integration](docs/REAL_WORLD_INTEGRATION.md) · [Production](deploy/PRODUCTION.md) · [Compliance](docs/COMPLIANCE.md) · [Threat model](docs/THREAT_MODEL.md) · [Supply chain](docs/SUPPLY_CHAIN.md) · [Security](SECURITY.md)
+**Docs:** [Real-world integration](docs/REAL_WORLD_INTEGRATION.md) · [Production](deploy/PRODUCTION.md) · [Scale & resilience](docs/SCALE_AND_RESILIENCE.md) · [Compliance](docs/COMPLIANCE.md) · [Threat model](docs/THREAT_MODEL.md) · [Supply chain](docs/SUPPLY_CHAIN.md) · [Security](SECURITY.md)
 
 **Built with** TypeScript, better-sqlite3, pino, prom-client, jose, commander, chalk, tiktoken, and the MCP SDK.

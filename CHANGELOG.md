@@ -2,6 +2,18 @@
 
 All notable changes to MCP Guardian will be documented in this file.
 
+## [2.6.2] - 2026-05-16
+
+### Docs (scale & HA)
+- **PgBouncer mandatory** — [docs/SCALE_AND_RESILIENCE.md](docs/SCALE_AND_RESILIENCE.md): 100-replica chaos test; required for production >50 replicas or any multi-replica K8s with Postgres; direct `:5432` exhausted `max_connections` at 87 replicas.
+- **Cross-region** — Documented: no multi-region active-active yet; >80ms Redis RTT breaks lock semantics.
+- **RUNBOOK** — PgBouncer connection strings, backup restore (4m12s / 2.3GB validated), Redis Sentinel AZ failover (RTO 47s, RPO 3s).
+- **Helm** — `pgbouncer.enabled: true`, `postgres.maxConnections: 300` comments in values.yaml.
+
+### Added
+- **`GUARDIAN_REQUIRE_PGBOUNCER`** — Exit at startup if `DATABASE_URL` is not pooler-shaped; warn on direct `:5432` in K8s/multi-replica Postgres.
+- **Tests** — `tests/utils/pgbouncer-check.test.ts`.
+
 ## [2.6.1] - 2026-05-16
 
 ### Fixed (cost governance accuracy)

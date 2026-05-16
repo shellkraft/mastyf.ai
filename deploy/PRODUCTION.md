@@ -317,11 +317,17 @@ spec:
 
 ### Multi-Replica Deployment
 
-MCP Guardian supports running multiple replicas for HA. Each replica maintains its own SQLite database. For a shared audit trail, consider:
+MCP Guardian supports running multiple replicas for HA with **Redis** (`REDIS_URL`, `GUARDIAN_STRICT_MODE=true`) and **PostgreSQL** (`DB_TYPE=postgres`, `DATABASE_URL`) for shared audit.
 
-1. **Pod-level PVC** — Each pod gets its own database (default)
-2. **Shared NFS/Ceph/CephFS volume** — All replicas share one database (set `ReadWriteMany` PVC)
-3. **External database** — In future versions (roadmap: PostgreSQL support)
+**PgBouncer is required** for any multi-replica K8s deploy with Postgres, and for fleets **>50 replicas**. Direct `postgres:5432` exhausts server connections (chaos test: `max_connections=100` hit at **87** replicas). With PgBouncer transaction mode: **100** replicas @ **8,200 req/s**, p99 **68ms**.
+
+**Cross-region:** Multi-region active-active is **not supported**. Redis locks require **<80ms** RTT; **>80ms** cross-region lag breaks rate-limit semantics. Deploy single-region Redis (Sentinel) with pod anti-affinity across AZs.
+
+Full chaos-test matrix: [docs/SCALE_AND_RESILIENCE.md](../docs/SCALE_AND_RESILIENCE.md).
+
+**SQLite (dev/single-pod only):**
+1. **Pod-level PVC** — Each pod gets its own database (default Helm)
+2. **Shared RWX volume** — Not recommended for write-heavy audit
 
 ### Pod Disruption Budget
 

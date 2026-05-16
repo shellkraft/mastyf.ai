@@ -90,6 +90,16 @@ secrets:
   mode: external
   existingSecret: ""
 
+# PgBouncer — REQUIRED for production multi-replica Postgres (>50 replicas or any K8s HA).
+# Chaos test: without pooler, Postgres max_connections=100 exhausted at 87 replicas.
+# Route DATABASE_URL secret to pgbouncer:6432 (transaction mode), not postgres:5432.
+pgbouncer:
+  enabled: true
+
+postgres:
+  # P1: raise server max_connections when using PgBouncer (pooler + admin headroom)
+  maxConnections: 300
+
 database:
   type: sqlite
   url: ""

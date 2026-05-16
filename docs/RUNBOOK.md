@@ -2,6 +2,9 @@
 
 ## Table of Contents
 
+- [PostgreSQL / PgBouncer (mandatory for HA)](#postgresql--pgbouncer-mandatory-for-ha)
+- [PostgreSQL backup restore](#postgresql-backup-restore)
+- [Redis AZ failover (Sentinel)](#redis-az-failover-sentinel)
 - [Circuit Breaker Tripped](#circuit-breaker-tripped)
 - [Redis Connection Lost](#redis-connection-lost)
 - [Policy File Corruption](#policy-file-corruption)
@@ -10,6 +13,66 @@
 - [Proxy Latency Degradation](#proxy-latency-degradation)
 - [Database Corruption](#database-corruption)
 - [Service Level Objectives](#service-level-objectives)
+
+---
+
+## PostgreSQL / PgBouncer (mandatory for HA)
+
+**PgBouncer is required** for any multi-replica Kubernetes deployment with `DB_TYPE=postgres`, and for fleets **>50 replicas**. Do not point pods at Postgres `:5432` directly.
+
+**Validated (100-replica chaos test):**
+- Without pooler: `max_connections=100` exhausted at **87** replicas.
+- With PgBouncer **transaction mode**: **100** replicas, **8,200 req/s**, proxy p99 **68ms**.
+
+**Connection string:**
+```bash
+# Correct — via pooler
+DATABASE_URL=postgresql://guardian:***@pgbouncer:6432/guardian
+
+# Wrong for HA — one connection per pod × replicas
+DATABASE_URL=postgresql://guardian:***@postgres:5432/guardian
+```
+
+Set `GUARDIAN_REQUIRE_PGBOUNCER=true` to fail startup if `DATABASE_URL` lacks a pooler host/port pattern.
+
+**Postgres tuning (P1):** `max_connections=300` on the server when using PgBouncer (admin + pooler backends).
+
+**Failover:**
+1. Promote Postgres replica (or managed failover).
+2. Point PgBouncer `databases` config at new primary; reload PgBouncer (`SIGHUP` or rolling pooler pods).
+3. Guardian pods need **no** `DATABASE_URL` change if the pooler Service/DNS is stable.
+4. Verify `/readyz` on metrics port and `SELECT 1` through pooler from a pod.
+
+See [SCALE_AND_RESILIENCE.md](SCALE_AND_RESILIENCE.md).
+
+---
+
+## PostgreSQL backup restore
+
+**Validated restore:** **4m12s** for a **2.3GB** audit database (snapshot → mount → `pg_restore` / Helm backup CronJob artifact).
+
+**Procedure:**
+1. Scale Guardian deployment to 0 (or pause traffic) to avoid writers during restore.
+2. Restore volume snapshot or `pg_restore` into the primary (or new PVC).
+3. Ensure PgBouncer points at the restored primary.
+4. Scale Guardian back up; confirm `/readyz` and sample `tools/call` audit rows in Postgres.
+
+**RPO:** Depends on backup schedule (Helm `backup.schedule`, default nightly). **RTO target:** <15m for 2–3GB; validated **4m12s** at 2.3GB.
+
+---
+
+## Redis AZ failover (Sentinel)
+
+**Validated (chaos test):** Redis Sentinel **RTO 47s**, **RPO 3s** on availability-zone failure.
+
+**Symptoms during failover:** Brief rate-limit/session inconsistency; strict mode may mark `/readyz` unhealthy until new master is elected.
+
+**Recovery:**
+1. Confirm Sentinel promoted a new master: `redis-cli -h sentinel INFO sentinel`
+2. Update `REDIS_URL` only if your chart does not use a stable Sentinel-aware URL.
+3. Proxy reconnects automatically (ioredis); no rollout required if DNS/service follows the new master.
+
+**Cross-region:** Do **not** deploy active-active Guardian across regions with a shared Redis until supported. **>80ms** RTT breaks distributed lock semantics. See [SCALE_AND_RESILIENCE.md](SCALE_AND_RESILIENCE.md).
 
 ---
 
@@ -83,9 +146,10 @@ kubectl exec -it <guardian-pod> -- env | grep REDIS_URL
 4. No proxy restart required — recovery is transparent
 
 **Prevention:**
-- Run Redis with `sentinel` for automatic failover
+- Run Redis with **Sentinel** in the **same region** as Guardian pods (validated RTO 47s / RPO 3s)
 - Set `REDIS_URL` to a sentinel-aware connection string
 - Monitor Redis memory usage and eviction policy
+- **Avoid cross-region active-active** — inter-region RTT **>80ms** breaks rate-limit locks (see [SCALE_AND_RESILIENCE.md](SCALE_AND_RESILIENCE.md))
 
 ---
 

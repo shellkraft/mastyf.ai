@@ -10,6 +10,7 @@ import { createDatabase } from './database/create-database.js';
 import { PricingClient } from './clients/pricing-client.js';
 import { Logger } from './utils/logger.js';
 import { bootstrapSecrets } from './utils/enterprise-bootstrap.js';
+import { checkPgBouncerAtStartup } from './utils/pgbouncer-check.js';
 
 export interface Container {
   db: IDatabase;
@@ -22,6 +23,7 @@ let startupWarningEmitted = false;
 
 export async function createContainer(dbPath?: string): Promise<Container> {
   await bootstrapSecrets();
+  checkPgBouncerAtStartup();
   const db = await createDatabase(dbPath);
   const cveChecker = new CveChecker();
   const authProber = new AuthProber();
@@ -45,7 +47,8 @@ export async function createContainer(dbPath?: string): Promise<Container> {
             `  • Rate limits are per-pod (not enforced globally)\n` +
             `  • Session tokens issued by pod A are invalid on pod B\n` +
             `  • Replay protection is ineffective\n` +
-            `  Set REDIS_URL to fix this. See docs/PRODUCTION.md#redis-ha.`
+            `  • Cross-region active-active is not supported (>80ms RTT breaks locks)\n` +
+            `  Set REDIS_URL (single-region). See docs/SCALE_AND_RESILIENCE.md.`
         );
         if (process.env['GUARDIAN_STRICT_MODE'] === 'true') {
           process.exit(1);
