@@ -6,6 +6,9 @@ import { ThreatIntel, ThreatSuggestion } from './threat-intel.js';
 import { PolicyAssist, AssistSuggestion } from './policy-assist.js';
 import { PatternRecognizer, CrossLayerInsight } from './pattern-recognizer.js';
 import { SelfImprovement, LearningOutcome } from './self-improvement.js';
+import { detectDrift } from './drift-detector.js';
+import { createLearningSnapshot } from './learning-snapshot.js';
+import { wouldDisableDangerousBlocking } from './learning-quorum.js';
 import { ComprehensiveReporter, ComprehensiveReport } from './comprehensive-reporter.js';
 import { PolicyRule } from '../policy/policy-types.js';
 import { PolicyWatcher } from '../policy/policy-watcher.js';
@@ -184,7 +187,15 @@ export class SuggestionEngine {
       }
     }
 
-    // ── 5. Adjust confidence via self-improvement ────────
+    // ── 5. Drift detection (7d vs prior 7d per server:tool) ──
+    const learningState = this.selfImprovement.getState();
+    const driftReport = detectDrift(snapshot.callRecords, {
+      labeledFpRateRecent: learningState.falsePositiveRate,
+      labeledFpRatePrior: learningState.lastPrecisionProxy,
+    });
+    this.selfImprovement.recordDriftReport(driftReport);
+
+    // ── 6. Adjust confidence via self-improvement ────────
     for (const s of allSuggestions) {
       s.confidence = this.selfImprovement.adjustConfidence(s.confidence, s.source);
     }
@@ -192,12 +203,21 @@ export class SuggestionEngine {
     // Sort by confidence descending
     allSuggestions.sort((a, b) => b.confidence - a.confidence);
 
-    // ── 6. Auto-apply (opt-in only) ───────────────────────
+    // ── 7. Auto-apply (opt-in only) ───────────────────────
     const autoApply: UnifiedSuggestion[] = [];
-    if (isAiAutoApplyEnabled()) {
+    if (isAiAutoApplyEnabled() && !this.selfImprovement.isThresholdAdjustmentFrozen()) {
       const threshold = this.selfImprovement.getAdaptiveThreshold() || this.config.autoApplyThreshold;
-      const toApply = allSuggestions.filter(s => s.confidence >= threshold);
+      const toApply = allSuggestions.filter((s) => {
+        if (s.confidence < threshold) return false;
+        const patterns = s.rule.argPatterns?.join(' ') || '';
+        if (wouldDisableDangerousBlocking(s.rule.name, patterns, true)) {
+          Logger.warn(`[SuggestionEngine] Skipping auto-apply of dangerous unblock: ${s.rule.name}`);
+          return false;
+        }
+        return true;
+      });
       if (toApply.length > 0) {
+        createLearningSnapshot();
         this.autoApplyRules(toApply);
         autoApply.push(...toApply);
       }
@@ -213,10 +233,10 @@ export class SuggestionEngine {
       }
     }
 
-    // ── 7. Prune ineffective rules ──────────────────────
+    // ── 8. Prune ineffective rules ──────────────────────
     const pruneList = this.selfImprovement.suggestPruning();
 
-    // ── 8. Generate comprehensive report ─────────────────
+    // ── 9. Generate comprehensive report ─────────────────
     const baselines = this.baselineLearner.getAllBaselines();
     this.baselineLearner.saveToFile();
     this.selfImprovement.recordCycleComplete({
@@ -294,7 +314,13 @@ export class SuggestionEngine {
   recordUserOutcome(
     suggestionId: string,
     action: 'applied' | 'rejected',
-    meta: { ruleName: string; source: LearningOutcome['source']; confidence: number },
+    meta: {
+      ruleName: string;
+      source: LearningOutcome['source'];
+      confidence: number;
+      userId?: string;
+      pattern?: string;
+    },
   ): void {
     this.selfImprovement.recordOutcome({
       suggestionId,
@@ -303,7 +329,7 @@ export class SuggestionEngine {
       action,
       confidence: meta.confidence,
       timestamp: new Date().toISOString(),
-    });
+    }, { userId: meta.userId, pattern: meta.pattern });
     broadcastDashboardEvent({
       type: 'ai:state',
       payload: { state: this.selfImprovement.getState() },
@@ -554,6 +580,14 @@ export async function triggerLearningCycleIfEnabled(
 
 export { recordPolicyDecisionGlobal };
 
+/** Roll back AI learning state to the latest snapshot (CLI / dashboard API). */
+export function rollbackAiLearning(): { ok: boolean; snapshotId?: string; reason?: string } {
+  if (globalEngine) {
+    return globalEngine.getSelfImprovement().rollback();
+  }
+  return new SelfImprovement().rollback();
+}
+
 export async function recordSuggestionOutcome(
   suggestionId: string,
   action: 'applied' | 'rejected',
@@ -564,8 +598,11 @@ export async function recordSuggestionOutcome(
     rule?: import('../policy/policy-types.js').PolicyRule;
     policyPath?: string | null;
     policyWatcher?: PolicyWatcher | null;
+    userId?: string;
+    pattern?: string;
   },
 ): Promise<void> {
+  const patterns = meta.pattern || meta.rule?.argPatterns?.join(' ');
   if (action === 'applied' && meta.rule) {
     const { applySuggestionToPolicy } = await import('./policy-applier.js');
     applySuggestionToPolicy(meta.rule, meta.policyPath, meta.policyWatcher ?? null);
@@ -576,6 +613,8 @@ export async function recordSuggestionOutcome(
       ruleName: meta.ruleName,
       source: meta.source as LearningOutcome['source'],
       confidence: meta.confidence,
+      userId: meta.userId,
+      pattern: patterns,
     });
     return;
   }
@@ -587,5 +626,5 @@ export async function recordSuggestionOutcome(
     action,
     confidence: meta.confidence,
     timestamp: new Date().toISOString(),
-  });
+  }, { userId: meta.userId, pattern: patterns });
 }

@@ -26,22 +26,23 @@ describe('fp-whitelist', () => {
     rmSync(tempDir, { recursive: true, force: true });
   });
 
-  it('requires 3 confirmations before whitelisting', () => {
+  it('requires 3 confirmations from distinct labelers before whitelisting', () => {
     const rule = 'semantic-prompt-injection';
     const pattern = 'ignore-instructions';
     expect(isFpWhitelisted(rule, pattern)).toBe(false);
 
-    const r1 = recordFpRejection(rule, pattern);
-    expect(r1.whitelisted).toBe(false);
-    expect(r1.confirmCount).toBe(1);
+    const users = ['analyst-a', 'analyst-b', 'analyst-c'];
+    let last = recordFpRejection(rule, pattern, { userId: users[0] });
+    expect(last.whitelisted).toBe(false);
+    expect(last.confirmCount).toBe(1);
     expect(isFpWhitelisted(rule, pattern)).toBe(false);
 
-    const r2 = recordFpRejection(rule, pattern);
-    expect(r2.confirmCount).toBe(2);
+    last = recordFpRejection(rule, pattern, { userId: users[1] });
+    expect(last.confirmCount).toBe(2);
     expect(isFpWhitelisted(rule, pattern)).toBe(false);
 
-    const r3 = recordFpRejection(rule, pattern);
-    expect(r3.whitelisted).toBe(true);
+    last = recordFpRejection(rule, pattern, { userId: users[2] });
+    expect(last.whitelisted).toBe(true);
     expect(isFpWhitelisted(rule, pattern)).toBe(true);
   });
 

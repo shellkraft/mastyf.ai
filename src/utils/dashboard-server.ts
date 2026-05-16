@@ -418,6 +418,18 @@ export async function startDashboardServer(
         writeJson(res, 200, { threats: 0 }); return;
       }
 
+      if (url === '/api/ai/rollback' && method === 'POST') {
+        setCors();
+        const { rollbackAiLearning } = await import('../ai/suggestion-engine.js');
+        const result = rollbackAiLearning();
+        if (!result.ok) {
+          writeJson(res, 400, { error: result.reason || 'Rollback failed' });
+          return;
+        }
+        writeJson(res, 200, { status: 'rolled_back', snapshotId: result.snapshotId });
+        return;
+      }
+
       // ── Data APIs (from HistoryDatabase) ──────────────────
       if (url === '/api/aggregate/metrics' && method === 'GET') {
         setCors();
@@ -551,6 +563,7 @@ export async function startDashboardServer(
           rule: b.rule as import('../policy/policy-types.js').PolicyRule | undefined,
           policyPath,
           policyWatcher: policyWatcher ?? null,
+          userId: authResult.identity || String(b.userId || ''),
         });
         writeJson(res, 200, { status: 'accepted', id: b.suggestionId });
         return;
@@ -563,10 +576,14 @@ export async function startDashboardServer(
           ruleName: String(b2.ruleName || b2.suggestionId || 'unknown'),
           source: (b2.source as 'baseline' | 'cost' | 'threat' | 'assist' | 'pattern') || 'baseline',
           confidence: typeof b2.confidence === 'number' ? b2.confidence : 0.5,
+          userId: authResult.identity || String(b2.userId || ''),
+          pattern: b2.pattern ? String(b2.pattern) : undefined,
         });
         if (b2.fpReject && b2.rule && b2.pattern) {
           const { recordFpRejection } = await import('../ai/fp-whitelist.js');
-          const fp = recordFpRejection(String(b2.rule), String(b2.pattern));
+          const fp = recordFpRejection(String(b2.rule), String(b2.pattern), {
+            userId: authResult.identity || String(b2.userId || ''),
+          });
           writeJson(res, 200, { status: 'rejected', id: b2.suggestionId, fp });
           return;
         }
@@ -577,7 +594,9 @@ export async function startDashboardServer(
         setCors();
         const body = await readBody(req);
         const { recordFpRejection } = await import('../ai/fp-whitelist.js');
-        const fp = recordFpRejection(String(body.rule || ''), String(body.pattern || body.patternId || ''));
+        const fp = recordFpRejection(String(body.rule || ''), String(body.pattern || body.patternId || ''), {
+          userId: authResult.identity || String(body.userId || ''),
+        });
         writeJson(res, 200, { status: 'recorded', ...fp });
         return;
       }

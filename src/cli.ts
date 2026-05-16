@@ -357,6 +357,25 @@ program
     }
   });
 
+const aiCmd = program
+  .command('ai')
+  .description('AI learning utilities (rollback, diagnostics)');
+
+aiCmd
+  .command('rollback')
+  .description('Restore AI learning state from the latest pre-cycle snapshot')
+  .action(() => {
+    import('./ai/suggestion-engine.js').then(({ rollbackAiLearning }) => {
+      const result = rollbackAiLearning();
+      if (result.ok) {
+        console.log(chalk.green(`Rolled back to snapshot ${result.snapshotId}`));
+        process.exit(0);
+      }
+      console.error(chalk.red(result.reason || 'Rollback failed'));
+      process.exit(1);
+    });
+  });
+
 program
   .command('doctor')
   .description('Check DB path, policy, dashboard/AI env — quick onboarding diagnostics')

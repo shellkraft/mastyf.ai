@@ -448,6 +448,7 @@ export class DataFetcher {
       confidence: suggestion.confidence ?? 0.5,
       rule: suggestion.rule,
       policyPath: resolvePolicyPath(),
+      userId: process.env.GUARDIAN_TUI_USER || process.env.USER || 'tui',
     });
     await this.fetchAll();
   }

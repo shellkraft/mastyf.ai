@@ -2,6 +2,16 @@
 
 All notable changes to MCP Guardian will be documented in this file.
 
+## [2.6.0] - 2026-05-16
+
+### Security (AI learning anti-poisoning)
+- **Label quorum** — Weight/threshold changes require ≥2 distinct labelers or ≥10 weighted labels per fingerprint; below quorum logs `learning_quorum_pending` (`GUARDIAN_AI_MIN_DISTINCT_LABELERS`, `GUARDIAN_AI_MIN_TOTAL_LABELS`).
+- **Reputation weighting** — `GUARDIAN_AI_LABEL_WEIGHT`, `GUARDIAN_AI_ADMIN_USERS`; burst cap (3 labels/hour/user/fingerprint counts as one).
+- **Drift detection** — `drift-detector.ts` compares 7d vs prior 7d token/block-rate stats; freezes auto threshold tuning until `GUARDIAN_AI_DRIFT_OVERRIDE=true`.
+- **Rollback** — Snapshots before weight-apply cycles; `mcp-guardian ai rollback`, `POST /api/ai/rollback`; auto-rollback if precision proxy drops >10%.
+- **FP whitelist hardening** — Blocks coordinated single-user promotion (5 confirms/1h); dangerous `curl|wget|rm` unblocks require quorum.
+- **Tests** — `tests/ai/learning-poisoning.test.ts`, `tests/ai/drift-detector.test.ts`, `tests/ai/fp-whitelist-poisoning.test.ts`.
+
 ## [2.5.9] - 2026-05-16
 
 ### Security (OWASP ASVS dashboard auth)

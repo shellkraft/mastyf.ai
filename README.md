@@ -469,6 +469,13 @@ docker run -v $(pwd)/mcp.json:/etc/mcp-guardian/mcp.json \
 | `GUARDIAN_AI_USE_DB_SNAPSHOTS` | `false` | Fast learning cycles from DB only (no live OSV) |
 | `GUARDIAN_AI_BLOCK_DEBOUNCE_MS` | `30000` | Debounce learning after proxy blocks (burst-friendly) |
 | `GUARDIAN_AI_ATTACK_MIN_BLOCKS` | `3` | Min repeated blocks per rule+tool before attack suggestions |
+| `GUARDIAN_AI_MIN_DISTINCT_LABELERS` | `2` | Distinct labelers required before learning applies weight changes |
+| `GUARDIAN_AI_MIN_TOTAL_LABELS` | `10` | Alternative quorum: total weighted labels per fingerprint |
+| `GUARDIAN_AI_LABEL_WEIGHT` | `1.0` | Default per-label weight in quorum ratio |
+| `GUARDIAN_AI_ADMIN_USERS` | — | Comma-separated user IDs with label weight `2.0` |
+| `GUARDIAN_AI_DRIFT_OVERRIDE` | `false` | Set `true` to unfreeze threshold tuning after drift detection |
+| `GUARDIAN_AI_SNAPSHOT_DIR` | `~/.mcp-guardian/learning-snapshots` | Pre-cycle learning state snapshots (last 5) |
+| `GUARDIAN_TUI_USER` | `$USER` | Identity for TUI accept/reject labels (quorum anti-poisoning) |
 | `GUARDIAN_TUI_SKIP_LEARNING` | `false` | TUI display-only (no learning cycle on poll) |
 | `GUARDIAN_TUI_ACTIVE_WINDOW_MS` | `900000` (15m) | “ACTIVE” vs “IDLE” on Instances tab (recent call window) |
 | `GUARDIAN_TUI_LLM` | `true` | Optional analyst note via LLM on Overview |
