@@ -1,4 +1,5 @@
-import { DataCollector, GovernanceSnapshot } from './data-collector.js';
+import { DataCollector, GovernanceSnapshot, registerDataCollector, recordPolicyDecisionGlobal } from './data-collector.js';
+import { learnAttackPatterns } from './attack-pattern-learner.js';
 import { BaselineLearner, AnomalySuggestion } from './baseline-learner.js';
 import { CostOptimizer, CostSuggestion } from './cost-optimizer.js';
 import { ThreatIntel, ThreatSuggestion } from './threat-intel.js';
@@ -15,7 +16,7 @@ import { writeFileSync, mkdirSync, existsSync } from 'fs';
 import { dirname } from 'path';
 import { resolveAiPendingSuggestionsPath, resolveAiReportPath } from './ai-paths.js';
 import { broadcastDashboardEvent } from '../utils/dashboard-events.js';
-import { isAiAutoApplyEnabled, isAiLearningEnabled } from '../utils/ai-enabled.js';
+import { isAiAutoApplyEnabled, isAiLearningEnabled, isAiLearningOnCliCommands } from '../utils/ai-enabled.js';
 import { getAllActiveServerNames } from '../utils/db-aggregate.js';
 import { HistoryDatabase } from '../database/history-db.js';
 
@@ -24,7 +25,7 @@ export interface UnifiedSuggestion {
   rule: PolicyRule;
   confidence: number;
   reason: string;
-  source: 'baseline' | 'cost' | 'threat' | 'assist' | 'pattern';
+  source: 'baseline' | 'cost' | 'threat' | 'assist' | 'pattern' | 'attack';
   estimatedSavings?: number;
 }
 
@@ -111,6 +112,20 @@ export class SuggestionEngine {
           : [];
       for (const s of [...anomalySuggestions, ...preventiveSuggestions]) {
         allSuggestions.push(this.toUnified(s));
+      }
+    }
+
+    const blockedRecords = snapshot.callRecords.filter((r) => r.blocked);
+    if (blockedRecords.length > 0) {
+      const attackSuggestions = learnAttackPatterns(blockedRecords);
+      for (const s of attackSuggestions) {
+        allSuggestions.push({
+          id: `attack-${suggestionCounter++}`,
+          rule: s.rule,
+          confidence: this.selfImprovement.adjustConfidence(s.confidence, 'attack'),
+          reason: s.reason,
+          source: 'attack',
+        });
       }
     }
 
@@ -263,6 +278,7 @@ export class SuggestionEngine {
         suggestions: suggestions.map((s) => ({
           id: s.id,
           ruleName: s.rule.name,
+          rule: s.rule,
           confidence: s.confidence,
           reason: s.reason,
           source: s.source,
@@ -473,6 +489,7 @@ export async function initializeAiEngine(
     threatIntel, policyAssist, patternRecognizer, selfImprovement,
     engineConfig,
   );
+  registerDataCollector(collector);
   engine.setServers(servers);
 
   if (process.env.GUARDIAN_AI_DISABLE_PERIODIC !== 'true') {
@@ -528,18 +545,38 @@ export async function runLearningCycleForDb(
 export async function triggerLearningCycleIfEnabled(
   historyDb?: unknown,
   servers: McpServerConfig[] = [],
+  opts?: { cliCommand?: boolean },
 ): Promise<void> {
   if (!isAiLearningEnabled()) return;
+  if (opts?.cliCommand && !isAiLearningOnCliCommands()) return;
   await runLearningCycleForDb(historyDb as HistoryDatabase, servers);
 }
+
+export { recordPolicyDecisionGlobal };
 
 export async function recordSuggestionOutcome(
   suggestionId: string,
   action: 'applied' | 'rejected',
-  meta: { ruleName: string; source: LearningOutcome['source']; confidence: number },
+  meta: {
+    ruleName: string;
+    source: LearningOutcome['source'] | 'attack';
+    confidence: number;
+    rule?: import('../policy/policy-types.js').PolicyRule;
+    policyPath?: string | null;
+    policyWatcher?: PolicyWatcher | null;
+  },
 ): Promise<void> {
+  if (action === 'applied' && meta.rule) {
+    const { applySuggestionToPolicy } = await import('./policy-applier.js');
+    applySuggestionToPolicy(meta.rule, meta.policyPath, meta.policyWatcher ?? null);
+  }
+
   if (globalEngine) {
-    globalEngine.recordUserOutcome(suggestionId, action, meta);
+    globalEngine.recordUserOutcome(suggestionId, action, {
+      ruleName: meta.ruleName,
+      source: meta.source as LearningOutcome['source'],
+      confidence: meta.confidence,
+    });
     return;
   }
   const { SelfImprovement } = await import('./self-improvement.js');

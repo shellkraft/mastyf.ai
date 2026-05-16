@@ -1,7 +1,7 @@
 version: '1.0'
 policy:
   mode: block
-  # Fail-closed: unmatched tools are blocked unless explicitly allowlisted below.
+  # Fail-closed: tools not explicitly allowlisted are blocked (see allowlist-common-tools).
   default_action: block
   semantic_shell: true
   rules:
@@ -21,8 +21,23 @@ policy:
           - fork
           - popen
           - source
+          - powershell
+          - pwsh
+          - cmd
+    - name: deny-github-write-tools
+      description: Block GitHub mutation tools (exfil via create_issue, push, etc.)
+      action: block
+      tools:
+        deny:
+          - create_issue
+          - create_pull_request
+          - update_issue
+          - push_files
+          - create_repository
+          - delete_repository
+          - merge_pull_request
     - name: allowlist-common-tools
-      description: Permit known read/query tools; all others blocked by default_action
+      description: Read-only / query tools; all others blocked by default_action
       action: block
       tools:
         allow:
@@ -37,16 +52,51 @@ policy:
           - list_tables
           - query
           - echo
-          - write_to_file
           - puppeteer_navigate
           - puppeteer_screenshot
+    - name: block-sensitive-paths
+      description: Block reads/lists of credentials, SSH, env files, and filesystem root
+      action: block
+      argPatterns:
+        - field: path
+          patterns:
+            - '^/$'
+            - '^/etc/'
+            - '/\\.ssh'
+            - '/\\.env'
+            - '/\\.aws/credentials'
+            - '(?:^|/)passwd$'
+            - 'id_rsa'
+        - field: file
+          patterns:
+            - '^/$'
+            - '^/etc/'
+            - '/\\.ssh'
+            - '/\\.env'
+            - '/\\.aws/credentials'
+        - field: directory
+          patterns:
+            - '^/$'
+            - '^/etc/'
+    - name: block-sql-exfil
+      description: Block obvious bulk data exfiltration SQL in tool arguments
+      action: block
+      argPatterns:
+        - field: sql
+          patterns:
+            - \bselect\b.+\bfrom\b.+\b(accounts|customers|users|credentials|secrets)\b
+            - \bunion\s+select\b
+            - \bdrop\s+table\b
+        - field: query
+          patterns:
+            - \bselect\b.+\bfrom\b.+\b(accounts|customers|users|credentials|secrets)\b
     - name: block-path-traversal
       description: Block tool calls with path traversal attempts
       action: block
       patterns:
         - \.\.
     - name: block-shell-injection
-      description: Block tool calls containing shell injection or command chaining
+      description: Block shell injection, downloaders, and PowerShell encoded commands
       action: block
       patterns:
         - curl\s|wget\s
@@ -55,6 +105,7 @@ policy:
         - '&&|\|\|'
         - \$\{
         - '`[^`]+`'
+        - powershell|pwsh|-enc|-EncodedCommand
     - name: rate-limit-tool-calls
       description: Limit tool calls to 120 per minute per server+tool
       action: flag

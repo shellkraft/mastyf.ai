@@ -9,7 +9,8 @@
  * - Rate limiting on auth endpoints
  * - Login endpoint with configurable credential source
  *
- * Enable with: DASHBOARD_AUTH_ENABLED=true
+ * Enabled by default when the dashboard is on. Disable for local dev only:
+ * DASHBOARD_AUTH_DISABLED=true
  * Configure API key: DASHBOARD_API_KEY=<key>
  * Configure JWT secret: DASHBOARD_JWT_SECRET=<secret>
  */
@@ -60,10 +61,13 @@ export class DashboardAuth {
   private cleanupInterval: ReturnType<typeof setInterval> | null = null;
 
   constructor(config?: Partial<DashboardAuthConfig>) {
-    const enabled = process.env['DASHBOARD_AUTH_ENABLED'] === 'true';
+    const authDisabled = process.env['DASHBOARD_AUTH_DISABLED'] === 'true';
+    const enabled =
+      config?.enabled ??
+      (!authDisabled && process.env['DASHBOARD_AUTH_ENABLED'] !== 'false');
 
     this.config = {
-      enabled: config?.enabled ?? enabled,
+      enabled,
       apiKey: config?.apiKey ?? process.env['DASHBOARD_API_KEY'] ?? undefined,
       jwtSecret: config?.jwtSecret ?? process.env['DASHBOARD_JWT_SECRET'] ?? undefined,
       sessionTtlSeconds: config?.sessionTtlSeconds ?? 3600,
@@ -78,7 +82,9 @@ export class DashboardAuth {
     } else if (this.config.enabled && this.config.jwtSecret) {
       Logger.info('[dashboard-auth] JWT session authentication enabled');
     } else if (this.config.enabled) {
-      Logger.warn('[dashboard-auth] Auth enabled but no API key or JWT secret configured');
+      Logger.error(
+        '[dashboard-auth] Auth enabled but DASHBOARD_API_KEY or DASHBOARD_JWT_SECRET is required — API requests will be rejected until configured',
+      );
     }
 
     // Periodic cleanup of rate limit entries
@@ -101,6 +107,13 @@ export class DashboardAuth {
   }): AuthResult {
     if (!this.config.enabled) {
       return { authenticated: true, identity: 'anonymous' };
+    }
+
+    if (!this.config.apiKey && !this.config.jwtSecret) {
+      return {
+        authenticated: false,
+        reason: 'Dashboard authentication enabled but DASHBOARD_API_KEY or DASHBOARD_JWT_SECRET is not configured',
+      };
     }
 
     const url = req.url || '/';
@@ -271,11 +284,21 @@ ${errorHtml}
 </html>`;
   }
 
+  /** Auth enforcement is on (may still lack credentials — then all requests are rejected). */
+  requiresAuthentication(): boolean {
+    return this.config.enabled;
+  }
+
+  /** Credentials are configured so successful login/API key checks can succeed. */
+  isConfigured(): boolean {
+    return !!(this.config.apiKey || this.config.jwtSecret);
+  }
+
   /**
-   * Check if auth is enabled and required.
+   * Check if auth is enabled and credentials are configured.
    */
   isEnabled(): boolean {
-    return this.config.enabled && !!(this.config.apiKey || this.config.jwtSecret);
+    return this.requiresAuthentication() && this.isConfigured();
   }
 
   /**

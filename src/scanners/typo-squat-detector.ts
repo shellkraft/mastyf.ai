@@ -94,17 +94,35 @@ export class TypoSquatDetector {
     const cleaned = name.toLowerCase();
     const results: TypoSquatResult[] = [];
 
+    const candidates = [cleaned, tailSegment(cleaned)];
     for (const trusted of this.trustedPackages) {
       const trustedName = trusted.toLowerCase();
-      const dist = levenshtein(cleaned, trustedName);
+      const trustedTails = [trustedName, tailSegment(trustedName)];
 
-      if (dist === 1) {
-        results.push({ suspiciousName: name, similarityTo: trusted, distance: dist });
-      } else if (dist === 2 && cleaned.length > 8) {
-        results.push({ suspiciousName: name, similarityTo: trusted, distance: dist });
+      for (const candidate of candidates) {
+        for (const trustedTail of trustedTails) {
+          const dist = levenshtein(candidate, trustedTail);
+          if (dist === 1) {
+            results.push({ suspiciousName: name, similarityTo: trusted, distance: dist });
+          } else if (dist === 2 && candidate.length > 6) {
+            results.push({ suspiciousName: name, similarityTo: trusted, distance: dist });
+          }
+        }
       }
     }
 
-    return results;
+    const seen = new Set<string>();
+    return results.filter((r) => {
+      const k = `${r.suspiciousName}:${r.similarityTo}`;
+      if (seen.has(k)) return false;
+      seen.add(k);
+      return true;
+    });
   }
+}
+
+/** Compare package tail segments (e.g. server-githhub vs server-github). */
+function tailSegment(pkg: string): string {
+  const base = pkg.includes('/') ? pkg.split('/').pop()! : pkg;
+  return base.replace(/^(?:@)?mcp-?server-?|^server-?/i, '');
 }

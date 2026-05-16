@@ -41,6 +41,17 @@ export interface PolicyDecisionRecord {
   requestTokens: number;
 }
 
+let registeredCollector: DataCollector | null = null;
+
+/** Register the live collector (proxy / AI engine) for policy decision ingestion. */
+export function registerDataCollector(collector: DataCollector): void {
+  registeredCollector = collector;
+}
+
+export function recordPolicyDecisionGlobal(d: PolicyDecisionRecord): void {
+  registeredCollector?.recordPolicyDecision(d);
+}
+
 export class DataCollector {
   private db: HistoryDatabase;
   private securityScanner?: SecurityScanner;
@@ -170,8 +181,10 @@ export class DataCollector {
     const estimatedTotalCost = costReports.reduce((s, r) => s + (r.actualCostUSD ?? r.estimatedCostUSD), 0);
     const totalLatency = callRecords.reduce((s, r) => s + r.durationMs, 0);
     const avgLatency = totalCalls > 0 ? Math.round(totalLatency / totalCalls) : 0;
-    const blocked = decisions.filter(d => d.action === 'block').length;
-    const flagged = decisions.filter(d => d.action === 'flag').length;
+    const blockedFromRecords = callRecords.filter((r) => r.blocked).length;
+    const blockedFromDecisions = decisions.filter((d) => d.action === 'block').length;
+    const blocked = Math.max(blockedFromRecords, blockedFromDecisions);
+    const flagged = decisions.filter((d) => d.action === 'flag').length;
 
     const serverIndex: ServerIndex = {};
     for (const s of servers) serverIndex[s.name] = s;

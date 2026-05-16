@@ -23,6 +23,15 @@ describe('DashboardAuth', () => {
     expect(result.identity).toBe('api_key');
   });
 
+  it('rejects all requests when enabled but credentials missing (fail-closed)', () => {
+    delete process.env['DASHBOARD_API_KEY'];
+    delete process.env['DASHBOARD_JWT_SECRET'];
+    const auth = new DashboardAuth({ enabled: true, apiKey: undefined, jwtSecret: undefined });
+    const result = auth.authenticate({ url: '/api/servers', method: 'GET' });
+    expect(result.authenticated).toBe(false);
+    expect(result.reason).toContain('not configured');
+  });
+
   it('rejects invalid API key', () => {
     const auth = new DashboardAuth({ enabled: true, apiKey: 'test-secret-key-12345' });
     const result = auth.authenticate({

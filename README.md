@@ -14,7 +14,7 @@ MCP Guardian sits between AI agents and MCP servers, enforcing **active security
 
 It works as a **transparent stdio proxy** (real-time enforcement for Cline, Cursor, Claude Code), a **standalone CLI**, an **interactive TUI**, an **MCP audit server** (agents can self-scan), and a **pnpm monorepo** — install only what you need.
 
-**Version 2.5.0** adds one-command IDE wrapping (`mcp-guardian wrap`), Docker Compose, PostgreSQL/Redis HA paths, OPA/Rego hooks, compliance docs, and production Helm hardening.
+**Version 2.5.3** hardens production defaults (CVE gate opt-in, dashboard auth fail-closed, proxy stderr logging). **2.5.0** added one-command IDE wrapping (`mcp-guardian wrap`), Docker Compose, PostgreSQL/Redis HA paths, OPA/Rego hooks, compliance docs, and production Helm hardening.
 
 ---
 
@@ -436,18 +436,29 @@ docker run -v $(pwd)/mcp.json:/etc/mcp-guardian/mcp.json \
 | `REDIS_URL` | — | Required for multi-replica rate limits |
 | `GUARDIAN_STRICT_MODE` | `false` | Fail startup without Redis in K8s |
 | `GUARDIAN_TENANT_ID` | `default` | Tenant label for audit/rate limits |
-| `GUARDIAN_ALLOW_MODE_OVERRIDE` | `false` | Allow CLI `--blocking-mode` override |
-| `GUARDIAN_AI_ENABLED` | `true` | AI learning/suggestions (`false` to disable) |
+| `GUARDIAN_DISALLOW_MODE_OVERRIDE` | `false` | Set `true` to ignore CLI `--blocking-mode` |
+| `GUARDIAN_AI_ENABLED` | `true` | AI learning in proxy/TUI (`false` to disable) |
+| `GUARDIAN_AI_ON_CLI` | `false` | Run learning on `scan`/`audit`/`health`/`report` |
 | `GUARDIAN_AI_AUTO_APPLY` | `false` | Auto-apply high-confidence rules (`true` = risky) |
 | `GUARDIAN_EXPERIMENTAL_AI` | — | Legacy alias for `GUARDIAN_AI_ENABLED=true` |
 | `GUARDIAN_AI_USE_DB_SNAPSHOTS` | `false` | Fast learning cycles from DB only (no live OSV) |
+| `GUARDIAN_AI_BLOCK_DEBOUNCE_MS` | `30000` | Debounce learning after proxy blocks (burst-friendly) |
+| `GUARDIAN_AI_ATTACK_MIN_BLOCKS` | `3` | Min repeated blocks per rule+tool before attack suggestions |
 | `GUARDIAN_TUI_SKIP_LEARNING` | `false` | TUI display-only (no learning cycle on poll) |
 | `GUARDIAN_TUI_ACTIVE_WINDOW_MS` | `900000` (15m) | “ACTIVE” vs “IDLE” on Instances tab (recent call window) |
 | `GUARDIAN_TUI_LLM` | `true` | Optional analyst note via LLM on Overview |
 | `GUARDIAN_WS_ENABLED` | `true` (proxy) | WebSocket push at `/ws` for TUI |
 | `GUARDIAN_DASHBOARD_URL` | `http://127.0.0.1:4000` | TUI WebSocket + metrics API base URL |
 | `GUARDIAN_SKIP_PREFLIGHT_SCAN` | `false` | Skip background CVE scan on proxy start |
-| `GUARDIAN_BLOCK_ON_CVE` | `true` | Block tools/call when CVEs exceed threshold |
+| `GUARDIAN_WORKSPACE` | — | Restrict filesystem tool paths to this directory (and subpaths) |
+| `GUARDIAN_ALLOWED_PATH_PREFIXES` | — | Comma-separated path prefixes (alternative to `GUARDIAN_WORKSPACE`) |
+| `GUARDIAN_GITHUB_ALLOWED_ORGS` | — | Comma-separated GitHub orgs allowed for `repo` arguments |
+| `GUARDIAN_GITHUB_ALLOWED_REPOS` | — | Exact `org/repo` allowlist for GitHub tools |
+| `GUARDIAN_PROXY_ENTROPY` | on in `block` mode | Block high-entropy / base64 blobs in tool arguments |
+| `GUARDIAN_BLOCK_ON_CVE` | `false` | Opt-in: block tools/call on CVEs (default threshold CRITICAL) |
+| `GUARDIAN_CVE_BLOCK_SEVERITY` | `CRITICAL` | When gate on: `HIGH` widens blocking |
+| `DASHBOARD_AUTH_DISABLED` | `false` | Set `true` for local dev only (no API auth) |
+| `DASHBOARD_API_KEY` | — | Required for dashboard API when auth on |
 | `POLICY_AUDIT_ENABLED` | `false` | Policy change JSONL audit |
 | `GUARDIAN_AUDIT_SYNC_ENABLED` | `false` | Sync SQLite → PostgreSQL |
 | `OPA_URL` | — | OPA decision endpoint |

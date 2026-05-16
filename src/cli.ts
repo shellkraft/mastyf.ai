@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import path from 'path';
+import path, { dirname, join } from 'path';
 import { Command } from 'commander';
 import chalk from 'chalk';
 import { ConfigParser } from './config-parser.js';
@@ -23,6 +23,18 @@ import { createDatabase } from './database/create-database.js';
 import { bootstrapSecrets } from './utils/enterprise-bootstrap.js';
 import { broadcastDashboardEvent } from './utils/dashboard-events.js';
 import { triggerLearningCycleIfEnabled } from './ai/suggestion-engine.js';
+import { readFileSync } from 'fs';
+import { fileURLToPath } from 'url';
+
+const __cliDir = dirname(fileURLToPath(import.meta.url));
+function cliVersion(): string {
+  try {
+    const pkg = JSON.parse(readFileSync(join(__cliDir, '..', 'package.json'), 'utf-8')) as { version?: string };
+    return pkg.version || '0.0.0';
+  } catch {
+    return process.env.npm_package_version || '0.0.0';
+  }
+}
 import { isAiLearningEnabled } from './utils/ai-enabled.js';
 
 // ── Typed option interfaces ──────────────────────────────────────────
@@ -103,7 +115,7 @@ const program = new Command();
 program
   .name('mcp-guardian')
   .description('Security, cost, and health audit for MCP infrastructure')
-  .version(process.env.npm_package_version || '2.3.4');
+  .version(cliVersion());
 
 program
   .command('scan')
@@ -126,7 +138,7 @@ program
     const container = await createContainer();
     const reports = await Promise.all(servers.map((s) => container.securityScanner.scanServer(s)));
     await Promise.all(reports.map((r) => container.db.addSecurityScan(r.serverName, r.score, r.cves.length, r)));
-    await triggerLearningCycleIfEnabled(container.db, servers);
+    await triggerLearningCycleIfEnabled(container.db, servers, { cliCommand: true }); // no-op unless GUARDIAN_AI_ON_CLI=true
     broadcastDashboardEvent({
       type: 'health-change',
       payload: { source: 'scan', servers: reports.length },
@@ -154,7 +166,7 @@ program
     const results = await Promise.all(filtered.map((s) => container.costAuditor.auditServer(s)));
     container.costAuditor.dispose();
     await Promise.all(results.map((r) => container.db.addCostRecord(r.serverName, r.tokensUsed, r.estimatedCostUSD)));
-    await triggerLearningCycleIfEnabled(container.db, filtered);
+    await triggerLearningCycleIfEnabled(container.db, filtered, { cliCommand: true }); // skipped unless GUARDIAN_AI_ON_CLI=true
     container.db.close();
 
     console.log(new ReportGenerator().formatCostReports(results));
@@ -185,7 +197,7 @@ program
     const container = await createContainer();
     const results = await Promise.all(filtered.map((s) => container.healthMonitor.checkServer(s)));
     await Promise.all(results.map((r) => container.db.addHealthCheck(r.serverName, r.latencyMs, r.successRate > 0.5, r.toolCount)));
-    await triggerLearningCycleIfEnabled(container.db, filtered);
+    await triggerLearningCycleIfEnabled(container.db, filtered, { cliCommand: true }); // skipped unless GUARDIAN_AI_ON_CLI=true
     container.db.close();
 
     console.log(new ReportGenerator().formatHealthReports(results));
@@ -233,7 +245,7 @@ program
       ...costs.map((r) => container.db.addCostRecord(r.serverName, r.tokensUsed, r.estimatedCostUSD)),
       ...health.map((r) => container.db.addHealthCheck(r.serverName, r.latencyMs, r.successRate > 0.5, r.toolCount)),
     ]);
-    await triggerLearningCycleIfEnabled(container.db, servers);
+    await triggerLearningCycleIfEnabled(container.db, servers, { cliCommand: true }); // no-op unless GUARDIAN_AI_ON_CLI=true
     broadcastDashboardEvent({
       type: 'health-change',
       payload: { source: 'report', servers: servers.length },
@@ -463,18 +475,18 @@ program
         policyEngine = policyWatcher.get() || undefined;
         useWatcherForManager = true; // Default: pass watcher so hot-reload works
         if (opts.blockingMode && ['audit', 'warn', 'block'].includes(opts.blockingMode) && policyEngine) {
-          // Require env var opt-in to allow CLI-level policy mode override
-          if (process.env['GUARDIAN_ALLOW_MODE_OVERRIDE'] !== 'true') {
-            console.error(chalk.red(`--blocking-mode override requires GUARDIAN_ALLOW_MODE_OVERRIDE=true to be set. Policy mode will remain: ${policyEngine.getMode()}`));
+          if (process.env['GUARDIAN_DISALLOW_MODE_OVERRIDE'] === 'true') {
+            console.error(chalk.yellow(
+              `--blocking-mode ignored (GUARDIAN_DISALLOW_MODE_OVERRIDE=true). Using policy file mode: ${policyEngine.getMode()}`,
+            ));
           } else {
-            const { readFileSync } = await import('fs');
             const { load } = await import('js-yaml');
             const policyConfig = load(readFileSync(opts.policy, 'utf-8')) as PolicyConfig;
             policyConfig.policy.mode = opts.blockingMode as 'audit' | 'warn' | 'block';
             policyEngine = new PolicyEngine(policyConfig);
             useWatcherForManager = false;
             console.error(chalk.yellow(
-              `Policy mode overridden in memory only (file on disk unchanged): ${opts.blockingMode}`,
+              `Policy mode overridden in memory (file on disk unchanged): ${opts.blockingMode}`,
             ));
           }
         }

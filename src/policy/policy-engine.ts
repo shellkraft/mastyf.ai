@@ -1,6 +1,7 @@
 import { PolicyConfig, PolicyDecision, CallContext, PolicyAction, PolicyMode } from './policy-types.js';
 import { Logger } from '../utils/logger.js';
 import { getNormalizer } from '../utils/payload-normalizer.js';
+import { evaluateSemanticGuards } from './semantic-guards.js';
 import { ShellTokenizer, CommandRisk } from './shell-tokenizer.js';
 import { LRUCache } from 'lru-cache';
 
@@ -40,7 +41,7 @@ export class PolicyEngine {
       // Compile rule.patterns
       if (rule.patterns?.length) {
         try {
-          const compiled = rule.patterns.map(p => new RegExp(p));
+          const compiled = rule.patterns.map(p => new RegExp(p, 'i'));
           this.compiledPatterns.set(rule.name, [
             ...(this.compiledPatterns.get(rule.name) || []),
             { compiled, rule },
@@ -132,6 +133,11 @@ export class PolicyEngine {
     // Semantic shell analysis runs once per request (not per rule)
     const semanticDecision = this.evaluateSemanticShell(shellRisk, context.toolName);
     if (semanticDecision) return semanticDecision;
+
+    const semanticAbuse = evaluateSemanticGuards(normalizedContext);
+    if (semanticAbuse) {
+      return { ...semanticAbuse, action: this.resolveAction(semanticAbuse.action) };
+    }
 
     let permittedByAllowlist = false;
     for (const rule of this.rules) {

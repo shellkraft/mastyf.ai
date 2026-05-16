@@ -2,6 +2,45 @@
 
 All notable changes to MCP Guardian will be documented in this file.
 
+## [2.5.5] - 2026-05-16
+
+### Added
+- **Attack-driven learning** — Debounced learning cycle on proxy blocks (`onPolicyBlock`); `attack-pattern-learner` heuristics from blocked `call_records`; manual accept applies rules via `policy-applier` + PolicyWatcher hot-reload.
+- **Policy decision ingestion** — Proxy records pass/block/flag decisions into `DataCollector`; learning metadata uses blocked rows from SQLite.
+- **Live attack matrix** — Post-proxy learning assertion in `scripts/run-live-attack-matrix.cjs`.
+- **Tests** — `tests/ai/attack-driven-learning.test.ts`.
+
+### Env
+- `GUARDIAN_AI_BLOCK_DEBOUNCE_MS` (default `30000`), `GUARDIAN_AI_ATTACK_MIN_BLOCKS` (default `3`).
+
+## [2.5.4] - 2026-05-16
+
+### Security (FINCO / semantic abuse)
+- **Semantic guards at proxy** — Sensitive paths (`.ssh`, `.env`, `/`, `/etc`), SQL bulk-exfil patterns, GitHub write tools denied, prompt-injection in args, PowerShell `-enc`.
+- **Path workspace scoping** — `GUARDIAN_WORKSPACE` / `GUARDIAN_ALLOWED_PATH_PREFIXES` restrict filesystem tools to project dirs.
+- **GitHub repo allowlist** — `GUARDIAN_GITHUB_ALLOWED_ORGS` / `GUARDIAN_GITHUB_ALLOWED_REPOS`.
+- **Homoglyph folding** — Cyrillic/Greek lookalikes normalized before regex (e.g. `/etс/passwd`).
+- **Proxy entropy DLP** — High-entropy / base64 blobs blocked in `block` mode (`GUARDIAN_PROXY_ENTROPY=false` to disable).
+- **default-policy.yaml** — Deny GitHub mutations; sensitive path argPatterns; SQL exfil rules; read-only allowlist (no `write_to_file`).
+- **Tests** — `tests/policy/finco-attack-chain.test.ts` reproduces the full FINCO chain.
+
+## [2.5.3] - 2026-05-16
+
+### Security (production hardening)
+- **CVE gate opt-in** — `GUARDIAN_BLOCK_ON_CVE` defaults to off; when enabled, blocks CRITICAL CVEs only (set `GUARDIAN_CVE_BLOCK_SEVERITY=HIGH` to widen).
+- **Dashboard fail-closed** — Auth required by default when dashboard is on; requests rejected if `DASHBOARD_API_KEY` / `DASHBOARD_JWT_SECRET` missing (`DASHBOARD_AUTH_DISABLED=true` for local dev only).
+- **Proxy stdout** — Pino/structured logs go to stderr so MCP JSON-RPC on stdout is not corrupted.
+- **OSV severity parser** — Handles string, array, and object severity shapes (fixes silent scan failures).
+- **CLI version** — Reads from `package.json` (no hardcoded drift).
+- **`--blocking-mode`** — Applies unless `GUARDIAN_DISALLOW_MODE_OVERRIDE=true`.
+- **AI on CLI** — Learning on `scan`/`audit`/`health`/`report` only when `GUARDIAN_AI_ON_CLI=true`.
+- **Typo-squat** — Tail-segment matching (e.g. `server-githhub`).
+- **Secret scanner** — Dedupes overlapping rule hits per scan.
+- **npm tarball** — Ships `deploy/dashboard.html`; dashboard loader searches multiple paths.
+
+### Dependencies
+- **pnpm override** — `protobufjs>=8.0.2` to reduce transitive HIGH advisories from OpenTelemetry.
+
 ## [2.5.2] - 2026-05-16
 
 ### Added

@@ -54,6 +54,12 @@ describe('TypoSquatDetector', () => {
     expect(results[0].distance).toBe(1);
   });
 
+  it('detects tail-segment typo (server-githhub)', () => {
+    const results = detector.detect('server-githhub');
+    expect(results.length).toBeGreaterThan(0);
+    expect(results.some((r) => r.similarityTo.includes('github'))).toBe(true);
+  });
+
   it('case-insensitive matching', () => {
     const results = detector.detect('@MODELCONTEXTPROTOCOL/SERVER-FILESYSTEM');
     // Should match case-insensitively

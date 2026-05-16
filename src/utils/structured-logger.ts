@@ -3,19 +3,22 @@ import { PolicyDecision, CallContext } from '../policy/policy-types.js';
 
 /**
  * Structured JSON logger for enterprise SIEM ingestion.
- * Uses pino for high-performance structured logging with request-ID tracing.
+ * Always writes to stderr — stdout is reserved for MCP JSON-RPC in proxy mode.
  */
 const level = process.env.LOG_LEVEL || 'info';
 
-const logger = pino({
-  level: level.toLowerCase(),
-  formatters: {
-    level(label) {
-      return { level: label };
+const logger = pino(
+  {
+    level: level.toLowerCase(),
+    formatters: {
+      level(label) {
+        return { level: label };
+      },
     },
+    timestamp: pino.stdTimeFunctions.isoTime,
   },
-  timestamp: pino.stdTimeFunctions.isoTime,
-});
+  pino.destination({ fd: 2, sync: false }),
+);
 
 export interface AuditLogEntry {
   event: 'policy_decision';
@@ -44,9 +47,6 @@ export interface ErrorLogEntry {
 }
 
 export class StructuredLogger {
-  /**
-   * Log a policy decision (pass, flag, or block).
-   */
   static logPolicyDecision(entry: AuditLogEntry): void {
     logger.info(entry);
     import('./enterprise-bootstrap.js').then(({ exportSiemEvent }) => {
@@ -54,9 +54,6 @@ export class StructuredLogger {
     }).catch(() => {});
   }
 
-  /**
-   * Log a blocked tool call — always at WARN level for SIEM alerting.
-   */
   static logBlocked(entry: BlockLogEntry): void {
     logger.warn(entry);
     import('./enterprise-bootstrap.js').then(({ exportSiemEvent }) => {
@@ -64,23 +61,14 @@ export class StructuredLogger {
     }).catch(() => {});
   }
 
-  /**
-   * Log proxy internal errors.
-   */
   static logError(entry: ErrorLogEntry): void {
     logger.error(entry);
   }
 
-  /**
-   * Log general proxy lifecycle events.
-   */
   static info(msg: object | string): void {
     logger.info(msg);
   }
 
-  /**
-   * Debug-level log for development.
-   */
   static debug(msg: object | string): void {
     logger.debug(msg);
   }

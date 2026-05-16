@@ -7,6 +7,7 @@
  * Architecture: normalize → denormalize → sanitize → evaluate
  */
 import { Logger } from './logger.js';
+import { foldHomoglyphs } from './confusables.js';
 
 export interface NormalizationResult {
   /** The fully normalized string ready for policy evaluation */
@@ -46,7 +47,12 @@ export class PayloadNormalizer {
       transformations.push('truncated');
     }
 
-    // ── Step 1: Unicode normalization (NFKC) — collapses homoglyphs ──
+    // ── Step 1: Homoglyph fold (Cyrillic/Greek → ASCII) then NFKC ──
+    const homoglyphFolded = foldHomoglyphs(current);
+    if (homoglyphFolded !== current) {
+      transformations.push('homoglyph-fold');
+      current = homoglyphFolded;
+    }
     const unicodeNormalized = current.normalize('NFKC');
     if (unicodeNormalized !== current) {
       transformations.push('unicode-nfkc');

@@ -116,6 +116,7 @@ function displaySubject(match: RegExpMatchArray): string {
 
 export function scanForSecrets(target: string, context: string): SecretFinding[] {
   const findings: SecretFinding[] = [];
+  const seenSpans = new Set<string>();
   for (const rule of getRules()) {
     // Use matchAll to find all occurrences, not just the first
     const globalRegex = new RegExp(rule.regex.source, rule.regex.flags + (rule.regex.flags.includes('g') ? '' : 'g'));
@@ -126,6 +127,9 @@ export function scanForSecrets(target: string, context: string): SecretFinding[]
       const matchedValue = displaySubject(match);
       // Test exclusions against the matched substring, not the entire target
       if (rule.exclusions?.some(fp => fp.test(matchedValue))) continue;
+      const spanKey = `${match.index}:${match.index + matchedValue.length}:${rule.id}`;
+      if (seenSpans.has(spanKey)) continue;
+      seenSpans.add(spanKey);
       findings.push({
         type: rule.id,
         location: context,
@@ -165,6 +169,10 @@ export class SecretScanner {
     }
     if (serverConfig.args) for (const arg of serverConfig.args) findings.push(...scanForSecrets(arg, 'command_args'));
     if (serverConfig.command) findings.push(...scanForSecrets(serverConfig.command, 'command'));
-    return findings;
+    const deduped = new Map<string, SecretFinding>();
+    for (const f of findings) {
+      deduped.set(`${f.type}:${f.location}:${f.redacted}`, f);
+    }
+    return [...deduped.values()];
   }
 }

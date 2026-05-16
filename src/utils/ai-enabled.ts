@@ -22,3 +22,8 @@ export function isAiAutoApplyEnabled(): boolean {
 export function isExperimentalAiEnabled(): boolean {
   return isAiLearningEnabled();
 }
+
+/** Learning on scan/audit/health CLI is opt-in (proxy/report hooks still respect GUARDIAN_AI_ENABLED). */
+export function isAiLearningOnCliCommands(): boolean {
+  return process.env.GUARDIAN_AI_ON_CLI === 'true';
+}

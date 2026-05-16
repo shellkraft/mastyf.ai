@@ -15,10 +15,13 @@ import { CircuitBreaker } from '../utils/circuit-breaker.js';
 import { LRUCache } from 'lru-cache';
 import { detectPromptInjection } from '../scanners/prompt-injection-detector.js';
 import { scanForSecrets } from '../scanners/secret-scanner.js';
+import { isProxyEntropyCheckEnabled, scanArgumentEntropy } from '../utils/arg-entropy.js';
 import * as Metrics from '../utils/metrics.js';
 import { alertPolicyBlock } from '../alerting/webhook-alerter.js';
 import { evaluateCveGate } from '../utils/cve-gate.js';
 import { persistCallRecord } from '../utils/call-record-cost.js';
+import { onPolicyBlock, fingerprintArgs, ingestPolicyDecision } from '../ai/block-learning.js';
+import type { HistoryDatabase } from '../database/history-db.js';
 
 const MAX_PAYLOAD_BYTES = parseInt(
   process.env['MCP_GUARDIAN_MAX_PAYLOAD_BYTES'] ?? '10485760', // 10 MB default
@@ -358,6 +361,15 @@ export class McpProxyServer {
     persistCallRecord(this.db, record).catch((err) =>
       Logger.debug(`Proxy: failed to store denied call record: ${err?.message}`)
     );
+    onPolicyBlock(
+      {
+        block_rule: blockRule,
+        toolName,
+        serverName: this.serverName,
+        argsFingerprint: fingerprintArgs(this.requestArguments),
+      },
+      { db: this.db as HistoryDatabase },
+    );
   }
 
   /**
@@ -412,6 +424,22 @@ export class McpProxyServer {
               secrets: secretFindings.map(f => ({ type: f.type, redacted: f.redacted })),
               requestId,
             });
+
+            if (
+              isProxyEntropyCheckEnabled(this.policyEngine?.getMode()) &&
+              this.policyEngine?.getMode() === 'block'
+            ) {
+              const entropyFindings = scanArgumentEntropy(argString);
+              if (entropyFindings.length > 0) {
+                const entropyReason = `High-entropy encoded payload in '${toolName}' arguments (${entropyFindings[0].kind}, entropy=${entropyFindings[0].entropy.toFixed(2)})`;
+                this.recordDeniedCall(toolName, this.requestTokens, Date.now() - proxyStartTime, 'arg-entropy', entropyReason);
+                this.sendError(msg.id, -32001, `Blocked by MCP Guardian policy: ${entropyReason}`, {
+                  rule: 'arg-entropy',
+                  policy: 'block',
+                });
+                return;
+              }
+            }
 
             // DLP block in blocking mode — stop exfiltration before it reaches the server
             if (this.policyEngine?.getMode() === 'block') {
@@ -568,6 +596,17 @@ export class McpProxyServer {
           };
 
           const decision = await this.policyEngine.evaluateAsync(context);
+
+          ingestPolicyDecision({
+            requestId,
+            serverName: this.serverName,
+            toolName,
+            action: decision.action,
+            rule: decision.rule,
+            reason: decision.reason,
+            timestamp: context.timestamp,
+            requestTokens: this.requestTokens,
+          });
 
           StructuredLogger.logPolicyDecision({
             event: 'policy_decision',

@@ -1,5 +1,5 @@
 import { createServer, IncomingMessage, ServerResponse } from 'http';
-import { readFileSync } from 'fs';
+import { readFileSync, existsSync } from 'fs';
 import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import helmet from 'helmet';
@@ -20,6 +20,18 @@ import { computeCostTrend, fetchCircuitBreakerStates } from './tui-sources.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
+
+function loadDashboardHtml(): string {
+  const candidates = [
+    resolve(__dirname, '..', '..', 'deploy', 'dashboard.html'),
+    resolve(__dirname, '..', 'deploy', 'dashboard.html'),
+    resolve(process.cwd(), 'deploy', 'dashboard.html'),
+  ];
+  for (const p of candidates) {
+    if (existsSync(p)) return readFileSync(p, 'utf-8');
+  }
+  return '<!DOCTYPE html><html><body><h1>MCP Guardian API</h1><p>See README for REST and WebSocket endpoints.</p></body></html>';
+}
 
 function getCorsOrigin(req: IncomingMessage): string {
   const allowed = process.env['DASHBOARD_ALLOWED_ORIGINS']?.split(',').map(s => s.trim()).filter(Boolean)
@@ -61,15 +73,21 @@ export async function startDashboardServer(
   }
 
   const auth = dashboardAuth || new DashboardAuth();
-  const authEnabled = dashboardEnabled && auth.isEnabled();
+  const authRequired = dashboardEnabled && auth.requiresAuthentication();
 
-  if (authEnabled) {
+  if (authRequired && auth.isConfigured()) {
     Logger.info('[dashboard] Dashboard authentication enabled');
+  } else if (authRequired) {
+    Logger.error(
+      '[dashboard] Dashboard authentication required but DASHBOARD_API_KEY or DASHBOARD_JWT_SECRET is missing — all API requests will be rejected until configured',
+    );
   } else {
-    Logger.info('[dashboard] Dashboard running without authentication (set DASHBOARD_AUTH_ENABLED=true)');
+    Logger.warn(
+      '[dashboard] Dashboard API is UNauthenticated (DASHBOARD_AUTH_DISABLED=true) — do not expose to a network',
+    );
   }
 
-  const dashboardHtml = readFileSync(resolve(__dirname, '..', '..', 'deploy', 'dashboard.html'), 'utf-8');
+  const dashboardHtml = loadDashboardHtml();
 
   const MAX_BODY_SIZE = 1024 * 1024; // 1 MB
 
@@ -241,7 +259,7 @@ export async function startDashboardServer(
 
       if (url === '/metrics') {
         setCors();
-        if (auth.isEnabled() && process.env['DASHBOARD_METRICS_PUBLIC'] !== 'true') {
+        if (auth.requiresAuthentication() && process.env['DASHBOARD_METRICS_PUBLIC'] !== 'true') {
           const metricsAuth = auth.authenticate({ url, headers: req.headers, method });
           if (!metricsAuth.authenticated) {
             writeJson(res, 401, { error: 'Authentication required for metrics' });
@@ -259,7 +277,16 @@ export async function startDashboardServer(
         return;
       }
 
-      if (url === '/api/auth/status' && method === 'GET') { setCors(); writeJson(res, 200, { authenticated: true, identity: authResult.identity, authEnabled }); return; }
+      if (url === '/api/auth/status' && method === 'GET') {
+        setCors();
+        writeJson(res, 200, {
+          authenticated: true,
+          identity: authResult.identity,
+          authRequired,
+          authConfigured: auth.isConfigured(),
+        });
+        return;
+      }
 
       if (url === '/api/logout' && method === 'POST') {
         setCors();
@@ -459,10 +486,14 @@ export async function startDashboardServer(
         setCors();
         const b = await readBody(req);
         const { recordSuggestionOutcome } = await import('../ai/suggestion-engine.js');
+        const policyPath = process.env['GUARDIAN_POLICY_PATH'] || process.env['MCP_GUARDIAN_POLICY_PATH'] || 'default-policy.yaml';
         await recordSuggestionOutcome(String(b.suggestionId || ''), 'applied', {
           ruleName: String(b.ruleName || b.suggestionId || 'unknown'),
-          source: (b.source as 'baseline' | 'cost' | 'threat' | 'assist' | 'pattern') || 'baseline',
+          source: (b.source as 'baseline' | 'cost' | 'threat' | 'assist' | 'pattern' | 'attack') || 'baseline',
           confidence: typeof b.confidence === 'number' ? b.confidence : 0.5,
+          rule: b.rule as import('../policy/policy-types.js').PolicyRule | undefined,
+          policyPath,
+          policyWatcher: policyWatcher ?? null,
         });
         writeJson(res, 200, { status: 'accepted', id: b.suggestionId });
         return;

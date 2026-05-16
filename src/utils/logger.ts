@@ -7,9 +7,13 @@ import pino from 'pino';
  */
 export function detectMcpServerMode(): boolean {
   if (process.env['MCP_GUARDIAN_MODE'] === 'server') return true;
-  if (process.env['MCP_GUARDIAN_MODE'] === 'cli')    return false;
+  if (process.env['MCP_GUARDIAN_MODE'] === 'cli') return false;
+  if (process.env['MCP_GUARDIAN_MODE'] === 'proxy') return true;
   const arg0 = process.argv[1] ?? '';
-  return arg0.endsWith('index.js') || arg0.endsWith('index.ts');
+  const args = process.argv.join(' ');
+  if (arg0.endsWith('index.js') || arg0.endsWith('index.ts')) return true;
+  if (args.includes(' proxy') || args.endsWith(' proxy')) return true;
+  return false;
 }
 
 export const IS_MCP_SERVER_MODE = detectMcpServerMode();

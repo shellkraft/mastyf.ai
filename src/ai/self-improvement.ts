@@ -8,7 +8,7 @@ export { resolveAiLearningStatePath } from './ai-paths.js';
 export interface LearningOutcome {
   suggestionId: string;
   ruleName: string;
-  source: 'baseline' | 'cost' | 'threat' | 'assist' | 'pattern';
+  source: 'baseline' | 'cost' | 'threat' | 'assist' | 'pattern' | 'attack';
   action: 'applied' | 'rejected' | 'modified' | 'ignored';
   confidence: number;
   timestamp: string;
@@ -36,7 +36,7 @@ const FRESH_STATE: LearningState = {
   falsePositiveRate: 0,
   truePositiveRate: 0,
   adaptiveThreshold: 0.85,
-  moduleWeights: { baseline: 1.0, cost: 1.0, threat: 1.0, assist: 1.0 },
+  moduleWeights: { baseline: 1.0, cost: 1.0, threat: 1.0, assist: 1.0, attack: 1.0 },
   lastUpdated: new Date().toISOString(),
   learningInitialized: false,
   cyclesCompleted: 0,
@@ -151,7 +151,7 @@ export class SelfImprovement {
     }
 
     // Adjust per-module weights
-    for (const source of ['baseline', 'cost', 'threat', 'assist'] as const) {
+    for (const source of ['baseline', 'cost', 'threat', 'assist', 'attack'] as const) {
       const moduleOutcomes = recent.filter(o => o.source === source);
       if (moduleOutcomes.length >= 3) {
         const accepted = moduleOutcomes.filter(o => o.action === 'applied').length;

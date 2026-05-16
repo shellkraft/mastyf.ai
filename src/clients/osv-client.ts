@@ -55,7 +55,7 @@ export class OsvClient {
         status: 'ok',
         findings: vulns.map((v) => ({
           id: String(v.id ?? 'unknown'),
-          severity: this.mapSeverity(v.severity as string | undefined),
+          severity: this.mapSeverity(v.severity),
           summary: String(v.summary ?? (v.details as string)?.substring(0, 200) ?? 'No description'),
           fixedVersion: (v.affected as Array<{ ranges?: Array<{ events?: Array<{ fixed?: string }> }> }>)?.[0]
             ?.ranges?.[0]?.events?.find((e) => e.fixed)?.fixed,
@@ -111,7 +111,7 @@ export class OsvClient {
         status: 'ok',
         findings: vulns.map((v) => ({
           id: String(v.id ?? 'unknown'),
-          severity: this.mapSeverity(v.severity as string | undefined),
+          severity: this.mapSeverity(v.severity),
           summary: String(v.summary ?? (v.details as string)?.substring(0, 200) ?? 'No description'),
           fixedVersion: (v.affected as Array<{ ranges?: Array<{ events?: Array<{ fixed?: string }> }> }>)?.[0]
             ?.ranges?.[0]?.events?.find((e) => e.fixed)?.fixed,
@@ -128,14 +128,45 @@ export class OsvClient {
     }
   }
 
-  private mapSeverity(severity?: string): 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW' {
-    if (!severity) return 'MEDIUM';
+  private mapSeverity(severity: unknown): 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW' {
+    const label = this.normalizeSeverityLabel(severity);
+    if (!label) return 'MEDIUM';
     const map: Record<string, 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW'> = {
       CRITICAL: 'CRITICAL',
       HIGH: 'HIGH',
       MODERATE: 'MEDIUM',
+      MEDIUM: 'MEDIUM',
       LOW: 'LOW',
     };
-    return map[severity.toUpperCase()] ?? 'MEDIUM';
+    return map[label] ?? 'MEDIUM';
+  }
+
+  /** OSV may return severity as a string or as [{ type, score }]. */
+  private normalizeSeverityLabel(severity: unknown): string | null {
+    if (typeof severity === 'string') return severity.toUpperCase();
+    if (Array.isArray(severity) && severity.length > 0) {
+      const first = severity[0];
+      if (typeof first === 'string') return first.toUpperCase();
+      if (first && typeof first === 'object') {
+        const score = (first as { score?: string }).score;
+        if (typeof score === 'string') {
+          const m = score.match(/CRITICAL|HIGH|MEDIUM|LOW|MODERATE/i);
+          if (m) return m[0].toUpperCase();
+          const num = parseFloat(score);
+          if (!Number.isNaN(num)) {
+            if (num >= 9) return 'CRITICAL';
+            if (num >= 7) return 'HIGH';
+            if (num >= 4) return 'MEDIUM';
+            return 'LOW';
+          }
+        }
+      }
+    }
+    if (severity && typeof severity === 'object' && !Array.isArray(severity)) {
+      const s = (severity as { type?: string; score?: string }).score
+        ?? (severity as { type?: string }).type;
+      if (typeof s === 'string') return this.normalizeSeverityLabel(s);
+    }
+    return null;
   }
 }

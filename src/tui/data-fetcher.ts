@@ -431,14 +431,23 @@ export class DataFetcher {
   }
 
   async recordSuggestionOutcome(
-    suggestion: { id?: string; ruleName?: string; source?: string; confidence?: number },
+    suggestion: {
+      id?: string;
+      ruleName?: string;
+      source?: string;
+      confidence?: number;
+      rule?: import('../policy/policy-types.js').PolicyRule;
+    },
     action: 'applied' | 'rejected',
   ): Promise<void> {
     const { recordSuggestionOutcome } = await import('../ai/suggestion-engine.js');
+    const { resolvePolicyPath } = await import('../utils/tui-sources.js');
     await recordSuggestionOutcome(suggestion.id || suggestion.ruleName || 'unknown', action, {
       ruleName: suggestion.ruleName || suggestion.id || 'unknown',
-      source: (suggestion.source as 'baseline' | 'cost' | 'threat' | 'assist' | 'pattern') || 'baseline',
+      source: (suggestion.source as 'baseline' | 'cost' | 'threat' | 'assist' | 'pattern' | 'attack') || 'baseline',
       confidence: suggestion.confidence ?? 0.5,
+      rule: suggestion.rule,
+      policyPath: resolvePolicyPath(),
     });
     await this.fetchAll();
   }
