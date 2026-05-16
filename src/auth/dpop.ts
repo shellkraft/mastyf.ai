@@ -1,5 +1,10 @@
 import * as jose from 'jose';
 import { Logger } from '../utils/logger.js';
+import {
+  createDPoPNonceStore,
+  type DPoPNonceStore,
+  InMemoryDPoPNonceStore,
+} from './dpop-nonce-store.js';
 
 /**
  * DPoP (Demonstrating Proof of Possession) — RFC 9449.
@@ -20,13 +25,12 @@ export interface DPoPProof {
 }
 
 export class DPoPValidator {
-  /** nonce → timestamp (ms) for TTL-based expiry */
-  private usedNonces: Map<string, number> = new Map();
+  private readonly nonceStore: DPoPNonceStore;
   private readonly nonceTtlMs: number;
-  private lastCleanup: number = Date.now();
 
-  constructor(nonceTtlMs: number = 10 * 60 * 1000) {
+  constructor(nonceTtlMs: number = 10 * 60 * 1000, nonceStore?: DPoPNonceStore) {
     this.nonceTtlMs = nonceTtlMs;
+    this.nonceStore = nonceStore ?? createDPoPNonceStore(nonceTtlMs);
   }
 
   /** Derive algorithm from JWK */
@@ -40,19 +44,6 @@ export class DPoPValidator {
       return 'EdDSA';
     }
     return 'ES256';
-  }
-
-  /** Clean expired nonces BEFORE validation */
-  private cleanupExpiredNonces(): void {
-    const now = Date.now();
-    if (now - this.lastCleanup < 60000) return;
-    const expiry = now - this.nonceTtlMs;
-    for (const [nonce, timestamp] of this.usedNonces) {
-      if (timestamp < expiry) {
-        this.usedNonces.delete(nonce);
-      }
-    }
-    this.lastCleanup = now;
   }
 
   /**
@@ -90,15 +81,14 @@ export class DPoPValidator {
         return { valid: false, error: 'DPoP: proof from the future' };
       }
 
-      // Cleanup old nonces BEFORE validation (not after)
-      this.cleanupExpiredNonces();
+      if (this.nonceStore instanceof InMemoryDPoPNonceStore) {
+        this.nonceStore.cleanupExpired();
+      }
 
-      // Validate nonce (jti) for replay detection
-      if (this.usedNonces.has(proof.jti)) {
+      if (!(await this.nonceStore.claim(proof.jti))) {
         Logger.warn(`[dpop] Replay detected: jti ${proof.jti}`);
         return { valid: false, error: 'DPoP: nonce already used (replay detected)' };
       }
-      this.usedNonces.set(proof.jti, Date.now());
 
       // Validate ath (access token hash) if access token provided
       if (accessToken && proof.ath) {

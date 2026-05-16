@@ -2,6 +2,18 @@
 
 All notable changes to MCP Guardian will be documented in this file.
 
+## [2.6.6] - 2026-05-17
+
+### Fixed (comprehensive real test report)
+- **Integration stability** — `proxy-audit` uses `benchmarks/fixtures/integration-mcp-server.cjs` (fixes inline `-e` mock crash / zero-token flakes); `real-mcp-server` keeps trailing newlines and longer waits for slow CI VMs.
+- **DPoP multi-replica** — `REDIS_URL` enables Redis `SET NX` jti deduplication (`src/auth/dpop-nonce-store.ts`); in-memory store unchanged for single instance.
+
+### Security (dev supply chain)
+- **Vitest 3** + pnpm overrides `vite>=6.4.2`, `esbuild>=0.25.0` — resolves moderate dev-only audit findings.
+
+### Docs
+- **[docs/COMPLIANCE.md](docs/COMPLIANCE.md)** — HIPAA at-rest, GDPR purge, DPoP Redis documented honestly.
+
 ## [2.6.5] - 2026-05-16
 
 ### Fixed (IDE long-running / concurrency)

@@ -77,8 +77,8 @@ function createInitialize(id: number): string {
     });
 
   it('should pass a safe tools/call', async () => {
-    proxy.handleClientInput(createCall(1, 'tools/call', 'search', { query: 'hello' }).trim());
-    await new Promise(r => setTimeout(r, 50));
+    proxy.handleClientInput(createCall(1, 'tools/call', 'search', { query: 'hello' }));
+    await new Promise(r => setTimeout(r, 300));
     const resp = responses.get('1');
     expect(resp).toBeDefined();
     expect(resp.error).toBeUndefined();
@@ -86,8 +86,8 @@ function createInitialize(id: number): string {
   });
 
   it('should block a denied tool', async () => {
-    proxy.handleClientInput(createCall(2, 'tools/call', 'eval', {}).trim());
-    await new Promise(r => setTimeout(r, 50));
+    proxy.handleClientInput(createCall(2, 'tools/call', 'eval', {}));
+    await new Promise(r => setTimeout(r, 100));
     const resp = responses.get('2');
     expect(resp).toBeDefined();
     expect(resp.error).toBeDefined();
@@ -96,16 +96,16 @@ function createInitialize(id: number): string {
   });
 
   it('should block execute_command tool', async () => {
-    proxy.handleClientInput(createCall(3, 'tools/call', 'execute_command', { command: 'ls' }).trim());
-    await new Promise(r => setTimeout(r, 50));
+    proxy.handleClientInput(createCall(3, 'tools/call', 'execute_command', { command: 'ls' }));
+    await new Promise(r => setTimeout(r, 100));
     const resp = responses.get('3');
     expect(resp.error).toBeDefined();
     expect(resp.error.code).toBe(-32001);
   });
 
   it('should block shell injection pattern in arguments', async () => {
-    proxy.handleClientInput(createCall(4, 'tools/call', 'search', { query: 'rm -rf /' }).trim());
-    await new Promise(r => setTimeout(r, 50));
+    proxy.handleClientInput(createCall(4, 'tools/call', 'search', { query: 'rm -rf /' }));
+    await new Promise(r => setTimeout(r, 100));
     const resp = responses.get('4');
     expect(resp.error).toBeDefined();
     expect(resp.error.code).toBe(-32001);
@@ -115,7 +115,7 @@ function createInitialize(id: number): string {
   it('should capture real token data in DB', async () => {
     // Send 3 safe calls to populate DB
     for (let i = 10; i <= 12; i++) {
-      proxy.handleClientInput(createCall(i, 'tools/call', 'search', { query: `q${i}` }).trim());
+      proxy.handleClientInput(createCall(i, 'tools/call', 'search', { query: `q${i}` }));
     }
     await new Promise(r => setTimeout(r, 500));
 

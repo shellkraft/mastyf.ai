@@ -1,6 +1,6 @@
 {
   "name": "@mcp-guardian/server",
-  "version": "2.6.5",
+  "version": "2.6.6",
   "description": "Security, cost, and health governance proxy for MCP infrastructure — three-layer detection engine (regex + schema + LLM), monorepo, corpus, CI/CD",
   "type": "module",
   "files": [
@@ -110,11 +110,11 @@
     "@types/pg": "^8.20.0",
     "@types/shell-quote": "^1.7.5",
     "@types/ws": "^8.18.1",
-    "@vitest/coverage-v8": "^1.6.0",
+    "@vitest/coverage-v8": "^3.2.4",
     "tsx": "^4.7.0",
     "turbo": "^2.9.12",
     "typescript": "^5.4.0",
-    "vitest": "^1.6.0"
+    "vitest": "^3.2.4"
   },
   "packageManager": "pnpm@10.28.2+sha512.41872f037ad22f7348e3b1debbaf7e867cfd448f2726d9cf74c08f19507c31d2c8e7a11525b983febc2df640b5438dee6023ebb1f84ed43cc2d654d2bc326264",
   "license": "MIT",
@@ -123,7 +123,9 @@
       "better-sqlite3"
     ],
     "overrides": {
-      "protobufjs": ">=8.0.2"
+      "protobufjs": ">=8.0.2",
+      "esbuild": ">=0.25.0",
+      "vite": ">=6.4.2"
     }
   }
 }

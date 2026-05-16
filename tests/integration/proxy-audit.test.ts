@@ -1,16 +1,21 @@
 import { describe, it, expect } from 'vitest';
+import { resolve, dirname } from 'path';
+import { fileURLToPath } from 'url';
 import { McpProxyServer } from '../../src/proxy/proxy-server.js';
 import { HistoryDatabase } from '../../src/database/history-db.js';
 import { CostAuditor } from '../../src/services/cost-auditor.js';
 import { PricingClient } from '../../src/clients/pricing-client.js';
 import { McpServerConfig } from '../../src/types.js';
 
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const INTEGRATION_MCP_SERVER = resolve(__dirname, '..', '..', 'benchmarks', 'fixtures', 'integration-mcp-server.cjs');
+
 describe('Proxy-to-Audit Integration', () => {
   const config: McpServerConfig = {
     name: 'test-integration',
     transport: 'stdio',
     command: 'node',
-    args: ['-e', 'require("readline").createInterface({input:process.stdin}).on("line",(l)=>{try{const m=JSON.parse(l);if(m.method==="tools/list"){process.stdout.write(JSON.stringify({jsonrpc:"2.0",id:m.id,result:{tools:[{name:"echo"},{name:"add"},{name:"search"}]}})+"\\n")}else if(m.method==="initialize"){process.stdout.write(JSON.stringify({jsonrpc:"2.0",id:m.id,result:{protocolVersion:"2024-11-05",serverInfo:{name:"test",version:"1.0"},capabilities:{tools:{}}}})+"\\n")}else{process.stdout.write(JSON.stringify({jsonrpc:"2.0",id:m.id,result:{content:[{type:"text",text:"response to "+m.method}]}})+"\\n")}}catch(e){process.stdout.write(JSON.stringify({jsonrpc:"2.0",id:m?.id||"unknown",error:{code:-1,message:String(e)}})+"\\n")}});setTimeout(()=>{},99999)'],
+    args: [INTEGRATION_MCP_SERVER],
   };
 
   it('should capture real tokens via proxy and produce accurate cost report', async () => {
