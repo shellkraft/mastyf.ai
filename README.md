@@ -150,7 +150,7 @@ pnpm build
 mcp-guardian wrap --client cursor --policy policy-audit.yaml --apply
 ```
 
-See **[docs/WINDOWS.md](docs/WINDOWS.md)** for Cursor example `mcp.json`, better-sqlite3 prebuild notes, and MSI roadmap (v2.7).
+See **[docs/WINDOWS.md](docs/WINDOWS.md)** for Cursor example `mcp.json`, better-sqlite3 prebuild notes, and **[installer/windows/](installer/windows/)** for the Inno Setup MSI build (sign before org distribution).
 
 ### Policy rollout (production-safe)
 
@@ -228,15 +228,15 @@ Verify integration: `./scripts/verify-live-integration.sh`
 - **Live JSON-RPC probes** — Latency, success rate, tool count
 - **Circuit breaker** — CLOSED / OPEN / HALF_OPEN
 - **Prometheus** — `/metrics`, `/healthz`, `/readyz` on port 9090
-- **Web dashboard** — REST + WebSocket API on port 4000 (browser SPA not shipped — use TUI for live ops)
-- **Interactive TUI** — Terminal dashboard (security, cost, health, AI, audit); **primary live-ops UI in v2.5.x**
+- **Web dashboard** — Browser SPA at `http://localhost:4000/` when proxy runs (`deploy/dashboard-spa/`; REST + WebSocket; `GUARDIAN_DASHBOARD_SPA=false` for legacy HTML)
+- **Interactive TUI** — Terminal dashboard (Overview–Fleet, nine tabs); complements the SPA for SSH-only or headless hosts
 - **OpenTelemetry** — OTLP tracing
 - **SIEM hooks** — Structured JSON (`policy_decision`, `tool_blocked`) via `MCP_GUARDIAN_SIEM_*`
 - **Webhook alerting** — Slack/Discord for policy blocks
 
 ### HA & scale
 - **PgBouncer required** — For **>50 replicas** or any multi-replica K8s with `DB_TYPE=postgres`; direct `:5432` exhausts `max_connections` under load. Set `GUARDIAN_REQUIRE_PGBOUNCER=true` to fail startup without a pooler URL. See [docs/SCALE_AND_RESILIENCE.md](docs/SCALE_AND_RESILIENCE.md)
-- **No multi-region active-active yet** — Redis locks assume &lt;80ms RTT; deploy single-region Redis + AZ spread only
+- **Multi-region (active-passive)** — `GUARDIAN_REGION` labels metrics and Redis rate-limit keys; optional `GUARDIAN_RATE_LIMIT_DISTRIBUTED_LOCK`. Not active-active DB replication — see [MULTI_REGION.md](docs/MULTI_REGION.md). Redis locks still assume &lt;80ms RTT within a region.
 - **PostgreSQL backend** — `DB_TYPE=postgres` + `DATABASE_URL` for shared audit store
 - **Redis** — `REDIS_URL` for multi-replica rate limits and sessions (`GUARDIAN_STRICT_MODE`)
 
@@ -247,6 +247,9 @@ Verify integration: `./scripts/verify-live-integration.sh`
 - **Dev containers** — Bind-mount the same `history.db`; see [DEVCONTAINERS.md](docs/DEVCONTAINERS.md)
 
 ### Enterprise (v2.5+)
+- **Dashboard SPA (v2.7)** — `deploy/dashboard-spa/` served at `/` when the proxy runs with `DASHBOARD_ENABLED=true`; policy FP reject, AI accept/reject, fleet overview
+- **Fleet aggregation (v2.7)** — `mcp-guardian fleet status` over Postgres `guardian_instances` or `GUARDIAN_FLEET_DB_PATHS`; TUI **Fleet** tab (key `9`)
+- **Detector Plugin SDK v3.0 (v2.7)** — `@mcp-guardian/plugin-sdk` with `createDetectorPlugin` and lifecycle hooks; on by default — [PLUGIN_SDK.md](docs/PLUGIN_SDK.md), [packages/plugin-sdk/](packages/plugin-sdk/)
 - **Tenant isolation** — `GUARDIAN_TENANT_ID`, admin API routes on dashboard
 - **Policy audit trail** — `POLICY_AUDIT_ENABLED` JSONL change log
 - **Compliance pack** — [docs/COMPLIANCE.md](docs/COMPLIANCE.md), [docs/PEN_TEST_SCOPE.md](docs/PEN_TEST_SCOPE.md)
@@ -261,7 +264,7 @@ Verify integration: `./scripts/verify-live-integration.sh`
 - **Graceful shutdown** — WAL checkpoint, connection flush
 
 ### Testing
-- **435+ tests** — `pnpm vitest run`; unit, integration, E2E proxy, fleet, policy-merge, plugin-sdk, adversarial scenarios
+- **436 tests** — `pnpm vitest run` (72 files; unit, integration, E2E proxy, fleet, policy-merge, plugin-sdk, adversarial scenarios)
 - **Adversarial scenarios** — 34 regression tests mapped to the 58-scenario report ([`adversarial-scenarios.test.ts`](tests/policy/adversarial-scenarios.test.ts))
 - **Red-team corpus** — precision/recall on poisoned payloads
 - **Coverage gates** — 70% lines in CI
@@ -367,7 +370,7 @@ mcp-guardian tui --policy default-policy.yaml
 mcp-guardian tui --dashboard-url http://localhost:4000
 ```
 
-Keys: `1`–`8` tabs, `Tab` next, `r` refresh, `Esc` quit. AI tab: `n` next suggestion, `a` accept, `x` reject.
+Keys: `1`–`9` tabs (Overview … Fleet), `Tab` next, `r` refresh, `Esc` quit. AI tab: `n` next suggestion, `a` accept, `x` reject.
 
 Reads **`MCP_GUARDIAN_DB_PATH`** (default `~/.mcp-guardian/history.db`) in **read-only** mode so it can run beside a live proxy. Polls every **1.5s**; connects to **`ws://127.0.0.1:4000/ws`** only when a proxy (or dashboard) is actually listening — otherwise you will see `WS off (poll 1.5s)`, which is normal.
 
@@ -413,7 +416,7 @@ For a safe first run: `mcp-guardian proxy --policy policy-demo.yaml` (or `policy
 
 ## Interactive TUI
 
-The TUI is the **primary live-ops UI**. The browser dashboard on port 4000 is a **REST + WebSocket API** (metrics, audit, policy, AI accept/reject) — there is no shipped browser SPA yet. If you want a terminal view of what Guardian actually recorded, use the TUI.
+The **browser SPA** (`deploy/dashboard-spa/`) is the default UI at `http://localhost:4000/` when the proxy runs with `DASHBOARD_ENABLED=true`. Use the **TUI** for SSH-only hosts, quick terminal checks, or when port 4000 is not exposed — both read the same `MCP_GUARDIAN_DB_PATH` and share the Fleet tab / `mcp-guardian fleet status` data.
 
 ```bash
 pnpm run build
@@ -434,6 +437,7 @@ pnpm run tui
 | Security | Latest `security_scans` per server | Scans can score **0/100** when CVE data is harsh — that is not “mock,” it is scan output. |
 | Cost | Token fields on call records | **$0** until calls carry priced models/tokens. |
 | Instances | One row per **MCP server name** in DB | Not “Guardian processes.” `echo-test` with scans but **no calls** still appears; **Servers w/ traffic** counts servers with `call_records` only. |
+| Fleet (key `9`) | `getFleetStatus()` — Postgres or `GUARDIAN_FLEET_DB_PATHS` | Same data as `mcp-guardian fleet status`; aggregate replicas, not live host discovery. |
 | AI Engine | Learning cycle + pending suggestions | **No fake TP/FP rates** until ≥5 labeled accept/reject outcomes. Suggestions can be **empty** on stable traffic (no anomalies). |
 | FULL ANALYSIS | Rebuilt from DB when records exist | Ignores stale `~/.mcp-guardian/.ai-report.json` when live calls are present. |
 
@@ -633,6 +637,10 @@ Short list before `default-policy.yaml` + block mode in production:
 6. **CVE** — Decide explicitly: `GUARDIAN_BLOCK_ON_CVE=true` or leave off (default).
 7. **AI** — Keep `GUARDIAN_AI_AUTO_APPLY=false`; configure quorum env vars if multiple operators label suggestions.
 8. **Verify** — `mcp-guardian doctor`, `mcp-guardian proxy --dry-run`, shared `MCP_GUARDIAN_DB_PATH` for proxy + TUI; run `pnpm vitest run tests/policy/adversarial-scenarios.test.ts` after policy changes.
+9. **Fleet** — Postgres `guardian_instances` or `GUARDIAN_FLEET_DB_PATHS` for `mcp-guardian fleet status` / TUI Fleet tab (aggregate only — not host discovery).
+10. **Plugins** — Audit `GUARDIAN_PLUGIN_PATH`; set `GUARDIAN_PLUGINS_ENABLED=false` on hosts that must not load third-party detectors.
+11. **HTTP tools** — Enable `GUARDIAN_HTTP_TOOLS_POLICY=true` when MCP servers expose outbound HTTP tools (merges `policy-templates/http-tools-policy.yaml`).
+12. **Dashboard SPA** — `DASHBOARD_ENABLED=true` with auth credentials; use `GUARDIAN_DASHBOARD_SPA=false` only to fall back to legacy `deploy/dashboard.html`.
 
 ---
 
@@ -735,6 +743,15 @@ See [CONTRIBUTING.md](CONTRIBUTING.md). Run `pnpm install && pnpm build && pnpm 
 
 ## Roadmap
 
+### Shipped in v2.7.0
+- **Plugin SDK v3.0** — `@mcp-guardian/plugin-sdk`, plugins on by default
+- **Dashboard SPA** — `deploy/dashboard-spa/` at `/` (REST + WebSocket)
+- **Fleet** — `mcp-guardian fleet status`, TUI Fleet tab, Postgres or `GUARDIAN_FLEET_DB_PATHS`
+- **HTTP tools policy template** — `GUARDIAN_HTTP_TOOLS_POLICY`
+- **Multi-region labels** — `GUARDIAN_REGION`, Redis per-region keys ([MULTI_REGION.md](docs/MULTI_REGION.md), active-passive)
+- **Async semantic audit** — queue cap, min confidence, Prometheus `mcp_guardian_semantic_audit_*` ([AI_LEARNING.md](docs/AI_LEARNING.md))
+- **Windows installer script** — Inno Setup `installer/windows/mcp-guardian.iss` (build and sign locally)
+
 ### Shipped in v2.6.x
 - **2.6.8** — URL/SSRF guard, expanded path/credential patterns, SQL/NoSQL/LDAP/GraphQL/SSTI hardening, puppeteer URL validation, 58-scenario adversarial regression tests
 - **2.6.7** — GDPR Article 17 `eraseAllAuditData`, cost-pricing recursion fix
@@ -745,13 +762,14 @@ See [CONTRIBUTING.md](CONTRIBUTING.md). Run `pnpm install && pnpm build && pnpm 
 - Dashboard CSRF, session regeneration, fail-closed auth
 - DPoP `jti` replay protection (Redis `jti` dedup when `REDIS_URL` set)
 - Metrics dispose, SQLite busy retry, Remote SSH path map
-- Experimental detector plugins (`GUARDIAN_PLUGINS_ENABLED`)
 
 ### Planned
-- **v2.6+** — Browser SPA on existing `/api` + WebSocket (today: TUI + raw API)
-- **v2.7** — Windows MSI installer
-- **v2.x** — Inbound HTTP/SSE gateway; fleet aggregation; enhanced SIEM templates
-- **v3.0** — Multi-tenant control plane; full custom detector SDK; gRPC transport
+- **Multi-region active-active** — SQLite/Postgres replication across regions (today: labels + active-passive Redis only)
+- **Signed plugin marketplace** — curated third-party detector distribution
+- **Production MSI pipeline** — org code-signing and CI for Windows installers (script ships in v2.7)
+- **Inbound HTTP/SSE gateway** — non-stdio MCP ingress
+- **Enhanced SIEM templates** — richer export mappings
+- **v3.0** — Multi-tenant control plane; gRPC transport
 
 ---
 
@@ -761,6 +779,6 @@ MIT — see [LICENSE](LICENSE).
 
 ---
 
-**Docs:** [Real-world integration](docs/REAL_WORLD_INTEGRATION.md) · [Policy](docs/POLICY.md) · [Adversarial scenarios](tests/policy/adversarial-scenarios.test.ts) · [Cost governance](docs/COST_GOVERNANCE.md) · [Scale & resilience](docs/SCALE_AND_RESILIENCE.md) · [Windows](docs/WINDOWS.md) · [Remote SSH](docs/REMOTE_SSH.md) · [Dev containers](docs/DEVCONTAINERS.md) · [Extensibility](docs/EXTENSIBILITY.md) · [Supply chain](docs/SUPPLY_CHAIN.md) · [Production](deploy/PRODUCTION.md) · [Compliance](docs/COMPLIANCE.md) · [Threat model](docs/THREAT_MODEL.md) · [Security](SECURITY.md)
+**Docs:** [Real-world integration](docs/REAL_WORLD_INTEGRATION.md) · [Policy](docs/POLICY.md) · [Plugin SDK](docs/PLUGIN_SDK.md) · [Multi-region](docs/MULTI_REGION.md) · [AI learning](docs/AI_LEARNING.md) · [Adversarial scenarios](tests/policy/adversarial-scenarios.test.ts) · [Cost governance](docs/COST_GOVERNANCE.md) · [Scale & resilience](docs/SCALE_AND_RESILIENCE.md) · [Windows](docs/WINDOWS.md) · [Windows installer](installer/windows/) · [Remote SSH](docs/REMOTE_SSH.md) · [Dev containers](docs/DEVCONTAINERS.md) · [Extensibility](docs/EXTENSIBILITY.md) · [Supply chain](docs/SUPPLY_CHAIN.md) · [Production](deploy/PRODUCTION.md) · [Compliance](docs/COMPLIANCE.md) · [Threat model](docs/THREAT_MODEL.md) · [Security](SECURITY.md)
 
 **Built with** TypeScript, better-sqlite3 12.10+, pino, prom-client, jose 6.x, commander, chalk, tiktoken, and the MCP SDK.
