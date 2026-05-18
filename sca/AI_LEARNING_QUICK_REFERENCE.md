@@ -171,7 +171,6 @@ Deploy immediately:
 - Baseline generation
 - Multi-tenant isolation
 
-**Expected ROI:** 500%+
 **Confidence Level:** 88% (high)
 
 ### Phase 2: 4-6 WEEKS ⚠️ WITH ENHANCEMENTS
@@ -183,7 +182,6 @@ Add before enterprise deployment:
 3. Tool capability matrix (+15% accuracy)
 4. Approval workflow integration (-50% FP on bulk ops)
 
-**Expected ROI:** 900%+
 **Confidence Level:** 92% (very high)
 
 ### Phase 3: 8-12 WEEKS 🔧 FULL PREPARATION
@@ -195,7 +193,6 @@ Additional requirements:
 - Comprehensive security documentation
 - Third-party assessment
 
-**Expected ROI:** 1200%+
 **Confidence Level:** 95% (excellent)
 
 ---
@@ -270,35 +267,6 @@ Additional requirements:
    - Model hallucination detection weak without quality scoring
    - Need LLM output validation layer
    - Fix timeline: 4 weeks
-
----
-
-## 🚀 ROI Analysis
-
-**Scenario:** $10M/year organization, 1000 MCP users
-
-### Fraud Detection ROI
-
-```
-Annual Undetected Fraud (baseline):
-  - 20 incidents/year × $50,000/incident = $1,000,000 loss
-
-With AI Learning (90% detection):
-  - 18 detected incidents (90% of 20)
-  - 60% of fraud stopped quickly = $540,000 saved
-  - Quick response reduces impact to $50,000
-  - Undetected: 2 × $50,000 = $100,000 loss
-  - Total annual loss: $100,000 (90% improvement!)
-
-System Cost:
-  - Compute (anomaly detection): $2,000/month
-  - Engineering/ops: $5,000/month
-  - Total: $84,000/year
-
-NET ROI:
-  ($900,000 savings - $84,000 cost) / $84,000 = 971% ROI ✅
-  Payback period: ~1 month
-```
 
 ---
 

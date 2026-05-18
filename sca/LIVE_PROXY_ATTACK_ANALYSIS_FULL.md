@@ -20,7 +20,6 @@ This comprehensive analysis documents how the MCP Guardian AI learning system re
 - **AI Confidence Score Improvement:** 0.70 → 0.88 (+25.7%)
 - **False Positive Rate:** 2.1% (acceptable for enterprise)
 - **System Stability:** Maintained 92% average stability under sustained attack
-- **ROI:** 971% annually with payback in 1.2 months
 
 ### Deployment Recommendation
 
@@ -503,72 +502,14 @@ Based on this simulation, potential gaps:
 
 ---
 
-## SECTION 11: BUSINESS IMPACT AND ROI ANALYSIS
+## SECTION 11: RECOMMENDATIONS AND ACTION ITEMS
 
-### 11.1 Cost-Benefit Analysis
-
-**Chart Reference:** CHART_10_Cost_Benefit_Analysis.png
-
-#### Incident Reduction Over Time
-```
-Before AI:         20 incidents/month  →  $1,000,000/month
-After AI Week 1:   15 incidents/month  →  $750,000/month
-After AI Week 4:   6 incidents/month   →  $300,000/month
-After AI Week 12:  2 incidents/month   →  $100,000/month
-```
-
-#### Cost Structure
-- **System Cost:** $84,000/year ($7,000/month)
-- **Detection Improvement:** 90% (prevents 90% of incidents)
-- **Average Incident Cost:** $50,000
-- **Quick Response Savings:** 60% of incident impact
-
-#### ROI Calculation
-| Timeline | Monthly Savings | System Cost | Net Benefit | Cumulative |
-|----------|---|---|---|---|
-| Month 1 | $75,000 | $7,000 | $68,000 | $68,000 |
-| Month 2 | $200,000 | $7,000 | $193,000 | $261,000 |
-| Month 3 | $300,000 | $7,000 | $293,000 | $554,000 |
-| Month 4-12 | $720,000/mo | $84,000/yr | ~$650,000/mo | ~$7.8M |
-| **Annual Total** | **~$900,000** | **$84,000** | **$816,000** | **971% ROI** |
-
-#### Payback Period Analysis
-- **Payback Month:** 1.2 months
-- **Break-even Date:** 36 days from deployment
-- **Implication:** System funds itself within one month
-
-### 11.2 Strategic Benefits Beyond ROI
-1. **Reduced MTTR (Mean Time To Response)**
-   - Before: 2-4 hours average incident response
-   - After: <10 seconds automated response
-   - Impact: Prevents cascade failures
-
-2. **Compliance Evidence**
-   - Automated logging of all threat detection
-   - Audit trail for compliance requirements
-   - Accelerates GDPR, HIPAA, SOC2 compliance
-
-3. **Threat Intelligence**
-   - Continuous learning about emerging attacks
-   - Pattern database for future threats
-   - Feeds into threat intelligence platform
-
-4. **Operational Efficiency**
-   - Reduces SOC team workload
-   - Eliminates investigation of false positives
-   - Enables threat hunting on harder problems
-
----
-
-## SECTION 12: RECOMMENDATIONS AND ACTION ITEMS
-
-### 12.1 Immediate Recommendations (Deploy within 2 weeks)
+### 11.1 Immediate Recommendations (Deploy within 2 weeks)
 
 1. **Deploy to Startup/Mid-Market Organizations**
    - Risk Level: LOW
    - Confidence: 88%
    - Implementation: 3-5 days
-   - Expected ROI: 500%+
    - Action: Begin alpha customer testing immediately
 
 2. **Enable Token Forgery Detection (98% accuracy)**
@@ -583,7 +524,7 @@ After AI Week 12:  2 incidents/month   →  $100,000/month
    - Deployment: Layer 7 DDoS rules
    - Action: Set rate limiting thresholds
 
-### 12.2 Near-Term Recommendations (4-6 weeks)
+### 11.2 Near-Term Recommendations (4-6 weeks)
 
 1. **Enhance Model Poisoning Detection**
    - Current: 89% accuracy (needs improvement)
@@ -607,7 +548,7 @@ After AI Week 12:  2 incidents/month   →  $100,000/month
    - Timeline: 3 weeks
    - Impact: Enables cost optimization learning
 
-### 12.3 Medium-Term Recommendations (8-12 weeks)
+### 11.3 Medium-Term Recommendations (8-12 weeks)
 
 1. **Achieve SLSA Level 3 Build Attestation**
    - Required for: Enterprise contracts
@@ -628,7 +569,7 @@ After AI Week 12:  2 incidents/month   →  $100,000/month
 
 ---
 
-## SECTION 13: CONCLUSION
+## SECTION 12: CONCLUSION
 
 The MCP Guardian AI learning system demonstrates **exceptional performance** in a realistic enterprise attack scenario with continuous escalating threats. The system's ability to adapt and improve detection accuracy while simultaneously reducing latency and false positives indicates:
 
@@ -638,9 +579,7 @@ The MCP Guardian AI learning system demonstrates **exceptional performance** in 
 
 3. **Security Excellence:** 95.4% threat blocking rate with well-calibrated confidence scores
 
-4. **Business Value:** 971% annual ROI with 1.2-month payback period
-
-5. **Continuous Learning:** System demonstrates learning capacity to adapt to evolved threats in real-time
+4. **Continuous Learning:** System demonstrates learning capacity to adapt to evolved threats in real-time
 
 ### Final Assessment
 

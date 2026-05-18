@@ -10,7 +10,7 @@ All notable changes to MCP Guardian will be documented in this file.
 - Integrated **sca/** security & compliance analysis collateral into project docs — [sca/README.md](sca/README.md) index, chart catalog, and relationship to core proxy learning.
 - Expanded [docs/AI_LEARNING.md](docs/AI_LEARNING.md) with evaluation methodology (`pnpm eval:attack-learning*`), figure interpretation (repo `fig1–fig7` + `sca/CHART_*`), and operational recommendations.
 - Added [Attack learning evaluation](README.md#attack-learning-evaluation) section to root README (instant vs batch table, figure links).
-- Extended [reports/attack-learning-eval/summary.md](reports/attack-learning-eval/summary.md) with per-figure interpretation; prefer `metrics.json` over synthetic sca ROI figures when numbers must align with CI.
+- Extended [reports/attack-learning-eval/summary.md](reports/attack-learning-eval/summary.md) with per-figure interpretation; prefer `metrics.json` when numbers must align with CI.
 - **Fig 4 omitted** from README, [docs/AI_LEARNING.md](docs/AI_LEARNING.md), and [reports/attack-learning-eval/summary.md](reports/attack-learning-eval/summary.md) — `fig4-cdf-time-to-suggestion.png` is a degenerate CDF (one point per category); use median time-to-suggestion in the metrics table instead.
 
 ## [2.8.1] - 2026-05-18

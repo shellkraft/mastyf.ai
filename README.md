@@ -826,16 +826,10 @@ Regenerate: `pnpm eval:attack-learning:long` then `pnpm eval:attack-learning:cha
 
 *Maps proxy blocks → instant rolling stats → suggestion queue → debounced batch review (aligns with production env vars).*
 
-| ROI / incident reduction (synthetic business case) |
-|:---:|
-| ![Cost-benefit and ROI](sca/CHART_10_Cost_Benefit_Analysis.png) |
-
-*Narrative from the sim: **971%** annual ROI, **1.2** month payback — illustrative only; not CI-verified.*
-
 Further reading: [ATTACK_SIMULATION_INDEX.md](sca/ATTACK_SIMULATION_INDEX.md) · [EXECUTIVE_SUMMARY.md](sca/EXECUTIVE_SUMMARY.md) (Vitest **99.8%** pass, **7.0/10** readiness).
 
 <details>
-<summary><strong>All SCA charts (CHART_1–CHART_10)</strong></summary>
+<summary><strong>All SCA charts (CHART_1–CHART_9)</strong></summary>
 
 | Chart | Figure | Caption |
 |-------|--------|---------|
@@ -848,7 +842,8 @@ Further reading: [ATTACK_SIMULATION_INDEX.md](sca/ATTACK_SIMULATION_INDEX.md) ·
 | 7 | ![AI learning stages](sca/CHART_7_AI_Learning_Stages.png) | Architecture diagram (embedded above) |
 | 8 | ![Performance under load](sca/CHART_8_Performance_Under_Load.png) | CPU/memory/throughput — **92%** stability under sustained load |
 | 9 | ![Attack surface coverage](sca/CHART_9_Attack_Surface_Coverage.png) | Coverage across eight attack categories (~96% Stage 2 avg) |
-| 10 | ![Cost-benefit](sca/CHART_10_Cost_Benefit_Analysis.png) | ROI narrative (embedded above) |
+
+*CHART_10 (cost-benefit / ROI) omitted — synthetic business case; PNG kept in `sca/` but not linked in docs.*
 
 </details>
 

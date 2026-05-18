@@ -419,43 +419,6 @@
       }
     },
 
-    "roi_analysis": {
-      "type": "waterfall",
-      "title": "Annual ROI Analysis - $10M Budget Organization",
-      "description": "ROI calculation showing fraud losses, savings, and net benefit",
-      "data": {
-        "labels": [
-          "Baseline Fraud Loss",
-          "Detection Rate 90%",
-          "Quick Response 60%",
-          "Annual Savings",
-          "System Cost",
-          "Net Benefit"
-        ],
-        "datasets": [
-          {
-            "label": "Amount ($)",
-            "data": [
-              -1000000,
-              900000,
-              0,
-              -900000,
-              -84000,
-              816000
-            ],
-            "backgroundColor": [
-              "#ef4444",
-              "#10b981",
-              "#3b82f6",
-              "#059669",
-              "#ef4444",
-              "#10b981"
-            ]
-          }
-        ]
-      }
-    },
-
     "scenario_pass_fail_summary": {
       "type": "doughnut",
       "title": "Test Scenario Results Summary",
@@ -533,8 +496,7 @@
     "scenarios_passed": 9,
     "scenarios_flagged": 2,
     "scenarios_failed": 0,
-    "enterprise_readiness_score": 7.0,
-    "estimated_annual_roi": "971%"
+    "enterprise_readiness_score": 7.0
   },
 
   "recommendations": {

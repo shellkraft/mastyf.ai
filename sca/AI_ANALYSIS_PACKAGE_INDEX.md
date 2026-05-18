@@ -18,7 +18,6 @@
 - 11 test scenarios summary (9 passed, 2 flagged)
 - Attack detection effectiveness matrix
 - Deployment recommendations by organization type
-- ROI analysis (971% annual ROI)
 - Implementation checklist
 - Production readiness score (7.0/10)
 
@@ -27,7 +26,6 @@
 - 🎯 Deployment timeline (Now, 4-6 weeks, 8-12 weeks)
 - 💡 Strengths (6 major advantages)
 - ⚠️ Gaps (6 improvement areas)
-- 🚀 ROI ($900k annual savings for $10M organization)
 
 **When to read:** First thing - gives you the complete picture in 10 minutes.
 
@@ -45,7 +43,6 @@
 - Advanced analytics (attack patterns, optimization learning)
 - Key findings and insights
 - Deployment roadmap (Phase 1-3)
-- Detailed ROI analysis
 
 **Key sections (11 major):**
 1. Sudden Usage Spike - Infrastructure Issue (92% accuracy)
@@ -161,11 +158,7 @@
    - Gauge charts for 4 org types
    - Scores: Startups (9.2), SaaS (7.8), Regulated (5.2), Gov (3.1)
 
-10. **roi_analysis**
-    - Waterfall chart showing savings
-    - Baseline loss → detection → savings → system cost → net
-
-11. **scenario_pass_fail_summary**
+10. **scenario_pass_fail_summary**
     - Doughnut chart: 9 passed (82%), 2 flagged (18%)
 
 **Plus:**
@@ -240,17 +233,15 @@
 ## 🎯 Reading Guide by Role
 
 ### 👔 Executive / Product Manager
-**Goal:** Understand readiness and ROI  
+**Goal:** Understand readiness and deployment path  
 **Time:** 15 minutes
 
 1. Read: `AI_LEARNING_QUICK_REFERENCE.md`
    - Focus on: "Final Verdict" (7.0/10 score)
    - Check: Deployment timeline table
-   - Review: ROI analysis ($971% annual)
 
 2. Glance at: `ai-learning-metrics.json`
    - deployment_readiness_scorecard
-   - roi_analysis
 
 3. Optional: `ai-learning-dashboard.tsx`
    - Deploy for exec dashboard
@@ -452,7 +443,6 @@ This package includes:
 - ✅ 9 ready-to-use Recharts configurations
 - ✅ Interactive React dashboard
 - ✅ Real-world attack patterns
-- ✅ ROI analysis
 - ✅ Deployment roadmap
 - ✅ Implementation recommendations
 - ✅ Security validation
@@ -483,11 +473,6 @@ This package includes:
 - Multi-tool analysis (78% → need 85%+)
 - Hallucination detection (85% → need 90%+)
 - Gradual attack latency (47s → need <10s)
-
-### 💰 ROI
-- Annual savings: $900,000
-- Annual cost: $84,000
-- ROI: 971% (10-month payback)
 
 ---
 

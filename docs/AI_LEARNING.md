@@ -90,7 +90,7 @@ Both modes replay the **same** blocked-event stream into two simulators:
 
 Categories in generated events: `shell-injection`, `path-traversal`, `prompt-injection`, `sensitive-path`, `sql`, `puppeteer-url`.
 
-**Source of truth:** [reports/attack-learning-eval/metrics.json](../reports/attack-learning-eval/metrics.json). [sca/](../sca/) charts and ROI tables come from separate synthetic simulators — see [sca/README.md](../sca/README.md).
+**Source of truth:** [reports/attack-learning-eval/metrics.json](../reports/attack-learning-eval/metrics.json). [sca/](../sca/) security charts (`CHART_1`–`CHART_9`) come from a separate synthetic live-proxy simulator — see [sca/README.md](../sca/README.md).
 
 ### Latest long-run comparison (2026-05-18)
 
@@ -141,7 +141,8 @@ Synthetic **180-minute live-proxy attack simulation** (12 escalating patterns). 
 | 7 | `CHART_7_AI_Learning_Stages.png` | Instant + batch architecture (conceptual) |
 | 8 | `CHART_8_Performance_Under_Load.png` | Resource use under attack load |
 | 9 | `CHART_9_Attack_Surface_Coverage.png` | Category coverage |
-| 10 | `CHART_10_Cost_Benefit_Analysis.png` | ROI / incident-reduction narrative |
+
+*CHART_10 omitted* — synthetic cost-benefit / ROI chart; not linked in docs.
 
 Regenerate: `cd sca && python3 generate-attack-visualizations.py` (after running `live-proxy-attack-simulator.ts`).
 

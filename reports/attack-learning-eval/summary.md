@@ -48,7 +48,7 @@ All figures are generated from the same blocked-event stream (`metrics.json` →
 
 **Short vs long run:** `pnpm eval:attack-learning` (~52 min, 8–30s inter-arrival) yields a lower batch median (debounce can fire between bursts). This summary reflects the **long** run in `metrics.json` (`runType: "long"`). Refresh `attack-learning-eval.canvas.tsx` after re-running evals if headline stats drift.
 
-**Related collateral:** [sca/CHART_*.png](../../sca/) — separate 180 min live-proxy attack simulation; see [sca/README.md](../../sca/README.md).
+**Related collateral:** [sca/CHART_1–9](../../sca/) — separate 180 min live-proxy attack simulation (detection, latency, timeline, learning stages); see [sca/README.md](../../sca/README.md).
 
 ## Artifacts
 

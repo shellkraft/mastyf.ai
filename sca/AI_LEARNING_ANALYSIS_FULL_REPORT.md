@@ -1132,79 +1132,6 @@ Recommendation: Implement cost optimizer as separate workflow
 
 ---
 
-## ROI Analysis
-
-### Cost Savings
-
-```
-Fraud Detection ROI
-═══════════════════════════════════════════════════════════════════
-
-Scenario: Enterprise with 1000 MCP users, $10M/year budget
-
-Fraud Types Detected:
-  ✅ Billing fraud (token inflation)      -  5% of incidents
-  ✅ Model substitution (cost skimming)   - 12% of incidents
-  ✅ Credential compromise (data theft)   -  3% of incidents
-  ✅ Poisoning/manipulation                -  2% of incidents
-
-Incident Cost (averaged):
-  • Direct loss: $15,000 (fraud amount, data recovery)
-  • Incident response: $5,000 (staff time)
-  • Legal/regulatory: $10,000 (fines, investigation)
-  • Reputation: $20,000 (estimated impact)
-  • Total per incident: $50,000
-
-Annual Baseline (without AI learning):
-  • Undetected incidents: 20 incidents/year
-  • Total loss: $1,000,000 (20 × $50,000)
-
-With AI Learning (detection rate):
-  • Detected incidents: 18/20 (90% detection)
-  • Undetected: 2 incidents
-  • Fraud caught quickly: Saves 60% of loss
-  • Total loss: $100,000 (90% × $50k + 10% × $50k)
-  • Annual savings: $900,000
-
-AI Learning System Cost:
-  • Compute (anomaly detection): $2,000/month
-  • Engineering/ops: $5,000/month
-  • Total: $84,000/year
-
-Net ROI: ($900,000 - $84,000) / $84,000 = 971% ROI ✅
-
-Payback period: ~1 month
-```
-
-### Time to Value
-
-```
-DETECTION BENEFIT TIMELINE
-═══════════════════════════════════════════════════════════════════
-
-Month 1:
-  ✓ Deploy baseline learning
-  ✓ Detect credential compromises (high-value)
-  ✓ Estimated savings: $200,000
-
-Month 2-3:
-  ✓ Add seasonal pattern learning
-  ✓ Optimize cost recommendations
-  ✓ Estimated savings: $300,000 cumulative
-
-Month 4-6:
-  ✓ Implement audit integration
-  ✓ Deploy billing fraud detection
-  ✓ Estimated savings: $700,000 cumulative
-
-By Month 12:
-  ✓ Full suite deployed
-  ✓ Near 90% attack detection
-  ✓ Estimated savings: $900,000 annual
-```
-
----
-
 ## Conclusion
 
 The MCP Guardian AI learning model demonstrates **excellent anomaly detection capabilities (95.9% TPR, 2.1% FPR)** across 11 comprehensive enterprise scenarios. The system is **production-ready for startups and viable for enterprise SaaS** with recommended enhancements.
@@ -1228,8 +1155,6 @@ The MCP Guardian AI learning model demonstrates **excellent anomaly detection ca
 - Immediate: Deploy to startups and early SaaS
 - 4-6 weeks: Enterprise SaaS with gaps
 - 8-12 weeks: Regulated industries (with additional work)
-
-**ROI:** 971% annually, payback in 1 month
 
 ---
 
