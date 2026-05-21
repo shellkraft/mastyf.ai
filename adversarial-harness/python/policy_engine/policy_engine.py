@@ -15,6 +15,7 @@ import yaml
 
 from .normalizer import PayloadNormalizer
 from .prompt_injection import scan_tool_call_arguments
+from .secrets_guard import scan_secrets_in_blob
 from .semantic_guards import evaluate_semantic_guards
 from .shell_tokenizer import ShellTokenizer
 from .tool_chain import evaluate_tool_chain_guard
@@ -344,6 +345,29 @@ class PolicyEngine:
                     self._resolve_action("block"),
                     "request-prompt-injection",
                     f"Prompt injection: {top.pattern_id} ({top.severity})",
+                )
+
+            desc = norm_args.get("description")
+            if isinstance(desc, str) and desc.strip():
+                meta_findings = scan_tool_call_arguments(
+                    {"description": desc, "content": desc, "_tool_name": norm_ctx.tool_name}
+                )
+                if meta_findings:
+                    rank = {"critical": 0, "high": 1, "medium": 2}
+                    top = min(meta_findings, key=lambda f: rank.get(f.severity, 9))
+                    if top.severity in ("critical", "high", "medium"):
+                        return PolicyDecision(
+                            self._resolve_action("block"),
+                            "tool-definition-scan",
+                            f"Malicious tool definition: {top.pattern_id} ({top.severity})",
+                        )
+
+            secret_hits = scan_secrets_in_blob(args_str)
+            if secret_hits:
+                return PolicyDecision(
+                    self._resolve_action("block"),
+                    "secret-scan",
+                    f"Secrets in tool arguments: {', '.join(secret_hits[:5])}",
                 )
 
             shell_dec = self._evaluate_semantic_shell(args_str)

@@ -41,6 +41,8 @@ describe('policy-engine strategies', () => {
   it('exports ordered sync pipeline', () => {
     expect(SYNC_POLICY_STRATEGIES.map((s) => s.name)).toEqual([
       'request-prompt-injection',
+      'tool-definition',
+      'secrets-in-args',
       'semantic-guards',
       'yaml-rules',
     ]);

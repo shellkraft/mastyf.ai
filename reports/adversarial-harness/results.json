@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-05-21T07:39:22.029Z",
+  "generatedAt": "2026-05-21T08:06:01.489Z",
   "harnessRoot": "/workspace/adversarial-harness",
   "corpus": {
     "totalEntries": 228,
@@ -45,16 +45,16 @@
     "concurrency": {
       "component": "AsyncSerialQueue",
       "samples": 50,
-      "p50Ms": 2.133636000000024,
-      "p95Ms": 3.4318269999999984,
-      "maxMs": 7.083462000000054,
+      "p50Ms": 2.1271279999999706,
+      "p95Ms": 2.714815000000044,
+      "maxMs": 5.302100999999993,
       "note": "Serial queue — tasks run one at a time; latency includes prior queue depth",
       "proxy": {
         "component": "McpProxyServer.handleClientInput",
         "samples": 20,
-        "p50Ms": 16.74931300000003,
-        "p95Ms": 30.345895000000155,
-        "maxMs": 235.757029,
+        "p50Ms": 17.167085000000043,
+        "p95Ms": 32.47958000000017,
+        "maxMs": 253.45452,
         "integration": "real-mock-mcp-stdio"
       }
     },
@@ -72,7 +72,7 @@
       "label": "export-harness-rules",
       "ok": true,
       "status": 0,
-      "stdout": "Exported 68 injection rules and 267 secret rule metadata to /workspace/adversarial-harness/exported\n",
+      "stdout": "Exported 76 injection rules and 267 secret rule metadata to /workspace/adversarial-harness/exported\n",
       "stderr": ""
     },
     {
@@ -107,21 +107,21 @@
       "label": "python-comprehensive-eval",
       "ok": true,
       "status": 0,
-      "stdout": "{\n  \"passed\": true,\n  \"python\": \"402/402 passed \\u2192 100.0%\",\n  \"corpus\": {\n    \"attacks\": 151,\n    \"benign\": 55,\n    \"loaded\": 228,\n    \"tp\": 154,\n    \"fp\": 0,\n    \"tn\": 74,\n    \"fn\": 0,\n    \"passed\": true\n  },\n  \"evasion\": {\n    \"total\": 85,\n    \"blocked\": 85,\n    \"bypassed\": 0\n  },\n  \"matrix\": {\n    \"total\": 89,\n    \"passed\": 89,\n    \"failed\": 0\n  },\n  \"elapsed\": 0.32\n}\n",
+      "stdout": "{\n  \"passed\": true,\n  \"python\": \"402/402 passed \\u2192 100.0%\",\n  \"corpus\": {\n    \"attacks\": 151,\n    \"benign\": 55,\n    \"loaded\": 228,\n    \"tp\": 154,\n    \"fp\": 0,\n    \"tn\": 74,\n    \"fn\": 0,\n    \"passed\": true\n  },\n  \"evasion\": {\n    \"total\": 85,\n    \"blocked\": 85,\n    \"bypassed\": 0\n  },\n  \"matrix\": {\n    \"total\": 89,\n    \"passed\": 89,\n    \"failed\": 0\n  },\n  \"elapsed\": 0.34\n}\n",
       "stderr": ""
     },
     {
       "label": "python-corpus-only",
       "ok": true,
       "status": 0,
-      "stdout": "{\n  \"timestamp\": \"2026-05-21T07:21:25.537881+00:00\",\n  \"semanticDisabled\": true,\n  \"attacksBlocked\": 154,\n  \"attacksTotal\": 154,\n  \"benignPassed\": 74,\n  \"benignTotal\": 74,\n  \"falsePositives\": 0,\n  \"missed\": 0,\n  \"passed\": true,\n  \"failures\": []\n}\n",
+      "stdout": "{\n  \"timestamp\": \"2026-05-21T07:38:49.412174+00:00\",\n  \"semanticDisabled\": true,\n  \"attacksBlocked\": 154,\n  \"attacksTotal\": 154,\n  \"benignPassed\": 74,\n  \"benignTotal\": 74,\n  \"falsePositives\": 0,\n  \"missed\": 0,\n  \"passed\": true,\n  \"failures\": []\n}\n",
       "stderr": ""
     },
     {
       "label": "pnpm-build",
       "ok": true,
       "status": 0,
-      "stdout": "\n> @mcp-guardian/server@2.9.0 build /workspace\n> pnpm --filter @mcp-guardian/plugin-sdk run build && tsc --project tsconfig.json && turbo run build\n\n\n> @mcp-guardian/plugin-sdk@3.0.0 build /workspace/packages/plugin-sdk\n> tsc --project tsconfig.json\n\n\n   • Packages in scope: @mcp-guardian/cli, @mcp-guardian/core, @mcp-guardian/plugin-sdk, @mcp-guardian/server\n   • Running build in 4 packages\n   • Remote caching disabled\n\n@mcp-guardian/core:build: cache hit, replaying logs 7958a4f35d8ab413\n@mcp-guardian/core:build: \n@mcp-guardian/core:build: > @mcp-guardian/core@2.9.0 build /workspace/packages/core\n@mcp-guardian/core:build: > tsc\n@mcp-guardian/core:build: \n@mcp-guardian/plugin-sdk:build: cache hit, replaying logs 6e28f0bef4fbe0f0\n@mcp-guardian/plugin-sdk:build: \n@mcp-guardian/plugin-sdk:build: > @mcp-guardian/plugin-sdk@3.0.0 build /workspace/packages/plugin-sdk\n@mcp-guardian/plugin-sdk:build: > tsc --project tsconfig.json\n@mcp-guardian/plugin-sdk:build: \n@mcp-guardian/server:build: cache hit, replaying logs 92ca9d8365511db1\n@mcp-guardian/server:build: \n@mcp-guardian/server:build: > @mcp-guardian/server@2.9.0 build /workspace/packages/server\n@mcp-guardian/server:build: > tsc\n@mcp-guardian/server:build: \n@mcp-guardian/cli:build: cache hit, replaying logs 8f3b6075382a78e7\n@mcp-guardian/cli:build: \n@mcp-guardian/cli:build: > @mcp-guardian/cli@2.9.0 build /workspace/packages/cli\n@mcp-guardian/cli:build: > tsc\n@mcp-guardian/cli:build: \n\n Tasks:    4 successful, 4 total\nCached:    4 cached, 4 total\n  Time:    37ms >>> FULL TURBO\n\n",
+      "stdout": "\n> @mcp-guardian/server@2.9.0 build /workspace\n> pnpm --filter @mcp-guardian/plugin-sdk run build && tsc --project tsconfig.json && turbo run build\n\n\n> @mcp-guardian/plugin-sdk@3.0.0 build /workspace/packages/plugin-sdk\n> tsc --project tsconfig.json\n\n\n   • Packages in scope: @mcp-guardian/cli, @mcp-guardian/core, @mcp-guardian/plugin-sdk, @mcp-guardian/server\n   • Running build in 4 packages\n   • Remote caching disabled\n\n@mcp-guardian/core:build: cache hit, replaying logs 7958a4f35d8ab413\n@mcp-guardian/core:build: \n@mcp-guardian/core:build: > @mcp-guardian/core@2.9.0 build /workspace/packages/core\n@mcp-guardian/core:build: > tsc\n@mcp-guardian/core:build: \n@mcp-guardian/plugin-sdk:build: cache hit, replaying logs 6e28f0bef4fbe0f0\n@mcp-guardian/plugin-sdk:build: \n@mcp-guardian/plugin-sdk:build: > @mcp-guardian/plugin-sdk@3.0.0 build /workspace/packages/plugin-sdk\n@mcp-guardian/plugin-sdk:build: > tsc --project tsconfig.json\n@mcp-guardian/plugin-sdk:build: \n@mcp-guardian/server:build: cache hit, replaying logs 92ca9d8365511db1\n@mcp-guardian/server:build: \n@mcp-guardian/server:build: > @mcp-guardian/server@2.9.0 build /workspace/packages/server\n@mcp-guardian/server:build: > tsc\n@mcp-guardian/server:build: \n@mcp-guardian/cli:build: cache hit, replaying logs 8f3b6075382a78e7\n@mcp-guardian/cli:build: \n@mcp-guardian/cli:build: > @mcp-guardian/cli@2.9.0 build /workspace/packages/cli\n@mcp-guardian/cli:build: > tsc\n@mcp-guardian/cli:build: \n\n Tasks:    4 successful, 4 total\nCached:    4 cached, 4 total\n  Time:    38ms >>> FULL TURBO\n\n",
       "stderr": "• turbo 2.9.12\n"
     },
     {

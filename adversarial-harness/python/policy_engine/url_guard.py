@@ -51,6 +51,22 @@ PRIVATE_IPV4 = [
 ]
 METADATA_IPV4 = re.compile(r"^169\.254\.")
 HTTP_URL_IN_TEXT = re.compile(r"https?://[^\s\"'<>]+", re.I)
+PUPPETEER_TOOLS = frozenset({"puppeteer_navigate", "puppeteer_screenshot"})
+SENSITIVE_ADMIN_PATH_PATTERNS = [
+    re.compile(r"^/admin(?:/|$)", re.I),
+    re.compile(r"^/wp-admin(?:/|$)", re.I),
+    re.compile(r"^/wp-login\.php$", re.I),
+    re.compile(r"^/dashboard(?:/|$)", re.I),
+    re.compile(r"^/internal(?:/|$)", re.I),
+    re.compile(r"^/management(?:/|$)", re.I),
+    re.compile(r"^/console(?:/|$)", re.I),
+    re.compile(r"^/settings(?:/|$)", re.I),
+    re.compile(r"^/actuator(?:/|$)", re.I),
+    re.compile(r"^/grafana(?:/|$)", re.I),
+    re.compile(r"^/phpmyadmin(?:/|$)", re.I),
+    re.compile(r"^/\.env$", re.I),
+    re.compile(r"^/config(?:/|$)", re.I),
+]
 
 
 def _is_private_ipv4(host: str) -> bool:
@@ -168,12 +184,35 @@ def _is_spec_domain_squat(host: str) -> bool:
     return bool(SPEC_DOMAIN_SQUAT_RE.match(h))
 
 
-def evaluate_url_guard(urls: Iterable[str]) -> UrlGuardResult:
+def _is_sensitive_admin_browser_path(raw: str, tool_name: str | None) -> UrlGuardResult:
+    if not tool_name or tool_name not in PUPPETEER_TOOLS:
+        return UrlGuardResult(block=False)
+    try:
+        parsed = urlparse(raw if "://" in raw else f"http://{raw}")
+    except Exception:
+        return UrlGuardResult(block=False)
+    host = (parsed.hostname or "").lower()
+    if host in DOCUMENTATION_HOST_ALLOWLIST:
+        return UrlGuardResult(block=False)
+    path = parsed.path or "/"
+    for pat in SENSITIVE_ADMIN_PATH_PATTERNS:
+        if pat.search(path):
+            return UrlGuardResult(
+                block=True,
+                reason=f"Blocked sensitive admin path for browser tool: {path}",
+            )
+    return UrlGuardResult(block=False)
+
+
+def evaluate_url_guard(urls: Iterable[str], tool_name: str | None = None) -> UrlGuardResult:
     expanded: list[str] = []
     for raw in urls:
         expanded.append(raw)
         expanded.extend(m.group(0) for m in HTTP_URL_IN_TEXT.finditer(raw))
     for raw in expanded:
+        admin = _is_sensitive_admin_browser_path(raw, tool_name)
+        if admin.block:
+            return admin
         try:
             parsed = urlparse(raw if "://" in raw else f"http://{raw}")
             host = (parsed.hostname or "").lower()

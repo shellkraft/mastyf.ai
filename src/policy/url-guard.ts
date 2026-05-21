@@ -86,6 +86,23 @@ const PRIVATE_IPV4_OCTETS = [
 
 const HTTP_URL_IN_TEXT = /https?:\/\/[^\s"'<>]+/gi;
 
+/** Admin / control-plane paths targeted by browser automation attacks. */
+const SENSITIVE_ADMIN_PATH_PATTERNS: RegExp[] = [
+  /^\/admin(?:\/|$)/i,
+  /^\/wp-admin(?:\/|$)/i,
+  /^\/wp-login\.php$/i,
+  /^\/dashboard(?:\/|$)/i,
+  /^\/internal(?:\/|$)/i,
+  /^\/management(?:\/|$)/i,
+  /^\/console(?:\/|$)/i,
+  /^\/settings(?:\/|$)/i,
+  /^\/actuator(?:\/|$)/i,
+  /^\/grafana(?:\/|$)/i,
+  /^\/phpmyadmin(?:\/|$)/i,
+  /^\/\.env$/i,
+  /^\/config(?:\/|$)/i,
+];
+
 function isPrivateOrLocalIpv4(host: string): boolean {
   return PRIVATE_IPV4_OCTETS.some((re) => re.test(host));
 }
@@ -261,8 +278,29 @@ function expandUrlCandidates(urls: string[]): string[] {
   return expanded;
 }
 
-export function evaluateUrlGuard(urls: string[]): UrlGuardResult {
+function isSensitiveAdminBrowserPath(raw: string, toolName?: string): UrlGuardResult {
+  if (!toolName || !PUPPETEER_TOOLS.has(toolName)) return { block: false };
+  const parsed = parseUrlCandidate(normalizeUrlInput(raw));
+  if (!parsed) return { block: false };
+  const host = hostnameFromParsed(parsed).toLowerCase();
+  if (DOCUMENTATION_HOST_ALLOWLIST.has(host)) return { block: false };
+  const path = parsed.pathname || '/';
+  for (const pattern of SENSITIVE_ADMIN_PATH_PATTERNS) {
+    if (pattern.test(path)) {
+      return {
+        block: true,
+        reason: `Blocked sensitive admin path for browser tool: ${path}`,
+      };
+    }
+  }
+  return { block: false };
+}
+
+export function evaluateUrlGuard(urls: string[], toolName?: string): UrlGuardResult {
   for (const raw of expandUrlCandidates(urls)) {
+    const adminCheck = isSensitiveAdminBrowserPath(raw, toolName);
+    if (adminCheck.block) return adminCheck;
+
     try {
       const parsed = parseUrlCandidate(normalizeUrlInput(raw));
       if (parsed) {

@@ -79,6 +79,25 @@ const RATE_IDENTITY_EVASION_PATTERNS: RegExp[] = [
   /x-real-ip\s*[:=]\s*[\d.]+/i,
   /(?:client[_-]?id|sub|tenant[_-]?id)\s*[:=]\s*["']?(?:admin|root|system|spoof)/i,
   /(?:reveal|show|print|disclose).{0,40}(?:rate[- ]?limit|ratelimit).{0,30}key/i,
+  /\b(?:unlimited|no[- ]?limit|ignore|disable|bypass).{0,40}(?:rate[- ]?limit|throttle|quota)/i,
+  /\b(?:flood|spam|hammer|burst).{0,30}(?:tool[- ]?calls?|requests?|api)/i,
+];
+
+/** Token budget / resource exhaustion phrasing in arguments. */
+const TOKEN_BUDGET_ABUSE_PATTERNS: RegExp[] = [
+  /\b(?:ignore|bypass|exceed|disable|raise).{0,40}(?:token[- ]?budget|max[- ]?tokens?|context[- ]?limit)/i,
+  /\b(?:fill|exhaust|maximize).{0,30}(?:context|token|window)/i,
+];
+
+/** Log / audit trail injection (CRLF, fake log lines, ANSI escapes). */
+const LOG_INJECTION_PATTERNS: RegExp[] = [
+  /\r\n[^\n]{0,120}\r\n/,
+  /\n(?:INFO|WARN|ERROR|DEBUG|AUDIT|TRACE)\s*:\s*(?:user|admin|override|success)/i,
+  /\b(?:INFO|WARN|ERROR|DEBUG|AUDIT|TRACE)\s*:\s*(?:user|admin|override=success)/i,
+  /\x1b\[[0-9;]*[A-Za-z]/,
+  /(?:forge|spoof|inject|poison).{0,40}(?:audit|log|syslog|trail)/i,
+  /\]\s*\(\s*#\s*(?:forge|fake|spoof)/i,
+  /%0[aAdD]/i,
 ];
 
 /** Heuristic: string leaf may be a filesystem path. */
@@ -134,7 +153,7 @@ export function evaluateSemanticGuards(ctx: CallContext): PolicyDecision | null 
   }
 
   const urlCandidates = extractHttpUrlsFromLeaves(args);
-  const urlCheck = evaluateUrlGuard([...new Set(urlCandidates)]);
+  const urlCheck = evaluateUrlGuard([...new Set(urlCandidates)], ctx.toolName);
   if (urlCheck.block) {
     return { action: 'block', rule: 'semantic-url-guard', reason: urlCheck.reason! };
   }
@@ -215,6 +234,17 @@ export function evaluateSemanticGuards(ctx: CallContext): PolicyDecision | null 
     }
   }
 
+  const rawLogBlob = walkStringLeaves(args).map((l) => l.value).join('\n');
+  for (const pattern of LOG_INJECTION_PATTERNS) {
+    if (pattern.test(rawLogBlob)) {
+      return {
+        action: 'block',
+        rule: 'semantic-log-injection',
+        reason: 'Log or audit trail injection pattern in arguments',
+      };
+    }
+  }
+
   const injectionBlob = preprocessForInjectionMatch(
     walkStringLeaves(args).map((l) => deobfuscateRecursive(l.value)).join('\n'),
   );
@@ -234,6 +264,15 @@ export function evaluateSemanticGuards(ctx: CallContext): PolicyDecision | null 
           action: 'block',
           rule: 'semantic-rate-limit-evasion',
           reason: 'Rate-limit or identity key evasion pattern in arguments',
+        };
+      }
+    }
+    for (const pattern of TOKEN_BUDGET_ABUSE_PATTERNS) {
+      if (pattern.test(injectionBlob)) {
+        return {
+          action: 'block',
+          rule: 'semantic-token-budget-abuse',
+          reason: 'Token budget bypass or exhaustion pattern in arguments',
         };
       }
     }

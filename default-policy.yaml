@@ -189,10 +189,10 @@ policy:
         - '`[^`]+`'
         - powershell|pwsh|-enc|-EncodedCommand
     - name: rate-limit-tool-calls
-      description: Limit tool calls to 120 per minute per server+tool
-      action: flag
+      description: Block tool calls exceeding 120 per minute per server+tool
+      action: block
       maxCallsPerMinute: 120
     - name: token-budget
-      description: Flag tool calls exceeding 50K input tokens
-      action: flag
+      description: Block tool calls exceeding 50K input tokens
+      action: block
       maxTokens: 50000

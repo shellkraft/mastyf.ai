@@ -82,6 +82,23 @@ RATE_IDENTITY_EVASION = [
     re.compile(r"x-real-ip\s*[:=]\s*[\d.]+", re.I),
     re.compile(r"(?:client[_-]?id|sub|tenant[_-]?id)\s*[:=]\s*['\"]?(?:admin|root|system|spoof)", re.I),
     re.compile(r"(?:reveal|show|print|disclose).{0,40}(?:rate[- ]?limit|ratelimit).{0,30}key", re.I),
+    re.compile(r"\b(?:unlimited|no[- ]?limit|ignore|disable|bypass).{0,40}(?:rate[- ]?limit|throttle|quota)", re.I),
+    re.compile(r"\b(?:flood|spam|hammer|burst).{0,30}(?:tool[- ]?calls?|requests?|api)", re.I),
+]
+
+TOKEN_BUDGET_ABUSE = [
+    re.compile(r"\b(?:ignore|bypass|exceed|disable|raise).{0,40}(?:token[- ]?budget|max[- ]?tokens?|context[- ]?limit)", re.I),
+    re.compile(r"\b(?:fill|exhaust|maximize).{0,30}(?:context|token|window)", re.I),
+]
+
+LOG_INJECTION = [
+    re.compile(r"\r\n[^\n]{0,120}\r\n"),
+    re.compile(r"\n(?:INFO|WARN|ERROR|DEBUG|AUDIT|TRACE)\s*:\s*(?:user|admin|override|success)", re.I),
+    re.compile(r"\b(?:INFO|WARN|ERROR|DEBUG|AUDIT|TRACE)\s*:\s*(?:user|admin|override=success)", re.I),
+    re.compile(r"\x1b\[[0-9;]*[A-Za-z]"),
+    re.compile(r"(?:forge|spoof|inject|poison).{0,40}(?:audit|log|syslog|trail)", re.I),
+    re.compile(r"\]\s*\(\s*#\s*(?:forge|fake|spoof)", re.I),
+    re.compile(r"%0[aAdD]", re.I),
 ]
 
 REPO_FIELDS = frozenset({"repo", "repository", "owner"})
@@ -105,7 +122,7 @@ def evaluate_semantic_guards(ctx: CallContext) -> Optional[PolicyDecision]:
         return PolicyDecision("block", "semantic-path-guard", path_check.reason)
 
     urls = list(dict.fromkeys(extract_http_urls_from_leaves(args)))
-    url_check = evaluate_url_guard(urls)
+    url_check = evaluate_url_guard(urls, ctx.tool_name)
     if url_check.block:
         return PolicyDecision("block", "semantic-url-guard", url_check.reason)
 
@@ -150,6 +167,15 @@ def evaluate_semantic_guards(ctx: CallContext) -> Optional[PolicyDecision]:
                 "Server-side template injection pattern detected in arguments",
             )
 
+    raw_log = "\n".join(leaf.value for leaf in walk_string_leaves(args))
+    for pat in LOG_INJECTION:
+        if pat.search(raw_log):
+            return PolicyDecision(
+                "block",
+                "semantic-log-injection",
+                "Log or audit trail injection pattern in arguments",
+            )
+
     inj_blob = preprocess_for_injection_match(
         "\n".join(deobfuscate_recursive(leaf.value) for leaf in walk_string_leaves(args))
     )
@@ -168,7 +194,13 @@ def evaluate_semantic_guards(ctx: CallContext) -> Optional[PolicyDecision]:
                     "semantic-rate-limit-evasion",
                     "Rate-limit or identity key evasion pattern in arguments",
                 )
-
+        for pat in TOKEN_BUDGET_ABUSE:
+            if pat.search(inj_blob):
+                return PolicyDecision(
+                    "block",
+                    "semantic-token-budget-abuse",
+                    "Token budget bypass or exhaustion pattern in arguments",
+                )
     for leaf in walk_string_leaves(args):
         key = leaf.path.split(".")[-1].lower()
         if key in REPO_FIELDS and re.search(r"(?:attacker|honeypot|evil|malware|exfil)", leaf.value, re.I):
