@@ -91,6 +91,16 @@ All notable changes to MCP Guardian will be documented in this file.
 | `GUARDIAN_LEGACY_NO_DPOP` | `false` | Disable DPoP requirement for legacy clients |
 | `GUARDIAN_SPIFFE_SOCKET_PATH` | — | SPIFFE Workload API Unix socket |
 
+## [2.9.1] - 2026-05-21
+
+Patch release after **2.9.0** CI hardening.
+
+### Fixed
+- **CI** — build `@mcp-guardian/plugin-sdk` before `tsc`, refresh Docker base image digest, drop Node 18 from smoke workflow.
+
+### Changed
+- **Workspace versions** — `@mcp-guardian/core`, `@mcp-guardian/server`, `@mcp-guardian/cli` aligned to **2.9.1** with root.
+
 ## [2.9.0] - 2026-05-20
 
 Release focused on adversarial harness CI evidence, README evidence layers, and enterprise attack-simulation reporting.
