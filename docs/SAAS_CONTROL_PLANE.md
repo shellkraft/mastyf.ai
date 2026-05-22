@@ -101,12 +101,12 @@ Session-authenticated browser users can also manage policy and keys via the dash
 
 ```mermaid
 flowchart LR
-  User --> CloudApp[apps_cloud]
-  CloudApp --> OAuth[Google_GitHub]
-  CloudApp --> PG[(mcp_guardian_cloud)]
-  User --> Guardian[self_hosted_Guardian]
-  Guardian --> PolicyFile[policy-templates_tenants_slug]
-  CloudApp --> PolicyAPI[/api/v1/policy]
+  User --> CloudApp["apps/cloud"]
+  CloudApp --> OAuth["Google / GitHub"]
+  CloudApp --> PG[("mcp_guardian_cloud")]
+  User --> Guardian["Self-hosted Guardian"]
+  Guardian --> PolicyFile["policy-templates/tenants/slug"]
+  CloudApp --> PolicyAPI["/api/v1/policy"]
   PolicyAPI --> Guardian
 ```
 
