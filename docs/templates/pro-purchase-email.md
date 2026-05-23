@@ -35,6 +35,8 @@ Thank you for purchasing **MCP Guardian Pro — Lifetime** ($4.99 one-time).
 
 Full guide: https://github.com/rudraneel93/mcp-guardian/blob/master/docs/PRO_SETUP.md
 
+**v3.0+:** Security Swarm CLI (`pnpm security-swarm:analyze`) requires this license. License terms: https://github.com/rudraneel93/mcp-guardian/blob/master/docs/PRO_LICENSE.md
+
 ## What Pro includes
 
 - Lifetime Pro license (no subscription)

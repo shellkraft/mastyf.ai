@@ -1,6 +1,7 @@
 import { Logger } from '../utils/logger.js';
 import {
-  getProCheckoutUrl,
+  isCiLicenseBypass,
+  isDevUnlockAllowed,
   isOpenCoreEnabled,
   isProFeature,
   licenseTier,
@@ -95,12 +96,7 @@ export class LicenseClient {
   }
 
   isLicensed(): boolean {
-    if (!isOpenCoreEnabled()) {
-      if (!this.isEnabled()) return true;
-      if (this.state?.licensed) return true;
-      if (this.lastGoodState && this.isWithinGrace()) return true;
-      return false;
-    }
+    if (isDevUnlockAllowed() || isCiLicenseBypass()) return true;
     if (!this.isEnabled()) return false;
     if (this.state?.licensed) return true;
     if (this.lastGoodState && this.isWithinGrace()) return true;
@@ -112,13 +108,9 @@ export class LicenseClient {
   }
 
   hasFeature(feature: string): boolean {
-    if (!isOpenCoreEnabled()) {
-      if (!this.isEnabled()) return true;
-      if (!this.isLicensed()) return false;
-      const features = this.state?.features ?? this.lastGoodState?.features ?? [];
-      return features.length === 0 || features.includes(feature);
-    }
+    if (isDevUnlockAllowed() || isCiLicenseBypass()) return true;
     if (!isProFeature(feature)) return true;
+    if (!isOpenCoreEnabled()) return false;
     return this.isLicensed();
   }
 

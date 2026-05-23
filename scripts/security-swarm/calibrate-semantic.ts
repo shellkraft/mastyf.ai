@@ -10,6 +10,9 @@ import {
   type StoredSemanticAudit,
 } from '../../src/ai/semantic-audit-store.js';
 import { isSemanticAuditPostgresEnabled } from '../../src/ai/semantic-audit-pg.js';
+import { exitUnlessProFeature } from '../../src/license/enforce-pro.js';
+
+await exitUnlessProFeature('swarm');
 
 const OUT_DIR = join(process.cwd(), 'reports', 'security-swarm');
 const LIVE_SESSION = join(

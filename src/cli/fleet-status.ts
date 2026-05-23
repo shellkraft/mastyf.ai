@@ -1,7 +1,9 @@
 import chalk from 'chalk';
 import { getFleetStatus } from '../fleet/fleet-aggregator.js';
+import { exitUnlessProFeature } from '../license/enforce-pro.js';
 
 export async function runFleetStatus(opts: { json?: boolean }): Promise<number> {
+  await exitUnlessProFeature('fleet');
   const report = await getFleetStatus();
 
   if (opts.json) {

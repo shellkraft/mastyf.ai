@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import './lib/gate-pro.mjs';
 /**
  * One-click Security Swarm analysis — live MCP + gates + detailed analysis.txt
  *

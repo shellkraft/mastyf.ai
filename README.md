@@ -10,13 +10,15 @@
 [![License](https://img.shields.io/badge/License-MIT-yellow)](LICENSE)
 [![CI](https://github.com/rudraneel93/mcp-guardian/actions/workflows/ci.yml/badge.svg)](https://github.com/rudraneel93/mcp-guardian/actions/workflows/ci.yml)
 
-**Current release: [v2.10.0](CHANGELOG.md#2100---2026-05-23)** — enterprise production bundle (gateway, WebSocket, Postgres RLS, semantic rate limits, swarm hardening). Unreleased fixes on `main`: see [CHANGELOG.md#unreleased](CHANGELOG.md#unreleased).
+**Current release: [v3.0.0](CHANGELOG.md#300---2026-05-24)** — Pro paywall hardening (Security Swarm CLI, fleet, AI learning) + dual license. Prior: [v2.10.0](CHANGELOG.md#2100---2026-05-23). Unreleased on `main`: [CHANGELOG.md#unreleased](CHANGELOG.md#unreleased).
+
+**v3.0.0 (Pro paywall hardening)** — Runtime enforcement on Pro surfaces: **Security Swarm CLI** (`pnpm security-swarm:*`), **fleet** (`mcp-guardian fleet`, TUI Fleet tab), **AI attack learning** on the proxy, and **dashboard startup** when `DASHBOARD_ENABLED=true`. Requires `GUARDIAN_LICENSE_KEY` + `GUARDIAN_CONTROL_PLANE_URL` ([PRO_SETUP.md](docs/PRO_SETUP.md)). **`GUARDIAN_OPEN_CORE=false` removed** — use `NODE_ENV=development` + `GUARDIAN_DEV_UNLOCK_ALL=true` for maintainer dev only. **Dual license:** MIT [Community Scope](COMMUNITY_SCOPE.md) + [LICENSE-PRO](LICENSE-PRO) for Pro paths. Cloud marketing site: [mcp-guardian-cloud.vercel.app](https://mcp-guardian-cloud.vercel.app).
 
 ### Security Swarm architecture
 
 ![Security Swarm — agentic architecture (CI agents + runtime learning loop)](docs/assets/security-swarm-architecture.png)
 
-*Closed-loop workflow: **CI track** (Scout → Corpus → Evasion → Parity → Proxy → Report) gates policy quality; **runtime track** (BlockGuard → InstantLearner → SemanticAuditor → PatternSynthesizer → Calibrator) runs on every proxied `tools/call`. **Solo analyze** (`pnpm security-swarm:analyze`) adds live MCP probes, personalized traffic from `history.db`, visuals, and plain-English `report.json` for the dashboard. Full agent table, gates, and env: [Security Swarm (CI + runtime learning loop)](#security-swarm-ci--runtime-learning-loop).*
+*Closed-loop workflow: **CI track** (Scout → Corpus → Evasion → Parity → Proxy → Report) gates policy quality; **runtime track** (BlockGuard → InstantLearner → SemanticAuditor → PatternSynthesizer → Calibrator) runs on every proxied `tools/call`. **Solo analyze** (`pnpm security-swarm:analyze`, **Pro license required v3.0+**) adds live MCP probes, personalized traffic from `history.db`, visuals, and plain-English `report.json` for the dashboard. Full agent table, gates, and env: [Security Swarm (CI + runtime learning loop)](#security-swarm-ci--runtime-learning-loop).*
 
 ## Proven under attack (v2.10.0)
 
@@ -137,7 +139,7 @@ MCP Guardian sits between AI agents and MCP servers, enforcing **active security
 
 It works as a **transparent stdio proxy** (real-time enforcement for Cline, Cursor, Claude Code), a **standalone CLI**, an **interactive TUI**, an **MCP audit server** (agents can self-scan), and a **pnpm monorepo** — install only what you need.
 
-**v2.10.0** ships the **enterprise production bundle**: shared **gateway** ingress, **WebSocket** transport parity, swarm hardening, Postgres **RLS** + backup/DR, semantic **10/min** cap with **24h** LLM cache and **local fallback** when the API is exhausted, **DPoP lock-free** jti claims, dashboard **`PUT /api/policy`**, and **`@mcp-guardian/core`** offline confusables. Prior releases: **2.9.7** (live dashboard, policy editor, open-core Pro, cloud control plane), **2.9.4** (multi-tenant JWT + response gate on all transports), **2.9.2** (adversarial harness + enterprise sim), **2.8.0** (production blockers resolved). Full history: [CHANGELOG.md](CHANGELOG.md).
+**v3.0.0** adds **enforced Pro licensing** on swarm CLI, fleet, AI learning, and dashboard startup (see [MCP Guardian Pro](#mcp-guardian-pro--499-lifetime-open-core)). **v2.10.0** ships the **enterprise production bundle**: shared **gateway** ingress, **WebSocket** transport parity, swarm hardening, Postgres **RLS** + backup/DR, semantic **10/min** cap with **24h** LLM cache and **local fallback** when the API is exhausted, **DPoP lock-free** jti claims, dashboard **`PUT /api/policy`**, and **`@mcp-guardian/core`** offline confusables. Prior releases: **2.9.7** (live dashboard, policy editor, open-core Pro, cloud control plane), **2.9.4** (multi-tenant JWT + response gate on all transports), **2.9.2** (adversarial harness + enterprise sim), **2.8.0** (production blockers resolved). Full history: [CHANGELOG.md](CHANGELOG.md).
 
 > **Experimental vs shipped (honest)**  
 > **Shipped:** stdio proxy + **shared gateway** (SSE/WS), YAML policy + semantic guards, **policy compile cache**, OPA block precedence (lazy when off), dashboard auth (fail-closed) + **RBAC** + **access audit JSONL** (`GET /api/audit`), **browser SPA** with **live-only metrics** and **policy editor**, **ThreatIntel polling**, **tenant-scoped swarm** (HMAC evasion manifests), **response DLP** (HTML/URL decode, `X-Guardian-Redaction-Reason`), **streaming response inspection**, **cost auditor** + `GET /api/cost/breakdown`, **per-tenant daily budget** (`GUARDIAN_TENANT_DAILY_BUDGET_JSON`), TUI + **Fleet tab**, **Redis Sentinel/Cluster HA**, **PgBouncer** + Postgres **RLS**, **Helm PDB / resources / NetworkPolicy** (enterprise overlay), **pg_basebackup** CronJob, bounded **session/nonce/LLM caches** (default **24h** TTL), **DPoP** (lock-free or legacy lock), **audit hash chain** ([HIPAA_AUDIT_TRAIL.md](docs/HIPAA_AUDIT_TRAIL.md)), **@mcp-guardian/core** (Ajv + TR39 offline regex), mTLS, non-root Docker, Plugin SDK, async semantic + **local/Ollama fallback**, secret scanner DLP, corpus + harness, instant/batch AI learning, [gap-matrix](reports/enterprise-mcp-tests-31/gap-matrix.md), Windows `guardian-proxy.ps1`.  
@@ -429,7 +431,7 @@ Helm overlay: [`deploy/helm/mcp-guardian/values-enterprise.yaml`](deploy/helm/mc
 
 Optional **cloud control plane** at **`apps/cloud`** — free, open source; does **not** host Guardian proxies.
 
-**Production:** [mcp-guardian-cloud.vercel.app](https://mcp-guardian-cloud.vercel.app)
+**Production:** [mcp-guardian-cloud.vercel.app](https://mcp-guardian-cloud.vercel.app) — marketing site with Security Swarm architecture, adversarial harness stats, and npm package info ([@mcp-guardian/server](https://www.npmjs.com/package/@mcp-guardian/server), 11k+ downloads/month).
 
 | Flow | Destination |
 |------|-------------|
@@ -459,7 +461,7 @@ Docs: [SAAS_CONTROL_PLANE.md](docs/SAAS_CONTROL_PLANE.md) · [OAUTH_CLOUD_SETUP.
 
 #### Earlier enterprise features
 - **Dashboard SPA (v2.7)** — `deploy/dashboard-spa/` served at `/` when the proxy runs with `DASHBOARD_ENABLED=true`; policy FP reject, AI accept/reject, fleet overview; **v2.9.7+** editable policy (`PUT /api/policy`)
-- **Fleet aggregation (v2.7)** — `mcp-guardian fleet status` over Postgres `guardian_instances` or `GUARDIAN_FLEET_DB_PATHS`; TUI **Fleet** tab (key `9`)
+- **Fleet aggregation (v2.7, Pro v3.0+)** — `mcp-guardian fleet status` over Postgres `guardian_instances` or `GUARDIAN_FLEET_DB_PATHS`; TUI **Fleet** tab (key `9`); license required from v3.0
 - **Detector Plugin SDK (v2.8)** — [`@mcp-guardian/plugin-sdk`](https://www.npmjs.com/package/@mcp-guardian/plugin-sdk) on npm (`PLUGIN_SDK_VERSION` 3.0.0); `createDetectorPlugin` + lifecycle hooks; monorepo `workspace:*` — [PLUGIN_SDK.md](docs/PLUGIN_SDK.md), [packages/plugin-sdk/](packages/plugin-sdk/)
 - **Tenant isolation** — per-tenant circuit breakers, rate limits, sessions, attack learning, and audit scoping; JWT-authoritative binding when `GUARDIAN_MULTI_TENANT_ENABLED=true`; see [docs/MULTI_TENANCY.md](docs/MULTI_TENANCY.md)
 - **Response security gate (v2.9.3)** — unified DLP + optional sync semantic on tool **responses** across stdio, HTTP, SSE, WebSocket, and streamable HTTP (`gateToolResponseText`; `GUARDIAN_RESPONSE_DLP_MODE`, `GUARDIAN_SEMANTIC_SYNC_RESPONSE`)
@@ -1181,8 +1183,10 @@ Architecture diagram: [Security Swarm architecture](#security-swarm-architecture
 
 Gates: **228/228** corpus, **0** bypasses, **100%** corpus parity. Full agent table: [security-swarm/README.md](security-swarm/README.md).
 
+**v3.0+ license:** `pnpm security-swarm:*` and `run-analysis.mjs` require a valid Pro license (`GUARDIAN_LICENSE_KEY` + `GUARDIAN_CONTROL_PLANE_URL`) unless `GUARDIAN_CI_BYPASS_LICENSE=true` (CI only). Upstream GitHub Actions sets this for corpus/swarm jobs.
+
 ```bash
-pnpm security-swarm:analyze       # one-click: live MCP + gates → tenant artifacts (~2–15 min)
+pnpm security-swarm:analyze       # one-click: live MCP + gates → tenant artifacts (~2–15 min) [Pro]
 pnpm security-swarm:analyze:full  # includes continuous attack phase when Ollama configured
 pnpm real-life:continuous         # 60-min hybrid attack stream (LIVE_ATTACK_DURATION_MINUTES=60)
 pnpm security-swarm               # full CI swarm (nightly)
@@ -1540,7 +1544,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md). Run `pnpm install && pnpm build && pnpm 
 - **Production MSI pipeline** — org code-signing and CI for Windows installers (script ships in v2.7)
 - **Enhanced gateway auth** — per-tenant gateway JWT at ingress (basic gateway shipped in v2.10)
 - **Enhanced SIEM templates** — richer export mappings
-- **v3.0** — Cloud control plane MVP shipped (`apps/cloud`); managed proxy hosting + gRPC transport remain planned
+- **v3.0** — Cloud control plane MVP + marketing site shipped (`apps/cloud`); **Pro paywall hardening** (swarm CLI, fleet, AI learning, dual license). Managed proxy hosting + gRPC transport remain planned
 
 ---
 
@@ -1569,10 +1573,23 @@ See [CONTRIBUTING.md](CONTRIBUTING.md). Run `pnpm install && pnpm build && pnpm 
 | Dashboard SPA + live APIs | No | Yes |
 | `PUT /api/policy` editor | No | Yes |
 | Security swarm / Analysis tab | No | Yes |
+| `mcp-guardian fleet` + TUI Fleet tab | No | Yes |
+| AI attack learning (instant + batch on proxy) | No | Yes |
 | `GUARDIAN_MULTI_TENANT_ENABLED` | No | Yes |
 | `GUARDIAN_SEMANTIC_ASYNC` (tier-2 LLM audit) | No | Yes |
 
-**Default (v2.10+):** `GUARDIAN_OPEN_CORE=true` — Pro features return **402** until a valid license is configured. Set `GUARDIAN_OPEN_CORE=false` for legacy “all features without a key” (internal/dev only).
+**Default (v3.0+):** Pro features require `GUARDIAN_LICENSE_KEY` + `GUARDIAN_CONTROL_PLANE_URL` (see [PRO_SETUP.md](docs/PRO_SETUP.md)). Security Swarm CLI, fleet, and AI learning are gated at runtime. Maintainer dev only: `NODE_ENV=development` + `GUARDIAN_DEV_UNLOCK_ALL=true`. **Deprecated:** `GUARDIAN_OPEN_CORE=false` (ignored with a warning).
+
+### Can users bypass Pro without paying?
+
+| Release line | Pro without a license? | How |
+|--------------|------------------------|-----|
+| **npm @3.0+** (default) | **No** (honest use) | Runtime checks on swarm CLI, dashboard, fleet, AI learning; validated against cloud control plane |
+| **npm 2.9.7–2.10.x** | **Partially** | Dashboard/API gated; swarm CLI + `GUARDIAN_OPEN_CORE=false` bypass |
+| **npm &lt; 2.9.7** | **Yes** on that tag | No license system in code |
+| **Pinned old tag / fork** | **Yes, technically** | Immutable npm tags; MIT Community fork may strip checks ([LICENSE-PRO](LICENSE-PRO) applies to Pro Scope use) |
+
+Pinned npm **&lt; 3.0** keeps older behavior — not supported for new Pro buyers. Details: [PRO_LICENSE.md](docs/PRO_LICENSE.md) · [MONETIZATION.md](docs/MONETIZATION.md).
 
 ### Purchase & setup
 
@@ -1588,12 +1605,13 @@ See [CONTRIBUTING.md](CONTRIBUTING.md). Run `pnpm install && pnpm build && pnpm 
 |----------|-------|---------|
 | `GUARDIAN_LICENSE_KEY` | Self-hosted Guardian | Buyer license key from Lemon Squeezy |
 | `GUARDIAN_CONTROL_PLANE_URL` | Self-hosted Guardian | Cloud base URL for license validation |
-| `GUARDIAN_OPEN_CORE` | Self-hosted Guardian | `true` (default) = Pro gates on; `false` = disable gates |
+| `GUARDIAN_DEV_UNLOCK_ALL` | Self-hosted (dev only) | `true` with `NODE_ENV=development` — unlock Pro locally; never in production |
+| `GUARDIAN_CI_BYPASS_LICENSE` | CI only | `true` in upstream GitHub Actions — not for end users |
 | `GUARDIAN_PRO_CHECKOUT_URL` | Guardian / cloud | Checkout link in 402 responses + upgrade banner |
 | `GUARDIAN_REQUIRE_LICENSE` | Self-hosted Guardian | `true` = fail dashboard startup without valid license |
 | `NEXT_PUBLIC_PRO_CHECKOUT_URL` | `apps/cloud` | “Buy Pro” on cloud homepage |
 
-**What is not paywalled:** the public npm package (MIT). Forks may remove runtime checks; the commercial product is the **license + support path**, not withholding source code.
+**What is not paywalled:** the public npm package (MIT Community Scope — see [COMMUNITY_SCOPE.md](COMMUNITY_SCOPE.md)). Pro components are governed by [LICENSE-PRO](LICENSE-PRO). Forks may remove runtime checks; the commercial product is the **license + support path**, not withholding source code.
 
 **Enterprise self-hosted** (Postgres HA, gateway, RLS, Helm) uses the same Pro license model for dashboard/swarm/multi-tenant; formal SOC2/FedRAMP programs are separate from the $4.99 SKU.
 
@@ -1601,7 +1619,12 @@ See [CONTRIBUTING.md](CONTRIBUTING.md). Run `pnpm install && pnpm build && pnpm 
 
 ## License
 
-MIT — see [LICENSE](LICENSE). Pro is an optional paid lifetime license; see [docs/MONETIZATION.md](docs/MONETIZATION.md).
+**Dual license (v3.0+):**
+
+- **[LICENSE](LICENSE)** — MIT for [Community Scope](COMMUNITY_SCOPE.md) (proxy, CLI, corpus, adversarial harness, local policy).
+- **[LICENSE-PRO](LICENSE-PRO)** — commercial terms for Pro Scope (Security Swarm, dashboard Pro APIs, semantic async tier, multi-tenant enterprise bindings, cloud license service). Use requires a valid Pro license.
+
+Pro is an optional paid lifetime license; setup: [docs/PRO_SETUP.md](docs/PRO_SETUP.md) · [docs/PRO_LICENSE.md](docs/PRO_LICENSE.md) · [docs/MONETIZATION.md](docs/MONETIZATION.md).
 
 ---
 

@@ -1,4 +1,4 @@
-import { describe, expect, it, beforeEach, vi } from 'vitest';
+import { describe, expect, it, beforeEach, afterEach, vi } from 'vitest';
 import {
   LicenseClient,
   resetLicenseClientForTests,
@@ -7,9 +7,16 @@ import {
 } from '../../src/license/license-client.js';
 
 describe('LicenseClient', () => {
+  const envBackup = { ...process.env };
+
   beforeEach(() => {
     resetLicenseClientForTests();
     vi.restoreAllMocks();
+  });
+
+  afterEach(() => {
+    process.env = { ...envBackup };
+    resetLicenseClientForTests();
   });
 
   it('detects cloud license keys', () => {
@@ -22,8 +29,25 @@ describe('LicenseClient', () => {
     expect(isLicenseEnforcementEnabled()).toBe(false);
   });
 
-  it('treats as licensed when enforcement and open-core disabled', () => {
+  it('does not unlock Pro when GUARDIAN_OPEN_CORE=false (v3)', () => {
+    delete process.env.GUARDIAN_LICENSE_KEY;
+    delete process.env.GUARDIAN_CONTROL_PLANE_URL;
+    delete process.env.GUARDIAN_DEV_UNLOCK_ALL;
     process.env.GUARDIAN_OPEN_CORE = 'false';
+
+    const client = new LicenseClient({
+      requireLicense: false,
+      refreshSeconds: 300,
+      graceSeconds: 900,
+    });
+    expect(client.isLicensed()).toBe(false);
+    expect(client.hasFeature('swarm')).toBe(false);
+  });
+
+  it('unlocks all Pro features with dev unlock', () => {
+    process.env.NODE_ENV = 'development';
+    process.env.GUARDIAN_DEV_UNLOCK_ALL = 'true';
+
     const client = new LicenseClient({
       requireLicense: false,
       refreshSeconds: 300,

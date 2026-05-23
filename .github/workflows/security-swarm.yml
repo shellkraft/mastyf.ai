@@ -25,10 +25,12 @@ jobs:
           cache: pnpm
 
       - run: pnpm install --frozen-lockfile
+      - run: pnpm build
 
       - name: Run security swarm (fast)
         run: node security-swarm/run.mjs --fast
         env:
+          GUARDIAN_CI_BYPASS_LICENSE: 'true'
           GUARDIAN_DISABLE_SEMANTIC: 'true'
           GUARDIAN_POLICY_TIMING_ENVELOPE: 'false'
 
@@ -57,6 +59,7 @@ jobs:
           cache: pnpm
 
       - run: pnpm install --frozen-lockfile
+      - run: pnpm build
 
       - name: Setup Python venv for harness
         run: node adversarial-harness/scripts/setup-python-venv.mjs
@@ -64,6 +67,7 @@ jobs:
       - name: Run security swarm (full)
         run: node security-swarm/run.mjs
         env:
+          GUARDIAN_CI_BYPASS_LICENSE: 'true'
           GUARDIAN_DISABLE_SEMANTIC: 'true'
           GUARDIAN_POLICY_TIMING_ENVELOPE: 'false'
 

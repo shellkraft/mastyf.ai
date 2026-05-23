@@ -4,6 +4,8 @@ import { recordPolicyDecisionGlobal } from './data-collector.js';
 import { triggerLearningCycleIfEnabled } from './suggestion-engine.js';
 import { recordInstantBlockEvent } from './instant-attack-learning.js';
 import { isAiLearningEnabled } from '../utils/ai-enabled.js';
+import { getLicenseClient } from '../license/license-client.js';
+import { isCiLicenseBypass, isDevUnlockAllowed } from '../license/feature-tiers.js';
 import { Logger } from '../utils/logger.js';
 import type { HistoryDatabase } from '../database/history-db.js';
 import type { McpServerConfig } from '../types.js';
@@ -101,6 +103,12 @@ function debounceMs(): number {
   return Number.isFinite(n) && n >= 0 ? n : DEFAULT_DEBOUNCE_MS;
 }
 
+/** Pro feature `ai` — instant + debounced learning loops (Community keeps regex/schema block). */
+function aiLearningLicensed(): boolean {
+  if (isDevUnlockAllowed() || isCiLicenseBypass()) return true;
+  return getLicenseClient().hasFeature('ai');
+}
+
 /**
  * Per-block hook: immediate rolling stats + optional suggestion queue, then debounced full cycle.
  */
@@ -108,7 +116,7 @@ export function recordBlockLearningEvent(
   event: BlockLearningEvent,
   opts?: { db?: HistoryDatabase; servers?: McpServerConfig[] },
 ): void {
-  if (isAiLearningEnabled()) {
+  if (isAiLearningEnabled() && aiLearningLicensed()) {
     recordInstantBlockEvent(event);
   }
   onPolicyBlock(event, opts);
@@ -126,7 +134,7 @@ export function onPolicyBlock(
   if (opts?.db) pendingDb = opts.db;
   if (opts?.servers?.length) pendingServers = opts.servers;
 
-  if (!isAiLearningEnabled()) return;
+  if (!isAiLearningEnabled() || !aiLearningLicensed()) return;
 
   const ms = debounceMs();
   if (ms === 0) {
@@ -163,7 +171,7 @@ async function acquireBlockLearningLock(tenantId: string): Promise<boolean> {
 async function flushBlockLearning(): Promise<void> {
   const ctx = pendingContext;
   pendingContext = null;
-  if (!ctx || !isAiLearningEnabled()) return;
+  if (!ctx || !isAiLearningEnabled() || !aiLearningLicensed()) return;
 
   const lockTenant = pendingTenantId || process.env['GUARDIAN_TENANT_ID'] || 'default';
   pendingTenantId = undefined;

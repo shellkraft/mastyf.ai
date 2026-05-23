@@ -23,7 +23,7 @@ describe('dashboard PUT /api/policy', () => {
     policyPath = join(tmpDir, 'test-policy.yaml');
     process.env.DASHBOARD_ENABLED = 'true';
     process.env.DASHBOARD_AUTH_DISABLED = 'true';
-    process.env.GUARDIAN_OPEN_CORE = 'false';
+    process.env.GUARDIAN_CI_BYPASS_LICENSE = 'true';
     process.env.GUARDIAN_POLICY_PATH = policyPath;
     await startDashboardServer(PORT);
   });
@@ -34,7 +34,7 @@ describe('dashboard PUT /api/policy', () => {
     delete process.env.DASHBOARD_ENABLED;
     delete process.env.DASHBOARD_AUTH_DISABLED;
     delete process.env.GUARDIAN_POLICY_PATH;
-    delete process.env.GUARDIAN_OPEN_CORE;
+    delete process.env.GUARDIAN_CI_BYPASS_LICENSE;
   });
 
   it('rejects invalid YAML with 400', async () => {

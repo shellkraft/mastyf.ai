@@ -18,6 +18,9 @@ import {
 } from '../utils/tui-sources.js';
 import { readFileSync, existsSync } from 'fs';
 import { resolveGuardianDbPath } from '../utils/guardian-db-path.js';
+import { ensureProFeature } from '../license/enforce-pro.js';
+import { getLicenseClient } from '../license/license-client.js';
+import { isCiLicenseBypass, isDevUnlockAllowed } from '../license/feature-tiers.js';
 import {
   resolveAiLearningStatePath,
   resolveAiPendingSuggestionsPath,
@@ -363,7 +366,10 @@ export class DataFetcher {
         void this.ensureLearningCycle(allRecords.length);
       }
 
-      const llmEnabled = process.env.GUARDIAN_TUI_LLM !== 'false' && process.env.GUARDIAN_LLM_ENABLED !== 'false';
+      const llmEnabled =
+        process.env.GUARDIAN_TUI_LLM !== 'false'
+        && process.env.GUARDIAN_LLM_ENABLED !== 'false'
+        && this.tuiAiLearningAllowed();
       if (llmEnabled && totalRequests > 0) {
         const topTools = this.getTopTools(allRecords);
         const securityIssues = secReports.filter((r: { score: number }) => r.score < 70).map((r: { name: string }) => r.name);
@@ -391,27 +397,7 @@ export class DataFetcher {
       // "Active" in overview = servers with recorded traffic (not just last-N-min heartbeat)
       const activeInstanceCount = instances.filter((i) => i.totalRequests > 0).length;
 
-      const { getFleetStatus } = await import('../fleet/fleet-aggregator.js');
-      const fleetReport = await getFleetStatus();
-      const fleet: FleetData = {
-        region: fleetReport.region,
-        source: fleetReport.source,
-        totalInstances: fleetReport.totalInstances,
-        activeInstances: fleetReport.activeInstances,
-        totalRequests: fleetReport.totalRequests,
-        totalBlocked: fleetReport.totalBlocked,
-        totalCostUsd: fleetReport.totalCostUsd,
-        rows: fleetReport.instances.map((i) => ({
-          instanceId: i.instanceId,
-          instanceName: i.instanceName,
-          status: i.status,
-          hostname: i.hostname,
-          region: i.region,
-          totalRequests: i.totalRequests,
-          blockedRequests: i.blockedRequests,
-          totalCostUsd: i.totalCostUsd,
-        })),
-      };
+      const fleet = await this.loadFleetData();
 
       this.cache = {
         overview: {
@@ -552,8 +538,53 @@ export class DataFetcher {
     }
   }
 
+  private async loadFleetData(): Promise<FleetData> {
+    const empty: FleetData = {
+      region: 'local',
+      source: 'none',
+      totalInstances: 0,
+      activeInstances: 0,
+      totalRequests: 0,
+      totalBlocked: 0,
+      totalCostUsd: 0,
+      rows: [],
+    };
+    try {
+      await ensureProFeature('fleet');
+    } catch {
+      return empty;
+    }
+    const { getFleetStatus } = await import('../fleet/fleet-aggregator.js');
+    const fleetReport = await getFleetStatus();
+    return {
+      region: fleetReport.region,
+      source: fleetReport.source,
+      totalInstances: fleetReport.totalInstances,
+      activeInstances: fleetReport.activeInstances,
+      totalRequests: fleetReport.totalRequests,
+      totalBlocked: fleetReport.totalBlocked,
+      totalCostUsd: fleetReport.totalCostUsd,
+      rows: fleetReport.instances.map((i) => ({
+        instanceId: i.instanceId,
+        instanceName: i.instanceName,
+        status: i.status,
+        hostname: i.hostname,
+        region: i.region,
+        totalRequests: i.totalRequests,
+        blockedRequests: i.blockedRequests,
+        totalCostUsd: i.totalCostUsd,
+      })),
+    };
+  }
+
+  private tuiAiLearningAllowed(): boolean {
+    if (isDevUnlockAllowed() || isCiLicenseBypass()) return true;
+    return getLicenseClient().hasFeature('ai');
+  }
+
   private async ensureLearningCycle(recordCount: number): Promise<void> {
     if (this.dbReadOnly || !isAiLearningEnabled() || recordCount === 0) return;
+    if (!this.tuiAiLearningAllowed()) return;
     if (process.env.GUARDIAN_TUI_SKIP_LEARNING === 'true') return;
     if (this.learningInFlight) return;
     const state = this.loadLearningDisplay();

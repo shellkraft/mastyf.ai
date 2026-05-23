@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import './lib/gate-pro.mjs';
 /**
  * Security Swarm orchestrator — CI + research DAG over adversarial harness, corpus, vitest.
  *

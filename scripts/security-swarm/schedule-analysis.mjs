@@ -3,6 +3,8 @@
  * Print cron / launchd snippets for weekly security analysis.
  * Usage: node scripts/security-swarm/schedule-analysis.mjs [--install-hint]
  */
+import { spawnSync } from 'node:child_process';
+import { existsSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -10,6 +12,16 @@ import { fileURLToPath } from 'node:url';
 const __dir = dirname(fileURLToPath(import.meta.url));
 const REPO = join(__dir, '..', '..');
 const logPath = join(homedir(), '.mcp-guardian', 'scheduled-analysis.log');
+
+if (process.env.GUARDIAN_CI_BYPASS_LICENSE !== 'true') {
+  const gate = join(REPO, 'security-swarm', 'lib', 'require-pro-license.mjs');
+  if (!existsSync(gate)) {
+    console.error('[license] Missing security-swarm/lib/require-pro-license.mjs');
+    process.exit(1);
+  }
+  const r = spawnSync(process.execPath, [gate, 'swarm'], { stdio: 'inherit', cwd: REPO, env: process.env });
+  if (r.status !== 0) process.exit(r.status ?? 1);
+}
 
 const cronLine = `0 9 * * 1 cd ${REPO} && pnpm security-swarm:analyze >> ${logPath} 2>&1`;
 

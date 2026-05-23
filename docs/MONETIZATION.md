@@ -17,16 +17,17 @@ Checkout is hosted by **Lemon Squeezy** (Merchant of Record — global VAT handl
 
 ## Open-core model (default)
 
-`GUARDIAN_OPEN_CORE=true` (default) — **npm install is always free**. Runtime gates Pro features until a valid license is validated against your cloud control plane.
+**v3.0+** — **npm install is always free** (MIT Community Scope). Pro features require a valid license validated against your cloud control plane. See [LICENSE-PRO](../LICENSE-PRO) and [COMMUNITY_SCOPE.md](../COMMUNITY_SCOPE.md).
 
 | Tier | What users get |
 |------|----------------|
-| **Community** | `mcp-guardian proxy`, YAML policy, regex/schema gates, CLI scan — no license |
-| **Pro** | Dashboard, WebSocket live feed, security swarm, AI learning APIs, multi-tenant JWT, semantic async tier-2 |
+| **Community** | `mcp-guardian proxy`, YAML policy, regex/schema gates, CLI scan, adversarial harness — no license |
+| **Pro** | Dashboard, WebSocket, **Security Swarm CLI**, AI learning, fleet, multi-tenant JWT, semantic async |
 
-Set `GUARDIAN_OPEN_CORE=false` to restore pre-2.10 behavior (all features without a key).
+**Maintainer dev only:** `NODE_ENV=development` + `GUARDIAN_DEV_UNLOCK_ALL=true`.  
+**Deprecated:** `GUARDIAN_OPEN_CORE=false` (ignored in v3.0 with a warning).
 
-**Cannot paywall:** public npm download (MIT). Forks may remove checks.
+**Cannot fully prevent:** pinned npm **&lt; 3.0**; forks that strip checks (MIT Community). Pro terms apply to Pro Scope use.
 
 ## Quick links
 
@@ -45,7 +46,8 @@ Set `GUARDIAN_OPEN_CORE=false` to restore pre-2.10 behavior (all features withou
 |----------|-------|---------|
 | `NEXT_PUBLIC_PRO_CHECKOUT_URL` | `apps/cloud` | Buy Pro button on cloud homepage |
 | `GUARDIAN_LICENSE_KEY` | Self-hosted Guardian | Buyer’s license key |
-| `GUARDIAN_OPEN_CORE` | Self-hosted Guardian | `false` disables Pro runtime gates |
+| `GUARDIAN_DEV_UNLOCK_ALL` | Self-hosted (dev) | `true` + `NODE_ENV=development` — local Pro unlock only |
+| `GUARDIAN_CI_BYPASS_LICENSE` | CI only | `true` in upstream GitHub Actions |
 | `GUARDIAN_PRO_CHECKOUT_URL` | Self-hosted / cloud | Lemon Squeezy link in 402 responses + banner |
 | `GUARDIAN_REQUIRE_LICENSE` | Self-hosted Guardian | `true` = hard-fail dashboard startup without license |
 | `GUARDIAN_CONTROL_PLANE_URL` | Self-hosted Guardian | Cloud URL for `GET /api/v1/license` |

@@ -22,10 +22,12 @@ jobs:
           cache: pnpm
 
       - run: pnpm install --frozen-lockfile
+      - run: pnpm build
 
       - name: Run semantic calibrator
         run: pnpm security-swarm:calibrate
         env:
+          GUARDIAN_CI_BYPASS_LICENSE: 'true'
           SWARM_CALIBRATE_DAYS: '7'
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
 

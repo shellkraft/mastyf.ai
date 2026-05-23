@@ -6,6 +6,7 @@ import {
 import {
   isOpenCoreEnabled,
   isProFeature,
+  isDevUnlockAllowed,
   allProFeatureNames,
 } from '../../src/license/feature-tiers.js';
 
@@ -21,14 +22,22 @@ describe('open-core feature tiers', () => {
     resetLicenseClientForTests();
   });
 
-  it('enables open-core by default', () => {
+  it('enables open-core by default (v3+ always gates Pro)', () => {
     delete process.env.GUARDIAN_OPEN_CORE;
     expect(isOpenCoreEnabled()).toBe(true);
   });
 
-  it('can disable open-core for legacy all-features behavior', () => {
+  it('ignores GUARDIAN_OPEN_CORE=false — gates remain active', () => {
     process.env.GUARDIAN_OPEN_CORE = 'false';
-    expect(isOpenCoreEnabled()).toBe(false);
+    expect(isOpenCoreEnabled()).toBe(true);
+  });
+
+  it('dev unlock only in NODE_ENV=development', () => {
+    process.env.NODE_ENV = 'development';
+    process.env.GUARDIAN_DEV_UNLOCK_ALL = 'true';
+    expect(isDevUnlockAllowed()).toBe(true);
+    process.env.NODE_ENV = 'production';
+    expect(isDevUnlockAllowed()).toBe(false);
   });
 
   it('classifies swarm and proxy correctly', () => {
@@ -40,6 +49,7 @@ describe('open-core feature tiers', () => {
   it('blocks Pro features without license key when open-core is on', () => {
     delete process.env.GUARDIAN_CONTROL_PLANE_URL;
     delete process.env.GUARDIAN_LICENSE_KEY;
+    delete process.env.GUARDIAN_DEV_UNLOCK_ALL;
     process.env.GUARDIAN_OPEN_CORE = 'true';
 
     const client = new LicenseClient({

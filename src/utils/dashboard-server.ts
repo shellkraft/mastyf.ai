@@ -27,7 +27,12 @@ import {
   isLicenseEnforcementEnabled,
   loadLicenseClientConfig,
 } from '../license/license-client.js';
-import { getProCheckoutUrl, isOpenCoreEnabled } from '../license/feature-tiers.js';
+import {
+  getProCheckoutUrl,
+  isCiLicenseBypass,
+  isDevUnlockAllowed,
+  isOpenCoreEnabled,
+} from '../license/feature-tiers.js';
 import { mapCloudRoles, verifyCloudSessionToken } from '../license/cloud-session.js';
 import {
   getAllActiveServerNames,
@@ -240,6 +245,19 @@ export async function startDashboardServer(
     dashboardEnabled = false;
   }
 
+  if (
+    dashboardEnabled
+    && isOpenCoreEnabled()
+    && !isDevUnlockAllowed()
+    && !isCiLicenseBypass()
+    && !licenseClient.hasFeature('dashboard')
+  ) {
+    Logger.error(
+      '[license] DASHBOARD_ENABLED requires MCP Guardian Pro — set GUARDIAN_LICENSE_KEY and GUARDIAN_CONTROL_PLANE_URL (see docs/PRO_SETUP.md)',
+    );
+    dashboardEnabled = false;
+  }
+
   if (!dashboardEnabled && !wsEnabled) {
     Logger.debug('[dashboard] Dashboard/WS disabled (DASHBOARD_ENABLED or GUARDIAN_WS_ENABLED)');
     setWsBroadcaster(null);
@@ -297,9 +315,9 @@ export async function startDashboardServer(
 
   function assertLicensedApi(path: string, res: ServerResponse, setCors: () => void): boolean {
     if (isLicenseExemptPath(path)) return true;
-    if (!isOpenCoreEnabled()) {
-      if (!isLicenseEnforcementEnabled() || licenseClient.isLicensed()) return true;
-    } else if (licenseClient.hasFeature('dashboard')) {
+    if (isDevUnlockAllowed() || isCiLicenseBypass()) return true;
+    if (!isLicenseEnforcementEnabled() && licenseClient.isLicensed()) return true;
+    if (licenseClient.hasFeature('dashboard')) {
       return true;
     }
     setCors();

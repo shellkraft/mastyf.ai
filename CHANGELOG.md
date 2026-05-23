@@ -2,6 +2,26 @@
 
 All notable changes to MCP Guardian will be documented in this file.
 
+## [3.0.0] - 2026-05-24
+
+### BREAKING — Pro paywall hardening
+
+- **Security Swarm CLI** (`pnpm security-swarm:*`, `run-analysis.mjs`) requires a valid **MCP Guardian Pro** license (`GUARDIAN_LICENSE_KEY` + `GUARDIAN_CONTROL_PLANE_URL`).
+- **`GUARDIAN_OPEN_CORE=false` removed** — no longer disables Pro gates. Maintainer dev only: `NODE_ENV=development` + `GUARDIAN_DEV_UNLOCK_ALL=true`.
+- **Fleet CLI** (`mcp-guardian fleet`) and **TUI Fleet tab** require Pro.
+- **AI attack learning** on the proxy (instant + debounced cycles) requires Pro; Community keeps regex/schema block.
+- **Dashboard** with `DASHBOARD_ENABLED=true` fails startup without Pro license (when open-core gates apply).
+
+### Added
+
+- **Dual license** — [LICENSE-PRO](LICENSE-PRO), [COMMUNITY_SCOPE.md](COMMUNITY_SCOPE.md), [docs/PRO_LICENSE.md](docs/PRO_LICENSE.md).
+- **`src/license/enforce-pro.ts`** + `node dist/license/check-pro.js <feature>` for scripts.
+- **`GUARDIAN_CI_BYPASS_LICENSE`** — CI workflows only (not for end users).
+
+### Changed
+
+- Older releases: **npm &lt; 2.9.7** had no license system; **2.9.7–2.10.x** allowed swarm CLI bypass. Upgrade to **3.0+** for enforced Pro CLI.
+
 ## [Unreleased]
 
 ### Added
