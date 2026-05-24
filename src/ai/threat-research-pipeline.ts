@@ -26,6 +26,7 @@ import {
 } from './auto-corpus-writer.js';
 import type { StoredSemanticAudit } from './semantic-audit-store.js';
 import type { ThreatIntelEntry } from './threat-intel.js';
+import { promoteToCorpus, type CorpusPromotionProvenance } from './auto-corpus-promoter.js';
 
 export type ThreatResearchEventType = AutoCorpusSource;
 
@@ -288,6 +289,32 @@ export async function processThreatResearchEvent(
   Logger.info(
     `[threat-research] auto-wrote ${written.advId} (${normalized.attackClass}, source=${event.type})`,
   );
+
+  // ── Auto-promote to corpus/attacks/ (Phase 1 of self-sustaining pipeline) ──
+  if (process.env.GUARDIAN_AUTO_CORPUS_PROMOTE === 'true') {
+    try {
+      const provenance: CorpusPromotionProvenance = {
+        source: event.type,
+        inputFingerprint: event.fingerprint,
+        attackClass: normalized.attackClass,
+        hypothesis: normalized.hypothesis,
+        confidence: normalized.confidence,
+        llmUsed: true,
+        advId: written.advId,
+      };
+      const promoted = await promoteToCorpus(normalized, provenance);
+      if (promoted.ok) {
+        Logger.info(
+          `[threat-research] auto-promoted ${written.advId} → corpus/attacks/${promoted.category}/${promoted.relPath?.split('/').pop()}`,
+        );
+      }
+    } catch (err) {
+      Logger.debug(
+        `[threat-research] auto-promotion failed: ${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
+  }
+
   return { ok: true, advId: written.advId, relPath: written.relPath };
 }
 
