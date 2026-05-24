@@ -2,23 +2,29 @@
  * Time bucket generation and zero-fill for honest dashboard charts.
  */
 
-export type DashboardWindow = '7d' | '30d' | '90d';
+export type DashboardWindow = '1h' | '12h' | '24h' | '7d' | '30d' | '90d';
 
 export type BucketGranularity = 'hour' | 'day';
 
 export function parseWindowDays(window: string | number | undefined, fallback = 7): number {
   if (typeof window === 'number' && Number.isFinite(window)) {
-    return Math.min(90, Math.max(1, Math.floor(window)));
+    return Math.min(90, Math.max(1 / 24, Math.floor(window)));
   }
   const raw = String(window ?? '').trim();
-  const m = raw.match(/^(\d+)d$/i);
-  if (m) return Math.min(90, Math.max(1, parseInt(m[1], 10)));
+  // Parse 1h, 12h, 24h, 7d, 30d, 90d
+  const h = raw.match(/^(\d+)h$/i);
+  if (h) return Math.min(90, Math.max(1 / 24, parseInt(h[1], 10) / 24));
+  const d = raw.match(/^(\d+)d$/i);
+  if (d) return Math.min(90, Math.max(1, parseInt(d[1], 10)));
   const n = parseInt(raw, 10);
-  if (Number.isFinite(n) && n > 0) return Math.min(90, Math.max(1, n));
+  if (Number.isFinite(n) && n > 0) return Math.min(90, Math.max(1 / 24, n));
   return fallback;
 }
 
 export function windowToLabel(days: number): DashboardWindow {
+  if (days <= 1 / 24) return '1h';
+  if (days <= 12 / 24) return '12h';
+  if (days <= 1) return '24h';
   if (days <= 7) return '7d';
   if (days <= 30) return '30d';
   return '90d';

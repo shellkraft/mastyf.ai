@@ -2,11 +2,14 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 
-export type DashboardWindow = '7d' | '30d' | '90d';
+export type DashboardWindow = '1h' | '12h' | '24h' | '7d' | '30d' | '90d';
 
 const STORAGE_KEY = 'guardian-dashboard-window';
 
 const WINDOW_DAYS: Record<DashboardWindow, number> = {
+  '1h': 1 / 24,
+  '12h': 0.5,
+  '24h': 1,
   '7d': 7,
   '30d': 30,
   '90d': 90,
@@ -23,7 +26,8 @@ const DashboardWindowContext = createContext<ContextValue | null>(null);
 function readStoredWindow(): DashboardWindow {
   if (typeof window === 'undefined') return '7d';
   const stored = localStorage.getItem(STORAGE_KEY);
-  if (stored === '7d' || stored === '30d' || stored === '90d') return stored;
+  const valid: DashboardWindow[] = ['1h', '12h', '24h', '7d', '30d', '90d'];
+  if (valid.includes(stored as DashboardWindow)) return stored as DashboardWindow;
   return '7d';
 }
 
@@ -76,6 +80,9 @@ export function DashboardWindowSelector() {
           onChange={(e) => setWindow(e.target.value as DashboardWindow)}
           aria-label="Dashboard time window"
         >
+          <option value="1h">Last 1 hour</option>
+          <option value="12h">Last 12 hours</option>
+          <option value="24h">Last 24 hours</option>
           <option value="7d">Last 7 days</option>
           <option value="30d">Last 30 days</option>
           <option value="90d">Last 90 days</option>
