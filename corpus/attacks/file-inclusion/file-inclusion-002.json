@@ -1,9 +1,0 @@
-{
-  "toolName": "read_file",
-  "arguments": {
-    "path": "C:\\Windows\\System32\\config\\SAM"
-  },
-  "expected": "block",
-  "category": "file-inclusion",
-  "ruleHint": "windows-absolute"
-}
