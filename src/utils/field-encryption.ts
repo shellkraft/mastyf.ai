@@ -28,6 +28,23 @@ export function isFieldEncryptionEnabled(): boolean {
   return Boolean(process.env['GUARDIAN_DB_ENCRYPTION_KEY']?.trim());
 }
 
+export function isAuditArgsEncryptionEnabled(): boolean {
+  return isFieldEncryptionEnabled() && process.env['GUARDIAN_DB_ENCRYPT_AUDIT_ARGS'] === 'true';
+}
+
+/** Encrypt redacted argument snippets when GUARDIAN_DB_ENCRYPT_AUDIT_ARGS=true. */
+export function encryptAuditArgsField(plaintext: string | null | undefined): string | null {
+  if (plaintext == null || plaintext === '') return plaintext ?? null;
+  if (!isAuditArgsEncryptionEnabled()) return plaintext;
+  return encryptField(plaintext);
+}
+
+export function decryptAuditArgsField(stored: string | null | undefined): string | null {
+  if (stored == null || stored === '') return stored ?? null;
+  if (!isAuditArgsEncryptionEnabled()) return stored;
+  return decryptField(stored);
+}
+
 export function getFieldEncryptionKey(): string | undefined {
   const k = process.env['GUARDIAN_DB_ENCRYPTION_KEY']?.trim();
   return k || undefined;

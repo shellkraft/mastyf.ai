@@ -1,4 +1,5 @@
-import type { IncomingHttpHeaders } from 'http';
+import type { IncomingHttpHeaders, IncomingMessage } from 'http';
+import { getMaxPayloadBytes } from './payload-guard.js';
 
 const DEFAULT_MAX_JSON_DEPTH = 32;
 
@@ -152,4 +153,26 @@ export function applySafeCorsHeaders(
   if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(originStr)) {
     resHeaders['access-control-allow-origin'] = originStr;
   }
+}
+
+export type ReadBodyResult =
+  | { ok: true; body: string }
+  | { ok: false; tooLarge: true; bytes: number; limit: number };
+
+/** Read HTTP body with a hard byte cap (SSE, streamable HTTP, etc.). */
+export async function readRequestBodyWithLimit(
+  req: IncomingMessage,
+  maxBytes = getMaxPayloadBytes(),
+): Promise<ReadBodyResult> {
+  const chunks: Buffer[] = [];
+  let total = 0;
+  for await (const chunk of req) {
+    const buf = chunk as Buffer;
+    total += buf.length;
+    if (total > maxBytes) {
+      return { ok: false, tooLarge: true, bytes: total, limit: maxBytes };
+    }
+    chunks.push(buf);
+  }
+  return { ok: true, body: Buffer.concat(chunks).toString('utf8') };
 }

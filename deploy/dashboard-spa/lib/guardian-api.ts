@@ -2392,6 +2392,166 @@ export async function fetchServerRegistry(): Promise<ServerRegistryEntry[]> {
   return body.servers || [];
 }
 
+export type AgenticTrafficPoint = { bucket: string; requests: number; blocked: number };
+
+export type AgenticTrustScore = {
+  serverName: string;
+  overallScore: number;
+  grade: string;
+  categories: Array<{ name: string; score: number; weight: number; maxScore: number; details: string; findings: string[] }>;
+  computedAt: string;
+  improvementActions?: Array<{ priority: string; category: string; action: string; expectedScoreIncrease: number }>;
+};
+
+export type AgenticServerTrust = {
+  name: string;
+  transport: string;
+  wrapped: boolean;
+  metrics?: { totalCalls: number; blocked: number; passed: number; lastSeen: string | null };
+  trust: AgenticTrustScore | null;
+};
+
+export type AgenticDashboardResponse = {
+  available?: boolean;
+  agenticEnabled?: boolean;
+  windowDays?: number;
+  generatedAt?: string;
+  kpis?: {
+    uptimeMs: number;
+    totalDecisions: number;
+    avgConfidence: number;
+    llmTokensUsed: number;
+    llmCostEstimate: number;
+    llmAvailable: boolean;
+    blockedRequests: number;
+    totalRequests: number;
+    injectionDetectionRate: number;
+    injectionScans: number;
+    meshSignatures: number;
+    meshEnabled: boolean;
+    honeypotActive: number;
+    honeypotCaptures: number;
+    taskQueued: number;
+    taskRunning: number;
+    complianceOverall: number;
+    trustGrade: string;
+    trustScore: number;
+    activeSessions: number;
+  };
+  trafficSeries?: AgenticTrafficPoint[];
+  decisionsByFeature?: Record<string, number>;
+  recentDecisions?: Array<{
+    decisionId: string;
+    feature: string;
+    rationale: string;
+    confidence: number;
+    outcome?: string;
+    timestamp: string;
+  }>;
+  featureHealth?: Array<{ name: string; status: string }>;
+  servers?: AgenticServerTrust[];
+  compliance?: {
+    overall: number;
+    frameworks: Array<{
+      framework: string;
+      frameworkName: string;
+      postureScore: number;
+      satisfiedControls: number;
+      totalControls: number;
+    }>;
+  };
+  policyGen?: { active: boolean; totalCalls: number; uniqueTools: number; uptimeMin: number };
+  honeypots?: { active: number; totalCaptures: number; recentAlerts: number };
+  mesh?: { enabled: boolean; localSignatures: number; pendingSignatures: number };
+  promptInjectionStats?: { totalScans: number; totalDetections: number; detectionRate: number };
+  trustSessions?: { activeSessions: number; registeredAgents: number; totalNegotiations: number };
+  meta?: { dataSources?: string[]; generatedAt?: string };
+  emptyReason?: string;
+  historyOutsideWindow?: number;
+  suggestedWindow?: '1h' | '12h' | '24h' | '7d' | '30d' | '90d';
+  windowLabel?: string;
+  error?: string;
+};
+
+export type AgenticAuditRecord = {
+  recordId: string;
+  timestamp: string;
+  sessionId: string;
+  method: string;
+  toolName?: string;
+  argsSummary: string;
+  latencyMs: number;
+  blocked: boolean;
+  blockReason?: string;
+  statusCode: string;
+};
+
+export async function fetchAgenticDashboard(window = '7d'): Promise<AgenticDashboardResponse | null> {
+  const res = await guardianFetch(`/api/agentic/dashboard?window=${encodeURIComponent(window)}`);
+  if (!res.ok) return null;
+  const body = (await res.json()) as AgenticDashboardResponse;
+  if (body.error && body.available === false && !body.kpis) return null;
+  return body;
+}
+
+export async function fetchAgenticAudit(limit = 50): Promise<{
+  records: AgenticAuditRecord[];
+  stats: { totalRecords: number; totalBlocked: number; totalAllowed: number; averageLatencyMs: number };
+} | null> {
+  const res = await guardianFetch(`/api/agentic/audit?limit=${limit}`);
+  if (!res.ok) return null;
+  const body = (await res.json()) as {
+    available?: boolean;
+    records?: AgenticAuditRecord[];
+    stats?: { totalRecords: number; totalBlocked: number; totalAllowed: number; averageLatencyMs: number };
+  };
+  if (body.available === false) return null;
+  return { records: body.records ?? [], stats: body.stats ?? { totalRecords: 0, totalBlocked: 0, totalAllowed: 0, averageLatencyMs: 0 } };
+}
+
+export async function fetchAgenticDecisions(limit = 50): Promise<AgenticDashboardResponse['recentDecisions']> {
+  const res = await guardianFetch(`/api/agentic/decisions?limit=${limit}`);
+  if (!res.ok) return [];
+  const body = (await res.json()) as { decisions?: AgenticDashboardResponse['recentDecisions'] };
+  return body.decisions ?? [];
+}
+
+export async function fetchAgenticTasksDetail(): Promise<{
+  stats: { queued: number; running: number; completed: number; failed: number; total: number };
+  pendingApprovals: Array<{ requestId: string; toolName: string; description: string; createdAt: string }>;
+} | null> {
+  const res = await guardianFetch('/api/agentic/tasks/detail');
+  if (!res.ok) return null;
+  const body = (await res.json()) as {
+    stats?: { queued: number; running: number; completed: number; failed: number; total: number };
+    pendingApprovals?: Array<{ requestId: string; toolName: string; description: string; createdAt: string }>;
+  };
+  return {
+    stats: body.stats ?? { queued: 0, running: 0, completed: 0, failed: 0, total: 0 },
+    pendingApprovals: body.pendingApprovals ?? [],
+  };
+}
+
+export async function agenticPost(
+  path: string,
+  body?: Record<string, unknown>,
+): Promise<{ ok: boolean; data?: unknown; error?: string }> {
+  const headers = await buildMutatingHeaders();
+  const res = await guardianFetch(path, {
+    method: 'POST',
+    headers,
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  if (!res.ok) {
+    return { ok: false, error: await parseApiError(res) };
+  }
+  try {
+    return { ok: true, data: await res.json() };
+  } catch {
+    return { ok: true, data: null };
+  }
+}
+
 export function resolveWsUrl(): string {
   const base = resolveApiBase();
   try {

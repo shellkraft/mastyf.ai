@@ -1,5 +1,22 @@
 # Production authentication — DPoP + mTLS
 
+## JWKS auto-refresh (OIDC JWT validation)
+
+Guardian validates OAuth bearer tokens against the IdP JWKS. Keys rotate without proxy restarts when refresh is enabled.
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `GUARDIAN_JWKS_REFRESH_MS` | `300000` (5 min) | Proactive JWKS refresh interval (min 60s). Independent of OIDC discovery TTL. |
+| `GUARDIAN_OIDC_DISCOVERY_TTL_MS` | `3600000` (1 h) | OIDC metadata cache TTL |
+
+**Behavior:**
+
+1. Before each `validate()`, Guardian calls `ensureJwksFresh()` when the JWKS TTL has elapsed.
+2. On signature failure (`ERR_JWS_SIGNATURE_VERIFICATION_FAILED` / `ERR_JWKS_NO_MATCHING_KEY`), Guardian forces one OIDC rediscovery + JWKS rebuild and retries verification once.
+3. When OAuth is enabled at proxy boot, `startBackgroundJwksRefresh()` runs a periodic refresh on the same interval as `GUARDIAN_JWKS_REFRESH_MS` (call `stopBackgroundJwksRefresh()` on shutdown).
+
+**Checklist:** Set issuer/audience (`MCP_AUTH_*` or dashboard JWT config), ensure outbound HTTPS to `/.well-known/openid-configuration` and `jwks_uri`, and keep `GUARDIAN_JWKS_REFRESH_MS` ≤ your IdP key rotation grace window.
+
 ## DPoP (RFC 9449)
 
 Sender-constrained OAuth tokens require a fresh DPoP proof JWT on each request. Guardian validates signature, `htm`/`htu`, `iat` freshness, `ath` (when a Bearer token is present), and **jti replay** (in-memory or Redis `SET NX`).

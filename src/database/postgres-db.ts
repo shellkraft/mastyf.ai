@@ -9,6 +9,12 @@ import { Logger } from '../utils/logger.js';
 import { loadPg, type PgPoolType } from './pg-loader.js';
 import { runMigrations } from './migration-runner.js';
 import { isPostgresRlsEnabled, withPostgresTenantSession } from './postgres-tenant-session.js';
+import {
+  decryptAuditArgsField,
+  decryptField,
+  encryptAuditArgsField,
+  encryptField,
+} from '../utils/field-encryption.js';
 
 export class PostgresDatabase implements IDatabase {
   private pool!: PgPoolType;
@@ -98,6 +104,7 @@ export class PostgresDatabase implements IDatabase {
       await client.query('ALTER TABLE call_records ADD COLUMN IF NOT EXISTS cost_usd REAL');
       await client.query('ALTER TABLE call_records ADD COLUMN IF NOT EXISTS pricing_source TEXT');
       await client.query('ALTER TABLE call_records ADD COLUMN IF NOT EXISTS token_source TEXT');
+      await client.query('ALTER TABLE call_records ADD COLUMN IF NOT EXISTS argument_snippet TEXT');
 
       await runMigrations(this.pool);
 
@@ -228,7 +235,7 @@ export class PostgresDatabase implements IDatabase {
     const tid = record.tenantId ?? 'default';
     await this.tenantQuery(
       tid,
-      'INSERT INTO call_records (server_name, tool_name, request_tokens, response_tokens, total_tokens, duration_ms, blocked, block_rule, block_reason, model, cost_usd, pricing_source, token_source, tenant_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)',
+      'INSERT INTO call_records (server_name, tool_name, request_tokens, response_tokens, total_tokens, duration_ms, blocked, block_rule, block_reason, argument_snippet, model, cost_usd, pricing_source, token_source, tenant_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)',
       [
         record.serverName,
         record.toolName,
@@ -238,7 +245,8 @@ export class PostgresDatabase implements IDatabase {
         record.durationMs,
         Boolean(record.blocked),
         record.blockRule ?? null,
-        record.blockReason ?? null,
+        encryptField(record.blockReason ?? null),
+        encryptAuditArgsField(record.argumentSnippet ?? null),
         record.model ?? null,
         record.costUsd ?? null,
         record.pricingSource ?? null,
@@ -276,7 +284,7 @@ export class PostgresDatabase implements IDatabase {
       pricingSource: row.pricing_source ?? undefined,
       blocked: Boolean(row.blocked),
       blockRule: row.block_rule ?? undefined,
-      blockReason: row.block_reason ?? undefined,
+      blockReason: decryptField(row.block_reason ?? null) ?? undefined,
       tokenSource: row.token_source === 'api' || row.token_source === 'estimated'
         ? row.token_source
         : undefined,

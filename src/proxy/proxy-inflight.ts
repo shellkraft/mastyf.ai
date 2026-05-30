@@ -37,6 +37,12 @@ export function releaseProxyInflight(serverName: string): void {
   }
 }
 
+export function getTotalProxyInflight(): number {
+  let total = 0;
+  for (const n of serverInflightCounts.values()) total += n;
+  return total;
+}
+
 /** @internal */
 export function resetProxyInflightForTests(): void {
   serverInflightCounts.clear();

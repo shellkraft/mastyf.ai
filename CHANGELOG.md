@@ -2,6 +2,79 @@
 
 All notable changes to MCP Guardian will be documented in this file.
 
+## [3.4.1] - 2026-05-30
+
+### Security — production readiness (code review remediation)
+
+- **JWKS auto-refresh** — `GUARDIAN_JWKS_REFRESH_MS` (default 5m), proactive refresh before JWT validation, one retry after signature failure, optional background refresh when OAuth is enabled
+- **Payload bounds** — `GUARDIAN_MAX_EXPANDED_PAYLOAD_BYTES` caps post-parse tool arguments on all transports; HTTP/SSE/streamable use `readRequestBodyWithLimit`; JSON-RPC errors include `id: 0`
+- **Audit args encryption** — `GUARDIAN_DB_ENCRYPT_AUDIT_ARGS` encrypts `argument_snippet` when encryption key is set
+- **SIEM** — `StructuredLogger.logBlocked` on policy, semantic, payload, and agentic blocks across stdio/HTTP/SSE/WS/streamable
+- **Redis circuit breaker** — cross-replica pubsub + `mcp_guardian_circuit_breaker_sync_total` metric
+- **Rate limits survive policy hot-reload** — in-memory counters moved to process-wide `sharedRateLimitStore`
+- **Allowlist RBAC** — `GUARDIAN_STRICT_ALLOWLIST_RBAC` requires `rbac` on `tools.allow` rules (default on in enterprise mode)
+- **OAuth scopes** — merges `scope` and `scp` claims; optional `rbac.scopeMatch: all|any`
+- **Audit retention** — `MCP_GUARDIAN_RETENTION_DAYS` (default 30, max 3650)
+- **Postgres field encryption** — `block_reason` encrypted at rest when `GUARDIAN_DB_ENCRYPTION_KEY` is set
+- **CVE deduplication** — OSV + NVD findings merged by canonical CVE id
+- **Redis circuit breaker sync** — optional shared OPEN/HALF_OPEN state when Redis is configured
+- **Semantic skip metrics** — `mcp_guardian_semantic_audit_skipped_total` on async audit, sync semantic, and degradation paths
+- **Health probe scheduler** — `GUARDIAN_HEALTH_PROBE_INTERVAL_MS` at proxy boot and in autopilot services
+- **Policy reload** — `reloadInFlight` guard prevents overlapping hot-reloads
+- **Graceful shutdown** — `GUARDIAN_SHUTDOWN_GRACE_MS` drains in-flight proxy slots before exit
+- **Transport parity** — shared `tool-call-pre-guard` (expanded payload + agentic hooks) on SSE, WebSocket, and streamable HTTP
+- **Release** — monorepo packages aligned to **3.4.1**; README and `.env.example` updated
+
+## [3.4.0] - 2026-05-28
+
+### Added — 10 Agentic AI Features
+
+- **#1: Predictive Threat Anticipation** (`predict_threats`, `threat_forecast_for_server`, `preemptive_recommendations`) — 5-factor risk scoring (CVE, capability, exposure, velocity, auth) with 30/90/365-day forecasts and preemptive hardening recommendations
+- **#2: Autonomous Policy Generation** (`start_behavior_observation`, `stop_behavior_observation`, `generate_policy_from_observations`, `suggest_policy_improvements`, `observation_status`) — Observes AI agent tool calls and generates minimal-privilege YAML policies with rate limits, allow/deny rules, and semantic guard configuration
+- **#3: Cross-Deployment Threat Intel Mesh** (`contribute_threat_signature`, `threat_intel_status`) — Privacy-preserving threat intelligence sharing with differential privacy (ε-configurable), signature hashing, and threshold gating. New env vars: `GUARDIAN_THREAT_MESH_ENABLED`, `GUARDIAN_THREAT_MESH_EPSILON`, `GUARDIAN_THREAT_MESH_MIN_REPORTS`
+- **#4: Agentic Honeypot Deployer** (`deploy_honeypot`, `honeypot_report`, `destroy_honeypot`, `list_honeypots`) — 7 fake MCP server templates (database, filesystem, GitHub, Slack, API, vault, admin) with auto-destroy and attack pattern detection
+- **#5: Supply Chain Integrity Verification** (`verify_supply_chain`, `supply_chain_status`, `sbom_export`) — Trusted publisher verification, dependency confusion detection, typo-squat scanning (Levenshtein against 24+ known packages), CycloneDX/SPDX SBOM export
+- **#6: Prompt Injection Detection at MCP Layer** (`scan_prompt_injection`, `prompt_injection_report`) — Two-stage detection pipeline: heuristic (50+ regex patterns across 8 categories) + semantic LLM classification (optional). Includes argument sanitizer for neutralizing detected payloads
+- **#7: Autonomous Compliance Evidence** (`generate_compliance_evidence`, `compliance_gap_analysis`, `compliance_posture`, `list_compliance_frameworks`) — Maps active policies to SOC 2, HIPAA, PCI-DSS v4.0, FedRAMP Moderate, and ISO/IEC 27001:2022 controls with posture scoring and gap analysis
+- **#8: Agentic Drift Detection & Rollback** (`detect_drift`, `capture_baseline`, `rollback_server_config`, `drift_history`) — Monitors schema changes, performance degradation, and response shape changes with auto-rollback recommendations
+- **#9: Autonomous Red Team Engine** (`run_self_assessment`, `schedule_red_team`, `red_team_results`, `ab_test_policy`) — 16 curated base attacks + 6 mutation strategies (case obfuscation, space substitution, null bytes, URL encoding, unicode homoglyphs) + combination engine + A/B policy testing
+- **#10: Agent-to-Agent Trust Negotiation** (`negotiate_agent_trust`, `agent_trust_status`, `revoke_agent_trust`, `trust_registry_list`) — 4-stage protocol: capability exchange → policy negotiation → session establishment → audit logging
+
+### Added — Infrastructure
+
+- **Agentic Core Framework** (`src/agentic/core.ts`, `scheduler.ts`, `model-provider.ts`, `task-queue.ts`, `telemetry.ts`) — Shared primitives: `AgenticResult<T>`, `AgenticPipeline`, `ApprovalGate`, cron scheduler, unified LLM interface (OpenAI/Anthropic/Compatible), priority task queue with dedup
+- **Proxy Integration Hooks** (`src/agentic/proxy-integration.ts`) — Drop-in functions for proxy pipeline: behavior observation recording, prompt injection checking, threat mesh contribution
+- **Dashboard API** (`src/dashboard/agentic-routes.ts`) — 15 REST endpoints for agentic feature data
+- **Dashboard UI** (`deploy/dashboard-spa/app/components/workspaces/AgenticWorkspace.tsx`) — New "Agentic AI" workspace with live feature status cards, compliance posture gauges, and honeypot/trust/metric display
+- **Workspace Navigation** — Added `agentic` workspace to workspace-nav, DashboardClient, and workspace labels
+- **Database Migration** (`011-agentic-tables.sql`) — 14 new tables + 7 indexes for agentic data persistence
+- **LLM Configuration** — New env vars: `GUARDIAN_LLM_OPENAI_KEY`, `GUARDIAN_LLM_ANTHROPIC_KEY`, `GUARDIAN_LLM_COMPATIBLE_KEY`, `GUARDIAN_LLM_OPENAI_MODEL`, `GUARDIAN_LLM_ANTHROPIC_MODEL`, `GUARDIAN_LLM_COMPATIBLE_MODEL`, `GUARDIAN_LLM_TIMEOUT_MS`
+- **Meta Tool** — `agentic_status` provides overall status of all 10 features
+
+### Added — Benchmarks
+
+- `benchmarks/agentic-policy-gen.ts` — Policy generation performance across observation sizes
+- `benchmarks/agentic-scheduler-overhead.ts` — Scheduler CPU/memory overhead
+- `benchmarks/agentic-prompt-injection.ts` — Detection latency for benign and suspicious arguments
+- `benchmarks/agentic-threat-prediction.ts` — Risk scoring throughput across many servers
+
+### Added — Documentation
+
+- `docs/AGENTIC_FEATURES.md` — Complete feature reference with MCP tools, configuration, and architecture
+- `docs/AGENTIC_QUICKSTART.md` — 5-minute getting started guide
+- `docs/AGENTIC_ARCHITECTURE.md` — Architecture diagrams, data flows, design principles, module responsibility matrix
+- `docs/THREAT_MESH_PRIVACY.md` — Privacy model for cross-deployment threat intelligence
+
+### Added — Tests
+
+- `tests/agentic/agentic-integration.test.ts` — 30+ integration tests covering all 10 features
+
+### Changed
+
+- **Container** (`src/container.ts`) — Extended `Container` interface and `createContainer()` to instantiate all 21 agentic services
+- **MCP Server** (`src/index.ts`) — Registered 35 new MCP tools with full input schemas + 35 handler cases (39 tools total)
+- **README** — Added agentic AI feature summary table, version bump to 3.4.0
+
 ## [3.3.1] - 2026-05-28
 
 ### Added

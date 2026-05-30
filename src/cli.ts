@@ -19,6 +19,7 @@ import { startDashboardServer, setDashboardDataSource } from './utils/dashboard-
 import { DashboardAuth } from './auth/dashboard-auth.js';
 import { initTracing } from './utils/tracing.js';
 import { createContainer } from './container.js';
+import { setAgenticContainer } from './utils/dashboard-server.js';
 import { bootstrapCompliance, shutdownEnterprise, bootstrapControlPlane } from './utils/enterprise-bootstrap.js';
 import { createDatabase } from './database/create-database.js';
 import { bootstrapSecrets } from './utils/enterprise-bootstrap.js';
@@ -686,6 +687,18 @@ program
     const manager = new ProxyManager(db, useWatcherForManager ? policyWatcher : policyEngine, authValidator);
     await manager.startAll(servers);
 
+    try {
+      const { startHealthProbeScheduler } = await import('./services/health-probe-scheduler.js');
+      const { resolveCliTenantId } = await import('./tenant/resolve-tenant.js');
+      startHealthProbeScheduler(db, servers, resolveCliTenantId({}));
+    } catch {
+      /* optional */
+    }
+
+    if (authValidator) {
+      void authValidator.init().then(() => authValidator!.startBackgroundJwksRefresh()).catch(() => {});
+    }
+
     const { runPreflightScanAndHealth } = await import('./utils/preflight-scan.js');
     runPreflightScanAndHealth(servers, db);
 
@@ -696,8 +709,13 @@ program
     const metricsPort = parseInt(process.env['METRICS_PORT'] || '9090', 10);
     startMetricsServer(metricsPort).catch(() => {});
 
+    // Create agentic container for live agentic API data
+    const container = await createContainer();
+
     // Wire dashboard to real HistoryDatabase for live API data
     setDashboardDataSource(db);
+    // Wire agentic AI container for live dashboard data
+    setAgenticContainer(container);
 
     const rewireDashboardWs = async () => {
       const { getWsBroadcaster } = await import('./utils/dashboard-events.js');
@@ -743,12 +761,21 @@ program
 
     console.error(chalk.green('MCP Guardian proxy running. Press Ctrl+C to stop.'));
     const cleanup = async () => {
+      try {
+        const { drainProxyInflight } = await import('./proxy/proxy-shutdown.js');
+        await drainProxyInflight();
+      } catch {
+        /* ignore */
+      }
+      authValidator?.stopBackgroundJwksRefresh?.();
       await manager.stopAll();
       try {
         const { stopReportScheduler } = await import('./utils/report-scheduler.js');
         const { stopScheduler } = await import('./utils/threat-discovery-scheduler.js');
         stopReportScheduler();
         stopScheduler();
+        const { stopHealthProbeScheduler } = await import('./services/health-probe-scheduler.js');
+        stopHealthProbeScheduler();
       } catch {
         /* ignore */
       }

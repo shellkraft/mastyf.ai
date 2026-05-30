@@ -141,6 +141,8 @@ export interface ProxyCallRecord {
   blocked?: boolean;
   blockRule?: string;
   blockReason?: string;
+  /** Redacted argument snippet for audit (encrypted at rest when GUARDIAN_DB_ENCRYPT_AUDIT_ARGS=true) */
+  argumentSnippet?: string;
   /** Whether token counts came from provider API usage or local estimate */
   tokenSource?: 'api' | 'estimated';
   /** Multi-tenant isolation label */

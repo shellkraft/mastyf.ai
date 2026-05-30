@@ -34,6 +34,7 @@ import {
   waitPolicyTimingEnvelopeSync,
 } from './policy-timing-envelope.js';
 import { KeyedAsyncLock } from '../utils/keyed-async-lock.js';
+import { sharedRateLimitStore } from './rate-limit-store.js';
 
 /**
  * Policy Engine — evaluates every intercepted tools/call against configured rules.
@@ -47,16 +48,12 @@ export class PolicyEngine {
   private rules: PolicyConfig['policy']['rules'];
   private mode: PolicyMode;
   private config: PolicyConfig;
-  private callCounters: LRUCache<string, { count: number; resetAt: number }> = new LRUCache({
-    max: 50000,
-    ttl: 60000,
-    updateAgeOnGet: false,
-  });
-  private burstCounters: LRUCache<string, { count: number; resetAt: number }> = new LRUCache({
-    max: 50000,
-    ttl: 10_000,
-    updateAgeOnGet: false,
-  });
+  private get callCounters() {
+    return sharedRateLimitStore.call();
+  }
+  private get burstCounters() {
+    return sharedRateLimitStore.burst();
+  }
   private normalizer: ReturnType<typeof getNormalizer>;
   private shellTokenizer = new ShellTokenizer();
 
@@ -374,10 +371,13 @@ export class PolicyEngine {
         return { action: this.resolveAction(rule.action), rule: rule.name, reason: `RBAC rule '${rule.name}' requires agent identity but none provided` };
       }
       if (rule.rbac.scopes && rule.rbac.scopes.length > 0) {
-        const agentScopes = identity.scopes || [];
-        const hasScope = rule.rbac.scopes.some((required) =>
-          agentScopes.some((s) => s.toLowerCase() === required.toLowerCase()),
-        );
+        const agentScopes = (identity.scopes || []).map((s) => s.toLowerCase());
+        const required = rule.rbac.scopes.map((s) => s.toLowerCase());
+        const matchMode = rule.rbac.scopeMatch === 'all' ? 'all' : 'any';
+        const hasScope =
+          matchMode === 'all'
+            ? required.every((r) => agentScopes.includes(r))
+            : required.some((r) => agentScopes.includes(r));
         if (!hasScope) {
           return { action: this.resolveAction(rule.action), rule: rule.name, reason: `Agent '${identity.sub}' missing required scope. Need one of: [${rule.rbac.scopes.join(', ')}], have: [${agentScopes.join(', ') || 'none'}]` };
         }

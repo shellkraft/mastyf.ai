@@ -4,6 +4,7 @@ import { PolicyConfig, CallContext } from '../../src/policy/policy-types.js';
 import { getDailyBudgetCapUsd, CostAuditor } from '../../src/services/cost-auditor.js';
 import { HistoryDatabase } from '../../src/database/history-db.js';
 import { PricingClient } from '../../src/clients/pricing-client.js';
+import { sharedRateLimitStore } from '../../src/policy/rate-limit-store.js';
 
 const costPolicy: PolicyConfig = {
   version: '1.0',
@@ -40,7 +41,9 @@ describe('enterprise cost governance policy', () => {
   let engine: PolicyEngine;
 
   beforeEach(() => {
+    sharedRateLimitStore.resetForTests();
     engine = new PolicyEngine(costPolicy);
+    engine.resetRateCounters();
   });
 
   it('blocks when token budget exceeded', () => {

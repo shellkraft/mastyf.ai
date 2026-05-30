@@ -42,6 +42,18 @@ let exitCode = 0;
 let liveOk = true;
 let swarmOk = true;
 
+function hasSwarmLicenseContext() {
+  if (process.env.GUARDIAN_CI_BYPASS_LICENSE === 'true') return true;
+  if ((process.env.GUARDIAN_CI_TOKEN || '').trim()) return true;
+  if (
+    process.env.NODE_ENV === 'development'
+    && process.env.GUARDIAN_DEV_UNLOCK_ALL === 'true'
+  ) return true;
+  const hasKey = (process.env.GUARDIAN_LICENSE_KEY || '').trim().length > 0;
+  const hasControlPlane = (process.env.GUARDIAN_CONTROL_PLANE_URL || '').trim().length > 0;
+  return hasKey && hasControlPlane;
+}
+
 function log(msg) {
   if (QUIET) {
     appendJobLog(msg);
@@ -223,6 +235,13 @@ async function main() {
 
     if (!SKIP_SWARM) {
       setPhase('swarm');
+      if (!hasSwarmLicenseContext()) {
+        throw new Error(
+          'Security swarm gates require Pro license context before step 7/10. '
+          + 'Set GUARDIAN_LICENSE_KEY and GUARDIAN_CONTROL_PLANE_URL, '
+          + 'or provide GUARDIAN_CI_TOKEN (or GUARDIAN_CI_BYPASS_LICENSE=true in CI).',
+        );
+      }
       const swarmScript = NIGHTLY ? 'security-swarm:live' : 'security-swarm:fast';
       log(
         NIGHTLY

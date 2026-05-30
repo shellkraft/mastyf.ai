@@ -53,6 +53,8 @@ export interface PolicyRule {
   rbac?: {
     /** Required scopes the agent must have */
     scopes?: string[];
+    /** Match any one scope (default) or require all listed scopes */
+    scopeMatch?: 'any' | 'all';
     /** Allowed client IDs (regex patterns supported) */
     clientIds?: string[];
     /** Request must be scoped to one of these tenant ids (multi-tenant gateway) */

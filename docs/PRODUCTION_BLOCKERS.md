@@ -6,6 +6,16 @@ Status as of **2.8.0** (production hardening bundle). Each item was verified wit
 
 **Unreleased full-stack review:** stdin serial queue, HALF_OPEN single probe, JWT-authoritative tenant, DPoP in block mode (`GUARDIAN_LEGACY_NO_DPOP` escape hatch), WebSocket parity, OPA cache, policy shadow, idempotency, cert pinning, streamable HTTP MVP, SPIFFE socket — see [TRANSPORT.md](./TRANSPORT.md) and [SPIFFE.md](./SPIFFE.md).
 
+**3.4.1 code-review fixes:** JWKS TTL refresh + signature retry, expanded payload caps (stdio/HTTP/SSE/streamable/WS), JSON-RPC `id: 0`, rate-limit persistence across hot-reload, strict allowlist RBAC, `MCP_GUARDIAN_RETENTION_DAYS`, `GUARDIAN_DB_ENCRYPT_AUDIT_ARGS`, SIEM on all block paths, CVE OSV/NVD dedup, Redis circuit-breaker sync + pubsub, semantic skip metrics, health probe scheduler (CLI + autopilot), graceful shutdown drain, transport agentic/payload parity.
+
+Verify:
+
+```bash
+pnpm exec vitest run tests/auth/oauth-jwks-refresh.test.ts tests/proxy/payload-guard.test.ts tests/proxy/tool-call-pre-guard.test.ts
+pnpm exec vitest run tests/policy/policy-watcher-reload.test.ts tests/policy/policy-allowlist-guard.test.ts
+pnpm test:policy-proxy-utils
+```
+
 | # | Blocker | Priority | Was | Now | Evidence |
 |---|---------|----------|-----|-----|----------|
 | 1 | PgBouncer pool exhaustion | P0 | Direct `:5432` could exhaust Postgres under HA | Fail-fast + Helm enforcement | `src/utils/pgbouncer-check.ts` (`checkPgBouncerAtStartup` in `src/container.ts`); `GUARDIAN_REQUIRE_PGBOUNCER`; Helm `pgbouncer.requireGuardianEnforcement: true` → `deploy/helm/mcp-guardian/values.yaml`, `templates/deployment.yaml`; `tests/utils/pgbouncer-check.test.ts` |

@@ -17,6 +17,7 @@ import {
   isSemanticStrictMode,
   reportSemanticDegradation,
 } from '../utils/semantic-layer.js';
+import { reportSemanticAuditSkipped } from './semantic-llm-rate-limit.js';
 import { withSemanticTimeout } from '../utils/semantic-timeout.js';
 import type { SemanticAuditResult } from './async-semantic-audit.js';
 import * as Metrics from '../utils/metrics.js';
@@ -103,6 +104,7 @@ export async function evaluateSyncSemanticRequest(
         reason: `llm not configured (fail-closed: ${riskTier})`,
       };
     }
+    reportSemanticAuditSkipped('no_api_key', tenantId);
     return {
       block: false,
       result: noop,
@@ -114,6 +116,7 @@ export async function evaluateSyncSemanticRequest(
 
   const llm = new LlmAssistant();
   if (!llm.isAvailable()) {
+    reportSemanticAuditSkipped('llm_failed', tenantId);
     reportSemanticDegradation('sync_request_llm_unavailable', {
       serverName: input.context.serverName,
       toolName: input.context.toolName,

@@ -28,6 +28,22 @@ function formatBypassLine(b) {
   return JSON.stringify(b).slice(0, 120);
 }
 
+function readProxyTierBenchmarks() {
+  const report = load(join(REPO, 'benchmarks', 'results', 'proxy-slo-by-concurrency-latest.json'));
+  if (!report || !Array.isArray(report.tiers)) return [];
+  return report.tiers
+    .filter((tier) => tier && typeof tier === 'object')
+    .map((tier) => ({
+      name: `c${Number(tier.concurrency ?? 0)}`,
+      p50: Number(tier.latencyMs?.p50 ?? 0),
+      p95: Number(tier.latencyMs?.p95 ?? 0),
+      sloMs: Number(tier.sloResults?.p95Ms ?? tier.p95SloMs ?? 0),
+      sloPass: Boolean(tier.sloResults?.p95Pass),
+      concurrency: Number(tier.concurrency ?? 0),
+    }))
+    .filter((tier) => Number.isFinite(tier.p95) && tier.p95 > 0);
+}
+
 function buildTextReport(latest, gates, bypasses, live) {
   const lines = [];
   const hr = '='.repeat(72);
@@ -153,6 +169,7 @@ export function synthesizeReport(input) {
   const parity = load(join(REPO, 'adversarial-harness', 'reports', 'parity-report.json'));
   const harness = load(join(REPO, 'adversarial-harness', 'reports', 'harness-summary.json'));
   const promotions = load(join(OUT_DIR, 'evasion-promotions.json'));
+  const proxyTierBenchmarks = readProxyTierBenchmarks();
 
   let commitSha = 'unknown';
   try {
@@ -296,6 +313,9 @@ export function synthesizeReport(input) {
       baselineKnown: known.length,
       netNew: netNew.length,
       items: bypassesTagged,
+    },
+    performance: {
+      tiers: proxyTierBenchmarks,
     },
     overall: corpusOk && parityOk && stepsOk && bypassGateOk,
     steps,

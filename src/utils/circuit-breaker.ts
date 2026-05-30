@@ -6,6 +6,7 @@
  * Used to protect upstream MCP servers from cascading failures.
  */
 import { Logger } from './logger.js';
+import { saveCircuitToRedis } from './redis-circuit-sync.js';
 
 export type CircuitState = 'CLOSED' | 'OPEN' | 'HALF_OPEN';
 
@@ -62,6 +63,7 @@ export class CircuitBreaker {
         this.failureCount = 0;
         this.successCount = 0;
         Logger.info(`[circuit-breaker:${this.name}] Circuit CLOSED — service healthy`);
+        this.syncRedis();
       }
     } else if (this.state === 'CLOSED') {
       this.failureCount = 0;
@@ -76,12 +78,14 @@ export class CircuitBreaker {
       this.successCount = 0;
       this.openedAt = Date.now();
       Logger.warn(`[circuit-breaker:${this.name}] Circuit OPEN — half-open probe failed`);
+      this.syncRedis();
     } else if (this.state === 'CLOSED') {
       this.failureCount++;
       if (this.failureCount >= this.failureThreshold) {
         this.state = 'OPEN';
         this.openedAt = Date.now();
         Logger.warn(`[circuit-breaker:${this.name}] Circuit OPEN — ${this.failureCount} consecutive failures`);
+        this.syncRedis();
       }
     }
   }
@@ -96,5 +100,20 @@ export class CircuitBreaker {
       failureCount: this.failureCount,
       successCount: this.successCount,
     };
+  }
+
+  private syncRedis(): void {
+    void saveCircuitToRedis(this.name, {
+      state: this.state,
+      failureCount: this.failureCount,
+      openedAt: this.openedAt,
+    });
+  }
+
+  /** Hydrate from Redis snapshot (multi-replica). */
+  applyRedisSnapshot(snap: { state: CircuitState; failureCount: number; openedAt: number }): void {
+    this.state = snap.state;
+    this.failureCount = snap.failureCount;
+    this.openedAt = snap.openedAt;
   }
 }

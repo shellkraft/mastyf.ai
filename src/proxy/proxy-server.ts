@@ -30,6 +30,7 @@ import {
   isSemanticStrictMode,
   reportSemanticDegradation,
 } from '../utils/semantic-layer.js';
+import { reportSemanticAuditSkipped } from '../ai/semantic-llm-rate-limit.js';
 import { isSemanticAsyncEnabled } from '../ai/async-semantic-audit.js';
 import { findingsToMessages, isResponseScanSkipped } from '../utils/streaming-inspector.js';
 import { gateToolResponseText } from '../utils/response-security-gate.js';
@@ -45,6 +46,11 @@ import * as Metrics from '../utils/metrics.js';
 import { alertPolicyBlock } from '../alerting/webhook-alerter.js';
 import { evaluateCveGate } from '../utils/cve-gate.js';
 import { persistCallRecord } from '../utils/call-record-cost.js';
+import {
+  agenticPreForwardToolCall,
+  agenticRecordCompletedToolCall,
+  agenticRecordDeniedToolCall,
+} from './agentic-hooks-bridge.js';
 import {
   recordBlockLearningEvent,
   fingerprintArgs,
@@ -66,10 +72,12 @@ import type { HistoryDatabase } from '../database/history-db.js';
 import { resolveModelId, resolveModelIdForServer } from '../config/llm-config.js';
 import { extractDpopProof, validateRequiredDpop } from '../auth/dpop-enforcement.js';
 import { startMemoryMonitor } from '../utils/memory-monitor.js';
-
-const MAX_PAYLOAD_BYTES = parseInt(
-  process.env['MCP_GUARDIAN_MAX_PAYLOAD_BYTES'] ?? '10485760', // 10 MB default
-);
+import { hasJsonRpcId } from './json-rpc-utils.js';
+import {
+  checkExpandedPayload,
+  checkRawPayloadSize,
+  getMaxPayloadBytes,
+} from './payload-guard.js';
 
 const RESTART_BACKOFF_MS = [1000, 2000, 4000, 8000, 16000]; // Exponential
 
@@ -275,6 +283,15 @@ export class McpProxyServer {
           persistCallRecord(this.db, record, reqMsg, this.spawnEnv, this.spawnArgs).catch((err) =>
             Logger.debug(`Proxy: failed to store call record: ${err?.message}`)
           );
+          void agenticRecordCompletedToolCall({
+            serverName: this.serverName,
+            sessionId: String(msg.id),
+            toolName: reqCtx.requestToolName || 'unknown',
+            args: reqCtx.requestArguments,
+            latencyMs: proxyLatencyMs,
+            blocked: false,
+            responseSize: line.length,
+          });
           const tenantBreaker = this.breakerFor(reqCtx.tenantId || this.defaultTenantId);
           tenantBreaker.recordSuccess();
           Metrics.circuitBreakerState.set({ server_name: this.serverName }, tenantBreaker.getState() === 'CLOSED' ? 0 : tenantBreaker.getState() === 'OPEN' ? 1 : 2);
@@ -498,8 +515,10 @@ export class McpProxyServer {
     blockReason: string,
     requestArguments?: Record<string, unknown>,
     tenantId?: string,
+    requestId?: string | number,
   ): void {
     const tid = tenantId || this.defaultTenantId;
+    const snippets = redactArgSnippets(requestArguments);
     const record: ProxyCallRecord = {
       serverName: this.serverName,
       toolName,
@@ -511,8 +530,17 @@ export class McpProxyServer {
       blocked: true,
       blockRule,
       blockReason,
+      argumentSnippet: snippets.length > 0 ? snippets.join(' | ').slice(0, 2048) : undefined,
       tenantId: tid,
     };
+    StructuredLogger.logBlocked({
+      event: 'tool_blocked',
+      requestId: String(requestId ?? 'stdio-denied'),
+      serverName: this.serverName,
+      toolName,
+      reason: blockReason,
+      rule: blockRule,
+    });
     persistCallRecord(this.db, record, undefined, this.spawnEnv, this.spawnArgs).catch((err) =>
       Logger.debug(`Proxy: failed to store denied call record: ${err?.message}`)
     );
@@ -528,6 +556,15 @@ export class McpProxyServer {
     };
     const learningOpts = { db: this.db as HistoryDatabase };
     setImmediate(() => recordBlockLearningEvent(learningEvent, learningOpts));
+    agenticRecordDeniedToolCall({
+      serverName: this.serverName,
+      sessionId: requestId != null ? String(requestId) : `denied-${Date.now()}`,
+      toolName,
+      args: requestArguments,
+      latencyMs: durationMs,
+      blockRule,
+      blockReason,
+    });
   }
 
   /**
@@ -547,13 +584,12 @@ export class McpProxyServer {
 
   private async processClientInput(raw: string): Promise<void> {
     // ── Payload size guard ──────────────────────────────────
-    if (Buffer.byteLength(raw, 'utf8') > MAX_PAYLOAD_BYTES) {
-      Logger.warn(
-        `[Proxy] Oversized payload rejected: ${Buffer.byteLength(raw, 'utf8')} bytes > ${MAX_PAYLOAD_BYTES} byte limit. Increase MCP_GUARDIAN_MAX_PAYLOAD_BYTES to allow.`
-      );
+    const rawGuard = checkRawPayloadSize(raw);
+    if (!rawGuard.ok) {
+      Logger.warn(`[Proxy] Oversized payload rejected: ${rawGuard.reason}`);
       try {
         const msg = JSON.parse(raw);
-        if (msg.id) {
+        if (hasJsonRpcId(msg.id)) {
           this.sendError(msg.id, -32001, 'Payload exceeds MCP Guardian size limit');
         }
       } catch {
@@ -577,7 +613,7 @@ export class McpProxyServer {
         this.pendingToolsListIds.add(msg.id);
       }
 
-      if (msg.method === 'tools/call' && msg.id) {
+      if (msg.method === 'tools/call' && hasJsonRpcId(msg.id)) {
         const maxInflightEarly = proxyMaxInflight();
         if (isProxyInflightExceeded(this.requestContexts.size)) {
           Metrics.proxyInflightRejectedTotal.inc(
@@ -655,6 +691,26 @@ export class McpProxyServer {
         const audioTokens = countAudioTokensInPayload(msg.params?.arguments);
         const requestTokens = reqEstimate + imageTokens + audioTokens;
         const requestArguments = msg.params?.arguments;
+
+        if (requestArguments !== undefined) {
+          const expandedGuard = checkExpandedPayload(requestArguments);
+          if (!expandedGuard.ok) {
+            this.recordDeniedCall(
+              toolName,
+              requestTokens,
+              Date.now() - proxyStartTime,
+              'payload-expanded-limit',
+              expandedGuard.reason,
+              requestArguments,
+              requestTenantId,
+              msg.id,
+            );
+            this.sendError(msg.id, -32001, `Blocked by MCP Guardian: ${expandedGuard.reason}`, {
+              rule: 'payload-expanded-limit',
+            });
+            return;
+          }
+        }
 
         // ── P0 Week 3: DLP on tool call arguments (runtime exfiltration) ──
         if (requestArguments) {
@@ -995,6 +1051,7 @@ export class McpProxyServer {
           }
 
           if (isSemanticAsyncEnabled(context.tenantId) && !isSemanticLlmConfigured()) {
+            reportSemanticAuditSkipped('no_api_key', context.tenantId);
             reportSemanticDegradation('llm_unavailable', {
               serverName: this.serverName,
               toolName,
@@ -1037,6 +1094,32 @@ export class McpProxyServer {
 
           enqueueSemanticAudit(buildSemanticAuditJob(context, decision));
           recordSessionToolCall(context);
+
+          if (requestArguments) {
+            const agenticHook = await agenticPreForwardToolCall(
+              this.serverName,
+              toolName,
+              requestArguments,
+              String(msg.id),
+            );
+            if (agenticHook.blocked) {
+              this.recordDeniedCall(
+                toolName,
+                requestTokens,
+                Date.now() - proxyStartTime,
+                'prompt-injection',
+                agenticHook.reason || 'Prompt injection detected',
+                requestArguments,
+                requestTenantId,
+                msg.id,
+              );
+              this.sendError(msg.id, -32001, `Blocked by MCP Guardian: ${agenticHook.reason}`, {
+                rule: 'prompt-injection',
+                policy: 'block',
+              });
+              return;
+            }
+          }
         }
 
 

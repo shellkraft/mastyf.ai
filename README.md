@@ -1,6 +1,6 @@
 # MCP Guardian
 
-**A security layer that sits between your AI agent and its tools — so nothing bad gets through.**
+**A safety layer between your AI assistant and the tools it uses.**
 
 [![npm version](https://img.shields.io/npm/v/@mcp-guardian/server)](https://www.npmjs.com/package/@mcp-guardian/server)
 [![npm downloads](https://img.shields.io/npm/dm/@mcp-guardian/server)](https://www.npmjs.com/package/@mcp-guardian/server)
@@ -11,132 +11,252 @@
 [![License](https://img.shields.io/badge/License-MIT-yellow)](LICENSE)
 [![CI](https://github.com/rudraneel93/mcp-guardian/actions/workflows/ci.yml/badge.svg)](https://github.com/rudraneel93/mcp-guardian/actions/workflows/ci.yml)
 
-**Version 3.3.1** · [Website](https://mcp-guardian-cloud.vercel.app) · [npm](https://www.npmjs.com/package/@mcp-guardian/server) · [Changelog](CHANGELOG.md)
+**Version 3.4.1** · [Website](https://mcp-guardian-cloud.vercel.app) · [npm](https://www.npmjs.com/package/@mcp-guardian/server) · [Changelog](CHANGELOG.md)
 
-### Detection tiers (honest)
+### What's new in 3.4.1
 
-| Path | Community | Enterprise (`GUARDIAN_ENTERPRISE_MODE=true`) |
-|------|-----------|-----------------------------------------------|
-| Request (`tools/call`) | Regex + schema | + sync semantic request gate (default when LLM configured) |
-| Response | Optional sync gate | Sync response gate (production default) |
-| Audit / learning | Opt-in async | Opt-in async |
-
-See [ENTERPRISE_DEPLOYMENT.md](docs/ENTERPRISE_DEPLOYMENT.md) for Redis, multi-replica, and license requirements.
+Production hardening from the code review remediation: JWKS auto-refresh, payload limits on all MCP transports, rate limits that survive policy hot-reload, audit retention and optional field encryption, SIEM events on every block path, Redis circuit-breaker sync, and graceful shutdown draining.
 
 ---
 
-## What's new in 3.3.1
+## What problem does this solve?
 
-- **Control-plane parity harness** — added data-plane vs control-plane rule parity validation with new harness tooling and tests
-- **Enterprise AI/autopilot expansion** — new safety contract, continuous assurance, policy impact scoring, similar-environment benchmarks, and tenant simulation modules
-- **Dashboard v3 upgrades** — advanced analytics panel, richer workspace UX, expanded security posture/health views, and updated API wiring
-- **Federated trust/security primitives** — new certified MCP and threat-intel v2 utilities with regression coverage
-- **Plugin SDK release alignment** — `@mcp-guardian/plugin-sdk` docs/source/tests aligned to `3.3.1`
-- **Signed policy governance** — policy watcher and dashboard mutation path now support signature envelope verification with trusted issuer enforcement
-- **Fail-closed semantic risk tiers** — high-risk tool calls fail closed when semantic LLM is degraded; medium/low are configurable
-- **External audit attestations** — hash-chain checkpoints + attestation status endpoint (`GET /api/audit/attestation`)
-- **Enterprise secret and encryption lifecycle hardening** — managed secret provider enforcement, key-versioned field encryption, rotation command, and encryption status endpoint
-- **Compliance evidence automation** — control mapping updates + signed evidence bundle outputs when evidence signing key is configured
+Modern AI assistants (Claude, Cursor, Cline, and others) can connect to **tools** — read files, run commands, query databases, post to Slack, and more. Those connections often use a standard called **MCP** (Model Context Protocol).
 
-## What's new in 3.3.0
+That power is useful, but risky:
 
-- **Production premortem remediation** — rug-pull on all `tools/list` responses (including JSON-RPC with `id`), inflight cap before policy/LLM, opt-in policy eval cache (`cacheable` in YAML), enterprise sync semantic request gate, cross-transport parity (stdio, HTTP, WebSocket, SSE, streamable HTTP)
-- **Enterprise hardening** — shared Redis rug-pull alerts, license bypass lockdown in enterprise mode, encoding-guard union for base64 paraphrase attacks, session-flow backend metrics
-- **Enterprise deployment guide** — [ENTERPRISE_DEPLOYMENT.md](docs/ENTERPRISE_DEPLOYMENT.md)
-- **Ops** — `DELETE /api/internal/rug-pull` for clearing cluster rug-pull flags; `semanticRequestGate` on dashboard `/api/health`
+- The AI might read files it should not see.
+- It might run shell commands or delete data by mistake or because of a malicious prompt.
+- Secrets can leak through tool arguments.
+- API costs can spike without you noticing.
 
-## What's new in 3.2.8
-
-- **Dashboard v3** — workspace navigation (Protection, Activity, Threats, Security, Operations, Settings, Help)
-- **Operations analytics** — live traffic, error rate, and cost charts (`GET /api/analytics/summary`)
-- **Security dashboard** — score, active threats, quarantine (`GET /api/security/dashboard`)
-- **Guardian Autopilot** — `mcp-guardian autopilot` init/start/status; scheduled digests and background learning
-- **Full analysis** — `pnpm analyze` and Protection workspace plain-English briefing
-- **Setup checklist** — guided install, DB health, and cloud control plane connect APIs
-- **Shared DB for live tests** — `real-life:*` runners honor `MCP_GUARDIAN_DB_PATH` so attack traffic appears in the dashboard
-- **SOC panel refactor** — modular SOC/live panels, enterprise layout, design tokens
-
----
-
-## What is it?
-
-When you use an AI assistant (like Claude, Cursor, or Cline), it connects to tool servers — things like GitHub, a database, your filesystem, or Slack. These connections use a standard called **MCP (Model Context Protocol)**.
-
-The problem: there's nothing stopping the AI from making dangerous tool calls, leaking secrets, running commands it shouldn't, or burning through your API budget without you knowing.
-
-**MCP Guardian** sits in the middle. Every tool call the AI makes passes through Guardian first. Guardian checks it against your rules and either lets it through, blocks it, or flags it for review — before anything happens.
+**MCP Guardian sits in the middle.** Every tool request goes through Guardian first. Guardian checks your rules, blocks bad requests, logs what happened, and can show you a live dashboard — **before** anything reaches your real tools.
 
 ```
 Your AI assistant
        │
        ▼
-  MCP Guardian  ◄── checks every call against your rules
+  MCP Guardian  ← reads your rules, blocks bad calls, keeps a log
        │
        ▼
-  Your tool servers (GitHub, filesystem, database...)
+  Your real tools (files, GitHub, database, …)
 ```
 
 ---
 
-## Features
+## How it works (step by step)
 
-### Free (community)
+1. **You install Guardian** and point it at your existing MCP setup (or run `mcp-guardian onboard` to do this automatically).
+2. **Guardian wraps your tool servers** so the AI talks to Guardian instead of talking to them directly.
+3. When the AI tries to use a tool, Guardian receives the request first.
+4. Guardian compares the request to your **policy** (a simple rules file you control).
+5. If the request is allowed, Guardian forwards it to the real tool and returns the result.
+6. If the request breaks a rule, Guardian **blocks it** and tells the AI it was denied — the real tool never runs.
+7. Every allow and block is saved to a local database so you can review history and see charts on the dashboard.
 
-- **Policy proxy** — every tool call is checked against YAML rules before it reaches your MCP servers
-- **Policy rules** — allow/deny tools, argument patterns, rate limits, token budgets, hot-reload
-- **Attack blocking** — shell commands, path traversal, SQL injection, secrets, SSRF, and Unicode tricks
-- **CVE & typo-squat scanning** — checks MCP packages for known vulnerabilities and suspicious names
-- **Cost tracking** — per-call USD and tokens, burn rate, budgets, and history
-- **Health monitoring** — latency, success rate, circuit breakers, and tool inventory per server
-- **Live audit log** — every block and pass stored in local SQLite (`history.db`)
-- **Adversarial harness** — 800+ offline policy tests (`pnpm harness`)
-- **Real-life scenarios** — live MCP attack streams against a real filesystem server (`pnpm real-life:filesystem`)
-
-### Pro
-
-- **Enterprise dashboard** — live SOC UI at :4000 with Protection, Activity, Threats, Security, Operations, and Settings workspaces
-- **Operations analytics** — traffic, error rate, and cost charts from real proxy traffic
-- **Security dashboard** — security score, active threats, and quarantine actions
-- **Guardian Autopilot** — one-command wrap, proxy, dashboard, digests, and background learning
-- **Full analysis** — plain-English security and health report (`pnpm analyze`)
-- **Security Swarm** — autonomous AI agents that continuously red-team your setup and discover new attack patterns
-- **Threat Lab** — LLM-powered threat discovery (uses local Ollama or cloud LLM)
-- **Auto Threat Research** — background attack-library research from live blocks and semantic flags
-- **Semantic audit** — async LLM review of tool arguments for evasion and injection
-- **Fleet management** — manage multiple Guardian instances across servers
-- **Enterprise deployment** — Kubernetes Helm chart, PostgreSQL backend, multi-tenancy, SSO
-- **Policy integrity controls** — signed policy verification + four-eyes policy mutation workflow for production governance
-- **Attestation visibility** — audit checkpoint status API for tamper-evident operational evidence
-
-> Pro requires a license in production. Local dev: `pnpm dashboard:proxy`. See [PRO_SETUP.md](docs/PRO_SETUP.md) and [AUTOPILOT.md](docs/AUTOPILOT.md).
+You stay in control: Guardian does not silently change your rules unless you approve it (for example when reviewing Threat Lab suggestions).
 
 ---
 
-## How it works
+## Features explained
 
-1. You install MCP Guardian
-2. Guardian wraps your existing MCP server configs (it finds them automatically in Cline, Claude Desktop, Cursor, etc.)
-3. Every tool call now goes through Guardian first
-4. Guardian checks the call against your policy rules
-5. If it passes: the call goes to the real server and the response comes back
-6. If it's blocked: the AI gets told the call was denied — nothing reaches the real server
-7. Everything is logged to a local SQLite database (`~/.mcp-guardian/history.db` by default, WAL mode)
-8. The dashboard reads from that database via REST and WebSocket and shows live KPIs, audit, and security views
+Below is what each major capability does, in plain language.
 
-```
-AI client or attack runner
-        │
-        ▼
-  Guardian proxy (policy + semantic + learning)
-        │
-        ├──► upstream MCP server(s)
-        │
-        └──► history.db ──► Dashboard :4000 (Analytics, Security, Audit)
-```
+### Policy proxy (the core)
+
+**What it is:** A filter on every tool call.
+
+**How it works:** You write rules in a YAML file (see [The policy file](#the-policy-file) below). Rules can allow specific tools, deny dangerous ones, limit how often tools run, cap token usage, and match patterns in arguments (for example “block if the path contains `../`”). When you change the file, Guardian can reload rules without restarting.
+
+**Why it matters:** This is your main line of defense — fast, predictable, and fully under your control.
 
 ---
 
-## Quick Setup
+### Attack blocking (built into the default policy)
+
+**What it is:** Hundreds of pre-written checks for common abuse.
+
+**How it works:** Before a call reaches your server, Guardian looks for things like shell commands hidden in arguments, path traversal (`../etc/passwd`), SQL injection patterns, attempts to exfiltrate secrets, suspicious URLs, and Unicode tricks that hide malicious text. If a pattern matches, the call is blocked and logged.
+
+**Why it matters:** Many real-world attacks look like normal tool calls; these checks catch a large class of them without an AI model.
+
+---
+
+### Cost tracking
+
+**What it is:** A running tally of how much your tool usage costs.
+
+**How it works:** Guardian estimates tokens and dollar cost per call (using model pricing when available). You can set budgets and see burn rate over time in the dashboard.
+
+**Why it matters:** Runaway agents or loops can get expensive; you see it early.
+
+---
+
+### Health monitoring
+
+**What it is:** A health check for each connected MCP server.
+
+**How it works:** Guardian tracks success rate, latency, and whether a server is responding. If a server keeps failing, a circuit breaker can stop hammering it.
+
+**Why it matters:** You notice broken or flaky integrations before users complain.
+
+---
+
+### Live audit log
+
+**What it is:** A permanent record of what was allowed and what was blocked.
+
+**How it works:** Each decision is stored in a local SQLite database (default: `~/.mcp-guardian/history.db`). The dashboard reads this database to show tables, charts, and filters.
+
+**Why it matters:** Security and debugging need a clear trail — who tried what, when, and why it was blocked.
+
+---
+
+### Package scanning (CVE and typo-squat)
+
+**What it is:** A check on MCP packages before you trust them.
+
+**How it works:** Guardian can scan installed or configured packages for known security issues (CVEs) and names that look like famous packages but are slightly misspelled (typo-squatting).
+
+**Why it matters:** Supply-chain attacks often arrive as “almost the right” package name.
+
+---
+
+### Adversarial harness (offline tests)
+
+**What it is:** A large automated test suite that fires attack-like requests at your policy **without** a live AI.
+
+**How it works:** Run `pnpm harness` from the repo. It replays 800+ fixtures and reports what would be blocked or allowed.
+
+**Why it matters:** You can change rules and immediately see if you broke legitimate use or left a hole open.
+
+---
+
+### Real-life scenarios (live tests)
+
+**What it is:** A short or long run of real attack traffic against a real filesystem MCP server through Guardian.
+
+**How it works:** Commands like `pnpm real-life:filesystem` drive the official filesystem server with path traversal, injection, and similar tests while the proxy is running. Results show up in the dashboard if you use the same database path.
+
+**Why it matters:** Offline tests are fast; live tests prove the full path (proxy → policy → log → UI) works.
+
+---
+
+## Agentic AI features (version 3.4)
+
+These are **smart assistants inside Guardian** that watch, score, and recommend — they do not replace your policy unless you choose to apply a suggestion.
+
+| Feature | What it does for you |
+|--------|----------------------|
+| **Threat prediction** | Scores how risky each MCP server is and suggests hardening before something breaks. |
+| **Policy generation** | Watches normal tool use, then drafts a tight “only what you actually need” policy you can review. |
+| **Prompt injection detection** | Scans tool arguments for text meant to hijack another AI (hidden instructions, role tricks, etc.). |
+| **Threat mesh** | Optionally shares anonymized attack patterns with other deployments — never raw payloads. |
+| **Honeypots** | Deploys fake decoy servers; if something probes them, you know you have unwanted attention. |
+| **Supply chain checks** | Verifies publishers, flags dependency confusion and typo-squat names, can export a software bill of materials. |
+| **Compliance mapping** | Maps your posture to frameworks like SOC 2, HIPAA, PCI-DSS, FedRAMP, and ISO 27001 with scores and gaps. |
+| **Drift detection** | Notices when a server’s tools or behavior change unexpectedly (possible compromise or silent update). |
+| **Red team engine** | Runs curated and mutated attacks against your setup so you see what might still get through. |
+| **Trust protocol** | Lets two AI agents negotiate limited, time-boxed trust instead of sharing full access. |
+
+**Dashboard:** Open **Agentic AI** in the web UI for overview charts, trust scores, audit tables, and admin tools. See [Agentic Features Guide](docs/AGENTIC_FEATURES.md) for details.
+
+---
+
+## The web dashboard
+
+**What it is:** A local website (default [http://localhost:4000](http://localhost:4000)) that shows what Guardian is doing.
+
+**How it works:** When you run `pnpm dashboard:proxy`, the same process serves the dashboard and the API. The UI reads real data from your history database — not fake demo numbers.
+
+**Main areas:**
+
+| Area | What you see |
+|------|----------------|
+| **Protection** | Overall status and plain-English analysis of your setup. |
+| **Activity** | Audit log of allowed and blocked calls. |
+| **Threats** | Active threats and quarantine actions. |
+| **Security** | Security score and trends. |
+| **Operations** | Traffic, errors, and cost charts over time. |
+| **Agentic AI** | Autonomous features: trust, threats, policy, operations, audit, and tools. |
+| **Settings** | Servers, policy, and setup checklist. |
+
+**Tip:** If charts say “no traffic in this time window,” widen the **Time window** dropdown (for example **Last 7 days**). Short windows only show very recent calls.
+
+---
+
+## Security Swarm (Pro)
+
+**What it is:** A team of automated testers that keep trying to break your policy the way an attacker would.
+
+**How it works:**
+
+- One track **generates and runs attacks**, checks for bypasses, and writes reports.
+- Another track **learns from real blocks** on your proxy and improves detection over time.
+- The two tracks feed each other so tests get better as your deployment sees real traffic.
+
+**Why it matters:** Your policy is only as strong as the attacks you have tested against; the swarm expands that set continuously.
+
+Run: `pnpm security-swarm` (license required in production). See [docs](docs/) and diagram in `docs/assets/security-swarm-architecture.png`.
+
+---
+
+## Threat Lab (Pro)
+
+**What it is:** Uses a local AI model to **propose** new attack patterns and rule ideas based on what Guardian has seen.
+
+**How it works:**
+
+1. Collects signals from recent blocks, CVE data, and swarm findings.
+2. The model suggests new test cases and possible policy lines.
+3. Automated checks validate proposals.
+4. **You review and approve** — nothing is applied automatically.
+
+Run: `pnpm security-swarm:threat-lab` (needs Ollama or another configured LLM). See [THREAT_LAB.md](docs/THREAT_LAB.md).
+
+---
+
+## Auto Threat Research (Pro)
+
+**What it is:** Background research when something interesting is blocked.
+
+**How it works:** When the proxy blocks a suspicious call, events can be queued, grouped, and analyzed by an LLM to classify the attack type and add it to your research corpus. **It does not change your live policy by itself** — it builds knowledge for you to use later.
+
+Enable with `GUARDIAN_THREAT_RESEARCH_AUTO=true` when licensed.
+
+---
+
+## Guardian Autopilot (Pro)
+
+**What it is:** One-command setup: wrap MCP configs, start the proxy, turn on the dashboard, and optional background services (digests, learning).
+
+**How it works:**
+
+```bash
+pnpm autopilot:init -- --apply
+pnpm autopilot:start
+```
+
+See [AUTOPILOT.md](docs/AUTOPILOT.md).
+
+---
+
+## Free vs Pro
+
+| | **Free (community)** | **Pro** |
+|---|---------------------|--------|
+| Policy proxy and YAML rules | Yes | Yes |
+| Attack blocking, audit log, cost tracking | Yes | Yes |
+| Harness and real-life scenarios | Yes | Yes |
+| Full enterprise dashboard | Limited / dev bypass | Yes |
+| Security Swarm, Threat Lab, Autopilot | No | Yes |
+| Fleet, SSO, Kubernetes, PostgreSQL | No | Yes |
+
+Local development can use `GUARDIAN_CI_BYPASS_LICENSE=true` with `pnpm dashboard:proxy`. Production Pro needs a license — [PRO_SETUP.md](docs/PRO_SETUP.md).
+
+---
+
+## Quick start
 
 ### Install
 
@@ -144,86 +264,58 @@ AI client or attack runner
 npm install -g @mcp-guardian/server
 ```
 
-### Onboard (one command — sets everything up)
+### Easiest path: onboard
 
 ```bash
 mcp-guardian onboard
 ```
 
-This finds your MCP configs (Cline, Claude Desktop, Cursor, Windsurf), wraps the servers, and sets up Guardian as the proxy. Takes about 30 seconds.
+Finds MCP configs for Cline, Claude Desktop, Cursor, and Windsurf, wraps your servers, and sets up Guardian as the proxy (~30 seconds).
 
-### Or run manually
+### Run the proxy manually
 
 ```bash
-# Start the proxy with the default policy
 mcp-guardian proxy --policy default-policy.yaml
 ```
 
-### Open the dashboard (recommended)
+### Dashboard + proxy together (recommended for development)
 
-From the repo root after `pnpm build`:
+From the repo after `pnpm build`:
 
 ```bash
 pnpm dashboard:proxy
-# optional: pnpm dashboard:proxy -- guardian-configs/filesystem.json default-policy.yaml
 ```
 
-Open **http://localhost:4000/** — static SPA + `/api/*` + `/ws` are served by the same proxy process. Traffic you send through Guardian is reflected in **Operations → Analytics** and **Security → Dashboard**.
-
-**Autopilot (wrap + dashboard + background services):**
-
-```bash
-pnpm autopilot:init -- --apply
-pnpm autopilot:start
-```
-
-**Legacy dev split** (Next.js on :3000 proxying to :4040): `pnpm soc:full` — see [SOC-API.md](SOC-API.md).
-
-### Test with live attack traffic (real MCP, not synthetic UI)
-
-Prove end-to-end analytics with a **second terminal** while `dashboard:proxy` stays running:
+Open **http://localhost:4000/**. Use the same history database for tests:
 
 ```bash
 export MCP_GUARDIAN_DB_PATH="$HOME/.mcp-guardian/history.db"
-export MCP_GUARDIAN_HOME="$HOME/.mcp-guardian"
-export REAL_LIFE_METRICS_ENABLED=false   # avoid :9090 clash with dashboard proxy
-
-pnpm real-life:filesystem          # ~30s smoke (path traversal, injection, shell-in-args)
-# or:
-pnpm real-life:continuous          # corpus + adversarial fixtures (default 60 min)
+pnpm real-life:filesystem    # short live attack smoke test
 ```
 
-Uses the official `@modelcontextprotocol/server-filesystem` upstream. Success targets: **≥95% attack block rate**, **≤2% benign false positives**. Details: [scenarios/real-life/README.md](scenarios/real-life/README.md).
+Details: [scenarios/real-life/README.md](scenarios/real-life/README.md).
 
-```bash
-# optional verification
-curl -s 'http://localhost:4000/api/analytics/summary?window=1h' | jq '{totalRequests, errorRatePct}'
-curl -s 'http://localhost:4000/api/security/dashboard?window=24h' | jq '{securityScore, activeThreatCount}'
-```
+### Useful commands
 
-### Key `pnpm` scripts (from repo root)
-
-| Script | Purpose |
-|--------|---------|
-| `dashboard:proxy` | Proxy + dashboard at :4000 (recommended) |
-| `autopilot:init` / `autopilot:start` | Wrap MCP configs and start Autopilot |
-| `analyze` | Full security/health report to stdout |
-| `real-life:filesystem` | Short live MCP attack smoke test |
-| `real-life:continuous` | Extended corpus/adversarial attack stream |
-| `real-life:swarm` | Live filesystem + security swarm analysis report |
-| `security-swarm:analyze` | Unified swarm + live track → `reports/security-swarm/analysis.txt` |
-| `harness` | Offline adversarial policy matrix (808+ fixtures) |
+| Command | What it does |
+|---------|----------------|
+| `pnpm dashboard:proxy` | Proxy + dashboard on port 4000 |
+| `pnpm autopilot:init` / `autopilot:start` | Wrap configs and start Autopilot |
+| `pnpm analyze` | Print a plain-English security summary |
+| `pnpm harness` | Offline policy attack matrix |
+| `pnpm real-life:filesystem` | Live MCP attack smoke test |
+| `mcp-guardian doctor` | Check your install and config |
 
 ---
 
-## The Policy File
+## The policy file
 
-Your rules live in `default-policy.yaml`. Here's a simple example:
+Rules live in `default-policy.yaml` (or a path you set). Example:
 
 ```yaml
 version: '1.0'
 policy:
-  mode: block           # block anything not explicitly allowed
+  mode: block
   default_action: block
 
   rules:
@@ -251,147 +343,64 @@ policy:
       maxCallsPerMinute: 60
 ```
 
-The default policy already blocks ~300 known attack patterns. You can extend it or write your own from scratch.
+The bundled default policy already blocks many common attack patterns. You can extend it or start from templates in `policy-templates/`. Full reference: [POLICY.md](docs/POLICY.md).
 
 ---
 
-## Environment Variables
+## Settings you might change
 
-Common overrides:
+| Variable | Plain meaning |
+|----------|----------------|
+| `MCP_GUARDIAN_POLICY` | Path to your rules file |
+| `MCP_GUARDIAN_DB_PATH` | Where call history is stored (share this between proxy and test runners) |
+| `MCP_GUARDIAN_RETENTION_DAYS` | How long to keep audit rows (default 30) |
+| `MCP_GUARDIAN_MAX_PAYLOAD_BYTES` | Max raw JSON-RPC message size (default 10MB) |
+| `GUARDIAN_MAX_EXPANDED_PAYLOAD_BYTES` | Max serialized tool-argument size after decode (default 50MB) |
+| `GUARDIAN_JWKS_REFRESH_MS` | How often to refresh OIDC JWKS (default 5 minutes) |
+| `GUARDIAN_STRICT_ALLOWLIST_RBAC` | Require RBAC on `tools.allow` policy rules |
+| `GUARDIAN_HEALTH_PROBE_INTERVAL_MS` | Periodic MCP health probes (0 = disabled) |
+| `GUARDIAN_SHUTDOWN_GRACE_MS` | Wait for in-flight calls on shutdown (default 30s) |
+| `GUARDIAN_DB_ENCRYPTION_KEY` | Encrypt sensitive audit fields at rest |
+| `GUARDIAN_DB_ENCRYPT_AUDIT_ARGS` | Also encrypt redacted argument snippets in audit (`true` + key above) |
+| `MCP_GUARDIAN_SIEM_ENABLED` | Export block/audit events to Splunk, Datadog, webhooks, etc. |
+| `DASHBOARD_PORT` | Dashboard port (default `4000`) |
+| `GUARDIAN_DAILY_BUDGET_USD` | Daily spend alert threshold |
+| `GUARDIAN_LLM_PROVIDER` / `OLLAMA_BASE_URL` | Local AI for semantic checks and Threat Lab |
+| `GUARDIAN_CI_BYPASS_LICENSE` | Local dev only: use dashboard without Pro license |
 
-| Variable | What it does |
-|---|---|
-| `MCP_GUARDIAN_POLICY` | Path to your policy YAML file |
-| `MCP_GUARDIAN_DB_PATH` | SQLite call history (default `~/.mcp-guardian/history.db`; **share this** between `dashboard:proxy` and `real-life:*` runners) |
-| `MCP_GUARDIAN_HOME` | Guardian home dir (semantic store, autopilot config) |
-| `DASHBOARD_PORT` | Dashboard + API port (default `4000`) |
-| `DASHBOARD_ENABLED` | Serve dashboard SPA + REST from proxy (default on with `dashboard:proxy`) |
-| `GUARDIAN_WS_ENABLED` | Live WebSocket updates (default `true`) |
-| `GUARDIAN_CI_BYPASS_LICENSE` | Local dev: enable dashboard REST without Pro license |
-| `GUARDIAN_DAILY_BUDGET_USD` | Daily cost budget (alerts in Operations → Cost) |
-| `GUARDIAN_LLM_PROVIDER` / `OLLAMA_BASE_URL` | Local Ollama for semantic audit, Threat Lab, full analysis |
-| `REAL_LIFE_METRICS_ENABLED` | Set `false` when running a second proxy alongside `dashboard:proxy` |
-| `LIVE_ATTACK_DURATION_MINUTES` | Wall-clock duration for `real-life:continuous` (default `60`) |
-| `SOC_API_PORT` | Legacy standalone SOC API (default `4040`; see [SOC-API.md](SOC-API.md)) |
-
----
-
-## What's in the box
-
-| Component | What it is |
-|---|---|
-| `mcp-guardian proxy` | Main proxy — policy, audit, optional dashboard on `:4000` |
-| `mcp-guardian onboard` | Finds and wraps MCP configs (Cline, Cursor, Claude Desktop, …) |
-| `mcp-guardian autopilot` | Init/start/status for plug-and-play protection + dashboard |
-| `mcp-guardian analyze` | Plain-English full security/health report (`pnpm analyze`) |
-| `mcp-guardian tui` | Terminal UI for live traffic |
-| `mcp-guardian doctor` | Health check for your setup |
-| `pnpm dashboard:proxy` | Build + start proxy with dashboard SPA (recommended) |
-| `deploy/dashboard-spa/` | Enterprise dashboard v3 (workspaces, analytics, security, setup) |
-| `src/utils/dashboard-server.ts` | REST + static SPA + WebSocket (embedded in proxy) |
-| `src/soc-api-server.ts` | Legacy standalone SOC API (`pnpm soc:api`) |
-| `scenarios/real-life/` | Live filesystem MCP scenarios + continuous attack stream |
-| `default-policy.yaml` | Default rules (~300 attack patterns) |
-| `policy-templates/` | Ready-made policy templates |
+More: [ENTERPRISE_DEPLOYMENT.md](docs/ENTERPRISE_DEPLOYMENT.md) for teams, Redis, and multiple servers.
 
 ---
 
-## Dashboard API (embedded in proxy)
+## Supported AI clients
 
-When `DASHBOARD_ENABLED=true`, the proxy serves the SPA and routes including:
+Guardian can auto-discover and wrap configs for:
 
-| Endpoint | Purpose |
-|----------|---------|
-| `GET /api/analytics/summary?window=1h\|12h\|24h\|7d` | Traffic KPIs, error rate, token/cost series |
-| `GET /api/security/dashboard?window=24h` | Security score, active threats, threat table |
-| `GET /api/aggregate/audit` | Block/pass audit with filters |
-| `GET /api/autopilot/status` | Autopilot protection / learning / digest summary |
-| `GET /api/setup/status` | Guided setup checklist |
-| `WS /ws` | Live metric and audit ticks |
-
-Legacy standalone backend: **[SOC-API.md](SOC-API.md)** (`pnpm soc:api:dev` on `:4040` + `pnpm dashboard:dev` on `:3000`).
-
----
-
-## How the advanced features work (diagrams)
-
-### The Security Swarm — continuous red-teaming
-
-![Security Swarm architecture](docs/assets/security-swarm-architecture.png)
-
-Think of the Security Swarm as a team of AI agents working around the clock to find weaknesses in your setup before attackers do.
-
-There are two tracks running in parallel:
-
-- **The testing track (top)** — Scout agents generate attack attempts, test them against your policy, check if any slip through, and write up a report. This runs automatically and keeps a library of 300+ known attacks up to date.
-- **The learning track (bottom)** — Every time the live proxy blocks a real tool call, a learning agent looks at it, compares it to known patterns, and teaches the system to recognize similar attacks faster next time.
-
-The two tracks feed each other: real-world blocks strengthen the test library, and new test discoveries improve live detection. It's a self-improving loop that never stops.
-
-> **Pro feature** — requires a license key. Run with `pnpm security-swarm`.
-
----
-
-### Threat Lab — AI discovers new attack patterns
-
-![LLM Threat Discovery architecture](docs/assets/llm-threat-discovery-architecture.png)
-
-The Threat Lab uses a local AI model (Ollama/Qwen) to invent new attack patterns that haven't been seen before.
-
-Here's how it works step by step:
-
-1. **Gather signals** — it looks at recent blocks from the proxy, semantic flags, CVE databases, and the swarm's bypass findings
-2. **Generate attacks** — the LLM proposes new attack fixtures and potential YAML rule additions based on those signals
-3. **Validate** — automated gates check if the proposals are valid and don't break anything
-4. **Human review** — before anything is added to your policy, **you review and approve it**. Nothing applies automatically.
-
-This means the system gets smarter over time, but you stay in control of every change.
-
-> **Pro feature** — requires a license key + local Ollama with `qwen3:8b`. Run with `pnpm security-swarm:threat-lab`.
-
----
-
-### Auto Threat Research — autonomous attack library building
-
-![Self-Sustaining Threat Research architecture](docs/assets/auto-threat-research-architecture.png)
-
-While the Threat Lab requires you to trigger it, Auto Threat Research runs in the background automatically whenever something interesting happens.
-
-The flow:
-
-1. **Watch for signals** — the proxy detects a semantic flag, a repeat block, or a CVE hit
-2. **Queue it** — these signals are batched up (it waits a few seconds to group related events)
-3. **Research it** — the LLM investigates: what attack class is this? What variations exist?
-4. **Classify and write** — the finding is classified by type and written to the attack corpus
-
-Importantly: **nothing is auto-applied to your policy**. This is an audit-only research loop. It just builds your library of known attacks for future reference and rule suggestions.
-
-> **Pro feature** — runs automatically when `GUARDIAN_THREAT_RESEARCH_AUTO=true` is set.
-
----
-
-## Pro license
-
-Get a Pro license at **[mcp-guardian-cloud.vercel.app](https://mcp-guardian-cloud.vercel.app)** ($4.99 lifetime).
-
-Community features (proxy, policy, scan, harness, real-life scenarios) are free and MIT licensed.
-
----
-
-## Supported AI Clients
-
-MCP Guardian auto-discovers config files from:
-
-- **Cline** (VS Code extension)
+- **Cline** (VS Code)
 - **Claude Desktop**
 - **Cursor**
 - **Windsurf**
 
-Or point it at any MCP config file with `--config path/to/config.json`.
+Or pass any MCP config: `mcp-guardian proxy --config path/to/config.json`.
+
+---
+
+## Documentation map
+
+| Topic | Document |
+|-------|----------|
+| Agentic AI features | [docs/AGENTIC_FEATURES.md](docs/AGENTIC_FEATURES.md) |
+| Autopilot | [docs/AUTOPILOT.md](docs/AUTOPILOT.md) |
+| Pro license | [docs/PRO_SETUP.md](docs/PRO_SETUP.md) |
+| Policy reference | [docs/POLICY.md](docs/POLICY.md) |
+| Enterprise deploy | [docs/ENTERPRISE_DEPLOYMENT.md](docs/ENTERPRISE_DEPLOYMENT.md) |
+| Architecture | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) |
+| Release history | [CHANGELOG.md](CHANGELOG.md) |
 
 ---
 
 ## License
 
-MIT for all community features. See [LICENSE](LICENSE) and [COMMUNITY_SCOPE.md](COMMUNITY_SCOPE.md) for details.
-Pro features are covered by [LICENSE-PRO](LICENSE-PRO).
+**Community features** (proxy, policy, scanning, harness, real-life scenarios) are **MIT** — see [LICENSE](LICENSE) and [COMMUNITY_SCOPE.md](COMMUNITY_SCOPE.md).
+
+**Pro features** require a license in production: [mcp-guardian-cloud.vercel.app](https://mcp-guardian-cloud.vercel.app). See [LICENSE-PRO](LICENSE-PRO).

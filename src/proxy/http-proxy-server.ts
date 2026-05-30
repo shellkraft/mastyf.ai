@@ -36,6 +36,8 @@ import { injectRotatedSessionIntoResult } from '../utils/mcp-session-meta.js';
 import { getUpstreamTimeoutMs } from '../utils/upstream-timeout.js';
 import { acquireProxyInflight, releaseProxyInflight } from './proxy-inflight.js';
 import { runSyncSemanticRequestGate } from './proxy-post-policy-gates.js';
+import { runToolCallPreForwardGuard, toolCallGuardBlockResponse } from './tool-call-pre-guard.js';
+import { hasJsonRpcId } from './json-rpc-utils.js';
 import {
   fingerprintJsonRpcToolsList,
   isRugPullBlockedForCall,
@@ -313,10 +315,35 @@ export class HttpProxyServer {
           }
           const tokens = this.tokenCounter.count(body);
 
+          let requestArguments = msg.params?.arguments as Record<string, unknown> | undefined;
+          const preGuard = await runToolCallPreForwardGuard(
+            this.serverName,
+            toolName,
+            requestArguments,
+            String(msg.id),
+          );
+          if (preGuard.blocked && hasJsonRpcId(msg.id)) {
+            releaseProxyInflight(this.serverName);
+            StructuredLogger.logBlocked({
+              event: 'tool_blocked',
+              requestId: String(msg.id),
+              serverName: this.serverName,
+              toolName,
+              reason: preGuard.message,
+              rule: 'payload_or_agentic',
+            });
+            res.writeHead(403, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify(toolCallGuardBlockResponse(msg.id, preGuard)));
+            return;
+          }
+          if (!preGuard.blocked && preGuard.arguments) {
+            requestArguments = preGuard.arguments;
+          }
+
           const context: CallContext = {
             serverName: this.serverName,
             toolName,
-            arguments: msg.params?.arguments,
+            arguments: requestArguments,
             requestId,
             requestTokens: tokens,
             timestamp: new Date().toISOString(),
@@ -328,6 +355,14 @@ export class HttpProxyServer {
 
           if (decision.action === 'block') {
             releaseProxyInflight(this.serverName);
+            StructuredLogger.logBlocked({
+              event: 'tool_blocked',
+              requestId,
+              serverName: this.serverName,
+              toolName,
+              reason: decision.reason,
+              rule: decision.rule,
+            });
             Metrics.recordProxyBlock(
               {
                 server_name: this.serverName,
@@ -352,6 +387,14 @@ export class HttpProxyServer {
           const semGate = await runSyncSemanticRequestGate(context, decision, this.serverName);
           if (semGate.block) {
             releaseProxyInflight(this.serverName);
+            StructuredLogger.logBlocked({
+              event: 'tool_blocked',
+              requestId,
+              serverName: this.serverName,
+              toolName,
+              reason: semGate.reason,
+              rule: 'semantic_gate',
+            });
             res.writeHead(403, { 'Content-Type': 'application/json' });
             res.end(
               JSON.stringify({

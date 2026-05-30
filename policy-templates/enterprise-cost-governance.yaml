@@ -17,7 +17,7 @@ policy:
       maxCallsPerMinute: 200
 
     - name: cost-rate-limit-expensive-tools
-      description: Stricter limit for high-cost MCP tools
+      description: Stricter limit for high-cost MCP tools (scoped with rbac — required when GUARDIAN_STRICT_ALLOWLIST_RBAC=true)
       action: block
       tools:
         allow:
@@ -26,6 +26,9 @@ policy:
           - browser_action
           - web_search
           - http_request
+      rbac:
+        scopes:
+          - mcp:tools:expensive
       maxCallsPerMinute: 30
 
     - name: cost-token-budget-default

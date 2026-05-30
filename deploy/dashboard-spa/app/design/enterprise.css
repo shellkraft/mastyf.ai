@@ -1519,6 +1519,60 @@ button.linkish {
   margin-top: var(--space-4);
 }
 
+/* Agentic AI workspace */
+.agentic-workspace { position: relative; }
+.agentic-toast {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  margin-bottom: var(--space-4);
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  font-weight: 500;
+}
+.agentic-toast-ok {
+  background: color-mix(in srgb, var(--chart-allow) 18%, transparent);
+  border: 1px solid color-mix(in srgb, var(--chart-allow) 40%, transparent);
+}
+.agentic-toast-error {
+  background: color-mix(in srgb, var(--chart-block) 15%, transparent);
+  border: 1px solid color-mix(in srgb, var(--chart-block) 35%, transparent);
+}
+.agentic-toast-dismiss {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  opacity: 0.7;
+}
+.agentic-inline-result {
+  margin-top: var(--space-2);
+  padding: var(--space-2);
+  border-radius: var(--radius-sm);
+  background: var(--surface-elevated, rgba(0, 0, 0, 0.04));
+  font-size: 12px;
+}
+.agentic-inline-result-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-1);
+}
+.agentic-raw-details summary { cursor: pointer; color: var(--text-muted); }
+.agentic-raw-json {
+  margin-top: var(--space-2);
+  padding: var(--space-2);
+  max-height: 160px;
+  overflow: auto;
+  font-size: 11px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-muted, #f3f4f6);
+}
+
 @media print {
   .enterprise-sidebar, .enterprise-topbar, .workspace-subnav, .btn-row button { display: none !important; }
   .enterprise-content { padding: 0; }

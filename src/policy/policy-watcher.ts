@@ -14,6 +14,7 @@ import {
   type PolicySignatureEnvelope,
   validateSignedPolicyYaml,
 } from './policy-signature.js';
+import { validateAllowlistRbac } from './policy-allowlist-guard.js';
 
 const RELOAD_DEBOUNCE_MS = 50;
 
@@ -28,6 +29,7 @@ export class PolicyWatcher {
   private watcher: FSWatcher | null = null;
   private policyPath: string;
   private reloadTimer: ReturnType<typeof setTimeout> | null = null;
+  private reloadInFlight = false;
   /** Callback invoked after a successful hot-reload (set by ProxyManager) */
   public onReload: (() => void) | null = null;
 
@@ -73,6 +75,7 @@ export class PolicyWatcher {
         });
       }
       const config = applyPolicyMerges(parsePolicyConfig(load(yaml)));
+      validateAllowlistRbac(config);
       const oldMode = this.current?.getMode();
       const engine = getOrCreatePolicyEngine(config);
       Logger.info(
@@ -95,12 +98,18 @@ export class PolicyWatcher {
   }
 
   private async reloadPolicyAsync(): Promise<void> {
-    const pending = await new Promise<PolicyEngine | null>((resolve) => {
-      setImmediate(() => resolve(this.buildEngineFromDisk()));
-    });
-    if (pending) {
-      this.current = pending;
-      if (this.onReload) this.onReload();
+    if (this.reloadInFlight) return;
+    this.reloadInFlight = true;
+    try {
+      const pending = await new Promise<PolicyEngine | null>((resolve) => {
+        setImmediate(() => resolve(this.buildEngineFromDisk()));
+      });
+      if (pending) {
+        this.current = pending;
+        if (this.onReload) this.onReload();
+      }
+    } finally {
+      this.reloadInFlight = false;
     }
   }
 

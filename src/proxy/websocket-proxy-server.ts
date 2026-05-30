@@ -434,6 +434,33 @@ export class WebSocketProxyServer {
       _meta?: Record<string, unknown>;
     } | undefined;
 
+    const toolName = params?.name || 'unknown';
+    const requestId = String(msg.id ?? randomUUID());
+    const { runToolCallPreForwardGuard, toolCallGuardBlockResponse } = await import(
+      './tool-call-pre-guard.js'
+    );
+    const preGuard = await runToolCallPreForwardGuard(
+      this.opts.serverName,
+      toolName,
+      params?.arguments,
+      requestId,
+    );
+    if (preGuard.blocked) {
+      breaker.recordFailure();
+      StructuredLogger.logBlocked({
+        event: 'tool_blocked',
+        requestId,
+        serverName: this.opts.serverName,
+        toolName,
+        reason: preGuard.message,
+        rule: 'payload_or_agentic',
+      });
+      return toolCallGuardBlockResponse(msg.id, preGuard);
+    }
+    if (preGuard.arguments && params) {
+      params.arguments = preGuard.arguments;
+    }
+
     if (params?.arguments) {
       const secrets = scanForSecrets(JSON.stringify(params.arguments), `ws:${this.opts.serverName}`);
       if (secrets.length > 0 && this.opts.policy.getMode() === 'block') {
@@ -456,9 +483,9 @@ export class WebSocketProxyServer {
     });
     const context: CallContext = {
       serverName: this.opts.serverName,
-      toolName: params?.name || 'unknown',
+      toolName,
       arguments: params?.arguments,
-      requestId: String(msg.id ?? randomUUID()),
+      requestId,
       requestTokens: tokenCounts.requestTokens,
       timestamp: new Date().toISOString(),
       tenantId,
@@ -487,6 +514,14 @@ export class WebSocketProxyServer {
     const semGate = await runSyncSemanticRequestGate(context, decision, this.opts.serverName);
     if (semGate.block) {
       breaker.recordFailure();
+      StructuredLogger.logBlocked({
+        event: 'tool_blocked',
+        requestId,
+        serverName: this.opts.serverName,
+        toolName,
+        reason: semGate.reason,
+        rule: 'semantic_gate',
+      });
       return {
         jsonrpc: '2.0',
         id: msg.id,

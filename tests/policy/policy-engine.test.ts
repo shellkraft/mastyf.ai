@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { PolicyEngine } from '../../src/policy/policy-engine.js';
 import { PolicyConfig, CallContext } from '../../src/policy/policy-types.js';
 import { resetSessionFlowStore } from '../../src/policy/session-flow-store.js';
+import { sharedRateLimitStore } from '../../src/policy/rate-limit-store.js';
 
 const testPolicy: PolicyConfig = {
   version: '1.0',
@@ -51,7 +52,9 @@ describe('PolicyEngine', () => {
 
   beforeEach(() => {
     resetSessionFlowStore();
+    sharedRateLimitStore.resetForTests();
     engine = new PolicyEngine(testPolicy);
+    engine.resetRateCounters();
   });
 
   it('should pass a safe tool call', () => {

@@ -45,7 +45,7 @@ env -u DASHBOARD_AUTH_DISABLED ./scripts/verify-enterprise-preflight.sh
 | DPoP lock-free | `GUARDIAN_DPOP_LOCK_FREE=true` (jittered SET NX; set `legacy` for lock-based path) |
 | DPoP | `GUARDIAN_REQUIRE_DPOP=true` + Redis for jti dedup |
 | Cost governance | Merge `policy-templates/enterprise-cost-governance.yaml`, `GUARDIAN_DAILY_BUDGET_USD` |
-| SIEM | Structured JSON logs; `MCP_GUARDIAN_SIEM_*` exporters |
+| SIEM | Structured JSON logs; `MCP_GUARDIAN_SIEM_*` exporters (see below) |
 | Observability | Helm `monitoring.serviceMonitor.enabled`, alert on `/readyz` and `mcp_guardian_proxy_latency_ms` p99 |
 | Encoding guard | `GUARDIAN_ENCODING_GUARD=true` (default on) — blocks base64/obfuscation evasions on allowlisted tools |
 
@@ -102,6 +102,17 @@ Proxies resolve the shared agent per request so cert rotation does not require p
 | `POLICY_AUDIT_LOG` | `./policy-audit.jsonl` | Policy change trail path |
 
 Verify with `verifyChainedJsonlLines()` in `src/utils/audit-hash-chain.ts` or your SIEM importer.
+
+### SIEM exporters (`MCP_GUARDIAN_SIEM_*`)
+
+| Variable | Description |
+|----------|-------------|
+| `MCP_GUARDIAN_SIEM_ENABLED` | `true` to enable exporter pipeline |
+| `MCP_GUARDIAN_SIEM_EXPORTERS` | Comma list: `splunk`, `datadog`, `webhook`, `elastic`, etc. |
+| `MCP_GUARDIAN_SIEM_SPLUNK_HEC_URL` | Splunk HEC endpoint |
+| `MCP_GUARDIAN_SIEM_SPLUNK_HEC_TOKEN` | Splunk HEC token |
+
+Policy blocks and denials emit `tool_blocked` via `StructuredLogger.logBlocked()` on stdio, HTTP, SSE, WebSocket, and streamable HTTP transports.
 
 ## P2 — Compliance and ops
 

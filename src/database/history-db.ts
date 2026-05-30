@@ -19,7 +19,22 @@ import { Logger } from '../utils/logger.js';
 import { ProxyCallRecord } from '../types.js';
 import { IDatabase } from './database-interface.js';
 import { monitorDbQuery } from '../utils/db-performance-monitor.js';
-import { decryptField, encryptField, getFieldEncryptionKey } from '../utils/field-encryption.js';
+import {
+  decryptAuditArgsField,
+  decryptField,
+  encryptAuditArgsField,
+  encryptField,
+  getFieldEncryptionKey,
+} from '../utils/field-encryption.js';
+
+/** Configurable audit retention (default 30 days). */
+export function resolveRetentionDays(): number {
+  const raw = process.env['MCP_GUARDIAN_RETENTION_DAYS'];
+  if (raw === undefined || raw === '') return 30;
+  const n = parseInt(raw, 10);
+  if (!Number.isFinite(n)) return 30;
+  return Math.min(3650, Math.max(1, n));
+}
 
 export interface SecurityRecord {
   id: number;
@@ -126,7 +141,7 @@ export class HistoryDatabase implements IDatabase {
   private dbPath: string;
   private readonly openedReadOnly: boolean;
   private lockCleanup: (() => void) | null = null;
-  private PURGE_TTL_DAYS = 30;
+  private PURGE_TTL_DAYS = resolveRetentionDays();
   private purgeInterval: ReturnType<typeof setInterval> | null = null;
 
   constructor(dbPathOrMemory?: string, options?: HistoryDatabaseOptions) {
@@ -323,12 +338,15 @@ export class HistoryDatabase implements IDatabase {
       this.db.exec("ALTER TABLE call_records ADD COLUMN tenant_id TEXT NOT NULL DEFAULT 'default'");
       this.db.exec('CREATE INDEX IF NOT EXISTS idx_call_records_tenant ON call_records(tenant_id, created_at DESC)');
     }
+    if (!names.has('argument_snippet')) {
+      this.db.exec('ALTER TABLE call_records ADD COLUMN argument_snippet TEXT');
+    }
   }
 
   async addCallRecord(record: ProxyCallRecord): Promise<void> {
     monitorDbQuery('addCallRecord', () => {
     const stmt = this.db.prepare(
-      'INSERT INTO call_records (server_name, tool_name, request_tokens, response_tokens, total_tokens, duration_ms, blocked, block_rule, block_reason, model, cost_usd, pricing_source, token_source, tenant_id) VALUES (@serverName, @toolName, @requestTokens, @responseTokens, @totalTokens, @durationMs, @blocked, @blockRule, @blockReason, @model, @costUsd, @pricingSource, @tokenSource, @tenantId)'
+      'INSERT INTO call_records (server_name, tool_name, request_tokens, response_tokens, total_tokens, duration_ms, blocked, block_rule, block_reason, argument_snippet, model, cost_usd, pricing_source, token_source, tenant_id) VALUES (@serverName, @toolName, @requestTokens, @responseTokens, @totalTokens, @durationMs, @blocked, @blockRule, @blockReason, @argumentSnippet, @model, @costUsd, @pricingSource, @tokenSource, @tenantId)'
     );
     stmt.run({
       serverName: record.serverName,
@@ -340,6 +358,7 @@ export class HistoryDatabase implements IDatabase {
       blocked: record.blocked ? 1 : 0,
       blockRule: record.blockRule ?? null,
       blockReason: encryptField(record.blockReason ?? null),
+      argumentSnippet: encryptAuditArgsField(record.argumentSnippet ?? null),
       model: record.model ?? null,
       costUsd: record.costUsd ?? null,
       pricingSource: record.pricingSource ?? null,
@@ -408,6 +427,7 @@ export class HistoryDatabase implements IDatabase {
       blocked: Boolean(r.blocked),
       blockRule: r.block_rule ?? undefined,
       blockReason: decryptField(r.block_reason ?? null) ?? undefined,
+      argumentSnippet: decryptAuditArgsField(r.argument_snippet ?? null) ?? undefined,
       tokenSource: r.token_source === 'api' || r.token_source === 'estimated'
         ? r.token_source
         : undefined,

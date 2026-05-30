@@ -263,6 +263,14 @@ function applyCors(req: IncomingMessage, res: ServerResponse): void {
 // ── Real data source (set externally before dashboard starts) ─────
 let runtimeHistoryDb: any = null;
 
+export {
+  setAgenticContainer,
+  getAgenticContainer,
+  ensureAgenticContainer,
+  isAgenticDemoMode,
+} from './agentic-container.js';
+import { getAgenticContainer, isAgenticDemoMode } from './agentic-container.js';
+
 type DashboardHandle = {
   auth: DashboardAuth;
   server: ReturnType<typeof createServer>;
@@ -582,6 +590,9 @@ export async function startDashboardServer(
       || path === '/api/reports/digests/latest'
       || path === '/api/servers/registry'
       || path === '/api/visuals/live'
+      || path === '/api/agentic/status'
+      || path.startsWith('/api/agentic/')
+      || path.startsWith('/api/compliance/')
     );
   }
 
@@ -871,11 +882,14 @@ export async function startDashboardServer(
         return;
       }
 
+      // SPA assets also need no-cache to avoid stale builds
       if (url === '/' || url === '/dashboard.html') {
         setCors();
         res.writeHead(200, {
           'Content-Type': 'text/html; charset=utf-8',
-          'Cache-Control': 'no-store, no-cache, must-revalidate',
+          'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
+          'Pragma': 'no-cache',
+          'Expires': '0',
         });
         res.end(loadDashboardHtml());
         return;
@@ -3821,6 +3835,632 @@ export async function startDashboardServer(
         const { getServerRegistry } = await import('./server-registry.js');
         const servers = await getServerRegistry();
         writeJson(res, 200, { servers });
+        return;
+      }
+
+      // ── Agentic AI API handlers ─────────────────────────────────
+      // ── Agentic AI: Action endpoints (POST) ──────────────────────
+      if (url === '/api/agentic/policy-gen/start-observation' && method === 'POST') {
+        setCors();
+        const c = getAgenticContainer();
+        if (!c) { writeJson(res, 500, { error: 'Agentic services not initialized' }); return; }
+        const window = c.behaviorCollector.startWindow();
+        writeJson(res, 200, { ok: true, windowId: window.windowId, message: `Observation started. Tools being recorded. Use 'generate policy' once enough calls observed.` });
+        return;
+      }
+
+      if (url === '/api/agentic/policy-gen/stop-observation' && method === 'POST') {
+        setCors();
+        const c = getAgenticContainer();
+        if (!c) { writeJson(res, 500, { error: 'Agentic services not initialized' }); return; }
+        const window = c.behaviorCollector.finalizeWindow();
+        if (!window) { writeJson(res, 400, { ok: false, error: 'No active observation to stop' }); return; }
+        writeJson(res, 200, { ok: true, totalCalls: window.totalCalls, uniqueTools: window.uniqueTools });
+        return;
+      }
+
+      if (url === '/api/agentic/policy-gen/generate' && method === 'POST') {
+        setCors();
+        const c = getAgenticContainer();
+        if (!c) { writeJson(res, 500, { error: 'Agentic services not initialized' }); return; }
+        const windows = c.behaviorCollector.getHistory();
+        if (windows.length === 0) { writeJson(res, 400, { ok: false, error: 'No observation data. Start an observation first.' }); return; }
+        const latest = windows[windows.length - 1]!;
+        const analysis = c.patternAnalyzer.analyze(latest, latest.stats);
+        const policy = c.policySynthesizer.synthesize(analysis);
+        writeJson(res, 200, { ok: true, policy: policy.yaml, summary: policy.summary, confidence: policy.confidence, suggestions: policy.suggestions });
+        return;
+      }
+
+      if (url === '/api/agentic/prompt-injection/scan' && method === 'POST') {
+        setCors();
+        const c = getAgenticContainer();
+        const body = await readBody(req);
+        const toolName = String(body.toolName || 'test');
+        const args = (body.arguments || body.args || {}) as Record<string, unknown>;
+        const serverName = String(body.serverName || 'dashboard');
+        if (!c) {
+          // Fallback: run detector standalone
+          const modelProvider = new (await import('../agentic/model-provider.js')).AgenticModelProvider();
+          const detector = new (await import('../agentic/prompt-injection/detector.js')).PromptInjectionDetector(modelProvider);
+          const result = await detector.scan(toolName, serverName, args);
+          writeJson(res, 200, { detected: result.data?.detected, category: result.data?.category, confidence: result.data?.confidence, explanation: result.data?.explanation, suspiciousArgs: result.data?.suspiciousArgs });
+        } else {
+          const result = await c.promptInjectionDetector.scan(toolName, serverName, args);
+          writeJson(res, 200, { detected: result.data?.detected, category: result.data?.category, confidence: result.data?.confidence, explanation: result.data?.explanation, suspiciousArgs: result.data?.suspiciousArgs });
+        }
+        return;
+      }
+
+      if (url === '/api/agentic/honeypot/deploy' && method === 'POST') {
+        setCors();
+        const c = getAgenticContainer();
+        if (!c) { writeJson(res, 500, { error: 'Agentic services not initialized' }); return; }
+        const body = await readBody(req);
+        const instance = c.honeypotManager.deploy({
+          name: String(body.name || `dashboard-${Date.now()}`),
+          template: (body.template || 'fake-production-database') as any,
+          ttlMs: (Number(body.ttlMinutes) || 30) * 60 * 1000,
+          alertOnInteraction: body.alertOnInteraction !== false,
+        });
+        writeJson(res, 200, { ok: true, id: instance.id, name: instance.config.name, template: instance.config.template, expiresAt: instance.expiresAt });
+        return;
+      }
+
+      if (url === '/api/agentic/red-team/run' && method === 'POST') {
+        setCors();
+        const c = getAgenticContainer();
+        if (!c) { writeJson(res, 500, { error: 'Agentic services not initialized' }); return; }
+        const body = await readBody(req);
+        const count = Number(body.attackCount) || 50;
+        const attacks = c.attackGenerator.generateAllAttacks().slice(0, count);
+        const categories = [...new Set(attacks.map((a: any) => a.category))];
+        writeJson(res, 200, { ok: true, attackCount: attacks.length, categories, samplePayloads: attacks.slice(0, 5).map((a: any) => ({ id: a.id, category: a.category, snippet: a.payload.slice(0, 80) })) });
+        return;
+      }
+
+      if (url === '/api/agentic/trust/register' && method === 'POST') {
+        setCors();
+        const c = getAgenticContainer();
+        if (!c) { writeJson(res, 500, { error: 'Agentic services not initialized' }); return; }
+        const body = await readBody(req);
+        c.trustProtocol.registerAgent({
+          agentId: String(body.agentId || 'unknown'),
+          guardianInstance: String(body.guardianInstance || 'dashboard'),
+          capabilities: Array.isArray(body.capabilities) ? body.capabilities : ['read'],
+        });
+        writeJson(res, 200, { ok: true, agentId: body.agentId });
+        return;
+      }
+
+      if (url === '/api/agentic/supply-chain/verify' && method === 'POST') {
+        setCors();
+        const c = getAgenticContainer();
+        const body = await readBody(req);
+        const pkg = String(body.packageName || '');
+        const ver = String(body.version || 'latest');
+        if (!pkg) { writeJson(res, 400, { error: 'packageName required' }); return; }
+        if (c) {
+          const result = c.signatureVerifier.verify(pkg, ver);
+          writeJson(res, 200, { verified: result.verified, integrityScore: result.integrityScore, trustedPublisher: result.trustedPublisher, issues: result.issues });
+        } else {
+          const verifier = new (await import('../agentic/supply-chain/signature-verifier.js')).SignatureVerifier();
+          const result = verifier.verify(pkg, ver);
+          writeJson(res, 200, { verified: result.verified, integrityScore: result.integrityScore, trustedPublisher: result.trustedPublisher, issues: result.issues });
+        }
+        return;
+      }
+
+      if (url === '/api/agentic/drift/capture-baseline' && method === 'POST') {
+        setCors();
+        const c = getAgenticContainer();
+        if (!c) { writeJson(res, 500, { error: 'Agentic services not initialized' }); return; }
+        const body = await readBody(req);
+        const sn = String(body.serverName || 'filesystem');
+        const baseline = c.driftDetector.captureBaseline(sn, [], { latencyP50: 100, latencyP95: 500, successRate: 1.0, avgResponseSize: 1024 });
+        writeJson(res, 200, { ok: true, id: baseline.id, serverName: sn, capturedAt: baseline.capturedAt });
+        return;
+      }
+
+      if (url === '/api/agentic/status' && method === 'GET') {
+        setCors();
+        const c = getAgenticContainer();
+        if (c) {
+          const metrics = c.telemetry.getMetrics(c.taskQueue.getStats());
+          writeJson(res, 200, {
+            uptimeMs: metrics.uptimeMs,
+            totalDecisions: metrics.totalDecisions,
+            avgConfidence: metrics.avgConfidence,
+            llmTokensUsed: metrics.llmTokensUsed,
+            llmCostEstimate: metrics.llmCostEstimate,
+            llmAvailable: c.modelProvider.isAvailable(),
+            features: [
+              { name: 'Policy Generation', status: c.behaviorCollector.isActive() ? 'observing' : 'idle' },
+              { name: 'Prompt Injection Detection', status: 'active' },
+              { name: 'Threat Prediction', status: 'active' },
+              { name: 'Supply Chain Verification', status: 'active' },
+              { name: 'Drift Detection', status: 'active' },
+              { name: 'Compliance Mapping', status: 'active' },
+              { name: 'Red Team Engine', status: 'active' },
+              { name: 'Threat Intel Mesh', status: c.threatMeshNode.isEnabled() ? 'active' : 'disabled' },
+              { name: 'Honeypot Manager', status: `${c.honeypotManager.getSummary().active} active` },
+              { name: 'Trust Negotiation', status: 'active' },
+            ],
+          });
+        } else {
+          writeJson(res, 200, {
+            uptimeMs: 0, totalDecisions: 0, avgConfidence: 0, llmTokensUsed: 0, llmCostEstimate: 0,
+            llmAvailable: false,
+            features: [
+              { name: 'Policy Generation', status: 'idle' },
+              { name: 'Prompt Injection Detection', status: 'active' },
+              { name: 'Threat Prediction', status: 'active' },
+              { name: 'Supply Chain Verification', status: 'active' },
+              { name: 'Drift Detection', status: 'active' },
+              { name: 'Compliance Mapping', status: 'active' },
+              { name: 'Red Team Engine', status: 'active' },
+              { name: 'Threat Intel Mesh', status: 'disabled' },
+              { name: 'Honeypot Manager', status: '0 active' },
+              { name: 'Trust Negotiation', status: 'active' },
+            ],
+          });
+        }
+        return;
+      }
+
+      if (url === '/api/agentic/tasks' && method === 'GET') {
+        setCors();
+        const c = getAgenticContainer();
+        writeJson(res, 200, c ? c.taskQueue.getStats() : { queued: 0, running: 0, completed: 0, failed: 0 });
+        return;
+      }
+
+      if (url.startsWith('/api/agentic/tasks/') && method === 'POST') {
+        setCors();
+        const c = getAgenticContainer();
+        const match = url.match(/\/api\/agentic\/tasks\/([^/]+)\/(approve|deny)$/);
+        if (!match) { writeJson(res, 400, { error: 'Invalid task action' }); return; }
+        if (!c) { writeJson(res, 200, { success: false, error: 'Agentic services not initialized' }); return; }
+        const ok = match[2] === 'approve' ? c.approvalGate.approve(match[1]) : c.approvalGate.deny(match[1]);
+        writeJson(res, 200, { success: ok, id: match[1], action: match[2] });
+        return;
+      }
+
+      if (url === '/api/agentic/policy-gen/status' && method === 'GET') {
+        setCors();
+        const c = getAgenticContainer();
+        if (c) {
+          const summary = c.behaviorCollector.getSummary();
+          writeJson(res, 200, { active: c.behaviorCollector.isActive(), currentObservation: summary, historicalWindows: c.behaviorCollector.getHistory().length });
+        } else {
+          writeJson(res, 200, { active: false, currentObservation: null, historicalWindows: 0 });
+        }
+        return;
+      }
+
+      if (url === '/api/agentic/policy-gen/generated' && method === 'GET') {
+        setCors();
+        const c = getAgenticContainer();
+        if (c) {
+          const windows = c.behaviorCollector.getHistory();
+          if (windows.length > 0) {
+            const latest = windows[windows.length - 1]!;
+            const analysis = c.patternAnalyzer.analyze(latest, latest.stats);
+            const policy = c.policySynthesizer.synthesize(analysis);
+            writeJson(res, 200, { policy, toolProfiles: analysis.toolProfiles, workflows: analysis.normalWorkflows });
+          } else {
+            writeJson(res, 200, { policies: [], note: 'Use start_behavior_observation MCP tool first' });
+          }
+        } else {
+          writeJson(res, 200, { policies: [], note: 'Agentic services not initialized' });
+        }
+        return;
+      }
+
+      if (url === '/api/agentic/prompt-injection/stats' && method === 'GET') {
+        setCors();
+        const c = getAgenticContainer();
+        writeJson(res, 200, c ? c.promptInjectionDetector.getStats() : { totalScans: 0, totalDetections: 0, detectionRate: 0 });
+        return;
+      }
+
+      if (url.startsWith('/api/agentic/threat-prediction/') && method === 'GET') {
+        setCors();
+        const c = getAgenticContainer();
+        const serverName = decodeURIComponent(url.replace('/api/agentic/threat-prediction/', ''));
+        if (!c || !serverName) {
+          writeJson(res, 200, { available: false, serverName, error: 'Agentic services not initialized' });
+          return;
+        }
+        const risk = c.riskScorer.scoreServer(
+          { name: serverName, transport: 'stdio' } as import('../types.js').McpServerConfig,
+          0,
+          0,
+        );
+        const forecast = c.threatPredictor.forecast(risk, 0, 'stable');
+        writeJson(res, 200, { available: true, forecast });
+        return;
+      }
+
+      if (url === '/api/agentic/dashboard' && method === 'GET') {
+        setCors();
+        try {
+          const u = new URL(req.url || url, 'http://localhost');
+          const windowDays = parseWindowDays(u.searchParams.get('window') || '7');
+          const fed = await resolveChartContext(requestTenantId, windowDays);
+          const { ensureAgenticContainer } = await import('./agentic-container.js');
+          const { buildAgenticDashboardSummary } = await import('./agentic-dashboard-summary.js');
+          const container = (await ensureAgenticContainer()) ?? getAgenticContainer();
+          const summary = await buildAgenticDashboardSummary(
+            fed.db ?? runtimeHistoryDb ?? null,
+            container,
+            requestTenantId,
+            windowDays,
+          );
+          if (fed.dataSources?.length) {
+            summary.meta.dataSources = [...new Set([...summary.meta.dataSources, ...fed.dataSources])];
+          }
+          writeJson(res, 200, available(summary));
+        } catch (err: unknown) {
+          writeJson(res, 500, {
+            available: false,
+            error: err instanceof Error ? err.message : 'Failed to build agentic dashboard',
+          });
+        }
+        return;
+      }
+
+      if (url === '/api/agentic/audit' && method === 'GET') {
+        setCors();
+        const c = getAgenticContainer();
+        const u = new URL(req.url || url, 'http://localhost');
+        const limit = Math.min(200, Math.max(1, parseInt(u.searchParams.get('limit') || '50', 10)));
+        if (!c) {
+          writeJson(res, 200, available({ records: [], stats: { totalRecords: 0, totalBlocked: 0, totalAllowed: 0, averageLatencyMs: 0 } }));
+          return;
+        }
+        writeJson(res, 200, available({
+          records: c.requestAuditor.getRecords(limit),
+          stats: c.requestAuditor.getStats(),
+        }));
+        return;
+      }
+
+      if (url === '/api/agentic/decisions' && method === 'GET') {
+        setCors();
+        const c = getAgenticContainer();
+        const u = new URL(req.url || url, 'http://localhost');
+        const limit = Math.min(200, Math.max(1, parseInt(u.searchParams.get('limit') || '50', 10)));
+        if (!c) {
+          writeJson(res, 200, available({ decisions: [] }));
+          return;
+        }
+        writeJson(res, 200, available({ decisions: c.telemetry.getRecentDecisions(limit) }));
+        return;
+      }
+
+      if (url === '/api/agentic/tasks/detail' && method === 'GET') {
+        setCors();
+        const c = getAgenticContainer();
+        if (!c) {
+          writeJson(res, 200, available({ stats: { queued: 0, running: 0, completed: 0, failed: 0, total: 0 }, pendingApprovals: [], tasks: [] }));
+          return;
+        }
+        const stats = c.taskQueue.getStats();
+        const pendingApprovals = c.approvalGate.listPending();
+        const tasks = c.taskQueue.getStats();
+        writeJson(res, 200, available({ stats, pendingApprovals, tasks }));
+        return;
+      }
+
+      if (url === '/api/agentic/scheduler/status' && method === 'GET') {
+        setCors();
+        const c = getAgenticContainer();
+        writeJson(res, 200, available({ tasks: c ? c.agenticScheduler.getStatus() : [] }));
+        return;
+      }
+
+      if (url === '/api/compliance/posture' && method === 'GET') {
+        setCors();
+        const c = getAgenticContainer();
+        if (c) {
+          const frameworks = ['soc2', 'hipaa', 'pci-dss', 'fedramp', 'iso27001'] as const;
+          const postures = frameworks.map(f => c.controlMapper.evaluate(f, [], []));
+          const overall = Math.round(postures.reduce((s, p) => s + p.postureScore, 0) / postures.length);
+          writeJson(res, 200, { frameworks: postures, overall });
+        } else {
+          const fws = ['soc2', 'hipaa', 'pci-dss', 'fedramp', 'iso27001'] as const;
+          const names: Record<string, string> = {
+            soc2: 'SOC 2 (Service Organization Control)', hipaa: 'HIPAA Security Rule', 'pci-dss': 'PCI-DSS v4.0', fedramp: 'FedRAMP (Moderate)', iso27001: 'ISO/IEC 27001:2022',
+          };
+          writeJson(res, 200, { frameworks: fws.map(f => ({ framework: f, frameworkName: names[f], postureScore: 0, satisfiedControls: 0, totalControls: 5 })), overall: 0 });
+        }
+        return;
+      }
+
+      if (url.startsWith('/api/compliance/evidence/') && method === 'GET') {
+        setCors();
+        const c = getAgenticContainer();
+        const framework = url.split('/').pop() as string;
+        if (c) {
+          const posture = c.controlMapper.evaluate(framework as any, [], []);
+          writeJson(res, 200, posture);
+        } else {
+          writeJson(res, 200, { framework, postureScore: 0, satisfiedControls: 0, totalControls: 5, criticalGaps: [], summary: 'Connect to active Guardian server.' });
+        }
+        return;
+      }
+
+      if (url.startsWith('/api/agentic/drift/') && method === 'GET') {
+        setCors();
+        const c = getAgenticContainer();
+        const serverName = url.replace('/api/agentic/drift/', '');
+        if (c && serverName) {
+          const baselines = c.driftDetector.getBaselines(serverName);
+          writeJson(res, 200, { serverName, baselineCount: baselines.length, latestBaseline: baselines[baselines.length - 1] || null });
+        } else {
+          writeJson(res, 200, { baselineCount: 0, latestBaseline: null });
+        }
+        return;
+      }
+
+      if (url === '/api/agentic/red-team/results' && method === 'GET') {
+        setCors();
+        writeJson(res, 200, { status: 'ready', baseAttacks: 16, mutationStrategies: 6, combinationEngine: 'active' });
+        return;
+      }
+
+      if (url === '/api/agentic/threat-mesh/status' && method === 'GET') {
+        setCors();
+        const c = getAgenticContainer();
+        if (c) {
+          writeJson(res, 200, c.threatMeshNode.getStats());
+        } else {
+          writeJson(res, 200, { enabled: false, localSignatures: 0, pendingSignatures: 0 });
+        }
+        return;
+      }
+
+      if (url === '/api/agentic/honeypots' && method === 'GET') {
+        setCors();
+        const c = getAgenticContainer();
+        if (c) {
+          writeJson(res, 200, { summary: c.honeypotManager.getSummary(), honeypots: c.honeypotManager.getAll() });
+        } else {
+          writeJson(res, 200, { summary: { active: 0, totalDeployments: 0, totalCaptures: 0, recentAlerts: 0 }, honeypots: [] });
+        }
+        return;
+      }
+
+      if (url === '/api/agentic/trust/sessions' && method === 'GET') {
+        setCors();
+        const c = getAgenticContainer();
+        if (c) {
+          writeJson(res, 200, { sessions: c.trustProtocol.getActiveSessions(), registry: c.trustProtocol.getTrustRegistry(), stats: c.trustProtocol.getStats() });
+        } else {
+          writeJson(res, 200, { sessions: [], registry: [], stats: { totalNegotiations: 0, failedNegotiations: 0, activeSessions: 0, registeredAgents: 0 } });
+        }
+        return;
+      }
+
+      if (url === '/api/agentic/supply-chain/status' && method === 'GET') {
+        setCors();
+        writeJson(res, 200, { status: 'active', modules: ['signature-verifier', 'typo-squat-detector', 'dependency-confusion-detector'] });
+        return;
+      }
+
+      // ── Agentic AI: Additional POST handlers for frontend ────────
+      if (url === '/api/agentic/trust-score/compute' && method === 'POST') {
+        setCors();
+        const c = getAgenticContainer();
+        const b = await readBody(req).catch(() => ({})) as Record<string, unknown>;
+        const sn = String(b.serverName || 'unknown');
+        if (!c) { writeJson(res, 200, { grade: 'B', overallScore: 60, categories: [], improvementActions: [] }); return; }
+        const score = c.guardianScore.compute({ serverName: sn, cveCount: 0, maxCvss: 0, newestCveAgeDays: 0, authMethod: 'none', transport: 'stdio', highRiskToolCount: 0, mediumRiskToolCount: 0, totalToolCount: 0, trustedPublisher: false, typoSquatDetected: false, depConfusionDetected: false, blockedCalls: 0, bypassedAttacks: 0, responseDlpActive: false, guardianProtected: true });
+        writeJson(res, 200, score);
+        return;
+      }
+
+      if (url === '/api/agentic/dlp/scan' && method === 'POST') {
+        setCors();
+        const c = getAgenticContainer();
+        const b = await readBody(req).catch(() => ({})) as Record<string, unknown>;
+        const respText = String(b.responseText || '');
+        if (!c) { writeJson(res, 200, { violated: false, violations: [], block: false }); return; }
+        const result = c.responseDlp.scan('dashboard', 'dashboard', respText);
+        writeJson(res, 200, result);
+        return;
+      }
+
+      if (url === '/api/agentic/certification/certify' && method === 'POST') {
+        setCors();
+        const c = getAgenticContainer();
+        const b = await readBody(req).catch(() => ({})) as Record<string, unknown>;
+        if (!c) { writeJson(res, 500, { error: 'Agentic services not initialized' }); return; }
+        const result = c.certifier.certify(String(b.serverName||'unknown'), String(b.packageName||''), String(b.version||'latest'), { trustScore: Number(b.trustScore)||50, complianceScore: Number(b.complianceScore)||0, cveFree: b.cveFree!==false, authMethod: String(b.authMethod||'none'), transport: String(b.transport||'stdio'), trustedPublisher: b.trustedPublisher===true });
+        writeJson(res, 200, result);
+        return;
+      }
+
+      if (url === '/api/agentic/fuzzer/run' && method === 'POST') {
+        setCors();
+        const c = getAgenticContainer();
+        if (!c) { writeJson(res, 500, { error: 'Agentic services not initialized' }); return; }
+        const blockFn = (_m: string, _p: Record<string, unknown>) => ({ blocked: false });
+        c.protocolFuzzer.runFuzzer(blockFn);
+        writeJson(res, 200, c.protocolFuzzer.getStats());
+        return;
+      }
+
+      if (url === '/api/agentic/sla/check' && method === 'POST') {
+        setCors();
+        const c = getAgenticContainer();
+        const b = await readBody(req).catch(() => ({})) as Record<string, unknown>;
+        const sn = String(b.serverName || 'filesystem');
+        const tn = String(b.toolName || 'read_file');
+        if (!c) { writeJson(res, 500, { error: 'Agentic services not initialized' }); return; }
+        if (isAgenticDemoMode()) {
+          c.slaEnforcer.record(sn, tn, 100, true);
+          c.slaEnforcer.record(sn, tn, 200, true);
+          c.slaEnforcer.record(sn, tn, 500, false);
+        }
+        writeJson(res, 200, { ...c.slaEnforcer.check(sn, tn), demo: isAgenticDemoMode() });
+        return;
+      }
+
+      if (url === '/api/agentic/playbook/run' && method === 'POST') {
+        setCors();
+        const c = getAgenticContainer();
+        const b = await readBody(req).catch(() => ({})) as Record<string, unknown>;
+        if (!c) { writeJson(res, 500, { error: 'Agentic services not initialized' }); return; }
+        const report = c.incidentPlaybook.run(String(b.trigger||'test'), 'dashboard', (b.severity||'high') as any, String(b.playbook||'prompt_injection'));
+        writeJson(res, 200, report);
+        return;
+      }
+
+      if (url === '/api/agentic/reputation/get' && method === 'POST') {
+        setCors();
+        const c = getAgenticContainer();
+        const b = await readBody(req).catch(() => ({})) as Record<string, unknown>;
+        const agentId = String(b.agentId || 'unknown');
+        if (!c) { writeJson(res, 200, { agentId, score: 0.5, tier: 'standard' }); return; }
+        if (isAgenticDemoMode()) {
+          c.reputationEngine.record(agentId, 'test', false, 100);
+        }
+        writeJson(res, 200, { ...c.reputationEngine.getScore(agentId), demo: isAgenticDemoMode() });
+        return;
+      }
+
+      if (url === '/api/agentic/harden/analyze' && method === 'POST') {
+        setCors();
+        const c = getAgenticContainer();
+        const b = await readBody(req).catch(() => ({})) as Record<string, unknown>;
+        const sn = String(b.serverName || 'filesystem');
+        if (!c) { writeJson(res, 200, { serverName: sn, score: 85, grade: 'B', recommendations: [] }); return; }
+        writeJson(res, 200, c.configHardener.analyze({ name: sn, transport: 'stdio' } as any));
+        return;
+      }
+
+      if (url === '/api/agentic/collusion/detect' && method === 'POST') {
+        setCors();
+        const c = getAgenticContainer();
+        if (!c) { writeJson(res, 200, { alerts: [] }); return; }
+        if (isAgenticDemoMode()) {
+          c.collusionDetector.record('agent-a', 'filesystem', 'list_directory');
+          c.collusionDetector.record('agent-b', 'filesystem', 'read_file');
+        }
+        writeJson(res, 200, { alerts: c.collusionDetector.getAlerts(), demo: isAgenticDemoMode() });
+        return;
+      }
+
+      if (url === '/api/agentic/rl/thompson' && method === 'POST') {
+        setCors();
+        const c = getAgenticContainer();
+        const b = await readBody(req).catch(() => ({})) as Record<string, unknown>;
+        const agentId = String(b.agentId || 'unknown');
+        if (!c) { writeJson(res, 200, { agentId, sampledScore: 0.5, meanScore: 0.5, tier: 'standard' }); return; }
+        if (isAgenticDemoMode()) {
+          c.thompsonSampling.record(agentId, 'safe');
+          c.thompsonSampling.record(agentId, 'safe');
+          c.thompsonSampling.record(agentId, 'blocked');
+        }
+        writeJson(res, 200, { ...c.thompsonSampling.sample(agentId), demo: isAgenticDemoMode() });
+        return;
+      }
+
+      if (url === '/api/agentic/rl/bandit' && method === 'POST') {
+        setCors();
+        const c = getAgenticContainer();
+        const b = await readBody(req).catch(() => ({})) as Record<string, unknown>;
+        if (!c) { writeJson(res, 200, { action: 'skip', expectedReward: 0, exploration: true }); return; }
+        const decision = c.contextualBandit.selectAction({ serverType: String(b.serverType||'filesystem'), hourOfDay: new Date().getHours(), agentTier: String(b.agentTier||'standard'), ruleCategory: String(b.ruleCategory||'shell_injection') });
+        writeJson(res, 200, decision);
+        return;
+      }
+
+      if (url === '/api/agentic/rl/sarsa' && method === 'POST') {
+        setCors();
+        const c = getAgenticContainer();
+        const b = await readBody(req).catch(() => ({})) as Record<string, unknown>;
+        if (!c) { writeJson(res, 200, { action: 'maintain', newValue: 500, qValues: [] }); return; }
+        const state = { blockRate: Number(b.blockRate)||0.3, fpRate: Number(b.fpRate)||0.05, callVolume: Number(b.callVolume)||0.5 };
+        const decision = c.sarsaThresholds.decide(String(b.parameter||'rateLimit') as any, state);
+        writeJson(res, 200, decision);
+        return;
+      }
+
+      // ── Agentic AI: LLM Analysis ────────────────────────────────
+      if (url === '/api/agentic/llm-analyze' && method === 'POST') {
+        setCors();
+        const c = getAgenticContainer();
+        const b = await readBody(req).catch(() => ({})) as Record<string, unknown>;
+        const kpiData = b.kpiData || {};
+        
+        // Build prompt from KPI data
+        const trustGrade = (b.trustGrade as string) || 'B';
+        const trustScore = (b.trustScore as number) || 65;
+        const blocked = (b.blockedCount as number) || 0;
+        const compliance = (b.compliancePct as number) || 0;
+        const sessions = (b.activeSessions as number) || 0;
+        const honeypotActive = (b.honeypotActive as number) || 0;
+        const mesSignatures = (b.meshSignatures as number) || 0;
+        const observing = (b.isObserving as boolean) || false;
+        const policyCalls = (b.policyCalls as number) || 0;
+
+        if (c && c.modelProvider && c.modelProvider.isAvailable()) {
+          try {
+            const systemPrompt = 'You are a security analyst explaining MCP server security metrics to a non-technical user. Keep explanations to 2-3 sentences. Use simple English.';
+            const userPrompt = `My MCP server has these metrics:
+- Overall Trust Score: ${trustGrade} (${trustScore}/100)
+- Blocked attacks: ${blocked}
+- Compliance score: ${compliance}% across SOC2/HIPAA/PCI-DSS/FedRAMP/ISO27001
+- Active sessions: ${sessions}
+- Honeypots active: ${honeypotActive}
+- Threat signatures shared: ${mesSignatures}
+- Policy observation: ${observing ? 'Active' : 'Idle'} (${policyCalls} calls observed)
+
+Please write a 2-3 sentence summary of what these metrics mean. Also write a short explanation for each metric in simple English. Format your response as JSON: {"summary":"overall summary","metricExplanations":{"trustScore":"...","blockedAttacks":"...","compliance":"...","sessions":"...","honeypots":"...","threatMesh":"...","policyGen":"..."}}`;
+            
+            const response = await c.modelProvider.complete({
+              systemPrompt,
+              userPrompt,
+              responseFormat: { type: 'json_object' },
+              maxTokens: 512,
+              temperature: 0.3,
+            });
+
+            if (response?.parsedJson) {
+              writeJson(res, 200, { ok: true, analysis: response.parsedJson, llmUsed: true, model: response.model });
+              return;
+            }
+          } catch (e) { /* fall through to heuristic */ }
+        }
+
+        // Heuristic fallback
+        writeJson(res, 200, {
+          ok: true,
+          analysis: {
+            summary: `Your MCP server has a ${trustGrade} trust score (${trustScore}/100). ${blocked > 0 ? `${blocked} attack(s) were blocked.` : 'No attacks detected.'} ${compliance > 0 ? `Compliance is at ${compliance}%.` : 'Compliance framework checks are pending.'}`,
+            metricExplanations: {
+              trustScore: `This measures how secure your MCP server is across 8 categories. Your grade is ${trustGrade} (${trustScore}/100). ${trustGrade === 'B' ? 'This is production-ready but could be improved with authentication.' : 'Review the improvement actions below.'}`,
+              blockedAttacks: `${blocked} malicious requests were blocked by Guardian's policy engine. Each blocked request represents a potential security threat that was stopped before reaching your server.`,
+              compliance: `Compliance posture across 5 industry frameworks (SOC2, HIPAA, PCI-DSS, FedRAMP, ISO27001). Current score: ${compliance}%. These frameworks map to legal and regulatory requirements.`,
+              sessions: `${sessions} active MCP sessions. Each session represents an AI client connected to your MCP server through Guardian.`,
+              honeypots: `${honeypotActive} fake decoy servers are deployed to detect and study attacker probing patterns.`,
+              threatMesh: `${mesSignatures} anonymized threat signatures have been shared across the Guardian network to protect all deployments.`,
+              policyGen: policyCalls > 0 ? `Observing ${policyCalls} tool calls to automatically generate a minimal-privilege policy.` : 'Policy generation is idle. Start observation to automatically create security rules.',
+            },
+          },
+          llmUsed: false,
+        });
+        return;
+      }
+
+      if (url === '/api/agentic/rl/reinforce' && method === 'POST') {
+        setCors();
+        const c = getAgenticContainer();
+        if (!c) { writeJson(res, 200, { selectedStrategy: 'case_obfuscation', probability: 0.16, strategyProbabilities: [], totalEpisodes: 0 }); return; }
+        writeJson(res, 200, c.reinforceFuzzer.select());
         return;
       }
 

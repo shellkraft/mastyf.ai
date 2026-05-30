@@ -3,6 +3,7 @@ import { createElement } from 'react';
 import {
   Activity,
   BookOpen,
+  Bot,
   Home,
   Settings,
   Shield,
@@ -15,6 +16,7 @@ export type WorkspaceId =
   | 'activity'
   | 'threats'
   | 'security'
+  | 'agentic'
   | 'operations'
   | 'settings'
   | 'help';
@@ -29,13 +31,20 @@ export type SecurityView = 'overview' | 'policy' | 'enterprise-ai' | 'ai-copilot
 
 export type OperationsView =
   | 'analytics'
-  | 'advanced'
   | 'overview'
   | 'cost'
   | 'health'
   | 'fleet'
-  | 'benchmarks'
   | 'swarm';
+
+export type AgenticView =
+  | 'overview'
+  | 'trust'
+  | 'threats'
+  | 'policy'
+  | 'operations'
+  | 'audit'
+  | 'tools';
 
 export type SettingsView = 'setup' | 'mcp-servers' | 'admin';
 
@@ -54,6 +63,7 @@ const icon = (C: typeof Home, size = 18) => createElement(C, { size });
 
 export const WORKSPACES: WorkspaceNavItem[] = [
   { id: 'home', label: 'Protection', icon: icon(Home), description: 'Autopilot status, digests, and health report' },
+  { id: 'agentic', label: 'Agentic AI', icon: icon(Bot), description: 'Autonomous policy generation, threat prediction, compliance, red team, honeypots, and trust negotiation' },
   {
     id: 'activity',
     label: 'Activity',
@@ -74,6 +84,7 @@ export const WORKSPACES: WorkspaceNavItem[] = [
 
 export const WORKSPACE_LABELS: Record<WorkspaceId, string> = {
   home: 'Protection',
+  agentic: 'Agentic AI',
   activity: 'Activity',
   threats: 'Threats',
   security: 'Security',
@@ -109,13 +120,21 @@ export const LEGACY_TAB_MAP: Record<string, { workspace: WorkspaceId; view?: str
   security: { workspace: 'security', view: 'overview' },
   'cost-health': { workspace: 'operations', view: 'analytics' },
   analytics: { workspace: 'operations', view: 'analytics' },
-  'advanced-analytics': { workspace: 'operations', view: 'advanced' },
-  advanced: { workspace: 'operations', view: 'advanced' },
+  'advanced-analytics': { workspace: 'operations', view: 'overview' },
+  advanced: { workspace: 'operations', view: 'overview' },
   cost: { workspace: 'operations', view: 'cost' },
   health: { workspace: 'operations', view: 'health' },
   fleet: { workspace: 'operations', view: 'fleet' },
-  benchmarks: { workspace: 'operations', view: 'benchmarks' },
+  benchmarks: { workspace: 'operations', view: 'overview' },
   swarm: { workspace: 'operations', view: 'swarm' },
+  agentic: { workspace: 'agentic', view: 'overview' },
+  'agentic-overview': { workspace: 'agentic', view: 'overview' },
+  'agentic-trust': { workspace: 'agentic', view: 'trust' },
+  'agentic-threats': { workspace: 'agentic', view: 'threats' },
+  'agentic-policy': { workspace: 'agentic', view: 'policy' },
+  'agentic-operations': { workspace: 'agentic', view: 'operations' },
+  'agentic-audit': { workspace: 'agentic', view: 'audit' },
+  'agentic-tools': { workspace: 'agentic', view: 'tools' },
   'setup-admin': { workspace: 'settings', view: 'setup' },
   setup: { workspace: 'settings', view: 'setup' },
   'mcp-servers': { workspace: 'settings', view: 'mcp-servers' },

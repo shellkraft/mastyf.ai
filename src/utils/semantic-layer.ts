@@ -6,6 +6,7 @@
  */
 import { getLlmConfig } from '../config/llm-config.js';
 import { isSemanticStrictForTenant } from '../tenant/tenant-semantic-config.js';
+import { reportSemanticAuditSkipped } from '../ai/semantic-llm-rate-limit.js';
 import { StructuredLogger } from './structured-logger.js';
 import { broadcastDashboardEvent } from './dashboard-events.js';
 
@@ -24,10 +25,18 @@ export function isSemanticStrictMode(tenantId?: string): boolean {
 }
 
 /** Structured log + dashboard alert (deduped per reason per process). */
+function skipReasonFromDegradation(reason: string): 'no_api_key' | 'llm_failed' | 'license' {
+  if (/unavailable|timeout|failed/i.test(reason)) return 'llm_failed';
+  if (/api_key|not configured|disabled/i.test(reason)) return 'no_api_key';
+  return 'license';
+}
+
 export function reportSemanticDegradation(
   reason: string,
   context?: Record<string, unknown>,
 ): void {
+  const tenantId = typeof context?.tenantId === 'string' ? context.tenantId : undefined;
+  reportSemanticAuditSkipped(skipReasonFromDegradation(reason), tenantId);
   if (!loggedReasons.has(reason)) {
     loggedReasons.add(reason);
     StructuredLogger.warn({

@@ -31,6 +31,7 @@ import {
   type OperationsView,
   type SettingsView,
   type ActivityView,
+  type AgenticView,
 } from '@/lib/workspace-nav';
 import { DashboardShell } from './DashboardShell';
 import { LoginGate } from './LoginGate';
@@ -55,7 +56,6 @@ import { HealthReliabilityPanel } from './dashboard/HealthReliabilityPanel';
 import { AuditExplorerPanel } from './dashboard/AuditExplorerPanel';
 import { FleetOverviewPanel } from './dashboard/FleetOverviewPanel';
 import { AnalyticsChartsHub } from './dashboard/AnalyticsChartsHub';
-import { AdvancedAnalyticsPanel } from './dashboard/AdvancedAnalyticsPanel';
 import {
   DashboardWindowProvider,
   DashboardWindowSelector,
@@ -67,9 +67,9 @@ import { hasPermission } from '@/lib/dashboard-roles';
 import type { AuthStatus } from '@/lib/guardian-api';
 import type { ThreatLabContext } from './IncidentInvestigatorDrawer';
 import { ProtectionWorkspace } from './workspaces/ProtectionWorkspace';
+import { AgenticWorkspace } from './workspaces/AgenticWorkspace';
 import { HelpWorkspace } from './workspaces/HelpWorkspace';
 import { LiveThreatIntelPanel } from './live/LiveThreatIntelPanel';
-import { LiveBenchmarksPanel } from './live/LiveBenchmarksPanel';
 import { LiveMcpServersPanel } from './live/LiveMcpServersPanel';
 import type { SwarmJobStatus } from '@/lib/guardian-api';
 
@@ -79,6 +79,7 @@ const REST_POLL_MS = 30_000;
 
 const DEFAULT_VIEWS: Record<WorkspaceId, string | undefined> = {
   home: undefined,
+  agentic: 'overview',
   activity: 'analysis',
   threats: 'overview',
   security: 'overview',
@@ -106,13 +107,11 @@ const WORKSPACE_VIEW_TABS: Partial<Record<WorkspaceId, Array<{ id: string; label
     { id: 'quarantined-intel', label: 'Quarantined Intel' },
   ],
   operations: [
-    { id: 'advanced', label: 'Advanced Analytics' },
     { id: 'analytics', label: 'Analytics' },
     { id: 'overview', label: 'Overview' },
     { id: 'cost', label: 'Cost' },
     { id: 'health', label: 'Health' },
     { id: 'fleet', label: 'Fleet' },
-    { id: 'benchmarks', label: 'Benchmarks' },
     { id: 'swarm', label: 'Swarm' },
   ],
   settings: [
@@ -130,6 +129,7 @@ export function DashboardClient() {
   const [settingsView, setSettingsView] = useState<SettingsView>('setup');
   const [activityView, setActivityView] = useState<ActivityView>('analysis');
   const [threatsView, setThreatsView] = useState<ThreatsView>('overview');
+  const [agenticView, setAgenticView] = useState<AgenticView>('overview');
   const [helpTopic, setHelpTopic] = useState<string | undefined>();
   const [swarmJobStatus, setSwarmJobStatus] = useState<SwarmJobStatus | null>(null);
   const [status, setStatus] = useState('Loading…');
@@ -179,13 +179,20 @@ export function DashboardClient() {
       const normalizedThreatsView = view === 'automation' || view === 'architecture' ? 'overview' : view;
       setThreatsView(normalizedThreatsView as ThreatsView);
     }
-    if (wsId === 'operations' && view) setOperationsView(view as OperationsView);
+    if (wsId === 'operations' && view) {
+      const normalizedOperationsView =
+        view === 'advanced' || view === 'benchmarks'
+          ? 'overview'
+          : view;
+      setOperationsView(normalizedOperationsView as OperationsView);
+    }
     if (wsId === 'settings' && view) setSettingsView(view as SettingsView);
     if (wsId === 'activity' && view) {
       const v = view === 'flow' ? 'analysis' : view;
       setActivityView(v as ActivityView);
     }
     if (wsId === 'help' && topic) setHelpTopic(topic);
+    if (wsId === 'agentic' && view) setAgenticView(view as AgenticView);
   }, []);
 
   const navigate = useCallback(
@@ -591,9 +598,6 @@ export function DashboardClient() {
                   {operationsView === 'analytics' && (
                     <AnalyticsDashboardPanel refreshKey={refreshTick} wsConnected={ws.connected} />
                   )}
-                  {operationsView === 'advanced' && (
-                    <AdvancedAnalyticsPanel refreshKey={refreshTick} />
-                  )}
                   {operationsView === 'overview' && (
                     <AnalyticsChartsHub refreshKey={refreshTick} />
                   )}
@@ -606,7 +610,6 @@ export function DashboardClient() {
                   {operationsView === 'fleet' && (
                     <FleetOverviewPanel fleet={fleetMeta?.instances ?? []} meta={fleetMeta} />
                   )}
-                  {operationsView === 'benchmarks' && <LiveBenchmarksPanel />}
                   {operationsView === 'swarm' && (
                     <SwarmPanel
                       pipeline={ws.pipeline}
@@ -641,6 +644,17 @@ export function DashboardClient() {
                     <AdminPanel roles={roles} tenantLocked={!!authStatus?.tenantLocked} />
                   )}
                 </>
+              )}
+
+              {workspace === 'agentic' && (
+                <AgenticWorkspace
+                  view={agenticView}
+                  refreshKey={refreshTick}
+                  onViewChange={(v) => {
+                    setAgenticView(v);
+                    syncNavToUrl({ workspace: 'agentic', view: v });
+                  }}
+                />
               )}
 
               {workspace === 'help' && <HelpWorkspace initialTopic={helpTopic} />}

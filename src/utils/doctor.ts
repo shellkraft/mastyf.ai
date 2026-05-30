@@ -3,6 +3,7 @@ import { resolve, dirname } from 'path';
 import chalk from 'chalk';
 import { resolveGuardianDbPath } from './guardian-db-path.js';
 import { isAiLearningEnabled, isAiAutoApplyEnabled } from './ai-enabled.js';
+import { isFieldEncryptionEnabled } from './field-encryption.js';
 
 export interface DoctorOptions {
   policyPath?: string;
@@ -57,6 +58,15 @@ export function runDoctor(opts: DoctorOptions = {}): number {
   const ws = process.env.GUARDIAN_WS_ENABLED !== 'false';
   console.log(chalk.dim(`  Dashboard API: ${dashboard ? 'enabled' : 'disabled'} (DASHBOARD_ENABLED=true)`));
   console.log(chalk.dim(`  Live WebSocket: ${ws ? 'enabled' : 'disabled'} (GUARDIAN_WS_ENABLED)`));
+
+  if (process.env.GUARDIAN_ENTERPRISE_MODE === 'true' && !isFieldEncryptionEnabled()) {
+    console.log(
+      chalk.yellow(
+        '  Enterprise mode: GUARDIAN_DB_ENCRYPTION_KEY unset — audit block_reason/args stored in plaintext',
+      ),
+    );
+    issues++;
+  }
 
   if (isAiLearningEnabled()) {
     console.log(chalk.green('  AI learning: enabled (default)'));

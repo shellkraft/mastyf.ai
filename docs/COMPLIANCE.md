@@ -9,7 +9,7 @@
 | HA state | `REDIS_URL` + optional `DB_TYPE=postgres` |
 | DPoP replay (multi-replica) | `REDIS_URL` → Redis `SET NX` jti store (`dpop-nonce-store.ts`) |
 | Secrets | `GUARDIAN_SECRET_PROVIDER` (env, Vault, AWS) |
-| Data retention | 30-day TTL auto-purge of `call_records` (`history-db.ts` `purge()`) |
+| Data retention | `MCP_GUARDIAN_RETENTION_DAYS` (default **30**); auto-purge of `call_records` via `history-db.ts` `purge()` |
 | GDPR erasure | `HistoryDatabase.eraseAllAuditData()` + operator SIEM purge |
 | HIPAA PHI patterns (template) | `policy-templates/hipaa-compliance.yaml` — merge with base policy |
 | PCI cardholder masking (template) | `policy-templates/pci-dss-masking.yaml` |
@@ -22,9 +22,10 @@
 | Encryption key lifecycle | Field encryption key versioning and rotation telemetry (`GET /api/security/encryption-status`) |
 | Signed evidence bundles | `pnpm enterprise:compliance-evidence` outputs `.sig` when `GUARDIAN_EVIDENCE_SIGNING_KEY` is set |
 
-## Data retention (default)
+## Data retention
 
-- **call_records**: Deleted after **30 days** via hourly `purge()` when using on-disk `history.db`
+- **call_records**: Deleted after **`MCP_GUARDIAN_RETENTION_DAYS`** (default **30**, min 1, max 3650) via hourly `purge()` when using on-disk `history.db` or Postgres
+- **SOX / PCI-DSS**: Many programs require **90–365 days** of access logs; set `MCP_GUARDIAN_RETENTION_DAYS=90` (or higher) and mirror audit exports to immutable SIEM/WORM storage
 - **cost_records / security_scans / health_checks**: Not TTL-purged automatically — include in erasure workflow or extend `purge()` for your policy
 - Override path: `MCP_GUARDIAN_DB_PATH` (all processes must share the same file for a single tenant)
 

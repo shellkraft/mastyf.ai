@@ -19,6 +19,7 @@ import { resolveTenantContext, InvalidTenantIdError } from '../tenant/resolve-te
 import { getUpstreamTimeoutMs } from '../utils/upstream-timeout.js';
 import { acquireProxyInflight, releaseProxyInflight } from './proxy-inflight.js';
 import { runSyncSemanticRequestGate } from './proxy-post-policy-gates.js';
+import { hasJsonRpcId } from './json-rpc-utils.js';
 import {
   fingerprintJsonRpcToolsList,
   isRugPullBlockedForCall,
@@ -361,11 +362,42 @@ export class SseProxyServer extends EventEmitter {
           },
         };
       }
+      const toolName = (jsonRpcRequest.params as { name?: string })?.name || 'unknown';
+      let requestArguments = (jsonRpcRequest.params as { arguments?: Record<string, unknown> })
+        ?.arguments;
+      const requestId = String(jsonRpcRequest.id ?? 'sse-request');
+      const { runToolCallPreForwardGuard, toolCallGuardBlockResponse } = await import(
+        './tool-call-pre-guard.js'
+      );
+      const preGuard = await runToolCallPreForwardGuard(
+        this.opts.serverName,
+        toolName,
+        requestArguments,
+        requestId,
+      );
+      if (preGuard.blocked) {
+        releaseProxyInflight(this.opts.serverName);
+        StructuredLogger.logBlocked({
+          event: 'tool_blocked',
+          requestId,
+          serverName: this.opts.serverName,
+          toolName,
+          reason: preGuard.message,
+          rule: 'payload_or_agentic',
+        });
+        return toolCallGuardBlockResponse(jsonRpcRequest.id, preGuard);
+      }
+      if (preGuard.arguments) {
+        requestArguments = preGuard.arguments;
+        const params = jsonRpcRequest.params as Record<string, unknown>;
+        if (params) params.arguments = requestArguments;
+      }
+
       const context = {
         serverName: this.opts.serverName,
-        toolName: (jsonRpcRequest.params as { name?: string })?.name || 'unknown',
-        arguments: (jsonRpcRequest.params as { arguments?: Record<string, unknown> })?.arguments,
-        requestId: String(jsonRpcRequest.id ?? 'sse-request'),
+        toolName,
+        arguments: requestArguments,
+        requestId,
         requestTokens: this.tokenCounter.count(JSON.stringify(jsonRpcRequest)),
         timestamp: new Date().toISOString(),
         tenantId,
@@ -373,6 +405,14 @@ export class SseProxyServer extends EventEmitter {
       const decision = await this.opts.policy.evaluateAsync(context);
       if (decision.action === 'block') {
         releaseProxyInflight(this.opts.serverName);
+        StructuredLogger.logBlocked({
+          event: 'tool_blocked',
+          requestId,
+          serverName: this.opts.serverName,
+          toolName,
+          reason: decision.reason,
+          rule: decision.rule,
+        });
         this.emit('blocked', { serverName: this.opts.serverName, reason: decision.reason });
         return {
           jsonrpc: '2.0',
@@ -618,9 +658,14 @@ function parseEndpointFromSse(
 }
 
 async function readRequestBody(req: IncomingMessage): Promise<string> {
-  const chunks: Buffer[] = [];
-  for await (const chunk of req) chunks.push(chunk as Buffer);
-  return Buffer.concat(chunks).toString();
+  const { readRequestBodyWithLimit } = await import('./http-proxy-security.js');
+  const result = await readRequestBodyWithLimit(req);
+  if (!result.ok) {
+    const err = new Error('Request body too large') as Error & { tooLarge: boolean };
+    err.tooLarge = true;
+    throw err;
+  }
+  return result.body;
 }
 
 function reqOnClose(res: ServerResponse, fn: () => void): void {

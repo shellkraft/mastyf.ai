@@ -99,9 +99,16 @@ export class StreamableHttpProxyServer {
       return;
     }
 
-    const chunks: Buffer[] = [];
-    for await (const chunk of req) chunks.push(chunk as Buffer);
-    const body = Buffer.concat(chunks).toString('utf-8');
+    const { readRequestBodyWithLimit } = await import('./http-proxy-security.js');
+    const { jsonRpcErrorBody } = await import('./json-rpc-utils.js');
+    const bodyRead = await readRequestBodyWithLimit(req);
+    if (!bodyRead.ok) {
+      const msg = `Payload exceeds ${bodyRead.limit} byte limit (${bodyRead.bytes} bytes)`;
+      res.writeHead(413, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(jsonRpcErrorBody(null, -32001, msg)));
+      return;
+    }
+    const body = bodyRead.body;
     let messages: Record<string, unknown>[];
     try {
       const parsed = JSON.parse(body);
@@ -340,6 +347,32 @@ export class StreamableHttpProxyServer {
       arguments?: Record<string, unknown>;
       _meta?: Record<string, unknown>;
     } | undefined;
+    const toolName = params?.name || 'unknown';
+    const requestId = String(msg.id ?? randomUUID());
+    const { runToolCallPreForwardGuard, toolCallGuardBlockResponse } = await import(
+      './tool-call-pre-guard.js'
+    );
+    const preGuard = await runToolCallPreForwardGuard(
+      this.opts.serverName,
+      toolName,
+      params?.arguments,
+      requestId,
+    );
+    if (preGuard.blocked) {
+      releaseProxyInflight(this.opts.serverName);
+      StructuredLogger.logBlocked({
+        event: 'tool_blocked',
+        requestId,
+        serverName: this.opts.serverName,
+        toolName,
+        reason: preGuard.message,
+        rule: 'payload_or_agentic',
+      });
+      return toolCallGuardBlockResponse(msg.id, preGuard);
+    }
+    if (preGuard.arguments && params) {
+      params.arguments = preGuard.arguments;
+    }
     const reqMsg = { params: { name: params?.name, arguments: params?.arguments } };
     const model = resolveModelIdForServer(this.opts.serverName);
     const tokenCounts = this.tokenCounter.countProxyCall({
@@ -350,9 +383,9 @@ export class StreamableHttpProxyServer {
     });
     const context: CallContext = {
       serverName: this.opts.serverName,
-      toolName: params?.name || 'unknown',
+      toolName,
       arguments: params?.arguments,
-      requestId: String(msg.id ?? randomUUID()),
+      requestId,
       requestTokens: tokenCounts.requestTokens,
       timestamp: new Date().toISOString(),
       tenantId,
@@ -395,6 +428,14 @@ export class StreamableHttpProxyServer {
     const semGate = await runSyncSemanticRequestGate(context, decision, this.opts.serverName);
     if (semGate.block) {
       releaseProxyInflight(this.opts.serverName);
+      StructuredLogger.logBlocked({
+        event: 'tool_blocked',
+        requestId,
+        serverName: this.opts.serverName,
+        toolName,
+        reason: semGate.reason,
+        rule: 'semantic_gate',
+      });
       return {
         jsonrpc: '2.0',
         id: msg.id,

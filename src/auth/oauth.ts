@@ -10,13 +10,16 @@ import { AuthConfig, AuthValidationResult, AgentIdentity, OIDCDiscovery } from '
 import { StructuredLogger } from '../utils/structured-logger.js';
 import { extractTenantFromJwtPayload } from '../tenant/jwt-tenant-binding.js';
 import { isBearerTokenRevoked } from './token-revocation.js';
+import { extractJwtScopes } from './jwt-scopes.js';
 
 export class OAuthValidator {
   private config: AuthConfig;
   private jwks: ReturnType<typeof jose.createRemoteJWKSet> | null = null;
   private cachedDiscovery: OIDCDiscovery | null = null;
   private discoveryFetchedAt = 0;
+  private jwksFetchedAt = 0;
   private jwksUri: string | null = null;
+  private backgroundRefreshTimer: ReturnType<typeof setInterval> | null = null;
 
   constructor(config: AuthConfig) {
     this.config = config;
@@ -25,6 +28,77 @@ export class OAuthValidator {
   private discoveryTtlMs(): number {
     const n = parseInt(process.env['GUARDIAN_OIDC_DISCOVERY_TTL_MS'] || '3600000', 10);
     return Number.isFinite(n) && n > 60_000 ? n : 3_600_000;
+  }
+
+  private jwksRefreshMs(): number {
+    const n = parseInt(process.env['GUARDIAN_JWKS_REFRESH_MS'] || '300000', 10);
+    return Number.isFinite(n) && n >= 60_000 ? n : 300_000;
+  }
+
+  private isJwksStale(): boolean {
+    if (!this.jwks) return true;
+    return Date.now() - this.jwksFetchedAt >= this.jwksRefreshMs();
+  }
+
+  private refreshJwksFromUri(jwksUri: string): void {
+    this.jwks = jose.createRemoteJWKSet(new URL(jwksUri));
+    this.jwksUri = jwksUri;
+    this.jwksFetchedAt = Date.now();
+  }
+
+  /** Refresh discovery + JWKS when TTL elapsed (before each validate). */
+  async ensureJwksFresh(force = false): Promise<void> {
+    if (!force && !this.isJwksStale() && this.jwks) return;
+
+    let jwksUri = this.config.jwksUri;
+    if (!jwksUri || force) {
+      const discovery = await this.discover(force);
+      jwksUri = discovery.jwks_uri;
+    } else if (!this.jwks) {
+      this.jwksUri = jwksUri;
+    }
+
+    if (!jwksUri) {
+      throw new Error('JWKS URI not available from discovery or config');
+    }
+    if (force || !this.jwks || this.jwksUri !== jwksUri) {
+      this.refreshJwksFromUri(jwksUri);
+      StructuredLogger.info({ event: 'jwks_refreshed', jwks_uri: jwksUri, forced: force });
+    } else {
+      this.jwksFetchedAt = Date.now();
+    }
+  }
+
+  /** Optional background JWKS refresh (call once after proxy OAuth init). */
+  startBackgroundJwksRefresh(): void {
+    if (this.backgroundRefreshTimer) return;
+    const interval = this.jwksRefreshMs();
+    this.backgroundRefreshTimer = setInterval(() => {
+      void this.ensureJwksFresh(false).catch((err: unknown) => {
+        const msg = err instanceof Error ? err.message : String(err);
+        StructuredLogger.logError({ event: 'oidc_discovery_error', serverName: 'oauth', error: `jwks refresh: ${msg}` });
+      });
+    }, interval);
+    if (typeof this.backgroundRefreshTimer.unref === 'function') {
+      this.backgroundRefreshTimer.unref();
+    }
+  }
+
+  stopBackgroundJwksRefresh(): void {
+    if (this.backgroundRefreshTimer) {
+      clearInterval(this.backgroundRefreshTimer);
+      this.backgroundRefreshTimer = null;
+    }
+  }
+
+  private isJwksSignatureError(err: unknown): boolean {
+    const msg = err instanceof Error ? err.message : String(err);
+    const code = (err as { code?: string })?.code;
+    return (
+      code === 'ERR_JWS_SIGNATURE_VERIFICATION_FAILED' ||
+      code === 'ERR_JWKS_NO_MATCHING_KEY' ||
+      /no matching key|signature verification failed/i.test(msg)
+    );
   }
 
   /**
@@ -49,7 +123,7 @@ export class OAuthValidator {
       this.discoveryFetchedAt = Date.now();
       this.jwksUri = meta.jwks_uri;
       if (meta.jwks_uri) {
-        this.jwks = jose.createRemoteJWKSet(new URL(meta.jwks_uri));
+        this.refreshJwksFromUri(meta.jwks_uri);
       }
       StructuredLogger.info({ event: 'oidc_discovery', issuer: this.config.issuer, jwks_uri: meta.jwks_uri });
       return meta;
@@ -71,44 +145,59 @@ export class OAuthValidator {
       this.jwksUri = jwksUri;
     }
     if (!this.jwks || this.jwksUri !== jwksUri) {
-      this.jwks = jose.createRemoteJWKSet(new URL(jwksUri));
-      this.jwksUri = jwksUri;
+      this.refreshJwksFromUri(jwksUri);
     }
+  }
+
+  private async verifyToken(token: string): Promise<jose.JWTPayload> {
+    if (!this.jwks) throw new Error('JWKS not initialized');
+    const ALLOWED_ALGORITHMS = ['RS256', 'RS384', 'RS512', 'ES256', 'ES384', 'PS256'];
+    const maxLifetimeSec = parseInt(process.env['GUARDIAN_JWT_MAX_LIFETIME_SEC'] || '86400', 10);
+    const { payload } = await jose.jwtVerify(token, this.jwks, {
+      issuer: this.config.issuer,
+      audience: this.config.audience,
+      algorithms: ALLOWED_ALGORITHMS,
+      clockTolerance: this.config.clockTolerance || 30,
+      maxTokenAge:
+        Number.isFinite(maxLifetimeSec) && maxLifetimeSec > 0 ? `${maxLifetimeSec}s` : '24h',
+    });
+    return payload;
   }
 
   /**
    * Validate a JWT bearer token and extract agent identity.
    */
   async validate(token: string): Promise<AuthValidationResult> {
-    if (!this.jwks) {
-      try {
-        await this.init();
-      } catch (err: any) {
-        return { valid: false, error: `Auth provider unreachable: ${err?.message}` };
-      }
+    try {
+      await this.ensureJwksFresh(false);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      return { valid: false, error: `Auth provider unreachable: ${msg}` };
     }
 
     if (!this.jwks) {
       return { valid: false, error: 'JWKS not initialized' };
     }
 
+    let payload: jose.JWTPayload;
     try {
-      // ═══ GAP 11: JWT algorithm pinning — prevents algorithm confusion attacks ═══
-      const ALLOWED_ALGORITHMS = ['RS256', 'RS384', 'RS512', 'ES256', 'ES384', 'PS256'];
-      const maxLifetimeSec = parseInt(
-        process.env['GUARDIAN_JWT_MAX_LIFETIME_SEC'] || '86400',
-        10,
-      );
-      const { payload } = await jose.jwtVerify(token, this.jwks, {
-        issuer: this.config.issuer,
-        audience: this.config.audience,
-        algorithms: ALLOWED_ALGORITHMS,
-        clockTolerance: this.config.clockTolerance || 30,
-        maxTokenAge: Number.isFinite(maxLifetimeSec) && maxLifetimeSec > 0
-          ? `${maxLifetimeSec}s`
-          : '24h',
-      });
+      payload = await this.verifyToken(token);
+    } catch (err: unknown) {
+      if (this.isJwksSignatureError(err)) {
+        try {
+          await this.ensureJwksFresh(true);
+          payload = await this.verifyToken(token);
+        } catch (retryErr: unknown) {
+          const msg = retryErr instanceof Error ? retryErr.message : String(retryErr);
+          return { valid: false, error: `JWT validation failed after JWKS refresh: ${msg}` };
+        }
+      } else {
+        const msg = err instanceof Error ? err.message : String(err);
+        return { valid: false, error: `JWT validation failed: ${msg}` };
+      }
+    }
 
+    try {
       if (!payload.sub) {
         return { valid: false, error: 'JWT missing required sub claim' };
       }
@@ -124,15 +213,16 @@ export class OAuthValidator {
       const identity: AgentIdentity = {
         sub: payload.sub,
         clientId: (payloadRecord.client_id as string) || (payloadRecord.azp as string),
-        scopes: payloadRecord.scope ? String(payloadRecord.scope).split(' ') : undefined,
+        scopes: extractJwtScopes(payloadRecord),
         issuer: payload.iss || this.config.issuer,
         expiresAt: payload.exp ? payload.exp * 1000 : undefined,
         tenantId: extractTenantFromJwtPayload(payloadRecord),
       };
 
       return { valid: true, identity };
-    } catch (err: any) {
-      return { valid: false, error: `JWT validation failed: ${err?.message}` };
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      return { valid: false, error: `JWT validation failed: ${msg}` };
     }
   }
 

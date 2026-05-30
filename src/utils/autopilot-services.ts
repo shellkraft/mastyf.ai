@@ -6,6 +6,7 @@ import { applyAutopilotEnv, isAutopilotMode } from './autopilot-profile.js';
 import { maybeAutoStart } from './threat-discovery-scheduler.js';
 import { startReportScheduler } from './report-scheduler.js';
 import { readAutopilotConfig } from './autopilot-config.js';
+import { startHealthProbeScheduler } from '../services/health-probe-scheduler.js';
 
 export function startAutopilotServices(
   historyDb: unknown,
@@ -26,4 +27,6 @@ export function startAutopilotServices(
   if (schedule && schedule !== 'off') {
     startReportScheduler(historyDb, tenantId);
   }
+
+  startHealthProbeScheduler();
 }

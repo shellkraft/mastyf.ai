@@ -19,7 +19,11 @@ Rotate by re-keying with SQLCipher export/import or restore from backup after up
 
 ### Option B — Field encryption (always available)
 
-When `GUARDIAN_DB_ENCRYPTION_KEY` is set, sensitive columns (e.g. `call_records.block_reason`) are encrypted with AES-256-GCM (`genc1:` prefix). Works on any SQLite build.
+When `GUARDIAN_DB_ENCRYPTION_KEY` is set, sensitive columns (e.g. `call_records.block_reason`) are encrypted with AES-256-GCM (`genc3:` prefix). Works on any SQLite build.
+
+Set `GUARDIAN_DB_ENCRYPT_AUDIT_ARGS=true` to also encrypt redacted `call_records.argument_snippet` values. **Tool arguments are not a substitute for full secret management** — use encryption keys, disk encryption, and minimize what you log.
+
+Without `GUARDIAN_DB_ENCRYPTION_KEY`, audit fields remain plaintext even when `GUARDIAN_DB_ENCRYPT_AUDIT_ARGS=true`.
 
 ### Option C — Disk / volume encryption (recommended baseline)
 

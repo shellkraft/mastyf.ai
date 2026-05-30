@@ -2,7 +2,6 @@ import type { ReactNode } from 'react';
 import {
   Activity,
   AlertTriangle,
-  BarChart2,
   CheckCircle,
   Eye,
   FileCode,
@@ -99,7 +98,6 @@ export const NAV_GROUPS: NavGroup[] = [
     section: 'Research',
     items: [
       { id: 'simulations', label: 'Attack sims', icon: icon(Zap) },
-      { id: 'benchmarks', label: 'Benchmarks', icon: icon(BarChart2) },
       { id: 'swarm', label: 'Swarm analysis', icon: icon(TrendingUp) },
     ],
   },

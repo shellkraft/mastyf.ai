@@ -1,13 +1,6 @@
-# Optional merges: policy-templates/http-tools-policy.yaml (GUARDIAN_HTTP_TOOLS_POLICY=true),
-# policy-templates/enterprise-cost-governance.yaml (rate limits + token budgets). See policy-templates/README.md.
-#
-# DEPLOYMENT: YAML rules alone catch a minority of adversarial fixtures — the proxy also runs
-# TypeScript guards (URL/path/shell), TR39 confusables (unicode_strict), and semantic layers.
-# Do NOT disable unicode_strict or run policy-only evaluators in production without those guards.
 version: '1.0'
 policy:
   mode: block
-  # Fail-closed: tools not explicitly allowlisted are blocked (see allowlist-common-tools).
   default_action: block
   semantic_shell: true
   unicode_strict: true
@@ -70,105 +63,109 @@ policy:
         - field: url
           patterns:
             - '^(?:file|javascript|data|vbscript):'
-            - '^https?://(?:localhost|127\\.0\\.0\\.1|\\[::1\\]|0\\.0\\.0\\.0|169\\.254\\.)'
-            - '^https?://\\d{8,10}(?:/|$)'
-            - 'metadata\\.google'
+            - ^https?://(?:localhost|127\\.0\\.0\\.1|\\[::1\\]|0\\.0\\.0\\.0|169\\.254\\.)
+            - ^https?://\\d{8,10}(?:/|$)
+            - metadata\\.google
         - field: href
           patterns:
             - '^(?:file|javascript|data):'
-            - '^https?://(?:localhost|127\\.0\\.0\\.1)'
+            - ^https?://(?:localhost|127\\.0\\.0\\.1)
         - field: webhook
           patterns:
-            - '^https?://(?:localhost|127\\.0\\.0\\.1|169\\.254\\.)'
+            - ^https?://(?:localhost|127\\.0\\.0\\.1|169\\.254\\.)
         - field: callback
           patterns:
-            - '^https?://(?:localhost|127\\.0\\.0\\.1|169\\.254\\.)'
+            - ^https?://(?:localhost|127\\.0\\.0\\.1|169\\.254\\.)
         - field: target
           patterns:
             - '^(?:file|javascript|data):'
         - field: message
           patterns:
-            - 'https?://(?:localhost|127\\.0\\.0\\.1|169\\.254\\.|10\\.|192\\.168\\.|172\\.(?:1[6-9]|2\\d|3[01])\\.)'
+            - https?://(?:localhost|127\\.0\\.0\\.1|169\\.254\\.|10\\.|192\\.168\\.|172\\.(?:1[6-9]|2\\d|3[01])\\.)
         - field: body
           patterns:
-            - 'https?://(?:localhost|127\\.0\\.0\\.1|169\\.254\\.|10\\.|192\\.168\\.|172\\.(?:1[6-9]|2\\d|3[01])\\.)'
+            - https?://(?:localhost|127\\.0\\.0\\.1|169\\.254\\.|10\\.|192\\.168\\.|172\\.(?:1[6-9]|2\\d|3[01])\\.)
         - field: link
           patterns:
-            - '^https?://(?:localhost|127\\.0\\.0\\.1|169\\.254\\.|10\\.|192\\.168\\.|172\\.(?:1[6-9]|2\\d|3[01])\\.)'
+            - ^https?://(?:localhost|127\\.0\\.0\\.1|169\\.254\\.|10\\.|192\\.168\\.|172\\.(?:1[6-9]|2\\d|3[01])\\.)
     - name: block-sensitive-paths
       description: Block reads/lists of credentials, SSH, env files, and filesystem root
       action: block
       argPatterns:
         - field: path
           patterns:
-            - '^/$'
-            - '^/etc/'
-            - '/\\.ssh'
-            - '/\\.env'
-            - '/\\.aws/credentials'
-            - '(?:^|/)passwd$'
-            - 'id_rsa'
-            - '/var/run/docker\\.sock'
-            - '/var/run/secrets/kubernetes\\.io/'
-            - 'terraform\\.tfstate'
-            - '\\.npmrc'
-            - '\\.git-credentials'
-            - '\\.vault-token'
-            - 'service-account.*\\.json'
-            - '\\.kube/config'
-            - '/root/\\.kube/config'
-            - '/etc/kubernetes/admin\\.conf'
+            - ^/$
+            - ^/etc/
+            - /\\.ssh
+            - /\\.env
+            - /\\.aws/credentials
+            - (?:^|/)passwd$
+            - id_rsa
+            - /var/run/docker\\.sock
+            - /var/run/secrets/kubernetes\\.io/
+            - terraform\\.tfstate
+            - \\.npmrc
+            - \\.git-credentials
+            - \\.vault-token
+            - service-account.*\\.json
+            - \\.kube/config
+            - /root/\\.kube/config
+            - /etc/kubernetes/admin\\.conf
         - field: file
           patterns:
-            - '^/$'
-            - '^/etc/'
-            - '/\\.ssh'
-            - '/\\.env'
-            - '/\\.aws/credentials'
-            - '/var/run/docker\\.sock'
-            - '/var/run/secrets/kubernetes\\.io/'
-            - 'terraform\\.tfstate'
-            - '\\.npmrc'
-            - '\\.git-credentials'
-            - '\\.vault-token'
-            - 'service-account.*\\.json'
-            - '\\.kube/config'
-            - '/root/\\.kube/config'
+            - ^/$
+            - ^/etc/
+            - /\\.ssh
+            - /\\.env
+            - /\\.aws/credentials
+            - /var/run/docker\\.sock
+            - /var/run/secrets/kubernetes\\.io/
+            - terraform\\.tfstate
+            - \\.npmrc
+            - \\.git-credentials
+            - \\.vault-token
+            - service-account.*\\.json
+            - \\.kube/config
+            - /root/\\.kube/config
         - field: directory
           patterns:
-            - '^/$'
-            - '^/etc/'
-            - '/var/run/secrets/kubernetes\\.io/'
+            - ^/$
+            - ^/etc/
+            - /var/run/secrets/kubernetes\\.io/
     - name: block-sql-exfil
       description: Block obvious bulk data exfiltration SQL in tool arguments
       action: block
       argPatterns:
         - field: sql
           patterns:
-            - \bselect\b.+\bfrom\b.+\b(accounts|customers|users|credentials|secrets|payments|transactions|admin_users|passwords)\b
-            - \bselect\s+\*\s+from\b.+\b(accounts|customers|users|credentials|secrets|payments|transactions|admin_users|passwords)\b
+            - >-
+              \bselect\b.+\bfrom\b.+\b(accounts|customers|users|credentials|secrets|payments|transactions|admin_users|passwords)\b
+            - >-
+              \bselect\s+\*\s+from\b.+\b(accounts|customers|users|credentials|secrets|payments|transactions|admin_users|passwords)\b
             - \bunion\b.+\bselect\b
             - \bdelete\s+from\b
             - \b(?:drop|truncate)\s+table\b
             - \bload_file\s*\(
             - \bsleep\s*\(
             - \bbenchmark\s*\(
-            - '\\$where'
-            - '\\$ne'
-            - '\\$gt'
-            - '\\$regex'
+            - \\$where
+            - \\$ne
+            - \\$gt
+            - \\$regex
             - __schema
             - introspection
             - admin\)\(&
         - field: query
           patterns:
-            - \bselect\b.+\bfrom\b.+\b(accounts|customers|users|credentials|secrets|payments|transactions|admin_users|passwords)\b
-            - \bselect\s+\*\s+from\b.+\b(accounts|customers|users|credentials|secrets|payments|transactions|admin_users|passwords)\b
+            - >-
+              \bselect\b.+\bfrom\b.+\b(accounts|customers|users|credentials|secrets|payments|transactions|admin_users|passwords)\b
+            - >-
+              \bselect\s+\*\s+from\b.+\b(accounts|customers|users|credentials|secrets|payments|transactions|admin_users|passwords)\b
             - \bunion\b.+\bselect\b
             - \bdelete\s+from\b
             - \badmin'\s*--
-            - '\\$where'
-            - '\\$ne'
+            - \\$where
+            - \\$ne
         - field: q
           patterns:
             - \badmin'\s*--
@@ -176,21 +173,21 @@ policy:
             - \bunion\b.+\bselect\b
         - field: blob
           patterns:
-            - '^.{50000,}$'
+            - ^.{50000,}$
         - field: data
           patterns:
-            - '^.{50000,}$'
+            - ^.{50000,}$
         - field: body
           patterns:
             - \bdelete\s+from\b
             - \bselect\s+\*\s+from\b.+\b(payments|transactions|credentials|users)\b
-            - '\\$ne'
+            - \\$ne
     - name: block-encoding-evasion
       description: Block base64 and raw hex blobs used to hide instructions (layered decode in encoding-guard)
       action: block
       patterns:
         - (?:^|[^A-Za-z0-9+/])(?=[A-Za-z0-9+/]{24,}(?:.*[+/=A-Z0-9]))[A-Za-z0-9+/]{24,}={0,2}(?:[^A-Za-z0-9+/]|$)
-        - '\b(?:(?!(.)\1{31,})[0-9a-fA-F]){32,}\b'
+        - \b(?:(?!(.)\1{31,})[0-9a-fA-F]){32,}\b
       argPatterns:
         - field: '*'
           patterns:
@@ -227,3 +224,11 @@ policy:
       description: Block tool calls exceeding 50K input tokens
       action: block
       maxTokens: 50000
+    - name: quarantine-semantic-177963052577
+      description: '[QUARANTINE] Reinforce semantic threat THR-S2840 from monitor'
+      action: block
+      tools:
+        allow:
+          - run
+      patterns:
+        - \{"x":"ignore all previous instructions developer mode"\}

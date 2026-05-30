@@ -141,6 +141,13 @@ export const circuitBreakerState = new Gauge({
   registers: [registry],
 });
 
+export const circuitBreakerSyncTotal = new Counter({
+  name: 'mcp_guardian_circuit_breaker_sync_total',
+  help: 'Redis circuit breaker sync operations',
+  labelNames: ['op', 'result'],
+  registers: [registry],
+});
+
 export const activeSessions = new Gauge({
   name: 'mcp_guardian_active_sessions',
   help: 'Number of active session tokens',

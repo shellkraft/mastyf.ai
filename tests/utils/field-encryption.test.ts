@@ -16,7 +16,7 @@ describe('field-encryption', () => {
   it('round-trips sensitive text', () => {
     const plain = 'blocked: secret path /home/user/.ssh/id_rsa';
     const enc = encryptField(plain);
-    expect(enc).toMatch(/^genc[12]:/);
+    expect(enc).toMatch(/^genc[123]:/);
     expect(decryptField(enc)).toBe(plain);
   });
 
