@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Publish all @mcp-guardian packages in dependency order.
-# Server/CLI publish from .tgz so npm registry manifest matches tarball (postpack
-# must not restore workspace: specs before metadata is indexed).
+# Server/CLI publish from .tgz; postpack restore runs ONLY after publish so npm
+# registry manifest keeps semver deps (not workspace:).
 # Requires: npm login (npm whoami). Auth options:
 #   NPM_AUTH_TYPE=web ./scripts/publish-npm-all.sh   # browser SSO (recommended)
 #   NPM_OTP=123456 ./scripts/publish-npm-all.sh      # 2FA one-time password
@@ -19,6 +19,18 @@ else
   PUBLISH_ARGS+=(--auth-type=web)
 fi
 
+pack_tgz() {
+  npm pack --silent 2>/dev/null | grep '\.tgz$' | tail -1
+}
+
+publish_from_tgz() {
+  local pkg_name="$1"
+  local version="$2"
+  local tgz="$3"
+  npm publish "$tgz" "${PUBLISH_ARGS[@]}"
+  sleep 3
+  node "$ROOT/scripts/verify-npm-registry-manifest.mjs" "$pkg_name" "$version"
+}
 
 echo "npm user: $(npm whoami)"
 echo "Building..."
@@ -51,8 +63,9 @@ else
   echo ""
   echo "=== Publishing @mcp-guardian/server@${SERVER_VERSION} from tarball ==="
   node scripts/validate-npm-pack.mjs
-  SERVER_TGZ=$(npm pack --silent 2>/dev/null | grep '\.tgz$' | tail -1)
-  npm publish "$SERVER_TGZ" "${PUBLISH_ARGS[@]}"
+  SERVER_TGZ=$(pack_tgz)
+  publish_from_tgz "@mcp-guardian/server" "$SERVER_VERSION" "$SERVER_TGZ"
+  node scripts/postpack-npm-deps.mjs
   rm -f "$SERVER_TGZ"
 fi
 
@@ -64,13 +77,13 @@ else
   echo ""
   echo "=== Publishing @mcp-guardian/cli@${CLI_VERSION} from tarball ==="
   (cd packages/cli && node ../../scripts/validate-npm-pack.mjs)
-  CLI_TGZ=$(cd packages/cli && npm pack --silent 2>/dev/null | grep '\.tgz$' | tail -1)
-  (cd packages/cli && npm publish "$CLI_TGZ" "${PUBLISH_ARGS[@]}")
+  CLI_TGZ=$(cd packages/cli && pack_tgz)
+  (cd packages/cli && publish_from_tgz "@mcp-guardian/cli" "$CLI_VERSION" "$CLI_TGZ")
+  (cd packages/cli && PREPACK_PKG=package.json node ../../scripts/postpack-npm-deps.mjs)
   rm -f "packages/cli/$CLI_TGZ"
 fi
 
 echo ""
-echo "Done. Verify registry manifest (must NOT contain workspace:):"
-echo "  npm view @mcp-guardian/server@$(node -p "require('./package.json').version") dependencies"
-echo "  npm view @mcp-guardian/core version"
-echo "  npm view @mcp-guardian/plugin-sdk version"
+echo "Done. Verify install:"
+echo "  npm install -g @mcp-guardian/server@${SERVER_VERSION}"
+echo "  npm view @mcp-guardian/server@${SERVER_VERSION} dependencies"

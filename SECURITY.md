@@ -71,7 +71,7 @@ Third-party scanners (Socket, npm audit UI, Snyk) may flag `@mcp-guardian/server
 Install only from npm:
 
 ```bash
-npm install @mcp-guardian/server@4.1.3
+npm install @mcp-guardian/server@4.1.5
 ```
 
 Verify tarball before publish (maintainers):

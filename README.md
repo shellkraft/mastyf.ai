@@ -12,7 +12,11 @@
 [![License](https://img.shields.io/badge/License-MIT-yellow)](LICENSE)
 [![CI](https://github.com/rudraneel93/mcp-guardian/actions/workflows/ci.yml/badge.svg)](https://github.com/rudraneel93/mcp-guardian/actions/workflows/ci.yml)
 
-**Version 4.1.4** · [Website](https://mcp-guardian-cloud.vercel.app) · [npm](https://www.npmjs.com/package/@mcp-guardian/server) · [Changelog](CHANGELOG.md)
+**Version 4.1.5** · [Website](https://mcp-guardian-cloud.vercel.app) · [npm](https://www.npmjs.com/package/@mcp-guardian/server) · [Changelog](CHANGELOG.md)
+
+### What's new in 4.1.5
+
+- **npm install** — fixes broken `@mcp-guardian/server@4.1.4` registry manifest (`workspace:` deps). Use **4.1.5+**.
 
 ### What's new in 4.1.4
 
@@ -597,7 +601,7 @@ Install the published server package. Pin **4.1.3+** — older 4.1.x releases ha
 
 ```bash
 # Global CLI (mcp-guardian command on your PATH)
-npm install -g @mcp-guardian/server@4.1.4
+npm install -g @mcp-guardian/server@4.1.5
 
 # Or install in a project directory
 npm install @mcp-guardian/server@4.1.3
@@ -832,7 +836,7 @@ Agentic features: [docs/AGENTIC_QUICKSTART.md](docs/AGENTIC_QUICKSTART.md) · [d
 
 | Command | What it does |
 |---------|----------------|
-| `npm install -g @mcp-guardian/server@4.1.4` | Install published CLI |
+| `npm install -g @mcp-guardian/server@4.1.5` | Install published CLI |
 | `mcp-guardian onboard` | Auto-wrap MCP client configs |
 | `mcp-guardian doctor` | Validate install, DB, policy |
 | `mcp-guardian proxy --policy default-policy.yaml` | Run proxy (add `--config` for MCP servers) |
@@ -853,7 +857,7 @@ Agentic features: [docs/AGENTIC_QUICKSTART.md](docs/AGENTIC_QUICKSTART.md) · [d
 
 | Symptom | Fix |
 |---------|-----|
-| **`InstallError` / `workspace:` on npm** | Use `@mcp-guardian/server@4.1.3+`, not 4.1.1–4.1.2 |
+| **`InstallError` / `workspace:` on npm** | Use `@mcp-guardian/server@4.1.5+`, not 4.1.1–4.1.4 |
 | **BundlePhobia fails on `@mcp-guardian/server`** | Expected — it is a Node server, not a browser bundle. Use [@mcp-guardian/core](https://bundlephobia.com/package/@mcp-guardian/core@4.1.3) for size analysis |
 | **Empty dashboard charts** | Set `MCP_GUARDIAN_DB_PATH` to the same path as the proxy; widen time window; run `pnpm real-life:filesystem` |
 | **Port 4000 in use** | `lsof -ti :4000 \| xargs kill` or `DASHBOARD_PORT=4001 pnpm dashboard:proxy` |
@@ -870,7 +874,7 @@ More: [SECURITY.md](SECURITY.md) (npm install hygiene) · [docs/REAL_WORLD_INTEG
 **From npm (wrap your AI client):**
 
 ```bash
-npm install -g @mcp-guardian/server@4.1.4
+npm install -g @mcp-guardian/server@4.1.5
 mcp-guardian onboard
 ```
 

@@ -1,6 +1,6 @@
 {
   "name": "@mcp-guardian/cli",
-  "version": "4.1.4",
+  "version": "4.1.5",
   "description": "CLI binary for scanning MCP tool definitions",
   "type": "module",
   "bin": {
@@ -12,12 +12,11 @@
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "prepack": "node ../../scripts/prepack-npm-deps.mjs",
-    "postpack": "node ../../scripts/postpack-npm-deps.mjs",
     "prepublishOnly": "pnpm run build && node ../../scripts/validate-npm-pack.mjs"
   },
   "dependencies": {
-    "@mcp-guardian/core": "workspace:^4.1.4",
-    "@mcp-guardian/server": "workspace:^4.1.4"
+    "@mcp-guardian/core": "workspace:^4.1.5",
+    "@mcp-guardian/server": "workspace:^4.1.5"
   },
   "devDependencies": {
     "typescript": "^5.4.0",

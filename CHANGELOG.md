@@ -2,6 +2,13 @@
 
 All notable changes to MCP Guardian will be documented in this file.
 
+## [4.1.5] - 2026-06-01
+
+### npm install fix (registry manifest)
+
+- **Root cause** — `postpack` restored `workspace:` in `package.json` before `npm publish` indexed registry metadata (4.1.3–4.1.4 broken).
+- **Fix** — removed automatic `postpack` hook; publish script restores workspace specs only **after** publish + `verify-npm-registry-manifest.mjs`.
+
 ## [4.1.4] - 2026-06-01
 
 ### Global CLI onboard fix

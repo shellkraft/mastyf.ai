@@ -3,9 +3,10 @@
  * Fail if `npm pack` would ship workspace: specs or install lifecycle scripts.
  * Run from package root (monorepo root for @mcp-guardian/server, or packages/cli).
  */
-import { execSync } from 'node:child_process';
+import { execSync, spawnSync } from 'node:child_process';
 import { readFileSync, unlinkSync, existsSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const cwd = process.cwd();
 const raw = execSync('npm pack --silent 2>/dev/null', { cwd, encoding: 'utf8' });
@@ -55,4 +56,10 @@ try {
   console.log(`[validate-npm-pack] OK ${pkg.name}@${pkg.version} (${tgzName})`);
 } finally {
   if (existsSync(tgzPath)) unlinkSync(tgzPath);
+  const postpack = join(dirname(fileURLToPath(import.meta.url)), 'postpack-npm-deps.mjs');
+  spawnSync(process.execPath, [postpack], {
+    cwd,
+    stdio: 'inherit',
+    env: { ...process.env, PREPACK_PKG: join(cwd, 'package.json') },
+  });
 }
