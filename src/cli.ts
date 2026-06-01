@@ -431,6 +431,7 @@ program
   .option('--workspace-root <path>', 'Directory for guardian-configs output', process.cwd())
   .option('--skip <names>', 'Comma-separated server names to skip', 'mcp-guardian,guardian')
   .option('--start-proxy', 'Print command to start proxy for first wrapped server', false)
+  .option('--start', 'Start proxy + dashboard after onboarding', false)
   .action(async (opts: {
     client: string;
     config?: string;
@@ -440,8 +441,9 @@ program
     workspaceRoot: string;
     skip: string;
     startProxy: boolean;
+    start: boolean;
   }) => {
-    const { runOnboard } = await import('./cli/onboard.js');
+    const { runOnboardAndMaybeStart } = await import('./cli/onboard.js');
     type WrapClient = import('./wrap/client-wrap.js').WrapClient;
     const client = opts.client as WrapClient;
     const valid = ['cline', 'cursor', 'claude-desktop', 'windsurf', 'auto'];
@@ -450,7 +452,7 @@ program
       process.exit(1);
     }
     try {
-      runOnboard({
+      await runOnboardAndMaybeStart({
         client,
         configPath: opts.config,
         policyPath: opts.policy,
@@ -459,11 +461,44 @@ program
         apply: opts.apply,
         skipNames: opts.skip.split(',').map((s) => s.trim()).filter(Boolean),
         startProxy: opts.startProxy,
+        start: opts.start,
       });
     } catch (err: unknown) {
       console.error(chalk.red((err as Error).message));
       process.exit(1);
     }
+  });
+
+program
+  .command('start')
+  .description('Start MCP proxy + web dashboard (local defaults, http://localhost:4000)')
+  .option('-c, --config <path>', 'Guardian MCP config JSON (single stdio server)')
+  .option('--policy <path>', 'Policy YAML (default: policy-audit.yaml from install root)')
+  .option('--blocking-mode <mode>', 'Policy mode: audit, warn, block', 'block')
+  .option('--build-dashboard', 'Build dashboard SPA before starting (git clone)')
+  .action(async (opts: {
+    config?: string;
+    policy?: string;
+    blockingMode: string;
+    buildDashboard?: boolean;
+  }) => {
+    const { runStart } = await import('./cli/start.js');
+    await runStart({
+      config: opts.config,
+      policy: opts.policy,
+      blockingMode: opts.blockingMode,
+      buildDashboard: opts.buildDashboard,
+    });
+  });
+
+program
+  .command('setup')
+  .description('Developer setup: pnpm install, build server, build dashboard SPA (git clone only)')
+  .option('--skip-dashboard', 'Skip dashboard SPA build', false)
+  .option('--project-root <path>', 'Monorepo root', resolveGuardianInstallRoot())
+  .action(async (opts: { skipDashboard?: boolean; projectRoot: string }) => {
+    const { runSetup } = await import('./cli/setup.js');
+    await runSetup({ projectRoot: opts.projectRoot, skipDashboard: opts.skipDashboard });
   });
 
 program

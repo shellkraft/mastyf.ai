@@ -21,6 +21,7 @@ fi
 
 pack_tgz() {
   npm pack --silent 2>/dev/null | grep '\.tgz$' | tail -1
+  node "$ROOT/scripts/postpack-npm-deps.mjs" 2>/dev/null || true
 }
 
 publish_from_tgz() {
@@ -57,6 +58,12 @@ if ! npm view "@mcp-guardian/server@${SERVER_VERSION}" version &>/dev/null; then
   echo "Building @mcp-guardian/server (full monorepo build)..."
   pnpm install --no-frozen-lockfile
   pnpm run build
+  echo "Building dashboard SPA for npm tarball..."
+  sh "$ROOT/scripts/build-dashboard-spa.sh"
+  if [[ ! -f "$ROOT/deploy/dashboard-spa/out/index.html" ]]; then
+    echo "ERROR: deploy/dashboard-spa/out/index.html missing after dashboard build" >&2
+    exit 1
+  fi
 fi
 
 publish_pkg() {

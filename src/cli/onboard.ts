@@ -44,6 +44,8 @@ export interface OnboardOptions {
   apply: boolean;
   skipNames: string[];
   startProxy: boolean;
+  /** Run `mcp-guardian start` after successful onboard */
+  start?: boolean;
 }
 
 export function runOnboard(opts: OnboardOptions): OnboardArtifact {
@@ -108,13 +110,11 @@ export function runOnboard(opts: OnboardOptions): OnboardArtifact {
     console.log(chalk.green('  Reload MCP servers in your IDE (restart Cursor or reconnect MCP).'));
   }
   console.log(chalk.cyan('\n  Observe traffic:'));
-  console.log(chalk.dim('    mcp-guardian proxy --config <guardian-configs/…>  (or pnpm dashboard:proxy from git clone)'));
+  console.log(chalk.dim('    mcp-guardian start'));
   console.log(chalk.dim('    Open http://localhost:4000 → Setup tab'));
   if (opts.startProxy && wrap.wrapped.length > 0) {
-    const first = wrap.wrapped[0];
-    const cfg = join(wrap.configsDir, `${first.replace(/[^a-zA-Z0-9_-]/g, '_')}.json`);
-    console.log(chalk.cyan('\n  Start proxy for first server (optional):'));
-    console.log(chalk.dim(`    ./scripts/guardian-proxy.sh ${cfg}`));
+    console.log(chalk.cyan('\n  Start proxy + dashboard:'));
+    console.log(chalk.dim('    mcp-guardian start'));
   }
   console.log(chalk.cyan('\n  Run security analysis:'));
   console.log(chalk.dim('    Dashboard → Agent flow → Run full security analysis'));
@@ -122,5 +122,14 @@ export function runOnboard(opts: OnboardOptions): OnboardArtifact {
   console.log(chalk.dim(`\n  Onboard status saved: ${ONBOARD_PATH}`));
   console.log(chalk.dim(`  History DB: ${resolveGuardianDbPath()}`));
 
+  return artifact;
+}
+
+export async function runOnboardAndMaybeStart(opts: OnboardOptions): Promise<OnboardArtifact> {
+  const artifact = runOnboard(opts);
+  if (opts.start) {
+    const { runStart } = await import('./start.js');
+    await runStart({ installRoot: resolve(opts.projectRoot ?? resolveGuardianInstallRoot()) });
+  }
   return artifact;
 }

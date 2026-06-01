@@ -18,7 +18,15 @@ fi
 
 if [ ! -f deploy/dashboard-spa/out/index.html ]; then
   echo "[dashboard-proxy] Building dashboard SPA…" >&2
-  pnpm dashboard:build
+  SPA="deploy/dashboard-spa"
+  if [ -f scripts/build-dashboard-spa.sh ]; then
+    sh scripts/build-dashboard-spa.sh
+  elif [ -x "$SPA/node_modules/.bin/next" ]; then
+    (cd "$SPA" && npm run build)
+  else
+    echo "[dashboard-proxy] Installing dashboard deps (npm)…" >&2
+    (cd "$SPA" && npm install && npm run build)
+  fi
 fi
 
 # Stop standalone dashboard:serve if it holds :4000

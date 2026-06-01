@@ -20,7 +20,7 @@ scenarios/dogfood/sandbox/
 test-report.html
 test-report*.html
 corpus-eval-report.json
-benchmark-report.json
+/benchmark-report.json
 assets/ml/prompt-injection/onnx/*.onnx
 .venv/
 .package.prepack-backup.json

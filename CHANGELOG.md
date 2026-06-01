@@ -2,6 +2,27 @@
 
 All notable changes to MCP Guardian will be documented in this file.
 
+## [4.1.6] - 2026-06-01
+
+### Added
+
+- **`mcp-guardian start`** — proxy + dashboard with local dev defaults (`http://localhost:4000`)
+- **`mcp-guardian setup`** — one-shot monorepo install (pnpm install, build, dashboard SPA)
+- **`mcp-guardian onboard --start`** — onboard then start in one command
+- **[docs/INSTALL.md](docs/INSTALL.md)** — installation and troubleshooting guide
+- **CI** — `install-smoke.yml` validates npm pack ships prebuilt dashboard `out/`
+
+### Changed
+
+- **README** simplified: install and troubleshooting first; architecture detail moved to linked docs
+
+### Fixed
+
+- Dashboard SPA in pnpm workspace; resilient `build-dashboard-spa.sh` with seed data checks
+- `benchmark-report.json` tracked for fresh clones (`.gitignore` scoped to repo root only)
+- npm publish builds `deploy/dashboard-spa/out/` before pack; validate tarball includes `index.html`
+- `start-dashboard-proxy.sh` falls back to `npm install` in SPA dir when needed
+
 ## [4.1.5] - 2026-06-01
 
 ### npm install fix (registry manifest)

@@ -60,20 +60,20 @@ for (const section of ['dependencies', 'devDependencies', 'optionalDependencies'
 }
 
 if (pkg.scripts && typeof pkg.scripts === 'object') {
-  const kept = {};
-  for (const [key, val] of Object.entries(pkg.scripts)) {
+  for (const key of Object.keys(pkg.scripts)) {
     if (STRIP_SCRIPT_KEYS.has(key)) {
       changed = true;
       console.error(`[prepack] stripped lifecycle script "${key}"`);
-      continue;
     }
-    // Consumer tarballs must not ship maintainer/dev scripts (supply-chain scanners).
-    changed = true;
   }
-  if (Object.keys(kept).length === 0) {
+  for (const key of STRIP_SCRIPT_KEYS) {
+    if (pkg.scripts[key]) delete pkg.scripts[key];
+  }
+  // Consumer tarballs must not ship maintainer/dev scripts (supply-chain scanners).
+  if (Object.keys(pkg.scripts).length > 0) {
     delete pkg.scripts;
-  } else {
-    pkg.scripts = kept;
+    changed = true;
+    console.error('[prepack] stripped scripts block (npm consumer tarball)');
   }
 }
 

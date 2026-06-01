@@ -163,7 +163,7 @@ export async function getOnboardingStatus(projectRoot = REPO_ROOT): Promise<Onbo
     dbPath,
     commands: {
       onboard: 'pnpm onboard -- --client cursor --apply',
-      dashboardProxy: 'pnpm dashboard:build && pnpm dashboard:proxy',
+      dashboardProxy: 'mcp-guardian start',
       runAnalysis: 'pnpm security-swarm:analyze',
     },
   };

@@ -47,6 +47,19 @@ try {
     }
   }
 
+  if (pkg.name === '@mcp-guardian/server') {
+    try {
+      execSync(
+        `tar -xOf ${JSON.stringify(tgzPath)} package/deploy/dashboard-spa/out/index.html`,
+        { encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] },
+      );
+    } catch {
+      errors.push(
+        'deploy/dashboard-spa/out/index.html missing (run scripts/build-dashboard-spa.sh before npm pack)',
+      );
+    }
+  }
+
   if (errors.length > 0) {
     console.error(`[validate-npm-pack] ${pkg.name}@${pkg.version} tarball is not safe to publish:\n`);
     for (const e of errors) console.error(`  - ${e}`);

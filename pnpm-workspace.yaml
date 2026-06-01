@@ -1,6 +1,7 @@
 packages:
   - packages/*
   - apps/*
+  - deploy/dashboard-spa
 
 ignoredBuiltDependencies:
   - better-sqlite3
