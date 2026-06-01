@@ -1,0 +1,10 @@
+{"event":"session_rotate","timestamp":"2026-05-31T16:47:43.226Z","tenantId":"default","oldTokenPrefix":"eyJpYXQiOjE3","newTokenPrefix":"eyJpYXQiOjE3"}
+{"event":"session_rotate","timestamp":"2026-05-31T18:39:39.583Z","tenantId":"default","oldTokenPrefix":"mcp_guardian","newTokenPrefix":"mcp_guardian"}
+{"event":"session_rotate","timestamp":"2026-05-31T18:39:39.584Z","tenantId":"default","oldTokenPrefix":"mcp_guardian","newTokenPrefix":"mcp_guardian"}
+{"event":"session_rotate","timestamp":"2026-05-31T18:39:58.031Z","tenantId":"default","oldTokenPrefix":"eyJpYXQiOjE3","newTokenPrefix":"eyJpYXQiOjE3"}
+{"event":"session_rotate","timestamp":"2026-05-31T19:19:03.981Z","tenantId":"default","oldTokenPrefix":"mcp_guardian","newTokenPrefix":"mcp_guardian"}
+{"event":"session_rotate","timestamp":"2026-05-31T19:19:03.981Z","tenantId":"default","oldTokenPrefix":"mcp_guardian","newTokenPrefix":"mcp_guardian"}
+{"event":"session_rotate","timestamp":"2026-05-31T19:19:22.429Z","tenantId":"default","oldTokenPrefix":"eyJpYXQiOjE3","newTokenPrefix":"eyJpYXQiOjE3"}
+{"event":"session_rotate","timestamp":"2026-05-31T20:08:15.048Z","tenantId":"default","oldTokenPrefix":"mcp_guardian","newTokenPrefix":"mcp_guardian"}
+{"event":"session_rotate","timestamp":"2026-05-31T20:08:15.048Z","tenantId":"default","oldTokenPrefix":"mcp_guardian","newTokenPrefix":"mcp_guardian"}
+{"event":"session_rotate","timestamp":"2026-05-31T20:08:34.888Z","tenantId":"default","oldTokenPrefix":"eyJpYXQiOjE3","newTokenPrefix":"eyJpYXQiOjE3"}

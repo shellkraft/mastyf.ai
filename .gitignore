@@ -27,6 +27,12 @@ assets/ml/prompt-injection/onnx/*.onnx
 scripts/.agent-proxy-config.json
 scenarios/real-life/output/
 reports/tenants/
+reports/.guardian-home/
+*.db-shm
+*.db-wal
+*.db.pid
+reports/provenance-test.tar.gz
+reports/insurance-test/
 .vercel
 .env*.local
 *.tsbuildinfo

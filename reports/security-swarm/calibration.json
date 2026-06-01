@@ -1,18 +1,18 @@
 {
-  "timestamp": "2026-05-28T12:07:19.535Z",
+  "timestamp": "2026-05-30T07:51:31.605Z",
   "windowDays": 7,
   "storage": "jsonl",
   "llmConfigured": true,
   "totals": {
-    "records": 68,
-    "flagged": 66,
-    "labeled": 29,
-    "truePositive": 28,
-    "falsePositive": 1
+    "records": 39,
+    "flagged": 39,
+    "labeled": 0,
+    "truePositive": 0,
+    "falsePositive": 0
   },
   "metrics": {
-    "avgFlagConfidence": 0.78,
-    "labeledFpRate": 0.034
+    "avgFlagConfidence": 0.763,
+    "labeledFpRate": null
   },
   "thresholds": {
     "current": {
@@ -20,21 +20,13 @@
       "GUARDIAN_LOCAL_SEMANTIC_THRESHOLD": 0.55
     },
     "recommended": {
-      "GUARDIAN_SEMANTIC_MIN_CONFIDENCE": 0.57,
-      "GUARDIAN_LOCAL_SEMANTIC_THRESHOLD": 0.53
+      "GUARDIAN_SEMANTIC_MIN_CONFIDENCE": 0.6,
+      "GUARDIAN_LOCAL_SEMANTIC_THRESHOLD": 0.55
     },
     "note": "Apply manually or via tenant config; auto-apply requires quorum (GUARDIAN_AI_AUTO_APPLY stays false in prod)."
   },
   "profile": "hybrid",
   "sampleFlagged": [
-    {
-      "id": "1779736473586-zh5lsrl",
-      "toolName": "read_file",
-      "confidence": 0.88,
-      "categories": [
-        "path-traversal"
-      ]
-    },
     {
       "id": "1779743251875-59iugi1",
       "toolName": "run",
@@ -66,53 +58,15 @@
       "categories": [
         "prompt-injection"
       ]
-    }
-  ],
-  "sampleLabeled": [
-    {
-      "id": "1779464970927-lk1f1tp",
-      "toolName": "run",
-      "confidence": 0.75,
-      "label": "true_positive",
-      "categories": [
-        "prompt-injection"
-      ]
     },
     {
-      "id": "1779471654111-svti3de",
+      "id": "1779972335232-k3n05kz",
       "toolName": "run",
       "confidence": 0.75,
-      "label": "true_positive",
-      "categories": [
-        "prompt-injection"
-      ]
-    },
-    {
-      "id": "1779471837833-enoh9zb",
-      "toolName": "run",
-      "confidence": 0.75,
-      "label": "true_positive",
-      "categories": [
-        "prompt-injection"
-      ]
-    },
-    {
-      "id": "1779476222455-ep018ey",
-      "toolName": "run",
-      "confidence": 0.75,
-      "label": "true_positive",
-      "categories": [
-        "prompt-injection"
-      ]
-    },
-    {
-      "id": "1779515057712-6jtud3f",
-      "toolName": "run",
-      "confidence": 0.75,
-      "label": "true_positive",
       "categories": [
         "prompt-injection"
       ]
     }
-  ]
+  ],
+  "sampleLabeled": []
 }

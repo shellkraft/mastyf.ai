@@ -1,14 +1,14 @@
 {
-  "updatedAt": "2026-05-28T12:06:43.645Z",
-  "plainText": "MCP Guardian — Comprehensive Analysis\nGenerated: 2026-05-28T12:06:43.645Z\n\nEXECUTIVE SUMMARY\n  Overall security score: 50/100\n  Active servers: 1\n  Blocked calls: 130\n  Total cost (snapshot): $0.0048\n  AI adaptive threshold: 0.85\n  True positive rate: 0%\n  False positive rate: 0%\n\nSECURITY\n  official-filesystem: score 50/100, 2 CVE(s) (0 critical), auth no\n\nCOST\n  official-filesystem: 8,528 tokens, $0.0048, trend flat\n  Projected monthly: $0.14\n\nHEALTH\n  official-filesystem: 103ms latency, 100% success, 14 tools\n\nBEHAVIORAL BASELINES\n  official-filesystem/read_text_file: 405 samples, ~48 tokens, ~110ms\n  official-filesystem/write_file: 90 samples, ~46 tokens, ~78ms\n  official-filesystem/list_directory: 45 samples, ~129 tokens, ~49ms\n\nCROSS-LAYER INSIGHTS\n  [info] official-filesystem security score is 50/100 (below 70). Review tool permissions, CVEs, and policy rules before production use. (confidence 65%)",
+  "updatedAt": "2026-06-01T17:42:52.040Z",
+  "plainText": "MCP Guardian — Comprehensive Analysis\nGenerated: 2026-06-01T17:42:52.040Z\n\nEXECUTIVE SUMMARY\n  Overall security score: 50/100\n  Active servers: 1\n  Blocked calls: 221\n  Total cost (snapshot): $0.0069\n  AI adaptive threshold: 0.85\n  True positive rate: 0%\n  False positive rate: 0%\n\nSECURITY\n  official-filesystem: score 50/100, 2 CVE(s) (0 critical), auth no\n\nCOST\n  official-filesystem: 12,415 tokens, $0.0069, trend flat\n  Projected monthly: $0.21\n\nHEALTH\n  official-filesystem: 93ms latency, 100% success, 14 tools\n\nBEHAVIORAL BASELINES\n  official-filesystem/read_text_file: 19811 samples, ~48 tokens, ~90ms\n  official-filesystem/write_file: 4310 samples, ~46 tokens, ~64ms\n  official-filesystem/list_directory: 2155 samples, ~124 tokens, ~46ms\n  e2e-echo/search: 2276 samples, ~40 tokens, ~197ms\n  e2e-echo/execute_command: 569 samples, ~32 tokens, ~204ms\n\nCROSS-LAYER INSIGHTS\n  [info] official-filesystem security score is 50/100 (below 70). Review tool permissions, CVEs, and policy rules before production use. (confidence 65%)",
   "report": {
-    "timestamp": "2026-05-28T12:06:43.645Z",
+    "timestamp": "2026-06-01T17:42:52.040Z",
     "executiveSummary": {
       "overallScore": 50,
-      "totalCost": 0.0048,
+      "totalCost": 0.0069,
       "topRisks": [],
       "activeServers": 1,
-      "blockedCalls": 130,
+      "blockedCalls": 221,
       "recommendations": []
     },
     "security": {
@@ -27,19 +27,19 @@
       "serverReports": [
         {
           "name": "official-filesystem",
-          "tokens": 8528,
-          "cost": 0.0048,
+          "tokens": 12415,
+          "cost": 0.0069,
           "trend": "flat"
         }
       ],
-      "projectedMonthly": 0.144,
+      "projectedMonthly": 0.207,
       "budgetAlerts": []
     },
     "health": {
       "serverReports": [
         {
           "name": "official-filesystem",
-          "latency": 103,
+          "latency": 93,
           "success": 100,
           "tools": 14
         }
@@ -51,23 +51,37 @@
         {
           "server": "official-filesystem",
           "tool": "read_text_file",
-          "sampleCount": 405,
+          "sampleCount": 19811,
           "avgTokens": 48,
-          "avgLatency": 110
+          "avgLatency": 90
         },
         {
           "server": "official-filesystem",
           "tool": "write_file",
-          "sampleCount": 90,
+          "sampleCount": 4310,
           "avgTokens": 46,
-          "avgLatency": 78
+          "avgLatency": 64
         },
         {
           "server": "official-filesystem",
           "tool": "list_directory",
-          "sampleCount": 45,
-          "avgTokens": 129,
-          "avgLatency": 49
+          "sampleCount": 2155,
+          "avgTokens": 124,
+          "avgLatency": 46
+        },
+        {
+          "server": "e2e-echo",
+          "tool": "search",
+          "sampleCount": 2276,
+          "avgTokens": 40,
+          "avgLatency": 197
+        },
+        {
+          "server": "e2e-echo",
+          "tool": "execute_command",
+          "sampleCount": 569,
+          "avgTokens": 32,
+          "avgLatency": 204
         }
       ],
       "anomalies": []
@@ -104,13 +118,23 @@
         },
         {
           "hour": 12,
-          "volume": 12,
+          "volume": 24,
           "avgTokens": 55
         },
         {
-          "hour": 16,
-          "volume": 24,
+          "hour": 13,
+          "volume": 48,
           "avgTokens": 55
+        },
+        {
+          "hour": 15,
+          "volume": 16,
+          "avgTokens": 38
+        },
+        {
+          "hour": 16,
+          "volume": 39,
+          "avgTokens": 48
         },
         {
           "hour": 17,
@@ -118,9 +142,19 @@
           "avgTokens": 55
         },
         {
+          "hour": 18,
+          "volume": 5,
+          "avgTokens": 40
+        },
+        {
           "hour": 19,
-          "volume": 24,
-          "avgTokens": 55
+          "volume": 29,
+          "avgTokens": 52
+        },
+        {
+          "hour": 20,
+          "volume": 5,
+          "avgTokens": 40
         },
         {
           "hour": 21,

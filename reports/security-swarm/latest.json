@@ -1,8 +1,8 @@
 {
   "version": 1,
   "mode": "fast",
-  "timestamp": "2026-05-24T16:03:36.198Z",
-  "commitSha": "1e8036abb0161357c12eec830f50150da53e1415",
+  "timestamp": "2026-05-28T14:03:58.532Z",
+  "commitSha": "b71615f703674e60375f172d372b79b1aa9917b1",
   "findings": [
     {
       "severity": "info",
@@ -11,19 +11,19 @@
     }
   ],
   "timings": {
-    "totalSec": 208.6,
+    "totalSec": 212.6,
     "steps": [
       {
         "label": "scout-audit",
-        "elapsedSec": 1.7
+        "elapsedSec": 1.4
       },
       {
         "label": "pnpm-build",
-        "elapsedSec": 3.3
+        "elapsedSec": 4.5
       },
       {
         "label": "vitest-policy-proxy-utils",
-        "elapsedSec": 83.8
+        "elapsedSec": 96.2
       },
       {
         "label": "corpus-eval",
@@ -35,11 +35,11 @@
       },
       {
         "label": "harness-node-tests",
-        "elapsedSec": 41.6
+        "elapsedSec": 40
       },
       {
         "label": "harness-parity",
-        "elapsedSec": 68.7
+        "elapsedSec": 61
       }
     ]
   },
@@ -59,6 +59,42 @@
     "netNew": 0,
     "items": []
   },
+  "performance": {
+    "tiers": [
+      {
+        "name": "c1",
+        "p50": 151.50195900000006,
+        "p95": 151.50195900000006,
+        "sloMs": 150,
+        "sloPass": true,
+        "concurrency": 1
+      },
+      {
+        "name": "c10",
+        "p50": 574.671292,
+        "p95": 574.704375,
+        "sloMs": 500,
+        "sloPass": false,
+        "concurrency": 10
+      },
+      {
+        "name": "c25",
+        "p50": 2280.2105420000003,
+        "p95": 2280.2494160000006,
+        "sloMs": 1500,
+        "sloPass": false,
+        "concurrency": 25
+      },
+      {
+        "name": "c50",
+        "p50": 3230.8274579999998,
+        "p95": 3230.876,
+        "sloMs": 3000,
+        "sloPass": false,
+        "concurrency": 50
+      }
+    ]
+  },
   "overall": true,
   "steps": [
     {
@@ -66,7 +102,7 @@
       "ok": true,
       "status": 0,
       "timedOut": false,
-      "elapsedSec": 1.7,
+      "elapsedSec": 1.4,
       "stdout": "",
       "stderr": ""
     },
@@ -75,7 +111,7 @@
       "ok": true,
       "status": 0,
       "timedOut": false,
-      "elapsedSec": 3.3,
+      "elapsedSec": 4.5,
       "stdout": "",
       "stderr": ""
     },
@@ -84,7 +120,7 @@
       "ok": true,
       "status": 0,
       "timedOut": false,
-      "elapsedSec": 83.8,
+      "elapsedSec": 96.2,
       "stdout": "",
       "stderr": ""
     },
@@ -111,7 +147,7 @@
       "ok": true,
       "status": 0,
       "timedOut": false,
-      "elapsedSec": 41.6,
+      "elapsedSec": 40,
       "stdout": "",
       "stderr": ""
     },
@@ -120,14 +156,14 @@
       "ok": true,
       "status": 0,
       "timedOut": false,
-      "elapsedSec": 68.7,
+      "elapsedSec": 61,
       "stdout": "",
       "stderr": ""
     }
   ],
   "scout": {
     "agent": "scout",
-    "timestamp": "2026-05-24T16:00:09.291Z",
+    "timestamp": "2026-05-28T13:51:20.613Z",
     "audit": {
       "ok": true,
       "status": 1,
@@ -149,8 +185,8 @@
     "benignPassRate": 1
   },
   "parity": {
-    "agreement": 607,
-    "total": 607,
+    "agreement": 669,
+    "total": 669,
     "agreementRate": 1,
     "corpusMismatches": 0
   },

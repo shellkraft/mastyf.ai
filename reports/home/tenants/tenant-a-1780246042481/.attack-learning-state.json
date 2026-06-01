@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "updatedAt": "2026-05-31T16:47:22.482Z",
+  "totalEvents": 1,
+  "ruleToolCounts": {
+    "secret-scan:t": {
+      "count": 1,
+      "lastAt": "2026-05-31T16:47:22.481Z",
+      "reasons": [
+        "secret"
+      ]
+    }
+  },
+  "reasonNgrams": {},
+  "recentBlocks": [
+    {
+      "ts": 1780246042481,
+      "serverName": "s",
+      "toolName": "t",
+      "blockRule": "secret-scan",
+      "blockReason": "secret",
+      "argsFingerprint": "a1"
+    }
+  ],
+  "queuedSuggestionKeys": [],
+  "knownClassConfidence": {
+    "secret-exfil": 0.46
+  }
+}

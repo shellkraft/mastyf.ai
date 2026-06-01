@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "updatedAt": "2026-05-31T16:47:22.482Z",
+  "totalEvents": 1,
+  "ruleToolCounts": {
+    "path-guard:t": {
+      "count": 1,
+      "lastAt": "2026-05-31T16:47:22.482Z",
+      "reasons": [
+        "path"
+      ]
+    }
+  },
+  "reasonNgrams": {},
+  "recentBlocks": [
+    {
+      "ts": 1780246042482,
+      "serverName": "s",
+      "toolName": "t",
+      "blockRule": "path-guard",
+      "blockReason": "path",
+      "argsFingerprint": "b1"
+    }
+  ],
+  "queuedSuggestionKeys": [],
+  "knownClassConfidence": {
+    "path-traversal": 0.46
+  }
+}
