@@ -14,7 +14,7 @@ All notable changes to MCP Guardian will be documented in this file.
 
 ### Changed
 
-- **README** simplified: install and troubleshooting first; architecture detail moved to linked docs
+- **README** — restored full format; expanded install/troubleshooting (`start`, `setup`, INSTALL.md)
 
 ### Fixed
 
