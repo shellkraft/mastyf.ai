@@ -3,10 +3,14 @@
 import { useCallback, useEffect, useState } from 'react';
 import { PolicyCopilotPanel } from './PolicyCopilotPanel';
 import {
+  fetchPolicyRules,
   fetchPolicy,
+  removePolicyRule,
   reloadPolicy,
   savePolicy,
   testPolicy,
+  togglePolicyRule,
+  type ActivePolicyRule,
   type PolicyInfo,
 } from '@/lib/guardian-api';
 import { hasPermission } from '@/lib/dashboard-roles';
@@ -24,14 +28,18 @@ export function PolicyPanel({ roles, lastBlocked, onAction, copilotInitialTab }:
   const [policy, setPolicy] = useState<PolicyInfo | null>(null);
   const [draftYaml, setDraftYaml] = useState('');
   const [saving, setSaving] = useState(false);
+  const [ruleBusy, setRuleBusy] = useState<string | null>(null);
+  const [rules, setRules] = useState<ActivePolicyRule[]>([]);
+  const [ruleFilter, setRuleFilter] = useState('');
   const [testResult, setTestResult] = useState('');
   const [testTool, setTestTool] = useState('');
   const [testArgs, setTestArgs] = useState('{"query": "test"}');
 
   const refresh = useCallback(async () => {
-    const next = await fetchPolicy();
+    const [next, nextRules] = await Promise.all([fetchPolicy(), fetchPolicyRules()]);
     setPolicy(next);
     setDraftYaml(next?.yaml ?? '');
+    setRules(nextRules);
   }, []);
 
   useEffect(() => {
@@ -98,6 +106,61 @@ export function PolicyPanel({ roles, lastBlocked, onAction, copilotInitialTab }:
     onAction?.('Discarded unsaved edits');
   };
 
+  const onToggleRule = async (rule: ActivePolicyRule) => {
+    if (!canMutate) return;
+    const isCritical = rule.action === 'block' && (rule.patternCount + rule.argPatternCount + rule.denyCount) > 0;
+    if (rule.enabled && isCritical) {
+      const confirmed = confirm(
+        `Disable "${rule.name}"? This appears to be a protection rule and may reduce blocking coverage.`,
+      );
+      if (!confirmed) return;
+    }
+    setRuleBusy(rule.name);
+    try {
+      const result = await togglePolicyRule(rule.name, !rule.enabled);
+      if (!result.ok) {
+        onAction?.(result.details ? `${result.error}: ${result.details}` : result.error || 'Rule toggle failed');
+        return;
+      }
+      onAction?.(`Rule "${rule.name}" ${rule.enabled ? 'disabled' : 'enabled'}`);
+      if (result.warning) onAction?.(result.warning);
+      await refresh();
+    } finally {
+      setRuleBusy(null);
+    }
+  };
+
+  const onDeleteRule = async (rule: ActivePolicyRule) => {
+    if (!canMutate) return;
+    if (!confirm(`Delete rule "${rule.name}" from policy YAML?`)) return;
+    const isCritical = rule.action === 'block' && (rule.patternCount + rule.argPatternCount + rule.denyCount) > 0;
+    if (isCritical) {
+      const confirmed = confirm(
+        `Delete "${rule.name}"? This appears to be a protection rule and may reduce blocking coverage.`,
+      );
+      if (!confirmed) return;
+    }
+    setRuleBusy(rule.name);
+    try {
+      const result = await removePolicyRule(rule.name);
+      if (!result.ok) {
+        onAction?.(result.details ? `${result.error}: ${result.details}` : result.error || 'Rule delete failed');
+        return;
+      }
+      onAction?.(`Rule "${rule.name}" deleted`);
+      if (result.warning) onAction?.(result.warning);
+      await refresh();
+    } finally {
+      setRuleBusy(null);
+    }
+  };
+
+  const filteredRules = rules.filter((rule) => {
+    const q = ruleFilter.trim().toLowerCase();
+    if (!q) return true;
+    return rule.name.toLowerCase().includes(q) || rule.action.toLowerCase().includes(q);
+  });
+
   return (
     <section>
       <h2>Policy studio</h2>
@@ -116,6 +179,59 @@ export function PolicyPanel({ roles, lastBlocked, onAction, copilotInitialTab }:
       </p>
 
       <PolicyCopilotPanel roles={roles} onAction={onAction} initialTab={copilotInitialTab} />
+
+      <h3>Active rules</h3>
+      <label className="policy-field">
+        Search active rules
+        <input
+          value={ruleFilter}
+          onChange={(e) => setRuleFilter(e.target.value)}
+          placeholder="Filter by name or action"
+        />
+      </label>
+      <div className="hint">
+        {rules.length} total · {rules.filter((r) => r.enabled).length} enabled · {rules.filter((r) => !r.enabled).length} disabled
+      </div>
+      <div className="table-wrap">
+        <table className="table">
+          <thead>
+            <tr>
+              <th>Rule</th>
+              <th>Action</th>
+              <th>Status</th>
+              <th>Matchers</th>
+              <th />
+            </tr>
+          </thead>
+          <tbody>
+            {filteredRules.map((rule) => (
+              <tr key={rule.name}>
+                <td>{rule.name}</td>
+                <td>{rule.action}</td>
+                <td>{rule.enabled ? 'Enabled' : 'Disabled'}</td>
+                <td>{rule.patternCount + rule.argPatternCount}</td>
+                <td className="btn-row">
+                  <button
+                    type="button"
+                    className="secondary"
+                    disabled={!canMutate || ruleBusy === rule.name}
+                    onClick={() => void onToggleRule(rule)}
+                  >
+                    {rule.enabled ? 'Disable' : 'Enable'}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={!canMutate || ruleBusy === rule.name}
+                    onClick={() => void onDeleteRule(rule)}
+                  >
+                    Delete
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
 
       <div className="btn-row">
         <strong style={{ marginRight: 8 }}>Deploy</strong>

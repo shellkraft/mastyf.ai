@@ -267,6 +267,7 @@ export class PolicyEngine {
     analysis: { argsStr: string; raw?: CallContext },
     skipLocalRateLimit = false,
   ): PolicyDecision | null {
+    if (rule.enabled === false) return null;
     if (rule.tools) {
       if (rule.tools.allow && rule.tools.allow.length > 0) {
         if (!rule.tools.allow.includes(ctx.toolName)) {

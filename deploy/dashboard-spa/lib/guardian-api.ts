@@ -256,6 +256,17 @@ export type PolicyInfo = {
   path?: string;
 };
 
+export type ActivePolicyRule = {
+  name: string;
+  action: 'pass' | 'block' | 'flag';
+  enabled: boolean;
+  description?: string;
+  allowCount: number;
+  denyCount: number;
+  patternCount: number;
+  argPatternCount: number;
+};
+
 export type ApiError = { error?: string; reason?: string; required?: string };
 
 export type SemanticOutcome = {
@@ -969,6 +980,48 @@ export async function fetchPolicy(): Promise<PolicyInfo | null> {
   const res = await guardianFetch('/api/policy');
   if (!res.ok) return null;
   return (await res.json()) as PolicyInfo;
+}
+
+export async function fetchPolicyRules(): Promise<ActivePolicyRule[]> {
+  const res = await guardianFetch('/api/policy/rules');
+  if (!res.ok) return [];
+  const body = (await res.json()) as { rules?: ActivePolicyRule[] };
+  return body.rules ?? [];
+}
+
+export async function togglePolicyRule(
+  name: string,
+  enabled: boolean,
+): Promise<{ ok: boolean; error?: string; details?: string; warning?: string }> {
+  const headers = await buildMutatingHeaders();
+  const res = await guardianFetch('/api/policy/rules', {
+    method: 'PATCH',
+    headers,
+    body: JSON.stringify({ name, enabled }),
+  });
+  if (!res.ok) {
+    const data = (await res.json().catch(() => ({}))) as { error?: string; details?: string };
+    return { ok: false, error: data.error || res.statusText, details: data.details };
+  }
+  const data = (await res.json().catch(() => ({}))) as { warning?: string };
+  return { ok: true, warning: data.warning };
+}
+
+export async function removePolicyRule(
+  name: string,
+): Promise<{ ok: boolean; error?: string; details?: string; warning?: string }> {
+  const headers = await buildMutatingHeaders();
+  const res = await guardianFetch('/api/policy/rules', {
+    method: 'DELETE',
+    headers,
+    body: JSON.stringify({ name }),
+  });
+  if (!res.ok) {
+    const data = (await res.json().catch(() => ({}))) as { error?: string; details?: string };
+    return { ok: false, error: data.error || res.statusText, details: data.details };
+  }
+  const data = (await res.json().catch(() => ({}))) as { warning?: string };
+  return { ok: true, warning: data.warning };
 }
 
 export async function testPolicy(payload: {

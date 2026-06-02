@@ -640,11 +640,14 @@ export class McpProxyServer {
         if (initAuth) this.sessionAuthHeader = initAuth;
       }
 
+      const lifecycleAuthRequired = Boolean(this.authValidator?.getConfig().required);
       const lifecycle = runMcpLifecyclePreCheck({
         method: String(msg.method ?? ''),
         serverName: this.serverName,
         msg,
-        authenticated: Boolean(this.sessionAuthHeader),
+        // If proxy auth is optional/disabled, lifecycle methods should not be blocked
+        // as "unauthenticated" (e.g. tools/list during local stdio scenarios).
+        authenticated: lifecycleAuthRequired ? Boolean(this.sessionAuthHeader) : true,
         fallbackSessionKey: this.mcpSessionId ?? undefined,
       });
       if (!lifecycle.allowed && hasJsonRpcId(msg.id)) {

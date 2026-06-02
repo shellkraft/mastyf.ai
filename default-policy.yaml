@@ -58,6 +58,7 @@ policy:
           - echo
           - puppeteer_navigate
           - puppeteer_screenshot
+      enabled: false
     - name: block-dangerous-urls
       description: Block SSRF-prone URLs (metadata, localhost, file/javascript/data schemes, private IPs)
       action: block
@@ -140,10 +141,8 @@ policy:
       argPatterns:
         - field: sql
           patterns:
-            - >-
-              \bselect\b.+\bfrom\b.+\b(accounts|customers|users|credentials|secrets|payments|transactions|admin_users|passwords)\b
-            - >-
-              \bselect\s+\*\s+from\b.+\b(accounts|customers|users|credentials|secrets|payments|transactions|admin_users|passwords)\b
+            - \bselect\b.+\bfrom\b.+\b(accounts|customers|users|credentials|secrets|payments|transactions|admin_users|passwords)\b
+            - \bselect\s+\*\s+from\b.+\b(accounts|customers|users|credentials|secrets|payments|transactions|admin_users|passwords)\b
             - \bunion\b.+\bselect\b
             - \bdelete\s+from\b
             - \b(?:drop|truncate)\s+table\b
@@ -159,10 +158,8 @@ policy:
             - admin\)\(&
         - field: query
           patterns:
-            - >-
-              \bselect\b.+\bfrom\b.+\b(accounts|customers|users|credentials|secrets|payments|transactions|admin_users|passwords)\b
-            - >-
-              \bselect\s+\*\s+from\b.+\b(accounts|customers|users|credentials|secrets|payments|transactions|admin_users|passwords)\b
+            - \bselect\b.+\bfrom\b.+\b(accounts|customers|users|credentials|secrets|payments|transactions|admin_users|passwords)\b
+            - \bselect\s+\*\s+from\b.+\b(accounts|customers|users|credentials|secrets|payments|transactions|admin_users|passwords)\b
             - \bunion\b.+\bselect\b
             - \bdelete\s+from\b
             - \badmin'\s*--

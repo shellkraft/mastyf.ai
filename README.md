@@ -885,12 +885,19 @@ See [docs/PRO_SETUP.md](docs/PRO_SETUP.md) for production licensing (local dev u
 | **Protection** | Overall status, roadmap compliance strip (v4.1+) |
 | **Activity** | Audit log of allowed and blocked `tools/call` |
 | **Threats** | Active threats, quarantine, fleet chain graph (A1) |
-| **Security** | Score and trends |
+| **Security** | Score, trends, and **Policy Studio** with Active Rules controls |
 | **Operations** | Traffic, errors, cost charts |
 | **Agentic AI** | Trust, policy gen, observatory, federated learning, plan compliance audit |
 | **Settings** | Servers, policy, setup checklist |
 
 The dashboard reads the **same SQLite DB** as the proxy (`MCP_GUARDIAN_DB_PATH`). It is not a separate demo dataset.
+
+In **Security → Policy**, you can now manage rules without hand-editing YAML:
+
+- **Active Rules list** with search/filter
+- **Soft disable/enable** (writes `enabled: false/true` on the rule)
+- **Hard delete** (removes the rule from `policy.rules[]`)
+- Editor stays in sync with structured actions so YAML remains source-of-truth
 
 Agentic features: [docs/AGENTIC_QUICKSTART.md](docs/AGENTIC_QUICKSTART.md) · [docs/AGENTIC_FEATURES.md](docs/AGENTIC_FEATURES.md).
 

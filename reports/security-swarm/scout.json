@@ -1,14 +1,14 @@
 {
   "agent": "scout",
-  "timestamp": "2026-05-30T07:51:34.101Z",
+  "timestamp": "2026-06-02T10:28:37.915Z",
   "audit": {
     "ok": true,
     "status": 1,
     "advisories": [],
     "summary": {
       "info": 0,
-      "low": 1,
-      "moderate": 3,
+      "low": 0,
+      "moderate": 1,
       "high": 0,
       "critical": 0
     }

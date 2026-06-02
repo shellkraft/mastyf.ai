@@ -41,6 +41,7 @@ export const yamlRulesStrategy: PolicyStrategy = {
   evaluate({ raw, normalized, argsStr, skipLocalRateLimit }, deps) {
     let permittedByAllowlist = false;
     for (const rule of deps.rules) {
+      if (rule.enabled === false) continue;
       if (rule.tools?.allow?.length && rule.tools.allow.includes(normalized.toolName)) {
         permittedByAllowlist = true;
       }

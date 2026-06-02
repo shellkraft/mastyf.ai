@@ -32,18 +32,11 @@ async function resolveWriteContext(request: Request) {
 }
 
 export async function GET(request: Request) {
-  const bearer = extractBearerToken(request.headers.get('authorization'));
-  if (!bearer) {
-    return NextResponse.json({ error: 'Bearer API key required' }, { status: 401 });
-  }
-
-  const ctx = await resolveOrgFromApiKey(bearer);
-  if (!ctx) {
-    return NextResponse.json({ error: 'Invalid or inactive API key' }, { status: 401 });
-  }
+  const writeCtx = await resolveWriteContext(request);
+  if (!writeCtx) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const policy = await getDb().query.policies.findFirst({
-    where: eq(policies.orgId, ctx.org.id),
+    where: eq(policies.orgId, writeCtx.orgId),
   });
 
   return new NextResponse(policy?.yamlContent ?? getDefaultPolicyYaml(), {

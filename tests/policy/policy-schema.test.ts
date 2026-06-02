@@ -15,6 +15,7 @@ describe('parsePolicyConfig', () => {
             name: 'deny-shell',
             description: 'Block shell tools',
             action: 'block',
+            enabled: false,
             tools: { deny: ['bash', 'sh'] },
             patterns: ['rm\\s+-rf'],
             argPatterns: [{ field: 'command', patterns: ['curl\\s'] }],
@@ -28,6 +29,7 @@ describe('parsePolicyConfig', () => {
       },
     });
     expect(config.policy.rules[0].argPatterns?.[0].field).toBe('command');
+    expect(config.policy.rules[0].enabled).toBe(false);
     expect(config.policy.semantic_shell).toBe(true);
     expect(config.policy.unicode_strict).toBe(true);
   });

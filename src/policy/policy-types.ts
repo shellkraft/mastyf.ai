@@ -22,6 +22,8 @@ export interface PolicyRule {
   name: string;
   description?: string;
   action: PolicyAction;
+  /** Optional runtime toggle. Missing means enabled for backward compatibility. */
+  enabled?: boolean;
   /**
    * Tool scoping for this rule.
    * - `allow`: rule applies only to these tools (does not block other tools).

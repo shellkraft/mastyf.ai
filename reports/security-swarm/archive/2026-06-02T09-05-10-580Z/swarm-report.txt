@@ -1,0 +1,81 @@
+========================================================================
+MCP Guardian — Security Swarm Report
+========================================================================
+
+Generated:  2026-06-02T09:01:56.443Z
+Commit:     5c5604c1697c9ccffeff0ca17f8571bd188777d9
+Mode:       fast
+Output:     live
+
+Overall:    FAIL
+
+------------------------------------------------------------------------
+Gates
+------------------------------------------------------------------------
+  Corpus       PASS
+  Parity       PASS
+  Steps        FAIL
+  Bypasses     0 (max 0)
+  Scout        FAIL
+
+------------------------------------------------------------------------
+Steps
+------------------------------------------------------------------------
+  [FAIL] scout-audit                         1.4s  (exit 1)
+  [PASS] pnpm-build                          7.3s  (exit 0)
+  [PASS] vitest-policy-proxy-utils           110s  (exit 0)
+  [FAIL] corpus-eval                         0.3s  (exit 1)
+  [PASS] setup-python-venv                   0.6s  (exit 0)
+  [PASS] harness-node-tests                 46.3s  (exit 0)
+  [FAIL] harness-parity                      0.2s  (exit 1)
+
+------------------------------------------------------------------------
+Corpus
+------------------------------------------------------------------------
+  entries:           300
+  fn:                0
+  fp:                0
+  attack block rate: 100.0%
+  benign pass rate:  100.0%
+
+------------------------------------------------------------------------
+Parity
+------------------------------------------------------------------------
+  agreement:         670/670
+  agreement rate:    100.0%
+  corpus mismatches: 0
+
+------------------------------------------------------------------------
+Bypasses
+------------------------------------------------------------------------
+  detected:          0
+  baseline-known:    0
+  net-new:           0
+
+  (none detected)
+
+------------------------------------------------------------------------
+Findings
+------------------------------------------------------------------------
+  [high] scout: Dependency audit failed (critical=1 high=0)
+  [info] scout: Moderate advisories: 1
+  [critical] step: scout-audit failed (exit 1)
+  [critical] step: corpus-eval failed (exit 1)
+  [critical] step: harness-parity failed (exit 1)
+
+------------------------------------------------------------------------
+Timings
+------------------------------------------------------------------------
+  total:             166.1s
+  scout-audit                          1.4s
+  pnpm-build                           7.3s
+  vitest-policy-proxy-utils            110s
+  corpus-eval                          0.3s
+  setup-python-venv                    0.6s
+  harness-node-tests                  46.3s
+  harness-parity                       0.2s
+
+------------------------------------------------------------------------
+Recommended profile: hybrid
+
+Summary (markdown): reports/security-swarm/summary.md

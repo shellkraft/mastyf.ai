@@ -101,6 +101,9 @@ function run(cmd, args, opts = {}) {
     env: {
       GUARDIAN_DISABLE_SEMANTIC: opts.semanticOff ? 'true' : process.env.GUARDIAN_DISABLE_SEMANTIC || '',
       GUARDIAN_POLICY_TIMING_ENVELOPE: process.env.GUARDIAN_POLICY_TIMING_ENVELOPE ?? 'false',
+      // tsx can fail to create its IPC pipe in some locked-down/macOS temp contexts.
+      // Disable IPC for swarm child processes to avoid EPERM flakes.
+      TSX_DISABLE_IPC: process.env.TSX_DISABLE_IPC ?? '1',
       ...opts.env,
     },
   });
@@ -224,13 +227,13 @@ if (FAST && process.env.SWARM_PARALLEL_STEPS !== 'false') {
     [
       { cmd: 'pnpm', args: vitestArgs, label: 'vitest-policy-proxy-utils' },
       {
-        cmd: 'pnpm',
-        args: ['exec', 'tsx', 'corpus/run-eval.ts'],
+        cmd: 'node',
+        args: ['--import', 'tsx', 'corpus/run-eval.ts'],
         label: 'corpus-eval',
         env: { GUARDIAN_DISABLE_SEMANTIC: 'true' },
       },
     ],
-    { cwd: REPO, live: LIVE },
+    { cwd: REPO, live: LIVE, env: { TSX_DISABLE_IPC: process.env.TSX_DISABLE_IPC ?? '1' } },
   );
   for (const step of parallel) {
     steps.push(step);
@@ -245,7 +248,7 @@ if (FAST && process.env.SWARM_PARALLEL_STEPS !== 'false') {
 } else {
   run('pnpm', vitestArgs, { label: 'vitest-policy-proxy-utils', totalSteps });
 
-  run('pnpm', ['exec', 'tsx', 'corpus/run-eval.ts'], {
+  run('node', ['--import', 'tsx', 'corpus/run-eval.ts'], {
     label: 'corpus-eval',
     totalSteps,
     env: { GUARDIAN_DISABLE_SEMANTIC: 'true' },
@@ -274,7 +277,7 @@ if (!FAST) {
     label: 'harness-node-tests',
     totalSteps,
   });
-  run('pnpm', ['exec', 'tsx', 'adversarial-harness/scripts/compare-node-python.ts'], {
+  run('node', ['--import', 'tsx', 'adversarial-harness/scripts/compare-node-python.ts'], {
     label: 'harness-parity',
     totalSteps,
     env: {

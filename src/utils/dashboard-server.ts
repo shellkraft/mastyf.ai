@@ -66,6 +66,7 @@ import { initUnifiedDataReaderPool } from './unified-data-reader.js';
 import { getAuditAttestationStatus } from './audit-attestation.js';
 import { getFieldEncryptionStatus } from './field-encryption.js';
 import { getPolicyAuditor } from './enterprise-bootstrap.js';
+import { deletePolicyRule, listActiveRules, togglePolicyRule } from './policy-rule-ops.js';
 import {
   isLegacyArtifactsAllowed,
   isSwarmArtifactVisibleForSession,
@@ -972,6 +973,137 @@ export async function startDashboardServer(
           path: policyPath,
           signature,
         });
+        return;
+      }
+
+      if (url === '/api/policy/rules' && method === 'GET') {
+        setCors();
+        const policyPath = defaultPolicyPath();
+        if (!existsSync(policyPath)) {
+          writeJson(res, 200, { rules: [], total: 0, enabled: 0, disabled: 0, path: policyPath });
+          return;
+        }
+        const yaml = readFileSync(policyPath, 'utf-8');
+        try {
+          const rules = listActiveRules(yaml);
+          writeJson(res, 200, {
+            rules,
+            total: rules.length,
+            enabled: rules.filter((r) => r.enabled).length,
+            disabled: rules.filter((r) => !r.enabled).length,
+            path: policyPath,
+          });
+        } catch (err) {
+          writeJson(res, 400, { error: 'Invalid policy YAML', details: err instanceof Error ? err.message : String(err) });
+        }
+        return;
+      }
+
+      if (url === '/api/policy/rules' && method === 'PATCH') {
+        setCors();
+        const body = (await readBody(req)) as { name?: string; enabled?: boolean };
+        const name = String(body.name ?? '').trim();
+        if (!name || typeof body.enabled !== 'boolean') {
+          writeJson(res, 400, { error: 'name and enabled(boolean) are required' });
+          return;
+        }
+        const policyPath = defaultPolicyPath();
+        if (!existsSync(policyPath)) {
+          writeJson(res, 404, { error: 'Policy file not found' });
+          return;
+        }
+        const yaml = readFileSync(policyPath, 'utf-8');
+        let nextYaml = '';
+        try {
+          nextYaml = togglePolicyRule(yaml, name, body.enabled);
+          parsePolicyConfig(load(nextYaml));
+        } catch (err) {
+          writeJson(res, 400, { error: 'Failed to toggle policy rule', details: err instanceof Error ? err.message : String(err) });
+          return;
+        }
+        try {
+          const tmpPath = `${policyPath}.dashboard-${process.pid}.tmp`;
+          writeFileSync(tmpPath, nextYaml.endsWith('\n') ? nextYaml : `${nextYaml}\n`, 'utf-8');
+          renameSync(tmpPath, policyPath);
+        } catch (err) {
+          writeJson(res, 500, { error: 'Failed to write policy file', details: err instanceof Error ? err.message : String(err) });
+          return;
+        }
+        const nextRules = listActiveRules(nextYaml);
+        const warning = nextRules.filter((rule) => rule.enabled).length === 0
+          ? 'All rules are disabled. This significantly reduces protections.'
+          : undefined;
+        writeJson(res, 200, {
+          status: 'ok',
+          message: `Rule ${name} ${body.enabled ? 'enabled' : 'disabled'}`,
+          reloadStatus: 'watcher-auto-reload',
+          warning,
+        });
+        const auditor = getPolicyAuditor();
+        if (auditor) {
+          auditor.record({
+            timestamp: new Date().toISOString(),
+            actor: String(req.headers['x-guardian-policy-approver'] || authResult.identity || 'dashboard'),
+            change: 'policy_rule_toggle_via_dashboard',
+            oldValue: auditor.computeHash(yaml),
+            newValue: auditor.computeHash(nextYaml),
+            sourceHash: auditor.computeHash(nextYaml),
+          });
+        }
+        return;
+      }
+
+      if (url === '/api/policy/rules' && method === 'DELETE') {
+        setCors();
+        const body = (await readBody(req)) as { name?: string };
+        const name = String(body.name ?? '').trim();
+        if (!name) {
+          writeJson(res, 400, { error: 'name is required' });
+          return;
+        }
+        const policyPath = defaultPolicyPath();
+        if (!existsSync(policyPath)) {
+          writeJson(res, 404, { error: 'Policy file not found' });
+          return;
+        }
+        const yaml = readFileSync(policyPath, 'utf-8');
+        let nextYaml = '';
+        try {
+          nextYaml = deletePolicyRule(yaml, name);
+          parsePolicyConfig(load(nextYaml));
+        } catch (err) {
+          writeJson(res, 400, { error: 'Failed to delete policy rule', details: err instanceof Error ? err.message : String(err) });
+          return;
+        }
+        try {
+          const tmpPath = `${policyPath}.dashboard-${process.pid}.tmp`;
+          writeFileSync(tmpPath, nextYaml.endsWith('\n') ? nextYaml : `${nextYaml}\n`, 'utf-8');
+          renameSync(tmpPath, policyPath);
+        } catch (err) {
+          writeJson(res, 500, { error: 'Failed to write policy file', details: err instanceof Error ? err.message : String(err) });
+          return;
+        }
+        const nextRules = listActiveRules(nextYaml);
+        const warning = nextRules.length === 0
+          ? 'Policy has no rules after deletion.'
+          : undefined;
+        writeJson(res, 200, {
+          status: 'ok',
+          message: `Rule ${name} deleted`,
+          reloadStatus: 'watcher-auto-reload',
+          warning,
+        });
+        const auditor = getPolicyAuditor();
+        if (auditor) {
+          auditor.record({
+            timestamp: new Date().toISOString(),
+            actor: String(req.headers['x-guardian-policy-approver'] || authResult.identity || 'dashboard'),
+            change: 'policy_rule_delete_via_dashboard',
+            oldValue: auditor.computeHash(yaml),
+            newValue: auditor.computeHash(nextYaml),
+            sourceHash: auditor.computeHash(nextYaml),
+          });
+        }
         return;
       }
 

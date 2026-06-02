@@ -21,6 +21,7 @@ export const PolicyRuleSchema = z.object({
   name: z.string().min(1),
   description: z.string().optional(),
   action: z.enum(['block', 'flag', 'pass']),
+  enabled: z.boolean().optional(),
   tools: z.object({
     allow: z.array(z.string()).optional(),
     deny: z.array(z.string()).optional(),

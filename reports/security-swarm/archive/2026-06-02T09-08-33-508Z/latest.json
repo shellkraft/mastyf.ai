@@ -1,0 +1,213 @@
+{
+  "version": 1,
+  "mode": "fast",
+  "timestamp": "2026-06-02T09:07:52.849Z",
+  "commitSha": "5c5604c1697c9ccffeff0ca17f8571bd188777d9",
+  "findings": [
+    {
+      "severity": "high",
+      "source": "scout",
+      "summary": "Dependency audit failed (critical=1 high=0)"
+    },
+    {
+      "severity": "info",
+      "source": "scout",
+      "summary": "Moderate advisories: 1"
+    },
+    {
+      "severity": "critical",
+      "source": "step",
+      "summary": "scout-audit failed (exit 1)"
+    },
+    {
+      "severity": "critical",
+      "source": "step",
+      "summary": "harness-parity failed (exit 1)"
+    }
+  ],
+  "timings": {
+    "totalSec": 162.2,
+    "steps": [
+      {
+        "label": "scout-audit",
+        "elapsedSec": 1.6
+      },
+      {
+        "label": "pnpm-build",
+        "elapsedSec": 6.6
+      },
+      {
+        "label": "vitest-policy-proxy-utils",
+        "elapsedSec": 101.6
+      },
+      {
+        "label": "corpus-eval",
+        "elapsedSec": 8.7
+      },
+      {
+        "label": "setup-python-venv",
+        "elapsedSec": 0.5
+      },
+      {
+        "label": "harness-node-tests",
+        "elapsedSec": 42.8
+      },
+      {
+        "label": "harness-parity",
+        "elapsedSec": 0.4
+      }
+    ]
+  },
+  "gates": {
+    "corpus": true,
+    "parity": true,
+    "steps": false,
+    "scout": false,
+    "bypassCount": 0,
+    "netNewBypassCount": 0,
+    "maxBypasses": 0,
+    "bypassBaseline": true
+  },
+  "bypasses": {
+    "detected": 0,
+    "baselineKnown": 0,
+    "netNew": 0,
+    "items": []
+  },
+  "performance": {
+    "tiers": [
+      {
+        "name": "c1",
+        "p50": 151.50195900000006,
+        "p95": 151.50195900000006,
+        "sloMs": 150,
+        "sloPass": true,
+        "concurrency": 1
+      },
+      {
+        "name": "c10",
+        "p50": 574.671292,
+        "p95": 574.704375,
+        "sloMs": 500,
+        "sloPass": false,
+        "concurrency": 10
+      },
+      {
+        "name": "c25",
+        "p50": 2280.2105420000003,
+        "p95": 2280.2494160000006,
+        "sloMs": 1500,
+        "sloPass": false,
+        "concurrency": 25
+      },
+      {
+        "name": "c50",
+        "p50": 3230.8274579999998,
+        "p95": 3230.876,
+        "sloMs": 3000,
+        "sloPass": false,
+        "concurrency": 50
+      }
+    ]
+  },
+  "overall": false,
+  "steps": [
+    {
+      "label": "scout-audit",
+      "ok": false,
+      "status": 1,
+      "timedOut": false,
+      "elapsedSec": 1.6,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "label": "pnpm-build",
+      "ok": true,
+      "status": 0,
+      "timedOut": false,
+      "elapsedSec": 6.6,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "label": "vitest-policy-proxy-utils",
+      "ok": true,
+      "status": 0,
+      "timedOut": false,
+      "elapsedSec": 101.6,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "label": "corpus-eval",
+      "ok": true,
+      "status": 0,
+      "timedOut": false,
+      "elapsedSec": 8.7,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "label": "setup-python-venv",
+      "ok": true,
+      "status": 0,
+      "timedOut": false,
+      "elapsedSec": 0.5,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "label": "harness-node-tests",
+      "ok": true,
+      "status": 0,
+      "timedOut": false,
+      "elapsedSec": 42.8,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "label": "harness-parity",
+      "ok": false,
+      "status": 1,
+      "timedOut": false,
+      "elapsedSec": 0.4,
+      "stdout": "",
+      "stderr": ""
+    }
+  ],
+  "scout": {
+    "agent": "scout",
+    "timestamp": "2026-06-02T09:05:12.167Z",
+    "audit": {
+      "ok": false,
+      "status": 1,
+      "advisories": [],
+      "summary": {
+        "info": 0,
+        "low": 0,
+        "moderate": 1,
+        "high": 0,
+        "critical": 1
+      }
+    }
+  },
+  "corpus": {
+    "totalEntries": 300,
+    "fn": 0,
+    "fp": 0,
+    "attackBlockRate": 1,
+    "benignPassRate": 1
+  },
+  "parity": {
+    "agreement": 670,
+    "total": 670,
+    "agreementRate": 1,
+    "corpusMismatches": 0
+  },
+  "harness": {
+    "allOk": false
+  },
+  "evasionPromotions": 7,
+  "recommendedEnvProfile": "hybrid"
+}

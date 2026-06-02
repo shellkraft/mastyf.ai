@@ -22,7 +22,7 @@ if (!existsSync(script)) {
   process.exit(1);
 }
 
-const r = spawnSync('pnpm', ['exec', 'tsx', script], {
+const r = spawnSync('node', ['--import', 'tsx', script], {
   cwd: REPO,
   stdio: 'inherit',
   env: {

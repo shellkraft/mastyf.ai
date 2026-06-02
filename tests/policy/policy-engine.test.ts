@@ -183,6 +183,21 @@ describe('PolicyEngine', () => {
     expect(engine.evaluate(makeContext({ toolName: 'search', arguments: { query: 'rm -rf /' } })).action).toBe('block');
   });
 
+  it('should skip disabled rules at runtime', () => {
+    const config: PolicyConfig = {
+      version: '1.0',
+      policy: {
+        mode: 'block',
+        rules: [
+          { name: 'disabled-block', action: 'block', enabled: false, tools: { deny: ['safe_lookup'] } },
+        ],
+      },
+    };
+    const disabledEngine = new PolicyEngine(config);
+    const decision = disabledEngine.evaluate(makeContext({ toolName: 'safe_lookup' }));
+    expect(decision.rule).not.toBe('disabled-block');
+  });
+
   it('should fail-open when no rules and default_action omitted', () => {
     const emptyConfig: PolicyConfig = {
       version: '1.0',

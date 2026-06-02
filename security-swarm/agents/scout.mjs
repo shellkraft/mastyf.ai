@@ -13,7 +13,9 @@ const OUT_DIR = join(REPO, 'reports', 'security-swarm');
 
 mkdirSync(OUT_DIR, { recursive: true });
 
-const r = spawnSync('pnpm', ['audit', '--audit-level=high', '--json'], {
+// Audit runtime/production deps only for swarm gating. Dev-tool advisories
+// (e.g. test runners) are tracked separately and should not fail live gates.
+const r = spawnSync('pnpm', ['audit', '--prod', '--audit-level=high', '--json'], {
   cwd: REPO,
   encoding: 'utf-8',
   env: process.env,

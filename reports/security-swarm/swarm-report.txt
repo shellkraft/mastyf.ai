@@ -2,8 +2,8 @@
 MCP Guardian — Security Swarm Report
 ========================================================================
 
-Generated:  2026-05-28T14:03:58.532Z
-Commit:     b71615f703674e60375f172d372b79b1aa9917b1
+Generated:  2026-06-02T10:30:48.427Z
+Commit:     5c5604c1697c9ccffeff0ca17f8571bd188777d9
 Mode:       fast
 Output:     live
 
@@ -21,13 +21,13 @@ Gates
 ------------------------------------------------------------------------
 Steps
 ------------------------------------------------------------------------
-  [PASS] scout-audit                         1.4s  (exit 0)
-  [PASS] pnpm-build                          4.5s  (exit 0)
-  [PASS] vitest-policy-proxy-utils          96.2s  (exit 0)
-  [PASS] corpus-eval                           9s  (exit 0)
+  [PASS] scout-audit                         1.8s  (exit 0)
+  [PASS] pnpm-build                          5.9s  (exit 0)
+  [PASS] vitest-policy-proxy-utils         114.4s  (exit 0)
+  [PASS] corpus-eval                         8.8s  (exit 0)
   [PASS] setup-python-venv                   0.5s  (exit 0)
-  [PASS] harness-node-tests                   40s  (exit 0)
-  [PASS] harness-parity                       61s  (exit 0)
+  [PASS] harness-node-tests                 43.7s  (exit 0)
+  [PASS] harness-parity                     67.9s  (exit 0)
 
 ------------------------------------------------------------------------
 Corpus
@@ -41,8 +41,8 @@ Corpus
 ------------------------------------------------------------------------
 Parity
 ------------------------------------------------------------------------
-  agreement:         669/669
-  agreement rate:    100.0%
+  agreement:         761/765
+  agreement rate:    99.5%
   corpus mismatches: 0
 
 ------------------------------------------------------------------------
@@ -57,19 +57,19 @@ Bypasses
 ------------------------------------------------------------------------
 Findings
 ------------------------------------------------------------------------
-  [info] scout: Moderate advisories: 3
+  [info] scout: Moderate advisories: 1
 
 ------------------------------------------------------------------------
 Timings
 ------------------------------------------------------------------------
-  total:             212.6s
-  scout-audit                          1.4s
-  pnpm-build                           4.5s
-  vitest-policy-proxy-utils           96.2s
-  corpus-eval                            9s
+  total:             243s
+  scout-audit                          1.8s
+  pnpm-build                           5.9s
+  vitest-policy-proxy-utils          114.4s
+  corpus-eval                          8.8s
   setup-python-venv                    0.5s
-  harness-node-tests                    40s
-  harness-parity                        61s
+  harness-node-tests                  43.7s
+  harness-parity                      67.9s
 
 ------------------------------------------------------------------------
 Recommended profile: hybrid

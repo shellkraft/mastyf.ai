@@ -33,6 +33,7 @@ reports/.guardian-home/
 *.db.pid
 reports/provenance-test.tar.gz
 reports/insurance-test/
+reports/home/tenants/default/dashboard-access.jsonl
 .vercel
 .env*.local
 *.tsbuildinfo

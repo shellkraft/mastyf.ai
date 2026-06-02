@@ -1,8 +1,8 @@
 {
-  "updatedAt": "2026-06-01T17:43:13.285Z",
+  "updatedAt": "2026-06-02T10:41:42.416Z",
   "suggestions": [
     {
-      "id": "attack-1332",
+      "id": "attack-901",
       "ruleName": "attack-learned-semantic-path-guard-search",
       "rule": {
         "name": "attack-learned-semantic-path-guard-search",
@@ -28,11 +28,11 @@
       }
     },
     {
-      "id": "attack-1336",
+      "id": "attack-905",
       "ruleName": "attack-learned-semantic-path-guard-read_text_file",
       "rule": {
         "name": "attack-learned-semantic-path-guard-read_text_file",
-        "description": "Learned from 137 blocks (semantic-path-guard on read_text_file@official-filesystem) — pending approval",
+        "description": "Learned from 175 blocks (semantic-path-guard on read_text_file@official-filesystem) — pending approval",
         "action": "block",
         "argPatterns": [
           {
@@ -44,7 +44,7 @@
         ]
       },
       "confidence": 0.95,
-      "reason": "137 blocks by rule \"semantic-path-guard\" on tool \"read_text_file\" — common patterns: /etc",
+      "reason": "175 blocks by rule \"semantic-path-guard\" on tool \"read_text_file\" — common patterns: /etc",
       "source": "attack",
       "autopilot": {
         "safetyAllowed": true,
@@ -54,18 +54,18 @@
       }
     },
     {
-      "id": "cost-1339",
+      "id": "cost-910",
       "ruleName": "cost-optimize-read_text_file",
       "rule": {
         "name": "cost-optimize-read_text_file",
-        "description": "Auto-generated: read_text_file consumes 56.7% of total cost ($0.0000)",
+        "description": "Auto-generated: read_text_file consumes 57.5% of total cost ($0.0000)",
         "action": "flag",
-        "maxTokens": 38
+        "maxTokens": 37
       },
       "confidence": 0.9,
-      "reason": "High-cost tool: 56.7% of budget, trend: flat",
+      "reason": "High-cost tool: 57.5% of budget, trend: flat",
       "source": "cost",
-      "estimatedSavings": 1.1802000000000002e-8,
+      "estimatedSavings": 1.4713000000000002e-8,
       "autopilot": {
         "safetyAllowed": false,
         "safetyBlockers": [
@@ -76,11 +76,11 @@
       }
     },
     {
-      "id": "attack-1337",
+      "id": "attack-906",
       "ruleName": "attack-learned-deny-multimodal-injection-write_file",
       "rule": {
         "name": "attack-learned-deny-multimodal-injection-write_file",
-        "description": "Learned deny after 38 multimodal-injection blocks on write_file — pending approval",
+        "description": "Learned deny after 54 multimodal-injection blocks on write_file — pending approval",
         "action": "block",
         "tools": {
           "deny": [
@@ -89,7 +89,7 @@
         }
       },
       "confidence": 0.88,
-      "reason": "38 blocks by \"multimodal-injection\" on \"write_file\" (no shared path fragment; suggesting tool deny)",
+      "reason": "54 blocks by \"multimodal-injection\" on \"write_file\" (no shared path fragment; suggesting tool deny)",
       "source": "attack",
       "autopilot": {
         "safetyAllowed": true,
@@ -99,11 +99,11 @@
       }
     },
     {
-      "id": "attack-1338",
+      "id": "attack-907",
       "ruleName": "attack-learned-deny-request-prompt-injection-read_text_file",
       "rule": {
         "name": "attack-learned-deny-request-prompt-injection-read_text_file",
-        "description": "Learned deny after 19 request-prompt-injection blocks on read_text_file — pending approval",
+        "description": "Learned deny after 27 request-prompt-injection blocks on read_text_file — pending approval",
         "action": "block",
         "tools": {
           "deny": [
@@ -112,7 +112,7 @@
         }
       },
       "confidence": 0.88,
-      "reason": "19 blocks by \"request-prompt-injection\" on \"read_text_file\" (no shared path fragment; suggesting tool deny)",
+      "reason": "27 blocks by \"request-prompt-injection\" on \"read_text_file\" (no shared path fragment; suggesting tool deny)",
       "source": "attack",
       "autopilot": {
         "safetyAllowed": true,
@@ -122,7 +122,7 @@
       }
     },
     {
-      "id": "attack-1333",
+      "id": "attack-902",
       "ruleName": "attack-learned-deny-request-prompt-injection-search",
       "rule": {
         "name": "attack-learned-deny-request-prompt-injection-search",
@@ -145,7 +145,7 @@
       }
     },
     {
-      "id": "attack-1334",
+      "id": "attack-903",
       "ruleName": "attack-learned-deny-semantic-shell-guard-search",
       "rule": {
         "name": "attack-learned-deny-semantic-shell-guard-search",
@@ -168,7 +168,7 @@
       }
     },
     {
-      "id": "attack-1335",
+      "id": "attack-904",
       "ruleName": "attack-learned-deny-deny-dangerous-tools-execute_command",
       "rule": {
         "name": "attack-learned-deny-deny-dangerous-tools-execute_command",
@@ -191,7 +191,61 @@
       }
     },
     {
-      "id": "cost-1340",
+      "id": "attack-908",
+      "ruleName": "attack-learned-deny-require-certification-list_directory",
+      "rule": {
+        "name": "attack-learned-deny-require-certification-list_directory",
+        "description": "Learned deny after 3 require-certification blocks on list_directory — pending approval",
+        "action": "block",
+        "tools": {
+          "deny": [
+            "list_directory"
+          ]
+        }
+      },
+      "confidence": 0.66,
+      "reason": "3 blocks by \"require-certification\" on \"list_directory\" (no shared path fragment; suggesting tool deny)",
+      "source": "attack",
+      "autopilot": {
+        "safetyAllowed": false,
+        "safetyBlockers": [
+          "replay coverage too low (0.90 < 0.95)",
+          "confidence too low (0.66 < 0.75)",
+          "rollback confidence too low (0.90 < 0.90)"
+        ],
+        "impactOverall": 0.558,
+        "recommendation": "canary_only"
+      }
+    },
+    {
+      "id": "attack-909",
+      "ruleName": "attack-learned-deny-require-certification-read_text_file",
+      "rule": {
+        "name": "attack-learned-deny-require-certification-read_text_file",
+        "description": "Learned deny after 3 require-certification blocks on read_text_file — pending approval",
+        "action": "block",
+        "tools": {
+          "deny": [
+            "read_text_file"
+          ]
+        }
+      },
+      "confidence": 0.66,
+      "reason": "3 blocks by \"require-certification\" on \"read_text_file\" (no shared path fragment; suggesting tool deny)",
+      "source": "attack",
+      "autopilot": {
+        "safetyAllowed": false,
+        "safetyBlockers": [
+          "replay coverage too low (0.90 < 0.95)",
+          "confidence too low (0.66 < 0.75)",
+          "rollback confidence too low (0.90 < 0.90)"
+        ],
+        "impactOverall": 0.558,
+        "recommendation": "canary_only"
+      }
+    },
+    {
+      "id": "cost-911",
       "ruleName": "cost-burst-read_text_file",
       "rule": {
         "name": "cost-burst-read_text_file",
@@ -202,7 +256,7 @@
       "confidence": 0.6,
       "reason": "Burst pattern detected: 18 calls/min peak",
       "source": "cost",
-      "estimatedSavings": 8.8515e-9,
+      "estimatedSavings": 1.103475e-8,
       "autopilot": {
         "safetyAllowed": false,
         "safetyBlockers": [
@@ -216,7 +270,7 @@
       }
     },
     {
-      "id": "threat-1341",
+      "id": "threat-917",
       "ruleName": "threat-pkg-osv-GHSA-345p-7cg4-v4c7",
       "rule": {
         "name": "threat-pkg-osv-GHSA-345p-7cg4-v4c7",
@@ -242,7 +296,7 @@
       }
     },
     {
-      "id": "threat-1342",
+      "id": "threat-923",
       "ruleName": "threat-pkg-osv-GHSA-8r9q-7v3j-jr4g",
       "rule": {
         "name": "threat-pkg-osv-GHSA-8r9q-7v3j-jr4g",
@@ -268,7 +322,7 @@
       }
     },
     {
-      "id": "threat-1343",
+      "id": "threat-929",
       "ruleName": "threat-pkg-osv-GHSA-w48q-cv73-mx4w",
       "rule": {
         "name": "threat-pkg-osv-GHSA-w48q-cv73-mx4w",
@@ -294,27 +348,27 @@
       }
     },
     {
-      "id": "baseline-1331",
+      "id": "baseline-900",
       "ruleName": "auto-token-cap-read_text_file",
       "rule": {
         "name": "auto-token-cap-read_text_file",
-        "description": "Auto-generated: read_text_file on official-filesystem averages 48 tokens, but spikes detected at 134",
+        "description": "Auto-generated: read_text_file on official-filesystem averages 46 tokens, but spikes detected at 134",
         "action": "flag",
-        "maxTokens": 105
+        "maxTokens": 101
       },
-      "confidence": 0.3009759520782125,
-      "reason": "Token spike: mean=48, max=134, z=3.01",
+      "confidence": 0.3205847627542414,
+      "reason": "Token spike: mean=46, max=134, z=3.21",
       "source": "baseline",
       "autopilot": {
         "safetyAllowed": false,
         "safetyBlockers": [
           "simulation failed",
-          "replay coverage too low (0.79 < 0.95)",
-          "confidence too low (0.30 < 0.75)",
+          "replay coverage too low (0.80 < 0.95)",
+          "confidence too low (0.32 < 0.75)",
           "predicted bypass delta too high (0.002 > 0.000)",
-          "rollback confidence too low (0.79 < 0.90)"
+          "rollback confidence too low (0.80 < 0.90)"
         ],
-        "impactOverall": 0.301,
+        "impactOverall": 0.315,
         "recommendation": "hold"
       }
     }

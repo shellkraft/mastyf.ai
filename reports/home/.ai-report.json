@@ -1,20 +1,20 @@
 {
-  "updatedAt": "2026-06-01T17:42:52.040Z",
-  "plainText": "MCP Guardian — Comprehensive Analysis\nGenerated: 2026-06-01T17:42:52.040Z\n\nEXECUTIVE SUMMARY\n  Overall security score: 50/100\n  Active servers: 1\n  Blocked calls: 221\n  Total cost (snapshot): $0.0069\n  AI adaptive threshold: 0.85\n  True positive rate: 0%\n  False positive rate: 0%\n\nSECURITY\n  official-filesystem: score 50/100, 2 CVE(s) (0 critical), auth no\n\nCOST\n  official-filesystem: 12,415 tokens, $0.0069, trend flat\n  Projected monthly: $0.21\n\nHEALTH\n  official-filesystem: 93ms latency, 100% success, 14 tools\n\nBEHAVIORAL BASELINES\n  official-filesystem/read_text_file: 19811 samples, ~48 tokens, ~90ms\n  official-filesystem/write_file: 4310 samples, ~46 tokens, ~64ms\n  official-filesystem/list_directory: 2155 samples, ~124 tokens, ~46ms\n  e2e-echo/search: 2276 samples, ~40 tokens, ~197ms\n  e2e-echo/execute_command: 569 samples, ~32 tokens, ~204ms\n\nCROSS-LAYER INSIGHTS\n  [info] official-filesystem security score is 50/100 (below 70). Review tool permissions, CVEs, and policy rules before production use. (confidence 65%)",
+  "updatedAt": "2026-06-02T10:41:24.357Z",
+  "plainText": "MCP Guardian — Comprehensive Analysis\nGenerated: 2026-06-02T10:41:24.357Z\n\nEXECUTIVE SUMMARY\n  Overall security score: 50/100\n  Active servers: 1\n  Blocked calls: 293\n  Total cost (snapshot): $0.0000\n  AI adaptive threshold: 0.85\n  True positive rate: 0%\n  False positive rate: 0%\n\nSECURITY\n  filesystem: score 50/100, 2 CVE(s) (0 critical), auth no\n\nCOST\n  filesystem: 0 tokens, $0.0000, trend flat\n  Projected monthly: $0.00\n\nHEALTH\n  filesystem: 724ms latency, 100% success, 14 tools\n\nBEHAVIORAL BASELINES\n  official-filesystem/read_text_file: 45680 samples, ~46 tokens, ~85ms\n  official-filesystem/write_file: 10212 samples, ~46 tokens, ~54ms\n  official-filesystem/list_directory: 5106 samples, ~108 tokens, ~45ms\n  e2e-echo/search: 5372 samples, ~40 tokens, ~197ms\n  e2e-echo/execute_command: 1343 samples, ~32 tokens, ~204ms\n\nCROSS-LAYER INSIGHTS\n  [info] filesystem security score is 50/100 (below 70). Review tool permissions, CVEs, and policy rules before production use. (confidence 65%)",
   "report": {
-    "timestamp": "2026-06-01T17:42:52.040Z",
+    "timestamp": "2026-06-02T10:41:24.357Z",
     "executiveSummary": {
       "overallScore": 50,
-      "totalCost": 0.0069,
+      "totalCost": 0,
       "topRisks": [],
       "activeServers": 1,
-      "blockedCalls": 221,
+      "blockedCalls": 293,
       "recommendations": []
     },
     "security": {
       "serverReports": [
         {
-          "name": "official-filesystem",
+          "name": "filesystem",
           "score": 50,
           "cves": 2,
           "critical": 0,
@@ -26,20 +26,20 @@
     "cost": {
       "serverReports": [
         {
-          "name": "official-filesystem",
-          "tokens": 12415,
-          "cost": 0.0069,
+          "name": "filesystem",
+          "tokens": 0,
+          "cost": 0,
           "trend": "flat"
         }
       ],
-      "projectedMonthly": 0.207,
+      "projectedMonthly": 0,
       "budgetAlerts": []
     },
     "health": {
       "serverReports": [
         {
-          "name": "official-filesystem",
-          "latency": 93,
+          "name": "filesystem",
+          "latency": 724,
           "success": 100,
           "tools": 14
         }
@@ -51,35 +51,35 @@
         {
           "server": "official-filesystem",
           "tool": "read_text_file",
-          "sampleCount": 19811,
-          "avgTokens": 48,
-          "avgLatency": 90
+          "sampleCount": 45680,
+          "avgTokens": 46,
+          "avgLatency": 85
         },
         {
           "server": "official-filesystem",
           "tool": "write_file",
-          "sampleCount": 4310,
+          "sampleCount": 10212,
           "avgTokens": 46,
-          "avgLatency": 64
+          "avgLatency": 54
         },
         {
           "server": "official-filesystem",
           "tool": "list_directory",
-          "sampleCount": 2155,
-          "avgTokens": 124,
-          "avgLatency": 46
+          "sampleCount": 5106,
+          "avgTokens": 108,
+          "avgLatency": 45
         },
         {
           "server": "e2e-echo",
           "tool": "search",
-          "sampleCount": 2276,
+          "sampleCount": 5372,
           "avgTokens": 40,
           "avgLatency": 197
         },
         {
           "server": "e2e-echo",
           "tool": "execute_command",
-          "sampleCount": 569,
+          "sampleCount": 1343,
           "avgTokens": 32,
           "avgLatency": 204
         }
@@ -91,7 +91,7 @@
         {
           "type": "security-hardening",
           "severity": "info",
-          "description": "official-filesystem security score is 50/100 (below 70). Review tool permissions, CVEs, and policy rules before production use.",
+          "description": "filesystem security score is 50/100 (below 70). Review tool permissions, CVEs, and policy rules before production use.",
           "confidence": 0.65
         }
       ],
@@ -103,13 +103,18 @@
         },
         {
           "hour": 8,
-          "volume": 12,
-          "avgTokens": 55
+          "volume": 42,
+          "avgTokens": 48
         },
         {
           "hour": 9,
-          "volume": 12,
+          "volume": 24,
           "avgTokens": 55
+        },
+        {
+          "hour": 10,
+          "volume": 36,
+          "avgTokens": 44
         },
         {
           "hour": 11,

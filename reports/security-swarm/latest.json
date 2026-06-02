@@ -1,33 +1,33 @@
 {
   "version": 1,
   "mode": "fast",
-  "timestamp": "2026-05-28T14:03:58.532Z",
-  "commitSha": "b71615f703674e60375f172d372b79b1aa9917b1",
+  "timestamp": "2026-06-02T10:30:48.427Z",
+  "commitSha": "5c5604c1697c9ccffeff0ca17f8571bd188777d9",
   "findings": [
     {
       "severity": "info",
       "source": "scout",
-      "summary": "Moderate advisories: 3"
+      "summary": "Moderate advisories: 1"
     }
   ],
   "timings": {
-    "totalSec": 212.6,
+    "totalSec": 243,
     "steps": [
       {
         "label": "scout-audit",
-        "elapsedSec": 1.4
+        "elapsedSec": 1.8
       },
       {
         "label": "pnpm-build",
-        "elapsedSec": 4.5
+        "elapsedSec": 5.9
       },
       {
         "label": "vitest-policy-proxy-utils",
-        "elapsedSec": 96.2
+        "elapsedSec": 114.4
       },
       {
         "label": "corpus-eval",
-        "elapsedSec": 9
+        "elapsedSec": 8.8
       },
       {
         "label": "setup-python-venv",
@@ -35,11 +35,11 @@
       },
       {
         "label": "harness-node-tests",
-        "elapsedSec": 40
+        "elapsedSec": 43.7
       },
       {
         "label": "harness-parity",
-        "elapsedSec": 61
+        "elapsedSec": 67.9
       }
     ]
   },
@@ -102,7 +102,7 @@
       "ok": true,
       "status": 0,
       "timedOut": false,
-      "elapsedSec": 1.4,
+      "elapsedSec": 1.8,
       "stdout": "",
       "stderr": ""
     },
@@ -111,7 +111,7 @@
       "ok": true,
       "status": 0,
       "timedOut": false,
-      "elapsedSec": 4.5,
+      "elapsedSec": 5.9,
       "stdout": "",
       "stderr": ""
     },
@@ -120,7 +120,7 @@
       "ok": true,
       "status": 0,
       "timedOut": false,
-      "elapsedSec": 96.2,
+      "elapsedSec": 114.4,
       "stdout": "",
       "stderr": ""
     },
@@ -129,7 +129,7 @@
       "ok": true,
       "status": 0,
       "timedOut": false,
-      "elapsedSec": 9,
+      "elapsedSec": 8.8,
       "stdout": "",
       "stderr": ""
     },
@@ -147,7 +147,7 @@
       "ok": true,
       "status": 0,
       "timedOut": false,
-      "elapsedSec": 40,
+      "elapsedSec": 43.7,
       "stdout": "",
       "stderr": ""
     },
@@ -156,22 +156,22 @@
       "ok": true,
       "status": 0,
       "timedOut": false,
-      "elapsedSec": 61,
+      "elapsedSec": 67.9,
       "stdout": "",
       "stderr": ""
     }
   ],
   "scout": {
     "agent": "scout",
-    "timestamp": "2026-05-28T13:51:20.613Z",
+    "timestamp": "2026-06-02T10:28:37.915Z",
     "audit": {
       "ok": true,
       "status": 1,
       "advisories": [],
       "summary": {
         "info": 0,
-        "low": 1,
-        "moderate": 3,
+        "low": 0,
+        "moderate": 1,
         "high": 0,
         "critical": 0
       }
@@ -185,9 +185,9 @@
     "benignPassRate": 1
   },
   "parity": {
-    "agreement": 669,
-    "total": 669,
-    "agreementRate": 1,
+    "agreement": 761,
+    "total": 765,
+    "agreementRate": 0.9947712418300654,
     "corpusMismatches": 0
   },
   "harness": {

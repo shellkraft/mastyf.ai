@@ -63,8 +63,8 @@ function main() {
   const filtered = filterIds.size > 0;
 
   const nodeBatch = spawnSync(
-    'pnpm',
-    ['exec', 'tsx', 'adversarial-harness/scripts/batch-node-eval.ts'],
+    'node',
+    ['--import', 'tsx', 'adversarial-harness/scripts/batch-node-eval.ts'],
     {
       cwd: REPO,
       encoding: 'utf-8',

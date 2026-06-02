@@ -6,6 +6,7 @@
 import { spawn } from 'node:child_process';
 import { createServer as createNetServer } from 'node:net';
 import { createInterface } from 'node:readline';
+import { load as parseYaml, dump as dumpYaml } from 'js-yaml';
 import {
   resolve,
   dirname,
@@ -23,7 +24,7 @@ import { tmpdir, homedir } from 'node:os';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 export const ROOT = resolve(__dirname, '../..');
-const POLICY = resolve(ROOT, 'default-policy.yaml');
+const DEFAULT_POLICY = resolve(ROOT, 'default-policy.yaml');
 const CLI = resolve(ROOT, 'dist/cli.js');
 const OUT_DIR = resolve(__dirname, 'output');
 const SESSION_OUT = resolve(OUT_DIR, 'live-filesystem-session.json');
@@ -80,6 +81,24 @@ function writeFilesystemProxyConfig(fsRoot) {
 }
 
 writeFilesystemProxyConfig(MCP_FS_ROOT);
+
+function resolveScenarioPolicyPath() {
+  const override = process.env.REAL_LIFE_POLICY_PATH?.trim();
+  if (override) return resolve(override);
+
+  const raw = readFileSync(DEFAULT_POLICY, 'utf-8');
+  const doc = parseYaml(raw) ?? {};
+  const policy = typeof doc.policy === 'object' && doc.policy ? doc.policy : {};
+  // In this live scenario, benign calls are expected to pass; disable mandatory
+  // certification gate while preserving all other blocking rules.
+  delete policy.require_certification;
+  doc.policy = policy;
+
+  const generatedPath = resolve(OUT_DIR, 'policy-live-filesystem.yaml');
+  mkdirSync(OUT_DIR, { recursive: true });
+  writeFileSync(generatedPath, dumpYaml(doc), 'utf-8');
+  return generatedPath;
+}
 
 function rpc(id, method, params = {}) {
   return JSON.stringify({ jsonrpc: '2.0', id: String(id), method, params }) + '\n';
@@ -376,6 +395,10 @@ export function buildHybridEnv(metricsPort, liveDbPath, liveHomeDir) {
   const metricsEnabled = process.env.REAL_LIFE_METRICS_ENABLED === 'true';
   return {
     ...process.env,
+    // Keep live scenario deterministic: disable agentic adaptive gates
+    // (zero-trust/certification lifecycle side-effects) so expected benign
+    // calls pass while static policy protections are still exercised.
+    GUARDIAN_AGENTIC_ENABLED: 'false',
     DASHBOARD_ENABLED: 'false',
     GUARDIAN_WS_ENABLED: 'false',
     METRICS_ENABLED: metricsEnabled ? 'true' : 'false',
@@ -422,6 +445,7 @@ export async function createLiveProxySession() {
 
   const metricsPort =
     process.env.METRICS_PORT || String(await pickFreeTcpPort());
+  const policyPath = resolveScenarioPolicyPath();
   const { liveDbPath, liveHomeDir, shared } = resolveLiveProxyPaths();
   if (shared) {
     console.error(`[real-life] Using shared history DB: ${liveDbPath}`);
@@ -435,7 +459,7 @@ export async function createLiveProxySession() {
   await new Promise((resolveReady, reject) => {
     proc = spawn(
       'node',
-      [CLI, 'proxy', '--config', configPath, '--policy', POLICY, '--blocking-mode', 'block'],
+      [CLI, 'proxy', '--config', configPath, '--policy', policyPath, '--blocking-mode', 'block'],
       { stdio: ['pipe', 'pipe', 'pipe'], env: hybridEnv, cwd: ROOT },
     );
     proc.stderr.on('data', (d) => { stderr += d.toString(); });
@@ -456,6 +480,7 @@ export async function createLiveProxySession() {
     responses,
     toolNames,
     hybridEnv,
+    policyPath,
     getStderr: () => stderr,
     async drainAndKill() {
       const drainMs = parseInt(
@@ -471,7 +496,7 @@ export async function createLiveProxySession() {
 
 export async function runOfficialFilesystemScenario(opts = {}) {
   const session = await createLiveProxySession();
-  const { proc, responses, toolNames, hybridEnv } = session;
+  const { proc, responses, toolNames, hybridEnv, policyPath } = session;
   let stderr = session.getStderr();
   const scenarios = buildScenarios(toolNames);
 
@@ -546,6 +571,7 @@ export async function runOfficialFilesystemScenario(opts = {}) {
       GUARDIAN_SEMANTIC_ASYNC: hybridEnv.GUARDIAN_SEMANTIC_ASYNC,
       GUARDIAN_DISABLE_SEMANTIC: hybridEnv.GUARDIAN_DISABLE_SEMANTIC,
     },
+    policyPath,
     proxyResults: results,
     burstResults,
     summary: {

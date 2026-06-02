@@ -21,6 +21,7 @@ export async function evaluateRedisRateLimit(
   try {
     const rl = getSharedRedisRateLimiter();
     for (const rule of deps.rules) {
+      if (rule.enabled === false) continue;
       if (!rule.maxCallsPerMinute) continue;
       const tenant = context.tenantId || process.env['GUARDIAN_TENANT_ID'] || 'default';
       const clientId = context.agentIdentity?.clientId || context.agentIdentity?.sub;
