@@ -70,7 +70,7 @@ export class SandboxTierEnforcer {
       const scope = { scopeType: 'server' as const, scopeId: server };
       const cert = container.certifier.getCertification(server);
       if (!cert?.certified) {
-        const defaultTier = (process.env.GUARDIAN_DEFAULT_SANDBOX_TIER || 'shadow') as SandboxTier;
+        const defaultTier = (process.env.MASTYFF_AI_DEFAULT_SANDBOX_TIER || 'shadow') as SandboxTier;
         this.setTier(scope, defaultTier);
         continue;
       }
@@ -90,7 +90,7 @@ export class SandboxTierEnforcer {
 
   ensureDefaultTierForServer(serverName: string, certified: boolean): SandboxTier {
     if (certified) return this.getTier({ scopeType: 'server', scopeId: serverName });
-    const envTier = process.env.GUARDIAN_DEFAULT_SANDBOX_TIER as SandboxTier | undefined;
+    const envTier = process.env.MASTYFF_AI_DEFAULT_SANDBOX_TIER as SandboxTier | undefined;
     const tier: SandboxTier = envTier ?? 'shadow';
     const scope = { scopeType: 'server' as const, scopeId: serverName };
     if (this.getTier(scope) === 'allow') {

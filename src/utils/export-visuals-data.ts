@@ -5,7 +5,7 @@ import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'fs';
 import { join } from 'path';
 import { homedir } from 'os';
 import { createDatabase } from '../database/create-database.js';
-import { resolveGuardianDbPath } from './guardian-db-path.js';
+import { resolveMastyffAiDbPath } from './mastyff-ai-db-path.js';
 import { getAllActiveServerNames, loadAllCallRecords } from './db-aggregate.js';
 import type { ProxyCallRecord } from '../types.js';
 import { resolveAttackLearningStatePath, resolveAiPendingSuggestionsPath, resolveAiLearningStatePath, resolveAiBaselinesPath } from '../ai/ai-paths.js';
@@ -317,7 +317,7 @@ export async function buildVisualsData(opts: {
   const tenantId = opts.tenantId || DEFAULT_TENANT_ID;
   const swarmDir = getEffectiveSwarmDir(tenantId);
   const swarmSessionLive = isSwarmSessionActiveForTenant(tenantId);
-  const dbPath = opts.dbPath ?? resolveGuardianDbPath();
+  const dbPath = opts.dbPath ?? resolveMastyffAiDbPath();
   const { startMs, endMs } = windowRangeMs(windowDays);
   const sinceMs = startMs;
   const emptyReasons: Record<string, string> = {};
@@ -384,7 +384,7 @@ export async function buildVisualsData(opts: {
   if (!windowRecords.length) {
     const windowLabel = windowDays <= 1 / 24 ? '1h' : windowDays <= 1 ? '24h' : `${Math.round(windowDays)}d`;
     emptyReasons.traffic =
-      `No proxied calls in the last ${windowLabel} — widen the dashboard time window or route MCP through Guardian (proxy and dashboard must share MCP_GUARDIAN_DB_PATH).`;
+      `No proxied calls in the last ${windowLabel} — widen the dashboard time window or route MCP through Mastyff AI (proxy and dashboard must share MASTYFF_AI_DB_PATH).`;
   }
 
   const attackState = loadAttackLearningState(tenantId);
@@ -432,7 +432,7 @@ export async function buildVisualsData(opts: {
       : 'Using history.db block counts — instant attack-learning state will populate after live proxy blocks.';
   } else {
     emptyReasons.instantLearning =
-      'No live attack-learning state yet — blocks from the proxy will populate ~/.mcp-guardian/.attack-learning-state.json.';
+      'No live attack-learning state yet — blocks from the proxy will populate ~/.mastyff-ai/.attack-learning-state.json.';
   }
 
   const semanticRecords = await loadSemanticAuditRecordsAsync({
@@ -443,7 +443,7 @@ export async function buildVisualsData(opts: {
   const semanticSlice = buildSemanticVisualsFromRecords(semanticRecords);
   if (!semanticSlice.hasData) {
     emptyReasons.semantic =
-      'No live semantic audit outcomes in the last 30 days — enable GUARDIAN_LLM_ENABLED + GUARDIAN_SEMANTIC_ASYNC on the proxy and route MCP traffic through Guardian.';
+      'No live semantic audit outcomes in the last 30 days — enable MASTYFF_AI_LLM_ENABLED + MASTYFF_AI_SEMANTIC_ASYNC on the proxy and route MCP traffic through Mastyff AI.';
   }
 
   let latest: Record<string, unknown> | null = null;

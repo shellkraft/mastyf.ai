@@ -17,7 +17,7 @@ function engine(): PolicyEngine {
 describe('threat-intel-guard', () => {
   beforeEach(() => {
     resetThreatIntelGuardCache();
-    delete process.env.GUARDIAN_DISABLE_THREAT_INTEL_GUARD;
+    delete process.env.MASTYFF_AI_DISABLE_THREAT_INTEL_GUARD;
   });
 
   it('blocks allowlisted search when query matches baseline threat signature', () => {

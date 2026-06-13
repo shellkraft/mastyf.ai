@@ -1,6 +1,6 @@
 {
   "timestamp": "2026-05-24T16:38:22.861Z",
-  "configsDir": "/Users/rudraneeldas/Desktop/mcp-guardian/guardian-configs",
+  "configsDir": "/Users/rudraneeldas/Desktop/mastyff-ai/mastyff-ai-configs",
   "summary": {
     "total": 5,
     "ok": 4,
@@ -11,7 +11,7 @@
   "servers": [
     {
       "serverName": "echo-test",
-      "configPath": "/Users/rudraneeldas/Desktop/mcp-guardian/guardian-configs/echo-test.json",
+      "configPath": "/Users/rudraneeldas/Desktop/mastyff-ai/mastyff-ai-configs/echo-test.json",
       "status": "failed",
       "error": "Expected property name or '}' in JSON at position 1 (line 1 column 2)",
       "probes": [],
@@ -21,7 +21,7 @@
     },
     {
       "serverName": "filesystem",
-      "configPath": "/Users/rudraneeldas/Desktop/mcp-guardian/guardian-configs/filesystem.json",
+      "configPath": "/Users/rudraneeldas/Desktop/mastyff-ai/mastyff-ai-configs/filesystem.json",
       "transport": "stdio",
       "status": "ok",
       "toolCount": 14,
@@ -58,7 +58,7 @@
     },
     {
       "serverName": "fixture_echo",
-      "configPath": "/Users/rudraneeldas/Desktop/mcp-guardian/guardian-configs/fixture_echo.json",
+      "configPath": "/Users/rudraneeldas/Desktop/mastyff-ai/mastyff-ai-configs/fixture_echo.json",
       "transport": "stdio",
       "status": "ok",
       "toolCount": 3,
@@ -79,7 +79,7 @@
     },
     {
       "serverName": "github",
-      "configPath": "/Users/rudraneeldas/Desktop/mcp-guardian/guardian-configs/github.json",
+      "configPath": "/Users/rudraneeldas/Desktop/mastyff-ai/mastyff-ai-configs/github.json",
       "transport": "stdio",
       "status": "ok",
       "toolCount": 26,
@@ -123,7 +123,7 @@
     },
     {
       "serverName": "puppeteer",
-      "configPath": "/Users/rudraneeldas/Desktop/mcp-guardian/guardian-configs/puppeteer.json",
+      "configPath": "/Users/rudraneeldas/Desktop/mastyff-ai/mastyff-ai-configs/puppeteer.json",
       "transport": "stdio",
       "status": "ok",
       "toolCount": 7,

@@ -10,9 +10,9 @@ describe('policy-subscriber', () => {
   beforeEach(() => {
     dir = mkdtempSync(join(tmpdir(), 'policy-sub-'));
     process.env = { ...env };
-    process.env.GUARDIAN_CONTROL_PLANE_URL = 'https://cloud.example.com';
-    process.env.GUARDIAN_CLOUD_API_KEY = 'gcp_test_key';
-    process.env.GUARDIAN_POLICY_TEMPLATES_DIR = join(dir, 'policy-templates');
+    process.env.MASTYFF_AI_CONTROL_PLANE_URL = 'https://cloud.example.com';
+    process.env.MASTYFF_AI_CLOUD_API_KEY = 'gcp_test_key';
+    process.env.MASTYFF_AI_POLICY_TEMPLATES_DIR = join(dir, 'policy-templates');
     vi.resetModules();
   });
 
@@ -23,8 +23,8 @@ describe('policy-subscriber', () => {
   });
 
   it('disabled without control plane env', async () => {
-    delete process.env.GUARDIAN_CONTROL_PLANE_URL;
-    delete process.env.GUARDIAN_CLOUD_API_KEY;
+    delete process.env.MASTYFF_AI_CONTROL_PLANE_URL;
+    delete process.env.MASTYFF_AI_CLOUD_API_KEY;
     const { isPolicySubscriberEnabled } = await import('../../src/control-plane/policy-subscriber.js');
     expect(isPolicySubscriberEnabled()).toBe(false);
   });

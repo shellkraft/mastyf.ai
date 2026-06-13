@@ -5,7 +5,7 @@ import { createRedisClient, getRedisConnectionLabel, isRedisConfigured } from '.
 import { Counter } from 'prom-client';
 import { Logger } from '../utils/logger.js';
 import { registry } from '../utils/metrics.js';
-import { getGuardianRegion } from '../utils/region.js';
+import { getMastyffAiRegion } from '../utils/region.js';
 
 export interface LlmCacheKeyInput {
   model: string;
@@ -26,14 +26,14 @@ export interface SemanticLlmCacheKeyInput {
 }
 
 const cacheHits = new Counter({
-  name: 'mcp_guardian_llm_cache_hits_total',
+  name: 'mastyff_ai_llm_cache_hits_total',
   help: 'LLM response cache hits',
   labelNames: ['backend'],
   registers: [registry],
 });
 
 const cacheMisses = new Counter({
-  name: 'mcp_guardian_llm_cache_misses_total',
+  name: 'mastyff_ai_llm_cache_misses_total',
   help: 'LLM response cache misses',
   labelNames: ['backend'],
   registers: [registry],
@@ -42,8 +42,8 @@ const cacheMisses = new Counter({
 let sharedCache: LlmCache | null = null;
 
 export function isLlmCacheEnabled(): boolean {
-  if (process.env.GUARDIAN_LLM_CACHE === 'false') return false;
-  if (process.env.GUARDIAN_LLM_CACHE === 'true') return true;
+  if (process.env.MASTYFF_AI_LLM_CACHE === 'false') return false;
+  if (process.env.MASTYFF_AI_LLM_CACHE === 'true') return true;
   return isRedisConfigured();
 }
 
@@ -101,7 +101,7 @@ export function semanticToLlmCacheKey(
 }
 
 function ttlSec(): number {
-  const parsed = parseInt(process.env.GUARDIAN_LLM_CACHE_TTL_SEC || '86400', 10);
+  const parsed = parseInt(process.env.MASTYFF_AI_LLM_CACHE_TTL_SEC || '86400', 10);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : 86400;
 }
 
@@ -118,8 +118,8 @@ export class LlmCache {
   constructor() {
     this.enabled = isLlmCacheEnabled();
     this.ttlMs = ttlSec() * 1000;
-    this.region = getGuardianRegion();
-    this.redisPrefix = `mcp_guardian:llm_cache:${this.region}:`;
+    this.region = getMastyffAiRegion();
+    this.redisPrefix = `mastyff_ai:llm_cache:${this.region}:`;
     this.lru = new LRUCache<string, string>({
       max: LRU_MAX,
       ttl: this.ttlMs,

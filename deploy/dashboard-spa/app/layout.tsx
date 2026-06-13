@@ -3,7 +3,7 @@ import './design/tokens.css';
 import './design/enterprise.css';
 
 export const metadata: Metadata = {
-  title: 'MCP Guardian',
+  title: 'Mastyff AI',
   description: 'Enterprise MCP security and operations dashboard',
 };
 

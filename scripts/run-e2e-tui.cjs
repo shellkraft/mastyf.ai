@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Comprehensive E2E pipeline → seeds ~/.mcp-guardian/history.db for the TUI.
+ * Comprehensive E2E pipeline → seeds ~/.mastyff-ai/history.db for the TUI.
  *
  * Phases:
  *   1. Security scan (CLI) → security_scans table
@@ -33,8 +33,8 @@ const CORPUS = JSON.parse(readFileSync(join(SCENARIO, 'agent-corpus.json'), 'utf
 const POLICY = join(ROOT, 'default-policy.yaml');
 const STUB = join(SCENARIO, 'enterprise-mcp-stub.cjs');
 const SERVER_NAMES = ['github', 'filesystem', 'puppeteer', 'postgres'];
-const GUARDIAN_DIR = join(homedir(), '.mcp-guardian');
-const DB_PATH = join(GUARDIAN_DIR, 'history.db');
+const MASTYFF_AI_DIR = join(homedir(), '.mastyff-ai');
+const DB_PATH = join(MASTYFF_AI_DIR, 'history.db');
 const LAUNCH_TUI = !process.argv.includes('--no-tui');
 
 const BANNER = '═'.repeat(72);
@@ -58,7 +58,7 @@ function runCli(args, extraEnv = {}, timeoutMs = 120000) {
 }
 
 (async function main() {
-  banner('MCP GUARDIAN — E2E PIPELINE → TUI (v2.5.1)');
+  banner('MASTYFF AI — E2E PIPELINE → TUI (v2.5.1)');
 
   if (!existsSync(CLI)) {
     log('dist/cli.js missing — running pnpm run build ...');
@@ -66,8 +66,8 @@ function runCli(args, extraEnv = {}, timeoutMs = 120000) {
     if (b.status !== 0) process.exit(1);
   }
 
-  mkdirSync(GUARDIAN_DIR, { recursive: true });
-  const backupPath = join(GUARDIAN_DIR, `history.db.bak-${Date.now()}`);
+  mkdirSync(MASTYFF_AI_DIR, { recursive: true });
+  const backupPath = join(MASTYFF_AI_DIR, `history.db.bak-${Date.now()}`);
   if (existsSync(DB_PATH)) {
     try {
       copyFileSync(DB_PATH, backupPath);
@@ -78,20 +78,20 @@ function runCli(args, extraEnv = {}, timeoutMs = 120000) {
   }
 
   const baseEnv = {
-    MCP_GUARDIAN_DB_PATH: DB_PATH,
+    MASTYFF_AI_DB_PATH: DB_PATH,
     DASHBOARD_ENABLED: 'false',
     METRICS_ENABLED: 'false',
-    GUARDIAN_ALLOW_MODE_OVERRIDE: 'true',
-    GUARDIAN_SKIP_PREFLIGHT_SCAN: 'true',
-    GUARDIAN_BLOCK_ON_CVE: 'false',
-    GUARDIAN_POLICY_PATH: POLICY,
+    MASTYFF_AI_ALLOW_MODE_OVERRIDE: 'true',
+    MASTYFF_AI_SKIP_PREFLIGHT_SCAN: 'true',
+    MASTYFF_AI_BLOCK_ON_CVE: 'false',
+    MASTYFF_AI_POLICY_PATH: POLICY,
     HOME: process.env.HOME,
     PATH: process.env.PATH,
   };
   // In-process proxy reads process.env (not spawn env)
-  process.env.MCP_GUARDIAN_DB_PATH = DB_PATH;
-  process.env.GUARDIAN_BLOCK_ON_CVE = 'false';
-  process.env.GUARDIAN_SKIP_PREFLIGHT_SCAN = 'true';
+  process.env.MASTYFF_AI_DB_PATH = DB_PATH;
+  process.env.MASTYFF_AI_BLOCK_ON_CVE = 'false';
+  process.env.MASTYFF_AI_SKIP_PREFLIGHT_SCAN = 'true';
 
   const summary = {
     dbPath: DB_PATH,
@@ -209,7 +209,7 @@ function runCli(args, extraEnv = {}, timeoutMs = 120000) {
   };
   db.close();
 
-  writeFileSync(join(GUARDIAN_DIR, 'e2e-tui-summary.json'), JSON.stringify(summary, null, 2));
+  writeFileSync(join(MASTYFF_AI_DIR, 'e2e-tui-summary.json'), JSON.stringify(summary, null, 2));
 
   banner('E2E SUMMARY');
   log(`  DB: ${DB_PATH}`);
@@ -218,7 +218,7 @@ function runCli(args, extraEnv = {}, timeoutMs = 120000) {
     `  Ledger: ${summary.observability.callRecords} calls, ${summary.observability.blocked} blocked, ${summary.observability.totalTokens} tokens`,
   );
   log(`  Scan/health/audit: ${summary.phases.scan?.exitCode}/${summary.phases.health?.exitCode}/${summary.phases.audit?.exitCode}`);
-  log(`  Summary JSON: ${join(GUARDIAN_DIR, 'e2e-tui-summary.json')}`);
+  log(`  Summary JSON: ${join(MASTYFF_AI_DIR, 'e2e-tui-summary.json')}`);
 
   if (summary.corpus.fail > 0) {
     log('\n  ⚠ Some corpus calls did not match expectations — TUI will still show data.');
@@ -229,7 +229,7 @@ function runCli(args, extraEnv = {}, timeoutMs = 120000) {
     await sleep(500);
     const child = spawn('node', [CLI, 'tui', '--policy', POLICY], {
       cwd: ROOT,
-      env: { ...process.env, MCP_GUARDIAN_DB_PATH: DB_PATH, GUARDIAN_POLICY_PATH: POLICY },
+      env: { ...process.env, MASTYFF_AI_DB_PATH: DB_PATH, MASTYFF_AI_POLICY_PATH: POLICY },
       stdio: 'inherit',
     });
     child.on('exit', (code) => process.exit(code ?? 0));

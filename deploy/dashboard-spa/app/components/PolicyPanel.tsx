@@ -12,7 +12,7 @@ import {
   togglePolicyRule,
   type ActivePolicyRule,
   type PolicyInfo,
-} from '@/lib/guardian-api';
+} from '@/lib/mastyff-ai-api';
 import { hasPermission } from '@/lib/dashboard-roles';
 
 type Props = {

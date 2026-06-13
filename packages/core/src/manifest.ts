@@ -6,7 +6,7 @@ import type {
   ToolDefinition, ToolManifestEntry, ManifestVerifyResult
 } from "./types.js";
 
-const MANIFEST_DIR = join(homedir(), ".mcp-guardian");
+const MANIFEST_DIR = join(homedir(), ".mastyff-ai");
 const MANIFEST_PATH = join(MANIFEST_DIR, "tool-manifest.json");
 const SECRET_PATH = join(MANIFEST_DIR, ".local-secret");
 

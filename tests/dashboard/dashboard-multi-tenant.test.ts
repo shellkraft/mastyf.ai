@@ -42,8 +42,8 @@ describe('dashboard multi-tenant isolation', () => {
 
     process.env.DASHBOARD_ENABLED = 'true';
     process.env.DASHBOARD_AUTH_DISABLED = 'true';
-    process.env.GUARDIAN_WS_ENABLED = 'true';
-    process.env.GUARDIAN_MULTI_TENANT_ENABLED = 'true';
+    process.env.MASTYFF_AI_WS_ENABLED = 'true';
+    process.env.MASTYFF_AI_MULTI_TENANT_ENABLED = 'true';
 
     setDashboardDataSource(db);
     await startDashboardServer(PORT);
@@ -55,8 +55,8 @@ describe('dashboard multi-tenant isolation', () => {
     rmSync(tmpDir, { recursive: true, force: true });
     delete process.env.DASHBOARD_ENABLED;
     delete process.env.DASHBOARD_AUTH_DISABLED;
-    delete process.env.GUARDIAN_WS_ENABLED;
-    delete process.env.GUARDIAN_MULTI_TENANT_ENABLED;
+    delete process.env.MASTYFF_AI_WS_ENABLED;
+    delete process.env.MASTYFF_AI_MULTI_TENANT_ENABLED;
   });
 
   it('serves /api/audit/heatmap as chart data (not shadowed by /api/audit)', async () => {
@@ -74,9 +74,9 @@ describe('dashboard multi-tenant isolation', () => {
     expect(body.kind).toBeUndefined();
   });
 
-  it('scopes /api/aggregate/audit by X-Guardian-Tenant', async () => {
+  it('scopes /api/aggregate/audit by X-Mastyff-Ai-Tenant', async () => {
     const resA = await fetch(`http://127.0.0.1:${PORT}/api/aggregate/audit`, {
-      headers: { 'X-Guardian-Tenant': 'tenant-a' },
+      headers: { 'X-Mastyff-Ai-Tenant': 'tenant-a' },
     });
     expect(resA.ok).toBe(true);
     const bodyA = (await resA.json()) as { events: Array<{ tool_name: string }> };
@@ -84,7 +84,7 @@ describe('dashboard multi-tenant isolation', () => {
     expect(bodyA.events.some((e) => e.tool_name === 'only-b')).toBe(false);
 
     const resB = await fetch(`http://127.0.0.1:${PORT}/api/aggregate/audit`, {
-      headers: { 'X-Guardian-Tenant': 'tenant-b' },
+      headers: { 'X-Mastyff-Ai-Tenant': 'tenant-b' },
     });
     const bodyB = (await resB.json()) as { events: Array<{ tool_name: string }> };
     expect(bodyB.events.some((e) => e.tool_name === 'only-b')).toBe(true);
@@ -95,7 +95,7 @@ describe('dashboard multi-tenant isolation', () => {
     const prevHome = process.env.HOME;
     process.env.HOME = tmpDir;
     const semLine = (tenantId: string, toolName: string) => {
-      const dir = join(tmpDir, '.mcp-guardian', 'tenants', tenantId);
+      const dir = join(tmpDir, '.mastyff-ai', 'tenants', tenantId);
       mkdirSync(dir, { recursive: true });
       const path = join(dir, 'semantic-audit-outcomes.jsonl');
       const row = {
@@ -114,7 +114,7 @@ describe('dashboard multi-tenant isolation', () => {
     semLine('tenant-b', 'sem-b');
 
     const resA = await fetch(`http://127.0.0.1:${PORT}/api/learning/semantic/outcomes`, {
-      headers: { 'X-Guardian-Tenant': 'tenant-a' },
+      headers: { 'X-Mastyff-Ai-Tenant': 'tenant-a' },
     });
     const dataA = (await resA.json()) as { records: Array<{ toolName?: string }> };
     expect(dataA.records.some((r) => r.toolName === 'sem-a')).toBe(true);

@@ -9,7 +9,7 @@ describe('AuditTrailSync call record mapping', () => {
   let dbPath: string;
 
   beforeEach(() => {
-    dir = mkdtempSync(join(tmpdir(), 'guardian-sync-'));
+    dir = mkdtempSync(join(tmpdir(), 'mastyff-ai-sync-'));
     dbPath = join(dir, 'history.db');
   });
 

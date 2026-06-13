@@ -17,7 +17,7 @@ export interface ComplianceEvidenceBundle {
 }
 
 function defaultPolicyPath(): string {
-  return process.env.GUARDIAN_POLICY_PATH || process.env.MCP_GUARDIAN_POLICY_PATH || 'default-policy.yaml';
+  return process.env.MASTYFF_AI_POLICY_PATH || process.env.MASTYFF_AI_POLICY_PATH || 'default-policy.yaml';
 }
 
 function extractActivePolicies(policyPath: string): string[] {

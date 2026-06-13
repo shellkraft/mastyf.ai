@@ -1,3 +1,3 @@
-module github.com/rudraneel93/mcp-guardian/proxy-core
+module github.com/mastyff-ai/mastyff-ai/proxy-core
 
 go 1.22

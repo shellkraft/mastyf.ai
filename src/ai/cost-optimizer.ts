@@ -31,7 +31,7 @@ export class CostOptimizer {
   constructor(db: HistoryDatabase, costAuditor: CostAuditor, budgetCap?: number) {
     this.db = db;
     this.costAuditor = costAuditor;
-    this.budgetCap = budgetCap ?? parseFloat(process.env['MCP_GUARDIAN_COST_BUDGET'] || '0');
+    this.budgetCap = budgetCap ?? parseFloat(process.env['MASTYFF_AI_COST_BUDGET'] || '0');
   }
 
   /** Analyze cost patterns from call records with pricing awareness */

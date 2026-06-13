@@ -5,15 +5,15 @@ import {
 } from '../../security-swarm/lib/evasion-sign.mjs';
 
 describe('evasion manifest signing', () => {
-  const prev = process.env.GUARDIAN_SWARM_EVASION_SIGNING_KEY;
+  const prev = process.env.MASTYFF_AI_SWARM_EVASION_SIGNING_KEY;
 
   beforeEach(() => {
-    process.env.GUARDIAN_SWARM_EVASION_SIGNING_KEY = 'test-signing-key';
+    process.env.MASTYFF_AI_SWARM_EVASION_SIGNING_KEY = 'test-signing-key';
   });
 
   afterEach(() => {
-    if (prev === undefined) delete process.env.GUARDIAN_SWARM_EVASION_SIGNING_KEY;
-    else process.env.GUARDIAN_SWARM_EVASION_SIGNING_KEY = prev;
+    if (prev === undefined) delete process.env.MASTYFF_AI_SWARM_EVASION_SIGNING_KEY;
+    else process.env.MASTYFF_AI_SWARM_EVASION_SIGNING_KEY = prev;
   });
 
   it('signs and verifies manifest', () => {

@@ -1,6 +1,6 @@
--- Registered self-hosted Guardian instances (heartbeat from org API keys)
+-- Registered self-hosted Mastyff AI instances (heartbeat from org API keys)
 
-CREATE TABLE IF NOT EXISTS guardian_fleet_instances (
+CREATE TABLE IF NOT EXISTS mastyff_ai_fleet_instances (
   id TEXT PRIMARY KEY,
   org_id TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
   instance_id TEXT NOT NULL,
@@ -15,5 +15,5 @@ CREATE TABLE IF NOT EXISTS guardian_fleet_instances (
   UNIQUE (org_id, instance_id)
 );
 
-CREATE INDEX IF NOT EXISTS idx_guardian_fleet_org ON guardian_fleet_instances (org_id, last_heartbeat DESC);
-CREATE INDEX IF NOT EXISTS idx_guardian_fleet_region ON guardian_fleet_instances (org_id, region);
+CREATE INDEX IF NOT EXISTS idx_mastyff_ai_fleet_org ON mastyff_ai_fleet_instances (org_id, last_heartbeat DESC);
+CREATE INDEX IF NOT EXISTS idx_mastyff_ai_fleet_region ON mastyff_ai_fleet_instances (org_id, region);

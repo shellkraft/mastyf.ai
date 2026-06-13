@@ -8,15 +8,15 @@ describe('semantic-audit-store', () => {
   let tempHome: string;
 
   beforeEach(() => {
-    tempHome = mkdtempSync(join(tmpdir(), 'guardian-sem-'));
+    tempHome = mkdtempSync(join(tmpdir(), 'mastyff-ai-sem-'));
     process.env.HOME = tempHome;
-    process.env.GUARDIAN_TENANT_ID = 'default';
+    process.env.MASTYFF_AI_TENANT_ID = 'default';
   });
 
   afterEach(() => {
     if (prevHome === undefined) delete process.env.HOME;
     else process.env.HOME = prevHome;
-    delete process.env.GUARDIAN_TENANT_ID;
+    delete process.env.MASTYFF_AI_TENANT_ID;
     try {
       rmSync(tempHome, { recursive: true, force: true });
     } catch {
@@ -46,7 +46,7 @@ describe('semantic-audit-store', () => {
     expect(records.length).toBe(1);
     expect(records[0].semanticAudit.suspicious).toBe(true);
 
-    const path = join(tempHome, '.mcp-guardian', 'semantic-audit-outcomes.jsonl');
+    const path = join(tempHome, '.mastyff-ai', 'semantic-audit-outcomes.jsonl');
     expect(existsSync(path)).toBe(true);
 
     const ok = await labelSemanticAuditRecord(records[0].id, 'false_positive', 'tester');

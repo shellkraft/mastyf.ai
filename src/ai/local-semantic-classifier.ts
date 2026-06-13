@@ -34,11 +34,11 @@ const RISK_PATTERNS: { id: string; category: string; weight: number; re: RegExp 
   { id: 'tool-chain', category: 'tool-chain', weight: 0.45, re: /read_file.{0,80}(?:\.env|passwd|\.ssh).{0,80}(?:then|next).{0,80}(?:post|webhook|curl|send)/i },
 ];
 
-const SUSPICIOUS_THRESHOLD = parseFloat(process.env['GUARDIAN_LOCAL_SEMANTIC_THRESHOLD'] || '0.55');
+const SUSPICIOUS_THRESHOLD = parseFloat(process.env['MASTYFF_AI_LOCAL_SEMANTIC_THRESHOLD'] || '0.55');
 
 /** LRU cache of prior local semantic scores (swarm calibrator / repeat-call perf). */
 const localSemanticCache = new Map<string, LocalSemanticScore>();
-const LOCAL_CACHE_MAX = parseInt(process.env.GUARDIAN_LOCAL_SEMANTIC_CACHE_MAX || '2048', 10);
+const LOCAL_CACHE_MAX = parseInt(process.env.MASTYFF_AI_LOCAL_SEMANTIC_CACHE_MAX || '2048', 10);
 
 function cacheKey(input: {
   serverName: string;

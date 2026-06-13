@@ -19,16 +19,16 @@ describe('decodeResponseForInspection', () => {
 
 describe('evaluateResponseDlp redaction', () => {
   it('redacts labeled password value preserving label', () => {
-    const prev = process.env.GUARDIAN_RESPONSE_DLP_MODE;
-    process.env.GUARDIAN_RESPONSE_DLP_MODE = 'redact';
+    const prev = process.env.MASTYFF_AI_RESPONSE_DLP_MODE;
+    process.env.MASTYFF_AI_RESPONSE_DLP_MODE = 'redact';
     try {
       const r = evaluateResponseDlp('tool', 'srv', 'Database password: supersecret123');
       expect(getResponseDlpMode()).toBe('redact');
       expect(r.redactedBody).toMatch(/password:\s*\[REDACTED\]/i);
       expect(r.redactedBody).not.toContain('supersecret123');
     } finally {
-      if (prev === undefined) delete process.env.GUARDIAN_RESPONSE_DLP_MODE;
-      else process.env.GUARDIAN_RESPONSE_DLP_MODE = prev;
+      if (prev === undefined) delete process.env.MASTYFF_AI_RESPONSE_DLP_MODE;
+      else process.env.MASTYFF_AI_RESPONSE_DLP_MODE = prev;
     }
   });
 

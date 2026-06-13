@@ -1,4 +1,4 @@
-// MCP Guardian Live Test API Server
+// MCP Mastyff AI Live Test API Server
 // Serves the interactive HTML and provides a REST API to run attacks through the real PolicyEngine
 const http = require('http');
 const fs = require('fs');
@@ -291,7 +291,7 @@ const server = http.createServer(async function(req, res) {
 });
 
 server.listen(PORT, function() {
-  console.log('MCP Guardian API Server running at http://localhost:' + PORT);
+  console.log('MCP Mastyff AI API Server running at http://localhost:' + PORT);
   console.log('Open http://localhost:' + PORT + ' in your browser');
   console.log('');
   console.log('API Endpoints:');

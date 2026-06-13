@@ -23,7 +23,7 @@ import { ReputationNetwork } from '../../src/agentic/reputation/reputation-netwo
 import { EcosystemObservatory } from '../../src/agentic/observatory/ecosystem-observatory.js';
 import {
   ingestFleetHeartbeatIntoObservatory,
-  ingestGuardianBenchIntoObservatory,
+  ingestMastyffAiBenchIntoObservatory,
   ingestMtxCatalogIntoObservatory,
 } from '../../src/agentic/observatory/observatory-ingest.js';
 import { InsuranceRiskQuantifier } from '../../src/agentic/insurance/risk-quantifier.js';
@@ -130,7 +130,7 @@ describe('C2 threat modeling', () => {
       generatedAt: new Date().toISOString(),
       nodes: [
         { id: 'client', type: 'client', label: 'AI Agent / Client' },
-        { id: 'proxy', type: 'proxy', label: 'MCP Guardian Proxy' },
+        { id: 'proxy', type: 'proxy', label: 'MCP Mastyff AI Proxy' },
       ],
       edges: [{ from: 'client', to: 'proxy', label: 'JSON-RPC' }],
       toolThreats: buildToolThreats([{
@@ -234,7 +234,7 @@ describe('Phase 2 roadmap modules', () => {
       serverName: 'filesystem',
       toolName: 'read_file',
       authenticated: true,
-      spiffeId: 'spiffe://guardian/agent/a1',
+      spiffeId: 'spiffe://mastyff-ai/agent/a1',
     });
     expect(score.composite).toBeGreaterThan(0);
     expect(score.dimensions.spiffe).toBeGreaterThan(0.9);
@@ -258,7 +258,7 @@ describe('Phase 3 roadmap modules', () => {
   it('B2 observatory snapshot aggregates metrics', () => {
     const obs = new EcosystemObservatory();
     obs.ingestBenchmarkSubmission({ blockRate: 0.95, falsePositiveRate: 0.01, serverCount: 5 });
-    ingestGuardianBenchIntoObservatory(obs, { blockRate: 0.9, falsePositiveRate: 0.02, serverCount: 3 });
+    ingestMastyffAiBenchIntoObservatory(obs, { blockRate: 0.9, falsePositiveRate: 0.02, serverCount: 3 });
     ingestFleetHeartbeatIntoObservatory(obs, { instanceCount: 2, blockRate: 0.88 });
     ingestMtxCatalogIntoObservatory(obs, [{ category: 'prompt-injection' }, { category: 'prompt-injection' }]);
     const snap = obs.snapshot();
@@ -275,12 +275,12 @@ describe('Phase 3 roadmap modules', () => {
     });
     expect(report.aleUsd).toBeGreaterThan(0);
     expect(report.riskTier).toBeTruthy();
-    const prev = process.env.GUARDIAN_INSURANCE_REPORT_DIR;
-    process.env.GUARDIAN_INSURANCE_REPORT_DIR = join(process.cwd(), 'reports', 'insurance-test');
+    const prev = process.env.MASTYFF_AI_INSURANCE_REPORT_DIR;
+    process.env.MASTYFF_AI_INSURANCE_REPORT_DIR = join(process.cwd(), 'reports', 'insurance-test');
     const pdf = writeInsuranceRiskPdf(report);
     expect(pdf.path).toMatch(/\.pdf$/);
     expect(pdf.pdfBase64.length).toBeGreaterThan(100);
-    process.env.GUARDIAN_INSURANCE_REPORT_DIR = prev;
+    process.env.MASTYFF_AI_INSURANCE_REPORT_DIR = prev;
   });
 });
 
@@ -292,17 +292,17 @@ describe('Phase 4 B3 federated learning', () => {
   });
 
   it('submits deltas when enabled', () => {
-    const prev = process.env.GUARDIAN_FEDERATED_LEARNING;
-    process.env.GUARDIAN_FEDERATED_LEARNING = 'true';
+    const prev = process.env.MASTYFF_AI_FEDERATED_LEARNING;
+    process.env.MASTYFF_AI_FEDERATED_LEARNING = 'true';
     const fl = new FederatedLearningCoordinator();
     const delta = fl.submitLocalDelta({ signatureHash: 'abc', sampleCount: 10 });
     expect(delta).not.toBeNull();
-    process.env.GUARDIAN_FEDERATED_LEARNING = prev;
+    process.env.MASTYFF_AI_FEDERATED_LEARNING = prev;
   });
 
   it('aggregates deltas and runs ONNX inference when enabled', async () => {
-    const prev = process.env.GUARDIAN_FEDERATED_LEARNING;
-    process.env.GUARDIAN_FEDERATED_LEARNING = 'true';
+    const prev = process.env.MASTYFF_AI_FEDERATED_LEARNING;
+    process.env.MASTYFF_AI_FEDERATED_LEARNING = 'true';
     const fl = new FederatedLearningCoordinator();
     fl.submitLocalDelta({ signatureHash: 'a', sampleCount: 10 });
     fl.submitLocalDelta({ signatureHash: 'b', sampleCount: 10 });
@@ -313,7 +313,7 @@ describe('Phase 4 B3 federated learning', () => {
     expect(infer?.modelVersion).toBeTruthy();
     expect(infer?.label).toBeTruthy();
     expect(infer?.backend).toBeTruthy();
-    process.env.GUARDIAN_FEDERATED_LEARNING = prev;
+    process.env.MASTYFF_AI_FEDERATED_LEARNING = prev;
   });
 
   it('B3 privacy gate enforces minReports threshold', () => {
@@ -367,7 +367,7 @@ describe('A1 SIEM export', () => {
       description: 'Cross-server exfil chain',
     });
     const line = formatCefLine(cef);
-    expect(line).toMatch(/^CEF:0\|MCP Guardian\|/);
+    expect(line).toMatch(/^CEF:0\|Mastyff AI\|/);
     expect(line).toMatch(/read-then-exfil/);
   });
 
@@ -382,10 +382,10 @@ describe('A1 SIEM export', () => {
 
 describe('SPIFFE identity', () => {
   it('reads SPIFFE ID from env', () => {
-    const prev = process.env.GUARDIAN_SPIFFE_ID;
-    process.env.GUARDIAN_SPIFFE_ID = 'spiffe://example.org/agent/test';
+    const prev = process.env.MASTYFF_AI_SPIFFE_ID;
+    process.env.MASTYFF_AI_SPIFFE_ID = 'spiffe://example.org/agent/test';
     expect(getActiveSpiffeId()).toBe('spiffe://example.org/agent/test');
-    process.env.GUARDIAN_SPIFFE_ID = prev;
+    process.env.MASTYFF_AI_SPIFFE_ID = prev;
   });
 });
 

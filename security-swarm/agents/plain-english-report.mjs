@@ -81,7 +81,7 @@ function buildTemplateReport(ctx) {
         ? `Your MCP setup saw ${trafficCalls} proxied calls (${trafficBlocks} blocked). Industry regression gates ${regressionPass ? 'passed' : 'need review'}.`
         : `Your MCP traffic: ${trafficCalls} calls, ${trafficBlocks} blocked. Some regression checks need attention.`
       : regressionPass
-        ? 'Regression security gates passed. Use your IDE MCP tools through Guardian to build a personalized traffic report.'
+        ? 'Regression security gates passed. Use your IDE MCP tools through Mastyff AI to build a personalized traffic report.'
         : 'Security analysis complete — review regression results and connect more MCP traffic for personalization.';
 
   const plainBullets = [];
@@ -118,7 +118,7 @@ function buildTemplateReport(ctx) {
             (s) =>
               `${s.serverName}: ${s.calls} calls, ${s.blocked} blocked`,
           )
-        : ['No wrapped servers in guardian-configs/ yet'];
+        : ['No wrapped servers in mastyff-ai-configs/ yet'];
 
   const regressionBullets = [
     `Swarm gates: ${gates.passed} passed, ${gates.failed} failed`,
@@ -132,7 +132,7 @@ function buildTemplateReport(ctx) {
   if (!trafficCalls) {
     actions.push({
       priority: 1,
-      text: 'Use MCP tools in Cursor/Cline for a few minutes so Guardian can learn your traffic patterns.',
+      text: 'Use MCP tools in Cursor/Cline for a few minutes so Mastyff AI can learn your traffic patterns.',
     });
   }
   if (gates.failed > 0) {

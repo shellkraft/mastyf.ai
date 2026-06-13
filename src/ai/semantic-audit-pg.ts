@@ -20,7 +20,7 @@ async function getPool(): Promise<import('../database/pg-loader.js').PgPoolType 
       try {
         const { loadPg } = await import('../database/pg-loader.js');
         const { Pool } = await loadPg();
-        const poolMax = parseInt(process.env.GUARDIAN_PG_POOL_MAX ?? '5', 10);
+        const poolMax = parseInt(process.env.MASTYFF_AI_PG_POOL_MAX ?? '5', 10);
         const pool = new Pool({
           connectionString: process.env.DATABASE_URL,
           max: Number.isFinite(poolMax) && poolMax > 0 ? poolMax : 5,

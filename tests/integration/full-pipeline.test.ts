@@ -10,7 +10,7 @@ import { TypoSquatDetector } from '../../src/scanners/typo-squat-detector.js';
 import { SecretScanner } from '../../src/scanners/secret-scanner.js';
 import { McpServerConfig } from '../../src/types.js';
 
-describe('Integration: MCP Guardian pipeline tests', () => {
+describe('Integration: MCP Mastyff AI pipeline tests', () => {
   const config: McpServerConfig = {
     name: 'dummy',
     transport: 'stdio',

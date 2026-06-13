@@ -59,7 +59,7 @@ export class SignatureVerifier {
     'mcp-server-sqlite',
     'mcp-server-git',
     'mcp-server-docker',
-    'mcp-guardian',
+    'mastyff-ai',
     'filesystem-mcp-server',
     'github-mcp-server',
     'slack-mcp-server',
@@ -169,7 +169,7 @@ export class SignatureVerifier {
     const trustedPublishers = [
       '@modelcontextprotocol/',
       '@anthropic/',
-      '@mcp-guardian/',
+      '@mastyff-ai/',
       '@openai/',
       '@google/',
       '@microsoft/',

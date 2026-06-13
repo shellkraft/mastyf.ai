@@ -1,6 +1,6 @@
 #!/bin/bash
 cd "$(dirname "$0")/.." || exit 1
-OUT="${OUT:-./MCP_Guardian_Test_Results.txt}"
+OUT="${OUT:-./MCP_Mastyff_Ai_Test_Results.txt}"
 
 # Helper: run command, capture output, print banner
 run_test() {
@@ -13,7 +13,7 @@ run_test() {
 }
 
 # Start fresh
-echo "MCP Guardian v2.3.3 — Test Results" > "$OUT"
+echo "MCP Mastyff AI v2.3.3 — Test Results" > "$OUT"
 echo "Generated: $(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> "$OUT"
 echo "" >> "$OUT"
 

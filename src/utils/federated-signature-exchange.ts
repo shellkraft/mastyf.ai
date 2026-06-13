@@ -73,8 +73,8 @@ export function saveCachedFleetHints(
 }
 
 export async function fetchRemoteSignatureCatalog(): Promise<RemoteSignatureCatalog | null> {
-  const base = process.env.GUARDIAN_CONTROL_PLANE_URL?.replace(/\/$/, '');
-  const apiKey = process.env.GUARDIAN_CLOUD_API_KEY?.trim() || process.env.CONTROL_PLANE_API_KEY?.trim();
+  const base = process.env.MASTYFF_AI_CONTROL_PLANE_URL?.replace(/\/$/, '');
+  const apiKey = process.env.MASTYFF_AI_CLOUD_API_KEY?.trim() || process.env.CONTROL_PLANE_API_KEY?.trim();
   if (!base || !apiKey) return null;
   try {
     const res = await fetch(`${base}/api/v1/fleet/signature-hints?window=168`, {
@@ -117,7 +117,7 @@ export async function syncFleetSignatureHintsFromCloud(): Promise<number> {
   const { buildSignatureHints } = await import('./federated-signature-exchange-catalog.js');
   const hints = buildSignatureHints(catalog, localIds).map((h) => ({
     ...h,
-    totalCount: addLaplaceNoise(h.totalCount, parseFloat(process.env.GUARDIAN_FEDERATION_EPSILON || '1.0')),
+    totalCount: addLaplaceNoise(h.totalCount, parseFloat(process.env.MASTYFF_AI_FEDERATION_EPSILON || '1.0')),
   }));
   const bloom = buildLocalSignatureBloom(local);
   saveCachedFleetHints(hints, bloom);
@@ -127,8 +127,8 @@ export async function syncFleetSignatureHintsFromCloud(): Promise<number> {
 export async function buildLocalSignatureExchange(
   remoteCatalog?: RemoteSignatureCatalog,
 ): Promise<SignatureExchangePayload> {
-  const optIn = process.env.GUARDIAN_FEDERATED_LEARNING === 'true';
-  const epsilon = parseFloat(process.env.GUARDIAN_FEDERATION_EPSILON || '1.0');
+  const optIn = process.env.MASTYFF_AI_FEDERATED_LEARNING === 'true';
+  const epsilon = parseFloat(process.env.MASTYFF_AI_FEDERATION_EPSILON || '1.0');
   const localSignatures = optIn ? await collectHeartbeatThreatSignatures() : [];
   const localIds = new Set(localSignatures.map((s) => s.signatureId));
   const bloom = buildLocalSignatureBloom(localSignatures);

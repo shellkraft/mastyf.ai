@@ -1,5 +1,5 @@
 /**
- * Aggregated analytics for the MCP Guardian Analytics dashboard (video Feature 1).
+ * Aggregated analytics for the MCP Mastyff AI Analytics dashboard (video Feature 1).
  */
 import type { IDatabase } from '../database/database-interface.js';
 import type { ProxyCallRecord } from '../types.js';
@@ -239,9 +239,9 @@ export async function buildAnalyticsSummary(
       recordCount: 0,
       sparse: true,
       dataSources: [],
-      emptyReason: 'No history database — start proxy with MCP_GUARDIAN_DB_PATH',
+      emptyReason: 'No history database — start proxy with MASTYFF_AI_DB_PATH',
     }),
-    emptyReason: 'No history database — start proxy with MCP_GUARDIAN_DB_PATH',
+    emptyReason: 'No history database — start proxy with MASTYFF_AI_DB_PATH',
   };
 
   if (!db) return empty;
@@ -251,13 +251,13 @@ export async function buildAnalyticsSummary(
     return {
       ...empty,
       available: true,
-      emptyReason: 'No proxy traffic in the selected window — use MCP tools through Guardian',
+      emptyReason: 'No proxy traffic in the selected window — use MCP tools through Mastyff AI',
       meta: buildChartMeta({
         windowDays,
         recordCount: 0,
         sparse: true,
         dataSources: ['history.db'],
-        emptyReason: 'No proxy traffic in the selected window — use MCP tools through Guardian',
+        emptyReason: 'No proxy traffic in the selected window — use MCP tools through Mastyff AI',
       }),
     };
   }

@@ -15,7 +15,7 @@ export interface LlmConfig {
 let cached: LlmConfig | null = null;
 
 function resolveProvider(): LlmProvider {
-  const explicit = process.env.GUARDIAN_LLM_PROVIDER?.toLowerCase();
+  const explicit = process.env.MASTYFF_AI_LLM_PROVIDER?.toLowerCase();
   if (explicit === 'anthropic' || explicit === 'openai' || explicit === 'ollama') {
     return explicit;
   }
@@ -39,7 +39,7 @@ export function getLlmConfig(): LlmConfig {
   if (cached) return cached;
 
   const provider = resolveProvider();
-  const model = process.env.GUARDIAN_LLM_MODEL || defaultModelForProvider(provider);
+  const model = process.env.MASTYFF_AI_LLM_MODEL || defaultModelForProvider(provider);
 
   cached = {
     provider,
@@ -50,15 +50,15 @@ export function getLlmConfig(): LlmConfig {
       process.env.OLLAMA_BASE_URL ||
       process.env.OLLAMA_URL ||
       'http://localhost:11434',
-    maxTokens: parseInt(process.env.GUARDIAN_LLM_MAX_TOKENS || '512', 10),
+    maxTokens: parseInt(process.env.MASTYFF_AI_LLM_MAX_TOKENS || '512', 10),
     timeoutMs: parseInt(
-      process.env.GUARDIAN_SEMANTIC_LLM_TIMEOUT_MS
-        || process.env.GUARDIAN_LLM_TIMEOUT_MS
+      process.env.MASTYFF_AI_SEMANTIC_LLM_TIMEOUT_MS
+        || process.env.MASTYFF_AI_LLM_TIMEOUT_MS
         || '30000',
       10,
     ),
-    temperature: parseFloat(process.env.GUARDIAN_LLM_TEMPERATURE || '0.1'),
-    enabled: process.env.GUARDIAN_LLM_ENABLED !== 'false',
+    temperature: parseFloat(process.env.MASTYFF_AI_LLM_TEMPERATURE || '0.1'),
+    enabled: process.env.MASTYFF_AI_LLM_ENABLED !== 'false',
   };
   return cached;
 }

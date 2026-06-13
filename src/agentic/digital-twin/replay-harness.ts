@@ -39,7 +39,7 @@ export async function runDigitalTwinReplayHarness(params: {
   const { parsePolicyConfig } = await import('../../policy/policy-schema.js');
   const { load } = await import('js-yaml');
   const { readFileSync, existsSync } = await import('fs');
-  const policyPath = params.policyPath ?? process.env.GUARDIAN_POLICY_PATH ?? 'default-policy.yaml';
+  const policyPath = params.policyPath ?? process.env.MASTYFF_AI_POLICY_PATH ?? 'default-policy.yaml';
   if (!existsSync(policyPath)) {
     return {
       serverName: params.serverName,

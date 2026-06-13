@@ -22,7 +22,7 @@ export interface SecurityReport {
   score: number; // 0-100
   recommendations: string[];
   hasMTLS?: boolean;
-  /** SSE/HTTP servers: IDE may connect upstream unless routed through Guardian proxy/wrap */
+  /** SSE/HTTP servers: IDE may connect upstream unless routed through Mastyff AI proxy/wrap */
   untrackedSse?: boolean;
 }
 
@@ -81,7 +81,7 @@ export interface CostReport {
   /**
    * actual — measured tokens/cost from proxy call_records;
    * model-only — resolved model + list rates, zero recorded traffic;
-   * estimated — simulated tools/list (GUARDIAN_COST_ALLOW_ESTIMATES=true only);
+   * estimated — simulated tools/list (MASTYFF_AI_COST_ALLOW_ESTIMATES=true only);
    * none — no model or connectivity
    */
   costSource?: 'actual' | 'model-only' | 'estimated' | 'none';
@@ -141,7 +141,7 @@ export interface ProxyCallRecord {
   blocked?: boolean;
   blockRule?: string;
   blockReason?: string;
-  /** Redacted argument snippet for audit (encrypted at rest when GUARDIAN_DB_ENCRYPT_AUDIT_ARGS=true) */
+  /** Redacted argument snippet for audit (encrypted at rest when MASTYFF_AI_DB_ENCRYPT_AUDIT_ARGS=true) */
   argumentSnippet?: string;
   /** Whether token counts came from provider API usage or local estimate */
   tokenSource?: 'api' | 'estimated';

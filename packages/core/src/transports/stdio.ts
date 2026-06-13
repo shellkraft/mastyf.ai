@@ -97,7 +97,7 @@ async function attemptFetch(
         send({ jsonrpc: "2.0", id: 1, method: "initialize", params: {
           protocolVersion: "2024-11-05",
           capabilities: {},
-          clientInfo: { name: "mcp-guardian", version: "2.3.4" },
+          clientInfo: { name: "mastyff-ai", version: "2.3.4" },
         }});
 
         // Give server time to initialize (configurable, was fixed 2s)

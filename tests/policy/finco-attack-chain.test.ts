@@ -26,14 +26,14 @@ describe('FINCO attack chain (default-policy.yaml)', () => {
   let engine: PolicyEngine;
 
   beforeEach(() => {
-    delete process.env.GUARDIAN_WORKSPACE;
-    delete process.env.GUARDIAN_ALLOWED_PATH_PREFIXES;
+    delete process.env.MASTYFF_AI_WORKSPACE;
+    delete process.env.MASTYFF_AI_ALLOWED_PATH_PREFIXES;
     engine = new PolicyEngine(defaultPolicy);
   });
 
   afterEach(() => {
-    delete process.env.GUARDIAN_WORKSPACE;
-    delete process.env.GUARDIAN_ALLOWED_PATH_PREFIXES;
+    delete process.env.MASTYFF_AI_WORKSPACE;
+    delete process.env.MASTYFF_AI_ALLOWED_PATH_PREFIXES;
   });
 
   it('blocks list_directory on filesystem root', () => {
@@ -116,14 +116,14 @@ describe('FINCO attack chain (default-policy.yaml)', () => {
   });
 
   it('allows benign read under workspace when scoped', () => {
-    process.env.GUARDIAN_WORKSPACE = '/home/finco/app';
+    process.env.MASTYFF_AI_WORKSPACE = '/home/finco/app';
     engine = new PolicyEngine(defaultPolicy);
     const d = engine.evaluate(ctx('read_file', { path: '/home/finco/app/src/main.ts' }));
     expect(d.action).toBe('pass');
   });
 
-  it('blocks read outside workspace when GUARDIAN_WORKSPACE is set', () => {
-    process.env.GUARDIAN_WORKSPACE = '/home/finco/app';
+  it('blocks read outside workspace when MASTYFF_AI_WORKSPACE is set', () => {
+    process.env.MASTYFF_AI_WORKSPACE = '/home/finco/app';
     engine = new PolicyEngine(defaultPolicy);
     const d = engine.evaluate(ctx('read_file', { path: '/home/finco/other/secret.txt' }));
     expect(d.action).toBe('block');

@@ -5,7 +5,7 @@ import { createHmac, timingSafeEqual } from 'node:crypto';
 
 export function getEvasionSigningKey() {
   return (
-    process.env.GUARDIAN_SWARM_EVASION_SIGNING_KEY?.trim() ||
+    process.env.MASTYFF_AI_SWARM_EVASION_SIGNING_KEY?.trim() ||
     process.env.SWARM_SIGNER_KEY?.trim() ||
     ''
   );
@@ -26,7 +26,7 @@ export function signEvasionManifest(manifest, key) {
     ...manifest,
     signature,
     signed: true,
-    signer: 'guardian-swarm',
+    signer: 'mastyff-ai-swarm',
     signedAt: new Date().toISOString(),
   };
 }
@@ -34,7 +34,7 @@ export function signEvasionManifest(manifest, key) {
 export function verifyEvasionManifest(manifest, key) {
   const secret = key || getEvasionSigningKey();
   if (!secret) {
-    return { ok: false, reason: 'GUARDIAN_SWARM_EVASION_SIGNING_KEY not set' };
+    return { ok: false, reason: 'MASTYFF_AI_SWARM_EVASION_SIGNING_KEY not set' };
   }
   const sig = manifest.signature;
   if (!sig || typeof sig !== 'string') {

@@ -1,5 +1,5 @@
 /**
- * OAuth 2.1 / OIDC authentication types for MCP Guardian proxy.
+ * OAuth 2.1 / OIDC authentication types for MCP Mastyff AI proxy.
  */
 
 export interface AuthConfig {
@@ -26,7 +26,7 @@ export interface AgentIdentity {
   issuer: string;
   /** Token expiry timestamp */
   expiresAt?: number;
-  /** Tenant id from JWT claim (GUARDIAN_JWT_TENANT_CLAIM, default tenant_id) */
+  /** Tenant id from JWT claim (MASTYFF_AI_JWT_TENANT_CLAIM, default tenant_id) */
   tenantId?: string;
 }
 

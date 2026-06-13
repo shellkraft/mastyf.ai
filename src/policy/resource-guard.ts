@@ -9,7 +9,7 @@ import {
   utf8ByteLength,
 } from '../utils/eval-bounds.js';
 
-const MAX_JSON_DEPTH = parseInt(process.env['MCP_GUARDIAN_MAX_JSON_DEPTH'] ?? '32', 10);
+const MAX_JSON_DEPTH = parseInt(process.env['MASTYFF_AI_MAX_JSON_DEPTH'] ?? '32', 10);
 
 function jsonDepth(value: unknown, depth = 0): number {
   if (depth > MAX_JSON_DEPTH + 2) return depth;

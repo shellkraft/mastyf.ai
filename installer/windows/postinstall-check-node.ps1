@@ -4,7 +4,7 @@ try {
   $v = (node -v) -replace '^v',''
   $ver = [version]$v
   if ($ver -lt $min) {
-    Write-Warning "Node.js $v found; MCP Guardian requires >= 18. Install from https://nodejs.org/"
+    Write-Warning "Node.js $v found; MCP Mastyff AI requires >= 18. Install from https://nodejs.org/"
     exit 1
   }
   Write-Host "Node.js $v OK"

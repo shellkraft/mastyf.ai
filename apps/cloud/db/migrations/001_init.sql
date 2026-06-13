@@ -1,4 +1,4 @@
--- MCP Guardian Cloud control plane (separate from Guardian audit DB)
+-- MCP Mastyff AI Cloud control plane (separate from Mastyff AI audit DB)
 
 CREATE TABLE IF NOT EXISTS users (
   id TEXT PRIMARY KEY,

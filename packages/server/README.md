@@ -1,16 +1,16 @@
-# 🛡️ MCP Guardian
+# 🛡️ MCP MastyffAi
 
 **Runtime security, cost governance, and health monitoring proxy for MCP infrastructure.**
 
-[![npm version](https://img.shields.io/npm/v/@mcp-guardian/server)](https://www.npmjs.com/package/@mcp-guardian/server)
-[![npm downloads](https://img.shields.io/npm/dm/@mcp-guardian/server)](https://www.npmjs.com/package/@mcp-guardian/server)
-[![mcp-guardian MCP server](https://glama.ai/mcp/servers/rudraneel93/mcp-guardian/badges/score.svg)](https://glama.ai/mcp/servers/rudraneel93/mcp-guardian)
+[![npm version](https://img.shields.io/npm/v/@mastyff-ai/server)](https://www.npmjs.com/package/@mastyff-ai/server)
+[![npm downloads](https://img.shields.io/npm/dm/@mastyff-ai/server)](https://www.npmjs.com/package/@mastyff-ai/server)
+[![mastyff-ai MCP server](https://glama.ai/mcp/servers/mastyff-ai/mastyff-ai/badges/score.svg)](https://glama.ai/mcp/servers/mastyff-ai/mastyff-ai)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.4-blue)](https://www.typescriptlang.org/)
 [![MCP SDK](https://img.shields.io/badge/MCP_SDK-1.0-green)](https://github.com/modelcontextprotocol/typescript-sdk)
 [![License](https://img.shields.io/badge/License-MIT-yellow)](LICENSE)
-[![CI](https://github.com/rudraneel93/mcp-guardian/actions/workflows/ci.yml/badge.svg)](https://github.com/rudraneel93/mcp-guardian/actions/workflows/ci.yml)
+[![CI](https://github.com/mastyff-ai/mastyff-ai/actions/workflows/ci.yml/badge.svg)](https://github.com/mastyff-ai/mastyff-ai/actions/workflows/ci.yml)
 
-MCP Guardian sits between AI agents and MCP servers, enforcing **active security policies**, tracking **real token costs**, monitoring **server health**, and providing **enterprise observability** — all through a YAML-configurable engine with hot-reload.
+MCP Mastyff AI sits between AI agents and MCP servers, enforcing **active security policies**, tracking **real token costs**, monitoring **server health**, and providing **enterprise observability** — all through a YAML-configurable engine with hot-reload.
 
 It works as a **transparent proxy**, a **standalone CLI**, an **MCP server** (so agents can self-audit), and a **pnpm monorepo** — install only what you need.
 
@@ -20,19 +20,19 @@ It works as a **transparent proxy**, a **standalone CLI**, an **MCP server** (so
 
 ```bash
 # Install globally
-npm install -g @mcp-guardian/server
+npm install -g @mastyff-ai/server
 
 # Scan your MCP servers for CVEs, secrets, and injection attacks
-mcp-guardian scan --all
+mastyff-ai scan --all
 
 # Proxy with active policy enforcement
-mcp-guardian proxy --policy ./default-policy.yaml --blocking-mode block
+mastyff-ai proxy --policy ./default-policy.yaml --blocking-mode block
 
 # Generate a full security-cost-health report
-mcp-guardian report --all --format markdown --output guardian-report.md
+mastyff-ai report --all --format markdown --output mastyff-ai-report.md
 
 # Run as an MCP server (AI agents can self-audit)
-mcp-guardian       # stdio transport, auto-starts MCP server
+mastyff-ai       # stdio transport, auto-starts MCP server
 ```
 
 ---
@@ -80,7 +80,7 @@ mcp-guardian       # stdio transport, auto-starts MCP server
 - **better-sqlite3** — Native, WAL-mode, crash-safe database with **advisory file locking** (prevents multi-instance corruption), versioned migrations, automated purge, and prepared statements
 - **Dependency injection interfaces** — `IHistoryDb`, `ISecurityScanner`, `ICostAuditor`, `IHealthMonitor`, `IPolicyEngine` for testability and swappable implementations
 - **Secret provider interface** — Pluggable secret backends: EnvSecretProvider (default), HashiCorpVaultProvider, AwsSecretsManagerProvider
-- **Redis cluster-state enforcement** — Warns on multi-replica/K8s without Redis; `GUARDIAN_STRICT_MODE=true` refuses startup
+- **Redis cluster-state enforcement** — Warns on multi-replica/K8s without Redis; `MASTYFF_AI_STRICT_MODE=true` refuses startup
 - **Graceful shutdown** — Async hook system flushes DB, closes connections, and WAL-checkpoints before exit
 
 ### Deployment
@@ -97,14 +97,14 @@ mcp-guardian       # stdio transport, auto-starts MCP server
 - **Red-team corpus** — Labeled poisoned/benign test cases with precision/recall measurement
 
 ### Cost Audit & Auto-Detection
-- **CLI cost audit** — `mcp-guardian audit --all` queries proxy databases for real token counts and estimates costs per model
+- **CLI cost audit** — `mastyff-ai audit --all` queries proxy databases for real token counts and estimates costs per model
 - **Auto-detection scripts** — `scripts/full-cost-report.cjs` reads Cline model config from `~/.cline/data/globalState.json`, auto-detects pricing, queries proxy DBs for precise MCP tool call costs, and computes LLM conversation cost estimates
-- **Multi-proxy DB isolation** — `MCP_GUARDIAN_DB_PATH` env var allows running multiple proxy instances (e.g., github + filesystem) with separate databases, preventing lock conflicts
+- **Multi-proxy DB isolation** — `MASTYFF_AI_DB_PATH` env var allows running multiple proxy instances (e.g., github + filesystem) with separate databases, preventing lock conflicts
 - **Per-call breakdown** — Every `tools/call` through the proxy is logged with request/response tokens, duration, and estimated cost
 
 ### Recent Fixes (v2.3.24)
-- **DB lock resolution** — `HistoryDatabase` constructor now checks `MCP_GUARDIAN_DB_PATH` env var as fallback, enabling multiple concurrent proxy instances without lock conflicts
-- **container.ts** — `createContainer()` respects `MCP_GUARDIAN_DB_PATH` for all CLI commands (scan, audit, health, report, proxy)
+- **DB lock resolution** — `HistoryDatabase` constructor now checks `MASTYFF_AI_DB_PATH` env var as fallback, enabling multiple concurrent proxy instances without lock conflicts
+- **container.ts** — `createContainer()` respects `MASTYFF_AI_DB_PATH` for all CLI commands (scan, audit, health, report, proxy)
 - **index.ts** — MCP server startup sets a separate DB path to avoid conflicts with running proxy instances
 - **macOS `/tmp` symlink** — Launch scripts use `/private/tmp` to avoid `proper-lockfile` stat errors on macOS
 
@@ -114,14 +114,14 @@ mcp-guardian       # stdio transport, auto-starts MCP server
 
 ```bash
 # Global CLI
-npm install -g @mcp-guardian/server
+npm install -g @mastyff-ai/server
 
 # As an MCP server (for AI assistant integration)
-npx @mcp-guardian/server
+npx @mastyff-ai/server
 
 # From source (monorepo)
-git clone https://github.com/rudraneel93/mcp-guardian.git
-cd mcp-guardian
+git clone https://github.com/mastyff-ai/mastyff-ai.git
+cd mastyff-ai
 pnpm install
 pnpm build
 pnpm start
@@ -131,57 +131,57 @@ pnpm start
 
 ## CLI Reference
 
-### `mcp-guardian scan`
+### `mastyff-ai scan`
 
 ```bash
-mcp-guardian scan --all                          # Scan all discoverable MCP configs
-mcp-guardian scan --config ./mcp.json             # Scan a specific config
-mcp-guardian scan --fail-on-critical              # Exit 1 if any CRITICAL CVE found
-mcp-guardian scan --fail-on-secrets               # Exit 1 if any hardcoded secret found
-mcp-guardian scan --threshold-score 60            # Exit 2 if any server scores below 60
+mastyff-ai scan --all                          # Scan all discoverable MCP configs
+mastyff-ai scan --config ./mcp.json             # Scan a specific config
+mastyff-ai scan --fail-on-critical              # Exit 1 if any CRITICAL CVE found
+mastyff-ai scan --fail-on-secrets               # Exit 1 if any hardcoded secret found
+mastyff-ai scan --threshold-score 60            # Exit 2 if any server scores below 60
 ```
 
 Outputs per-server CVE list, auth status, typo-squat risk, secrets found, and composite security score (0–100).
 
-### `mcp-guardian audit`
+### `mastyff-ai audit`
 
 ```bash
-mcp-guardian audit --all                          # Audit costs for all servers
-mcp-guardian audit --server github                 # Filter to a specific server
-mcp-guardian audit --threshold-cost 0.01           # Exit 2 if total cost exceeds $0.01
+mastyff-ai audit --all                          # Audit costs for all servers
+mastyff-ai audit --server github                 # Filter to a specific server
+mastyff-ai audit --threshold-cost 0.01           # Exit 2 if total cost exceeds $0.01
 ```
 
 Outputs per-server token usage, estimated cost (USD), and tool-level breakdown.
 
-### `mcp-guardian health`
+### `mastyff-ai health`
 
 ```bash
-mcp-guardian health --all                          # Health-check all servers
-mcp-guardian health --fail-on-overload              # Exit 1 if any server has tool overload
-mcp-guardian health --threshold-latency 1000        # Exit 2 if latency exceeds 1000ms
+mastyff-ai health --all                          # Health-check all servers
+mastyff-ai health --fail-on-overload              # Exit 1 if any server has tool overload
+mastyff-ai health --threshold-latency 1000        # Exit 2 if latency exceeds 1000ms
 ```
 
 Outputs per-server latency, success rate, tool count, and overload warnings.
 
-### `mcp-guardian report`
+### `mastyff-ai report`
 
 ```bash
-mcp-guardian report --all                          # Full security-cost-health report
-mcp-guardian report --format markdown              # Output as markdown
-mcp-guardian report --format json                  # Output as JSON
-mcp-guardian report --output guardian-report.md    # Write to file
-mcp-guardian report --threshold-score 75           # Exit 2 if overall score below 75
+mastyff-ai report --all                          # Full security-cost-health report
+mastyff-ai report --format markdown              # Output as markdown
+mastyff-ai report --format json                  # Output as JSON
+mastyff-ai report --output mastyff-ai-report.md    # Write to file
+mastyff-ai report --threshold-score 75           # Exit 2 if overall score below 75
 ```
 
 Generates a comprehensive report with overall score (weighted: security 40%, health 30%, cost efficiency 30%).
 
-### `mcp-guardian proxy`
+### `mastyff-ai proxy`
 
 ```bash
-mcp-guardian proxy --config ./mcp.json --policy ./default-policy.yaml --blocking-mode block
-mcp-guardian proxy --policy ./policy.yaml --dry-run          # Simulate without activating
-mcp-guardian proxy --auth-issuer https://accounts.google.com --auth-audience my-app
-mcp-guardian proxy --auth-required                            # Fail-closed auth
+mastyff-ai proxy --config ./mcp.json --policy ./default-policy.yaml --blocking-mode block
+mastyff-ai proxy --policy ./policy.yaml --dry-run          # Simulate without activating
+mastyff-ai proxy --auth-issuer https://accounts.google.com --auth-audience my-app
+mastyff-ai proxy --auth-required                            # Fail-closed auth
 ```
 
 Starts the transparent proxy. Policy modes: `audit` (passive), `warn` (flag only), `block` (active enforcement). With `--dry-run`, evaluates policy against historical call records without activating the proxy.
@@ -252,14 +252,14 @@ policy:
 
 ## MCP Server Integration
 
-MCP Guardian runs as a first-class MCP server, exposing security tools to AI assistants:
+MCP Mastyff AI runs as a first-class MCP server, exposing security tools to AI assistants:
 
 ```json
 {
   "mcpServers": {
-    "guardian": {
+    "mastyff-ai": {
       "command": "npx",
-      "args": ["@mcp-guardian/server"]
+      "args": ["@mastyff-ai/server"]
     }
   }
 }
@@ -272,7 +272,7 @@ MCP Guardian runs as a first-class MCP server, exposing security tools to AI ass
 - `full_report` — Complete security-cost-health report (JSON/markdown/text)
 
 **Available resources:**
-- `mcp-guardian://latest-scan` — Most recent security scan results
+- `mastyff-ai://latest-scan` — Most recent security scan results
 
 **Available prompts:**
 - `audit-config` — Generates audit instructions for an MCP config
@@ -299,12 +299,12 @@ MCP Guardian runs as a first-class MCP server, exposing security tools to AI ass
 ### Kubernetes (Helm)
 
 ```bash
-helm repo add mcp-guardian https://rudraneel93.github.io/mcp-guardian
-helm install guardian mcp-guardian/mcp-guardian \
+helm repo add mastyff-ai https://mastyff-ai.github.io/mastyff-ai
+helm install mastyff-ai mastyff-ai/mastyff-ai \
   --set persistence.enabled=true \
   --set metrics.enabled=true \
   --set secrets.mode=external \
-  --set secrets.existingSecret=mcp-guardian-secrets
+  --set secrets.existingSecret=mastyff-ai-secrets
 ```
 
 The Helm chart includes:
@@ -317,10 +317,10 @@ The Helm chart includes:
 ### Docker
 
 ```bash
-docker run -v $(pwd)/mcp.json:/etc/mcp-guardian/config.json \
-  -v $(pwd)/policy.yaml:/etc/mcp-guardian/policy.yaml \
-  ghcr.io/rudraneel93/mcp-guardian:latest \
-  proxy --config /etc/mcp-guardian/config.json --policy /etc/mcp-guardian/policy.yaml
+docker run -v $(pwd)/mcp.json:/etc/mastyff-ai/config.json \
+  -v $(pwd)/policy.yaml:/etc/mastyff-ai/policy.yaml \
+  ghcr.io/mastyff-ai/mastyff-ai:latest \
+  proxy --config /etc/mastyff-ai/config.json --policy /etc/mastyff-ai/policy.yaml
 ```
 
 ---
@@ -329,12 +329,12 @@ docker run -v $(pwd)/mcp.json:/etc/mcp-guardian/config.json \
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `MCP_GUARDIAN_DB_PATH` | `~/.mcp-guardian/history.db` | SQLite database path |
-| `MCP_GUARDIAN_SECRET_ALLOWLIST` | — | Comma-separated safe high-entropy strings |
-| `MCP_GUARDIAN_MAX_PAYLOAD_BYTES` | `10485760` (10 MB) | Max JSON-RPC payload size |
-| `GUARDIAN_SECRET_PROVIDER` | `env` | Secret backend: `env`, `hashicorp-vault`, `aws-secrets-manager` |
-| `GUARDIAN_ALLOW_MODE_OVERRIDE` | `false` | Allow CLI `--blocking-mode` to override policy file mode |
-| `GUARDIAN_STRICT_MODE` | `false` | Exit on Redis-not-configured in multi-replica/K8s |
+| `MASTYFF_AI_DB_PATH` | `~/.mastyff-ai/history.db` | SQLite database path |
+| `MASTYFF_AI_SECRET_ALLOWLIST` | — | Comma-separated safe high-entropy strings |
+| `MASTYFF_AI_MAX_PAYLOAD_BYTES` | `10485760` (10 MB) | Max JSON-RPC payload size |
+| `MASTYFF_AI_SECRET_PROVIDER` | `env` | Secret backend: `env`, `hashicorp-vault`, `aws-secrets-manager` |
+| `MASTYFF_AI_ALLOW_MODE_OVERRIDE` | `false` | Allow CLI `--blocking-mode` to override policy file mode |
+| `MASTYFF_AI_STRICT_MODE` | `false` | Exit on Redis-not-configured in multi-replica/K8s |
 | `METRICS_ENABLED` | `false` | Expose Prometheus metrics |
 | `METRICS_PORT` | `9090` | Prometheus metrics port |
 | `DASHBOARD_ENABLED` | `false` | Enable web dashboard |
@@ -353,7 +353,7 @@ docker run -v $(pwd)/mcp.json:/etc/mcp-guardian/config.json \
 
 ```
                     ┌──────────────────────────┐
-                    │    MCP Guardian Proxy     │
+                    │    MCP Mastyff AI Proxy     │
                     │  ┌────────────────────┐  │
  AI Client ──JSON-RPC→│  Policy Engine       │──→ Upstream MCP Server
                     │  │  (audit/warn/block) │  │         │
@@ -395,8 +395,8 @@ docker run -v $(pwd)/mcp.json:/etc/mcp-guardian/config.json \
 
 ```bash
 # Clone and install
-git clone https://github.com/rudraneel93/mcp-guardian.git
-cd mcp-guardian
+git clone https://github.com/mastyff-ai/mastyff-ai.git
+cd mastyff-ai
 pnpm install
 
 # Build all packages
@@ -427,9 +427,9 @@ pnpm dev
 
 ## FAQ
 
-### How is MCP Guardian different from a WAF or API gateway?
+### How is MCP Mastyff AI different from a WAF or API gateway?
 
-A WAF inspects HTTP traffic patterns; MCP Guardian operates at the **MCP protocol layer** — it understands `tools/call` semantics, tool names, argument schemas, and agent identities. It can block `execute_command` calls while allowing `read_file`, enforce per-tool rate limits, and validate JWT claims with algorithm pinning. It also scans MCP servers for CVEs, secrets, and typo-squatting — things a WAF cannot do.
+A WAF inspects HTTP traffic patterns; MCP Mastyff AI operates at the **MCP protocol layer** — it understands `tools/call` semantics, tool names, argument schemas, and agent identities. It can block `execute_command` calls while allowing `read_file`, enforce per-tool rate limits, and validate JWT claims with algorithm pinning. It also scans MCP servers for CVEs, secrets, and typo-squatting — things a WAF cannot do.
 
 ### Does the proxy add latency?
 
@@ -444,7 +444,7 @@ policy:
   mode: audit
 ```
 
-This logs every decision without blocking or flagging. Use it to understand what your agents are calling before enforcing rules. You can also run `mcp-guardian proxy --policy ./policy.yaml --dry-run` to simulate blocking against historical call records.
+This logs every decision without blocking or flagging. Use it to understand what your agents are calling before enforcing rules. You can also run `mastyff-ai proxy --policy ./policy.yaml --dry-run` to simulate blocking against historical call records.
 
 ### What happens if the policy engine crashes?
 
@@ -452,7 +452,7 @@ The proxy does **not** pass traffic through if the engine is unavailable — it 
 
 ### Can I use it with multiple replicas?
 
-Yes, with caveats. The proxy works single-instance or multi-replica, but **rate limiting and session state require Redis** (`REDIS_URL`) in multi-replica mode. Without Redis, rate limits are per-pod and session tokens from pod A are invalid on pod B. Set `GUARDIAN_STRICT_MODE=true` to refuse startup if Redis is missing in a multi-replica/K8s environment. For the audit database, use separate DB paths (`MCP_GUARDIAN_DB_PATH`) per instance, or migrate to PostgreSQL (planned for v2.4).
+Yes, with caveats. The proxy works single-instance or multi-replica, but **rate limiting and session state require Redis** (`REDIS_URL`) in multi-replica mode. Without Redis, rate limits are per-pod and session tokens from pod A are invalid on pod B. Set `MASTYFF_AI_STRICT_MODE=true` to refuse startup if Redis is missing in a multi-replica/K8s environment. For the audit database, use separate DB paths (`MASTYFF_AI_DB_PATH`) per instance, or migrate to PostgreSQL (planned for v2.4).
 
 ### Does the LLM semantic layer send my data to Anthropic?
 
@@ -460,14 +460,14 @@ Only if you configure `ANTHROPIC_API_KEY`. The semantic scanner sends **tool def
 
 ### How do I add my own secret patterns?
 
-Add them to the `MCP_GUARDIAN_SECRET_ALLOWLIST` environment variable (comma-separated) to suppress false positives. For custom detection patterns, you can extend `src/scanners/secret-scanner.ts` and rebuild. The entropy threshold (`4.5` bits per character) is also configurable in source.
+Add them to the `MASTYFF_AI_SECRET_ALLOWLIST` environment variable (comma-separated) to suppress false positives. For custom detection patterns, you can extend `src/scanners/secret-scanner.ts` and rebuild. The entropy threshold (`4.5` bits per character) is also configurable in source.
 
 ### Can I use it as a library in my own tool?
 
-Yes. The `@mcp-guardian/core` package exports the detection engine directly:
+Yes. The `@mastyff-ai/core` package exports the detection engine directly:
 
 ```typescript
-import { scanServer, fetchToolsFromStdio } from '@mcp-guardian/core';
+import { scanServer, fetchToolsFromStdio } from '@mastyff-ai/core';
 
 const tools = await fetchToolsFromStdio({ command: 'npx', args: ['@my-mcp-server'] });
 const result = await scanServer('my-server', tools, 'stdio');
@@ -475,7 +475,7 @@ const result = await scanServer('my-server', tools, 'stdio');
 // result.tools: per-tool scan results with issues
 ```
 
-The root package (`@mcp-guardian/server`) exports the full CLI, proxy, and MCP server.
+The root package (`@mastyff-ai/server`) exports the full CLI, proxy, and MCP server.
 
 ### What's the default policy if I don't provide one?
 
@@ -491,14 +491,14 @@ Set `ALERT_WEBHOOK_URL` to a Slack or Discord webhook URL, and optionally `ALERT
 
 ### Where is the database stored?
 
-`~/.mcp-guardian/history.db` by default. Override with `MCP_GUARDIAN_DB_PATH`. The database uses SQLite with WAL mode, advisory file locking, and automatic purging of records older than 30 days. For tests, pass `':memory:'` to use an in-memory database.
+`~/.mastyff-ai/history.db` by default. Override with `MASTYFF_AI_DB_PATH`. The database uses SQLite with WAL mode, advisory file locking, and automatic purging of records older than 30 days. For tests, pass `':memory:'` to use an in-memory database.
 
 ### How do I verify my policy before deploying?
 
 Use dry-run mode:
 
 ```bash
-mcp-guardian proxy --policy ./new-policy.yaml --dry-run
+mastyff-ai proxy --policy ./new-policy.yaml --dry-run
 ```
 
 This evaluates the policy against every call record in your history database and prints a per-server block/pass breakdown without activating the proxy. If the block rate is unexpectedly high or low, adjust rules before deploying.
@@ -508,7 +508,7 @@ This evaluates the policy against every call record in your history database and
 The proxy validates JWT bearer tokens in the `Authorization` header of `tools/call` requests. However, AI clients like Cline and Claude Desktop don't natively generate OAuth tokens. You have three options:
 
 1. **Token injection via MCP config** — Set `env.AUTH_TOKEN` in your MCP server config. The proxy passes it as a Bearer token to upstream servers and validates it if `--auth-required` is set.
-2. **API gateway pattern** — Place an OAuth proxy (e.g., oauth2-proxy, Pomerium) in front of MCP Guardian. The gateway issues tokens; MCP Guardian validates them.
+2. **API gateway pattern** — Place an OAuth proxy (e.g., oauth2-proxy, Pomerium) in front of Mastyff AI. The gateway issues tokens; MCP Mastyff AI validates them.
 3. **Service account tokens** — Generate a long-lived service account JWT and configure it as `AUTH_TOKEN`. Rotate it manually or via vault.
 
 RBAC scopes are defined in your policy YAML under `rules[].rbac.scopes` and mapped to JWT claims (the `scope` or `scopes` claim in the token). DPoP (RFC 9449) requires the client to sign a proof-of-possession JWT per request — this is functional in code but not yet supported by any mainstream AI client.
@@ -529,7 +529,7 @@ Results are flagged with `isEstimate: true` when char-ratio counting is used. Tr
 
 ### How does CVE scoring work? Why aren't 100 CVEs penalized more?
 
-MCP Guardian uses **logarithmic compound scoring**: each additional CVE in the same severity tier adds diminishing penalty. 1 critical CVE = −30, 2 = −60, 5 = −100, 10 = −130, 100 = −230. This prevents a single vulnerable package from zeroing the entire score while still scaling penalty with volume. CVE recency and EPSS (Exploit Prediction Scoring System) integration is planned for v2.4.
+MCP Mastyff AI uses **logarithmic compound scoring**: each additional CVE in the same severity tier adds diminishing penalty. 1 critical CVE = −30, 2 = −60, 5 = −100, 10 = −130, 100 = −230. This prevents a single vulnerable package from zeroing the entire score while still scaling penalty with volume. CVE recency and EPSS (Exploit Prediction Scoring System) integration is planned for v2.4.
 
 ### How do I set up mTLS?
 
@@ -537,15 +537,15 @@ mTLS requires:
 
 1. A Certificate Authority (CA) — you can use your existing PKI or create one with `openssl`
 2. A client certificate for each upstream MCP server signed by that CA
-3. The CA certificate configured in MCP Guardian via environment variables
+3. The CA certificate configured in MCP Mastyff AI via environment variables
 
-Set `MCP_TLS_CA_PATH=/path/to/ca.pem` and `MCP_TLS_CLIENT_CERT_PATH=/path/to/client.crt`, `MCP_TLS_CLIENT_KEY_PATH=/path/to/client.key` per server in your MCP config's `env` section. A `mcp-guardian certs init` helper command is planned for v2.4 to automate this.
+Set `MCP_TLS_CA_PATH=/path/to/ca.pem` and `MCP_TLS_CLIENT_CERT_PATH=/path/to/client.crt`, `MCP_TLS_CLIENT_KEY_PATH=/path/to/client.key` per server in your MCP config's `env` section. A `mastyff-ai certs init` helper command is planned for v2.4 to automate this.
 
 ### What happens if my policy YAML is malformed?
 
 The proxy **fails closed** — malformed YAML causes a startup error and the proxy refuses to start. It does not silently fall back to the last good policy or default to audit mode. Use `--dry-run` to validate new policies before deploying:
 ```bash
-mcp-guardian proxy --policy ./new-policy.yaml --dry-run
+mastyff-ai proxy --policy ./new-policy.yaml --dry-run
 ```
 
 ### How do I contribute?
@@ -554,7 +554,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines. The monorepo uses pnpm wo
 
 ### Is it production-ready?
 
-MCP Guardian is **production-grade for controlled environments** (single-instance or Redis-backed multi-replica with `GUARDIAN_STRICT_MODE`). The database layer uses better-sqlite3 with WAL mode and advisory file locking — crash-safe and non-blocking. It handles the core use case — active policy enforcement with audit trails — reliably. For high-trust enterprise deployments, a third-party security audit is planned for v2.5. See [SECURITY.md](SECURITY.md) for details on our security posture.
+MCP Mastyff AI is **production-grade for controlled environments** (single-instance or Redis-backed multi-replica with `MASTYFF_AI_STRICT_MODE`). The database layer uses better-sqlite3 with WAL mode and advisory file locking — crash-safe and non-blocking. It handles the core use case — active policy enforcement with audit trails — reliably. For high-trust enterprise deployments, a third-party security audit is planned for v2.5. See [SECURITY.md](SECURITY.md) for details on our security posture.
 
 ---
 

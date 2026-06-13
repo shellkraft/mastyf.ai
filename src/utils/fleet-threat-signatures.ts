@@ -99,7 +99,7 @@ export function aggregateThreatSignaturesFromBlocks(
 
 export async function collectHeartbeatThreatSignatures(): Promise<ThreatSignature[]> {
   const { loadSemanticAuditRecordsAsync } = await import('../ai/semantic-audit-store.js');
-  const { getGuardianRegion } = await import('./region.js');
+  const { getMastyffAiRegion } = await import('./region.js');
   const records = await loadSemanticAuditRecordsAsync({
     sinceMs: 60 * 60 * 1000,
     limit: 100,
@@ -112,7 +112,7 @@ export async function collectHeartbeatThreatSignatures(): Promise<ThreatSignatur
       category: r.semanticAudit?.categories?.[0] || 'unknown',
       argKeys: [] as string[],
     }));
-  return aggregateThreatSignaturesFromBlocks(blocks, getGuardianRegion());
+  return aggregateThreatSignaturesFromBlocks(blocks, getMastyffAiRegion());
 }
 
 export type FleetThreatAlert = {

@@ -20,62 +20,62 @@ let readinessCheckRef: WeakRef<() => Promise<unknown>> | null = null;
 
 // P3 Fix 12: Prometheus naming convention compliance (_total suffix, HELP strings)
 export const requestsTotal = new Counter({
-  name: 'mcp_guardian_requests_total',
+  name: 'mastyff_ai_requests_total',
   help: 'Total number of tools/call requests proxied',
   labelNames: ['server_name', 'decision', 'authn_success', 'tenant_id'],
   registers: [registry],
 });
 
 export const blockedRequestsTotal = new Counter({
-  name: 'mcp_guardian_blocked_total',
+  name: 'mastyff_ai_blocked_total',
   help: 'Total number of tools/call requests blocked by policy',
   labelNames: ['server_name', 'block_reason', 'rule', 'tenant_id'],
   registers: [registry],
 });
 
 export const rugpullDetectedTotal = new Counter({
-  name: 'mcp_guardian_rugpull_detected_total',
+  name: 'mastyff_ai_rugpull_detected_total',
   help: 'Tool list fingerprint mismatches (OWASP MCP03 rug-pull)',
   labelNames: ['server_name', 'tenant_id'],
   registers: [registry],
 });
 
 export const proxyInflightRejectedTotal = new Counter({
-  name: 'mcp_guardian_proxy_inflight_rejected_total',
+  name: 'mastyff_ai_proxy_inflight_rejected_total',
   help: 'tools/call rejected because proxy max in-flight limit was reached',
   labelNames: ['server_name', 'tenant_id'],
   registers: [registry],
 });
 
 export const semanticSyncRequestBlocksTotal = new Counter({
-  name: 'mcp_guardian_semantic_sync_request_blocks_total',
+  name: 'mastyff_ai_semantic_sync_request_blocks_total',
   help: 'tools/call blocked by enterprise sync semantic request gate',
   labelNames: ['server_name', 'tenant_id'],
   registers: [registry],
 });
 
 export const policyCacheHitsTotal = new Counter({
-  name: 'mcp_guardian_policy_cache_hits_total',
+  name: 'mastyff_ai_policy_cache_hits_total',
   help: 'Policy evaluation cache hits',
   labelNames: ['tenant_id', 'allowed'],
   registers: [registry],
 });
 
 export const sessionFlowBackend = new Gauge({
-  name: 'mcp_guardian_session_flow_backend',
+  name: 'mastyff_ai_session_flow_backend',
   help: 'Session flow store backend (1=redis, 0=memory)',
   registers: [registry],
 });
 
 export const attacksBlockedTotal = new Counter({
-  name: 'mcp_guardian_attacks_blocked_total',
+  name: 'mastyff_ai_attacks_blocked_total',
   help: 'Policy blocks by attack category and rule',
   labelNames: ['category', 'rule', 'tenant_id'],
   registers: [registry],
 });
 
 export const costSpentUsdTotal = new Counter({
-  name: 'mcp_guardian_cost_spent_usd',
+  name: 'mastyff_ai_cost_spent_usd',
   help: 'Cumulative estimated USD spend from proxied calls',
   labelNames: ['tenant_id'],
   registers: [registry],
@@ -121,54 +121,54 @@ export function recordCostSpendUsd(amount: number, tenantId?: string): void {
 }
 
 export const injectionDetectedTotal = new Counter({
-  name: 'mcp_guardian_injection_detected_total',
+  name: 'mastyff_ai_injection_detected_total',
   help: 'Total number of prompt injection attempts detected',
   labelNames: ['server_name', 'severity'],
   registers: [registry],
 });
 
 export const authFailuresTotal = new Counter({
-  name: 'mcp_guardian_auth_failures_total',
+  name: 'mastyff_ai_auth_failures_total',
   help: 'Total number of authentication failures',
   labelNames: ['server_name', 'reason'],
   registers: [registry],
 });
 
 export const circuitBreakerState = new Gauge({
-  name: 'mcp_guardian_circuit_breaker_state',
+  name: 'mastyff_ai_circuit_breaker_state',
   help: 'Circuit breaker state (0=CLOSED, 1=OPEN, 2=HALF_OPEN)',
   labelNames: ['server_name'],
   registers: [registry],
 });
 
 export const circuitBreakerSyncTotal = new Counter({
-  name: 'mcp_guardian_circuit_breaker_sync_total',
+  name: 'mastyff_ai_circuit_breaker_sync_total',
   help: 'Redis circuit breaker sync operations',
   labelNames: ['op', 'result'],
   registers: [registry],
 });
 
 export const activeSessions = new Gauge({
-  name: 'mcp_guardian_active_sessions',
+  name: 'mastyff_ai_active_sessions',
   help: 'Number of active session tokens',
   registers: [registry],
 });
 
 export const activeProxies = new Gauge({
-  name: 'mcp_guardian_active_proxies',
+  name: 'mastyff_ai_active_proxies',
   help: 'Number of active proxy connections',
   registers: [registry],
 });
 
 export const sseUntrackedServers = new Gauge({
-  name: 'mcp_guardian_sse_untracked_servers',
+  name: 'mastyff_ai_sse_untracked_servers',
   help: 'SSE/HTTP MCP servers configured without stdio proxy path (audit/cost may be incomplete)',
   labelNames: ['server_name'],
   registers: [registry],
 });
 
 export const proxyLatencyMs = new Histogram({
-  name: 'mcp_guardian_proxy_latency_ms',
+  name: 'mastyff_ai_proxy_latency_ms',
   help: 'Proxy processing latency in milliseconds',
   labelNames: ['server_name', 'tenant_id'],
   buckets: [1, 5, 10, 25, 50, 100, 250, 500, 1000],
@@ -176,7 +176,7 @@ export const proxyLatencyMs = new Histogram({
 });
 
 export const authLatencyMs = new Histogram({
-  name: 'mcp_guardian_auth_latency_ms',
+  name: 'mastyff_ai_auth_latency_ms',
   help: 'Authentication/JWT validation latency in milliseconds',
   labelNames: ['server_name'],
   buckets: [1, 5, 10, 25, 50, 100, 250, 500],
@@ -184,7 +184,7 @@ export const authLatencyMs = new Histogram({
 });
 
 export const requestDurationSeconds = new Histogram({
-  name: 'mcp_guardian_request_duration_seconds',
+  name: 'mastyff_ai_request_duration_seconds',
   help: 'Duration of proxied tools/call requests in seconds',
   labelNames: ['server_name', 'decision'],
   buckets: [0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5],
@@ -192,7 +192,7 @@ export const requestDurationSeconds = new Histogram({
 });
 
 export const tokenCostUsd = new Histogram({
-  name: 'mcp_guardian_token_cost_usd',
+  name: 'mastyff_ai_token_cost_usd',
   help: 'Estimated USD cost per tools/call request',
   labelNames: ['server_name', 'model'],
   buckets: [0.00001, 0.0001, 0.001, 0.01, 0.1, 1],
@@ -200,14 +200,14 @@ export const tokenCostUsd = new Histogram({
 });
 
 export const instantLearningEventsTotal = new Counter({
-  name: 'mcp_guardian_instant_learning_events_total',
+  name: 'mastyff_ai_instant_learning_events_total',
   help: 'Per-block instant attack learning events processed',
   labelNames: ['block_rule', 'outcome'],
   registers: [registry],
 });
 
 export const suggestionQueueDepth = new Gauge({
-  name: 'mcp_guardian_suggestion_queue_depth',
+  name: 'mastyff_ai_suggestion_queue_depth',
   help: 'Pending AI policy suggestions awaiting operator review',
   labelNames: ['tenant_id'],
   registers: [registry],
@@ -220,7 +220,7 @@ export function setSuggestionQueueDepth(count: number, tenantId?: string): void 
 
 function ensureDefaultMetrics(): void {
   if (defaultMetricsRegistered) return;
-  collectDefaultMetrics({ register: registry, prefix: 'mcp_guardian_' });
+  collectDefaultMetrics({ register: registry, prefix: 'mastyff_ai_' });
   defaultMetricsRegistered = true;
 }
 

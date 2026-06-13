@@ -1,5 +1,5 @@
 /**
- * Scheduled health + security digests for Guardian Autopilot.
+ * Scheduled health + security digests for Mastyff AI Autopilot.
  */
 import { existsSync, mkdirSync, writeFileSync } from 'fs';
 import { join } from 'path';
@@ -25,13 +25,13 @@ function digestDir(tenantId: string): string {
 }
 
 function readSchedule(): AutopilotReportSchedule {
-  const raw = process.env.GUARDIAN_REPORT_SCHEDULE || readAutopilotConfig()?.reportSchedule || 'off';
+  const raw = process.env.MASTYFF_AI_REPORT_SCHEDULE || readAutopilotConfig()?.reportSchedule || 'off';
   if (raw === 'daily' || raw === 'weekly') return raw;
   return 'off';
 }
 
 function cronHour(): number {
-  const n = parseInt(process.env.GUARDIAN_REPORT_CRON_HOUR || '', 10);
+  const n = parseInt(process.env.MASTYFF_AI_REPORT_CRON_HOUR || '', 10);
   if (Number.isFinite(n) && n >= 0 && n <= 23) return n;
   return readAutopilotConfig()?.reportCronHour ?? 6;
 }
@@ -94,7 +94,7 @@ export async function generateDigest(
       windowDays,
       summary,
       pendingSuggestions: pending,
-      message: 'Policy suggestions require human approval (GUARDIAN_AI_AUTO_APPLY=false).',
+      message: 'Policy suggestions require human approval (MASTYFF_AI_AI_AUTO_APPLY=false).',
     };
     securityPath = join(dir, `security-${date}.json`);
     writeFileSync(securityPath, JSON.stringify(payload, null, 2), 'utf-8');

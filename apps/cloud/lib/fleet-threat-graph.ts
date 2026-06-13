@@ -44,7 +44,7 @@ export async function upsertFleetThreatSignatures(
   for (const s of signatures) {
     const id = `${orgId}:${s.signatureId}:${instanceId}`;
     await db.execute(sql`
-      INSERT INTO guardian_fleet_threat_signatures (
+      INSERT INTO mastyff_ai_fleet_threat_signatures (
         id, org_id, signature_id, instance_id, region,
         rule_name, tool_name, category, arg_shape_hash,
         event_count, last_seen
@@ -67,7 +67,7 @@ export async function upsertFleetThreatSignatures(
         tool_name = EXCLUDED.tool_name,
         category = EXCLUDED.category,
         arg_shape_hash = EXCLUDED.arg_shape_hash,
-        event_count = guardian_fleet_threat_signatures.event_count + EXCLUDED.event_count,
+        event_count = mastyff_ai_fleet_threat_signatures.event_count + EXCLUDED.event_count,
         last_seen = EXCLUDED.last_seen
     `);
     n++;
@@ -88,7 +88,7 @@ export async function queryFleetThreatGraph(orgId: string, windowHours = 24): Pr
       SUM(event_count)::int AS event_count,
       COUNT(DISTINCT instance_id)::int AS instance_count,
       MAX(last_seen) AS last_seen
-    FROM guardian_fleet_threat_signatures
+    FROM mastyff_ai_fleet_threat_signatures
     WHERE org_id = ${orgId}
       AND last_seen >= NOW() - (${windowHours} || ' hours')::interval
     GROUP BY signature_id, rule_name, tool_name, category, arg_shape_hash, region

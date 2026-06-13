@@ -4,14 +4,14 @@ import { getMaxPayloadBytes } from './payload-guard.js';
 const DEFAULT_MAX_JSON_DEPTH = 32;
 
 export function getHttpMaxBodyBytes(): number {
-  const raw = process.env['GUARDIAN_HTTP_MAX_BODY_BYTES'];
+  const raw = process.env['MASTYFF_AI_HTTP_MAX_BODY_BYTES'];
   if (raw === undefined || raw === '') return 10 * 1024 * 1024;
   const n = parseInt(raw, 10);
   return Number.isFinite(n) && n > 0 ? n : 10 * 1024 * 1024;
 }
 
 export function getHttpMaxJsonDepth(): number {
-  const raw = process.env['GUARDIAN_HTTP_MAX_JSON_DEPTH'];
+  const raw = process.env['MASTYFF_AI_HTTP_MAX_JSON_DEPTH'];
   if (raw === undefined || raw === '') return DEFAULT_MAX_JSON_DEPTH;
   const n = parseInt(raw, 10);
   return Number.isFinite(n) && n > 0 ? n : DEFAULT_MAX_JSON_DEPTH;

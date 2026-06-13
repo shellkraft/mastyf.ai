@@ -17,13 +17,13 @@ import { calculateOverallScore } from './utils/scoring.js';
 import { Logger } from './utils/logger.js';
 import { createContainer } from './container.js';
 import { sanitizeConfigPath } from './utils/sanitize-config-path.js';
-import { resolveMcpServerDbPath } from './utils/guardian-db-path.js';
+import { resolveMcpServerDbPath } from './utils/mastyff-ai-db-path.js';
 import { readPackageVersion } from './utils/package-version.js';
 import { resolveTenantFromEnv } from './tenant/resolve-tenant.js';
 
 // ── DB path: separate from proxy history.db (Cline cannot set env in MCP JSON)
-if (!process.env['MCP_GUARDIAN_DB_PATH']) {
-  process.env['MCP_GUARDIAN_DB_PATH'] = resolveMcpServerDbPath();
+if (!process.env['MASTYFF_AI_DB_PATH']) {
+  process.env['MASTYFF_AI_DB_PATH'] = resolveMcpServerDbPath();
 }
 
 import type { Container } from './container.js';
@@ -32,7 +32,7 @@ let container: Container;
 const reporter = new ReportGenerator();
 
 const server = new Server(
-  { name: 'mcp-guardian', version: readPackageVersion() },
+  { name: 'mastyff-ai', version: readPackageVersion() },
   { capabilities: { tools: {}, resources: {}, prompts: {}, logging: {} } }
 );
 
@@ -50,7 +50,7 @@ server.setRequestHandler(SetLevelRequestSchema, async (request) => {
 server.setRequestHandler(ListResourcesRequestSchema, async () => ({
   resources: [
     {
-      uri: 'mcp-guardian://latest-scan',
+      uri: 'mastyff-ai://latest-scan',
       name: 'Latest Scan Report',
       description: 'Most recent security scan results across all MCP servers',
       mimeType: 'application/json',
@@ -59,7 +59,7 @@ server.setRequestHandler(ListResourcesRequestSchema, async () => ({
 }));
 
 server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
-  if (request.params.uri === 'mcp-guardian://latest-scan') {
+  if (request.params.uri === 'mastyff-ai://latest-scan') {
     // Return the most recent security scan data from DB (or note if empty)
     const latestScan = {
       timestamp: new Date().toISOString(),
@@ -502,7 +502,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     // ── Agentic AI: Trust Negotiation (Feature #10) ────────────
     {
       name: 'negotiate_agent_trust',
-      description: 'Initiate an automated trust handshake with another AI agent behind Guardian',
+      description: 'Initiate an automated trust handshake with another AI agent behind Mastyff AI',
       inputSchema: {
         type: 'object',
         properties: {
@@ -639,7 +639,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     },
     {
       name: 'policy_to_natural_language',
-      description: 'Explain MCP Guardian policy YAML in plain English for compliance stakeholders',
+      description: 'Explain MCP Mastyff AI policy YAML in plain English for compliance stakeholders',
       inputSchema: {
         type: 'object',
         properties: {
@@ -797,7 +797,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
             {
               type: 'resource',
               resource: {
-                uri: 'report://mcp-guardian/full-report.json',
+                uri: 'report://mastyff-ai/full-report.json',
                 mimeType: 'application/json',
                 text: JSON.stringify(fullReport, null, 2),
               },
@@ -1008,7 +1008,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       const report = await simulatePolicyChange({
         generatedPolicyYaml: proposed,
         existingPolicyYaml: proposed,
-        policyPath: process.env.MCP_GUARDIAN_POLICY_PATH || 'default-policy.yaml',
+        policyPath: process.env.MASTYFF_AI_POLICY_PATH || 'default-policy.yaml',
       });
       return {
         content: [{
@@ -1029,7 +1029,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
     case 'threat_intel_status': {
       const stats = container.threatMeshNode.getStats();
-      return { content: [{ type: 'text', text: `**Threat Intel Mesh Status**\nEnabled: ${stats.enabled}\nLocal signatures: ${stats.localSignatures}\nPending: ${stats.pendingSignatures}\nRelay connected: ${stats.relayConnected}\n\n${stats.enabled ? 'Mesh is active and contributing anonymized threat intelligence.' : 'Mesh is disabled. Set GUARDIAN_THREAT_MESH_ENABLED=true to enable.'}` }] };
+      return { content: [{ type: 'text', text: `**Threat Intel Mesh Status**\nEnabled: ${stats.enabled}\nLocal signatures: ${stats.localSignatures}\nPending: ${stats.pendingSignatures}\nRelay connected: ${stats.relayConnected}\n\n${stats.enabled ? 'Mesh is active and contributing anonymized threat intelligence.' : 'Mesh is disabled. Set MASTYFF_AI_THREAT_MESH_ENABLED=true to enable.'}` }] };
     }
 
     // Honeypot (Feature #4)
@@ -1076,8 +1076,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       const requestedTools = (args?.requestedTools as string[]) || [];
       const maxMin = (args?.maxSessionMinutes as number) || 30;
       const result = container.trustProtocol.negotiate(
-        { agentId: 'mcp-guardian-local', guardianInstance: 'local', capabilities: ['scan', 'audit', 'protect'] },
-        { agentId: remoteId, guardianInstance: 'remote', capabilities: requestedTools },
+        { agentId: 'mastyff-ai-local', mastyffAiInstance: 'local', capabilities: ['scan', 'audit', 'protect'] },
+        { agentId: remoteId, mastyffAiInstance: 'remote', capabilities: requestedTools },
         { requestedTools, scope: {}, maxSessionMinutes: maxMin },
       );
       return { content: [{ type: 'text', text: result.success ? `**Trust Negotiation Successful**\nSession: ${result.sessionId}\nAllowed tools: ${result.negotiatedPolicy?.allowedTools.join(', ')}\nRate limit: ${result.negotiatedPolicy?.maxRatePerMin} calls/min\nExpires: ${result.negotiatedPolicy ? `${result.negotiatedPolicy.sessionTtlMs / 60000} minutes` : 'N/A'}\n\n${result.rationale}` : `**Negotiation Failed**\n${result.error}\n${result.rationale}` }] };
@@ -1097,7 +1097,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
     case 'trust_registry_list': {
       const registry = container.trustProtocol.getTrustRegistry();
-      return { content: [{ type: 'text', text: `**Trust Registry**\n\n${registry.map(a => `- ${a.agentId} (${a.guardianInstance}): ${a.capabilities.join(', ')}`).join('\n') || 'No agents registered.'}` }] };
+      return { content: [{ type: 'text', text: `**Trust Registry**\n\n${registry.map(a => `- ${a.agentId} (${a.mastyffAiInstance}): ${a.capabilities.join(', ')}`).join('\n') || 'No agents registered.'}` }] };
     }
 
     // Agentic Status (Meta)
@@ -1121,7 +1121,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     // Trust Score (Feature #11)
     case 'compute_trust_score': {
       const sn = (args?.serverName as string) || servers[0]?.name || 'unknown';
-      const score = container.guardianScore.compute({
+      const score = container.mastyffAiScore.compute({
         serverName: sn,
         cveCount: (args?.cveCount as number) || 0,
         maxCvss: (args?.maxCvss as number) || 0,
@@ -1137,9 +1137,9 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         blockedCalls: 0,
         bypassedAttacks: 0,
         responseDlpActive: false,
-        guardianProtected: true,
+        mastyffAiProtected: true,
       });
-      return { content: [{ type: 'text', text: `**Guardian Trust Score: ${sn}**\n\nGrade: **${score.grade}** (${score.overallScore}/100)\nBadge: ${score.badge.text}\n\n**Categories:**\n${score.categories.map(c => `- ${c.name}: ${c.score}/${c.maxScore} (weight: ${(c.weight * 100).toFixed(0)}%)\n  ${c.findings.join('\n  ')}`).join('\n')}\n\n**Improvement Actions:**\n${score.improvementActions.map(a => `- [${a.priority}] ${a.action} (+${a.expectedScoreIncrease} points, ${a.effort})`).join('\n')}` }] };
+      return { content: [{ type: 'text', text: `**Mastyff AI Trust Score: ${sn}**\n\nGrade: **${score.grade}** (${score.overallScore}/100)\nBadge: ${score.badge.text}\n\n**Categories:**\n${score.categories.map(c => `- ${c.name}: ${c.score}/${c.maxScore} (weight: ${(c.weight * 100).toFixed(0)}%)\n  ${c.findings.join('\n  ')}`).join('\n')}\n\n**Improvement Actions:**\n${score.improvementActions.map(a => `- [${a.priority}] ${a.action} (+${a.expectedScoreIncrease} points, ${a.effort})`).join('\n')}` }] };
     }
 
     // Response DLP (Feature #12)
@@ -1180,7 +1180,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           maxCvss: scan.cves.reduce((m, c) => Math.max(m, (c as { cvssScore?: number }).cvssScore ?? 0), 0),
           authMethod: 'none',
           transport: srv.transport === 'stdio' ? 'stdio' : 'https',
-          guardianProtected: true,
+          mastyffAiProtected: true,
         });
       } else {
         cert = container.certifier.certify(sn, pkg, ver, { trustScore: 50, complianceScore: 0, cveFree: true, authMethod: 'none', transport: 'stdio', trustedPublisher: false });
@@ -1217,7 +1217,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     case 'run_protocol_fuzzer': {
       const blockFn = (method: string, params: Record<string, unknown>) => ({ blocked: false });
       const sn = (args?.serverName as string) || servers[0]?.name || 'local';
-      const live = process.env.GUARDIAN_FUZZ_TARGET || (args?.liveTransport === true);
+      const live = process.env.MASTYFF_AI_FUZZ_TARGET || (args?.liveTransport === true);
       const results = live
         ? await container.protocolFuzzer.runLiveTransportFuzz(blockFn, sn, container.reinforceFuzzer)
         : container.protocolFuzzer.runFuzzer(blockFn, sn, container.reinforceFuzzer);
@@ -1351,17 +1351,17 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 });
 
 export async function startMcpServer() {
-  container = await createContainer(process.env['MCP_GUARDIAN_DB_PATH']);
+  container = await createContainer(process.env['MASTYFF_AI_DB_PATH']);
   const transport = new StdioServerTransport();
   await server.connect(transport);
-  Logger.info('MCP Guardian running on stdio');
+  Logger.info('MCP Mastyff AI running on stdio');
 }
 
 // Auto-start when run directly (not imported)
 const isMainModule = process.argv[1]?.includes('index.js') || process.argv[1]?.includes('index.ts');
 if (isMainModule) {
   startMcpServer().catch((err) => {
-    Logger.error(`MCP Guardian failed to start: ${err}`);
+    Logger.error(`MCP Mastyff AI failed to start: ${err}`);
     process.exit(1);
   });
 }

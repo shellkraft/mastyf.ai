@@ -39,16 +39,16 @@ export function isCloudLicenseKey(key: string): boolean {
 
 export function loadLicenseClientConfig(): LicenseClientConfig {
   return {
-    controlPlaneUrl: process.env['GUARDIAN_CONTROL_PLANE_URL']?.replace(/\/$/, ''),
-    licenseKey: process.env['GUARDIAN_LICENSE_KEY'],
-    requireLicense: process.env['GUARDIAN_REQUIRE_LICENSE'] === 'true',
-    refreshSeconds: parseInt(process.env['GUARDIAN_LICENSE_REFRESH_SECONDS'] || '300', 10) || 300,
-    graceSeconds: parseInt(process.env['GUARDIAN_LICENSE_GRACE_SECONDS'] || '900', 10) || 900,
+    controlPlaneUrl: process.env['MASTYFF_AI_CONTROL_PLANE_URL']?.replace(/\/$/, ''),
+    licenseKey: process.env['MASTYFF_AI_LICENSE_KEY'],
+    requireLicense: process.env['MASTYFF_AI_REQUIRE_LICENSE'] === 'true',
+    refreshSeconds: parseInt(process.env['MASTYFF_AI_LICENSE_REFRESH_SECONDS'] || '300', 10) || 300,
+    graceSeconds: parseInt(process.env['MASTYFF_AI_LICENSE_GRACE_SECONDS'] || '900', 10) || 900,
   };
 }
 
 export function isLicenseEnforcementEnabled(): boolean {
-  return process.env['GUARDIAN_REQUIRE_LICENSE'] === 'true';
+  return process.env['MASTYFF_AI_REQUIRE_LICENSE'] === 'true';
 }
 
 export function getLicenseClient(): LicenseClient {
@@ -201,13 +201,13 @@ export class LicenseClient {
     if (!this.isEnabled()) {
       if (this.config.requireLicense) {
         Logger.error(
-          '[license] GUARDIAN_REQUIRE_LICENSE=true but GUARDIAN_CONTROL_PLANE_URL/GUARDIAN_LICENSE_KEY missing',
+          '[license] MASTYFF_AI_REQUIRE_LICENSE=true but MASTYFF_AI_CONTROL_PLANE_URL/MASTYFF_AI_LICENSE_KEY missing',
         );
         return false;
       }
       if (isOpenCoreEnabled()) {
         Logger.info(
-          '[license] Community tier — Pro features (dashboard, swarm, multi-tenant, semantic async) require GUARDIAN_LICENSE_KEY',
+          '[license] Community tier — Pro features (dashboard, swarm, multi-tenant, semantic async) require MASTYFF_AI_LICENSE_KEY',
         );
       }
       return true;

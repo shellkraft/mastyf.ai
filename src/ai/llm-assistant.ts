@@ -88,8 +88,8 @@ function configFromEnv(): LlmAssistantConfig {
 }
 
 function ollamaThinkEnabled(model: string): boolean {
-  if (process.env.GUARDIAN_LLM_OLLAMA_THINK === 'true') return true;
-  if (process.env.GUARDIAN_LLM_OLLAMA_THINK === 'false') return false;
+  if (process.env.MASTYFF_AI_LLM_OLLAMA_THINK === 'true') return true;
+  if (process.env.MASTYFF_AI_LLM_OLLAMA_THINK === 'false') return false;
   return !/qwen3/i.test(model);
 }
 
@@ -229,7 +229,7 @@ export class LlmAssistant {
     explanation: string;
   } | null> {
     const systemPrompt = `You are an MCP (Model Context Protocol) security policy generator.
-Your task is to convert a natural-language policy goal into a valid YAML policy rule for MCP Guardian.
+Your task is to convert a natural-language policy goal into a valid YAML policy rule for Mastyff AI.
 Output ONLY a JSON object with "yaml" (the YAML rule block) and "explanation" (why this rule).
 
 YAML format:

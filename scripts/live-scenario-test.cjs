@@ -1,5 +1,5 @@
 /**
- * MCP Guardian v2.3.3 — Real-Life Enterprise Scenario Test
+ * MCP Mastyff AI v2.3.3 — Real-Life Enterprise Scenario Test
  *
  * Scenario: An enterprise dev team uses 4 MCP servers (github, filesystem, puppeteer, postgres)
  * via Cline. A simulated AI session sends 20 diverse tools/call messages including:
@@ -32,7 +32,7 @@ function banner(title) { log('\n' + BANNER + '\n  ' + title + '\n' + BANNER); }
 var ECHO_CODE = 'var rl=require("readline").createInterface({input:process.stdin});rl.on("line",function(l){try{var m=JSON.parse(l);var resp={jsonrpc:"2.0",id:m.id};if(m.method==="tools/call"){resp.result={content:[{type:"text",text:JSON.stringify(m.params&&m.params.arguments||{})}]}}else if(m.method==="initialize"){resp.result={protocolVersion:"2024-11-05",serverInfo:{name:"echo",version:"1.0"},capabilities:{tools:{}}}}else if(m.method==="tools/list"){resp.result={tools:[{name:"search"},{name:"read_file"},{name:"list_directory"},{name:"get_file_contents"},{name:"search_repositories"},{name:"query"},{name:"execute"},{name:"write_to_file"}]}};process.stdout.write(JSON.stringify(resp)+"\\n")}catch(e){}})';
 
 (async function() {
-  banner('MCP GUARDIAN v2.3.3 — ENTERPRISE SCENARIO TEST');
+  banner('MASTYFF AI v2.3.3 — ENTERPRISE SCENARIO TEST');
   log('Simulating: 4 MCP servers, 20 tools/call messages, active block policy');
   log('');
 
@@ -66,7 +66,7 @@ var ECHO_CODE = 'var rl=require("readline").createInterface({input:process.stdin
   // ── Simulate 20 tools/call messages across servers ──────────────────
   var calls = [
     // Normal operations (should pass)
-    { target: 'github',     id:'c01', name:'search',             args:{query:'mcp-guardian security proxy'}},
+    { target: 'github',     id:'c01', name:'search',             args:{query:'mastyff-ai security proxy'}},
     { target: 'github',     id:'c02', name:'search_repositories',args:{query:'TypeScript OAuth 2.1'}},
     { target: 'filesystem', id:'c03', name:'read_file',          args:{path:'src/index.ts'}},
     { target: 'filesystem', id:'c04', name:'list_directory',     args:{path:'src'}},

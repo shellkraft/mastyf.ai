@@ -9,18 +9,18 @@ import {
 
 describe('SecurityThreatQuarantine', () => {
   let home: string;
-  const prevHome = process.env.MCP_GUARDIAN_HOME;
+  const prevHome = process.env.MASTYFF_AI_HOME;
 
   beforeEach(() => {
     resetSecurityThreatQuarantineForTests();
-    home = mkdtempSync(join(tmpdir(), 'guardian-q-'));
-    process.env.MCP_GUARDIAN_HOME = home;
+    home = mkdtempSync(join(tmpdir(), 'mastyff-ai-q-'));
+    process.env.MASTYFF_AI_HOME = home;
   });
 
   afterEach(() => {
     resetSecurityThreatQuarantineForTests();
-    if (prevHome === undefined) delete process.env.MCP_GUARDIAN_HOME;
-    else process.env.MCP_GUARDIAN_HOME = prevHome;
+    if (prevHome === undefined) delete process.env.MASTYFF_AI_HOME;
+    else process.env.MASTYFF_AI_HOME = prevHome;
     rmSync(home, { recursive: true, force: true });
   });
 

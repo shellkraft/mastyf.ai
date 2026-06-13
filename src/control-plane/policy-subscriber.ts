@@ -1,5 +1,5 @@
 /**
- * Polls MCP Guardian Cloud for policy updates and hot-reloads local tenant policy.
+ * Polls MCP Mastyff AI Cloud for policy updates and hot-reloads local tenant policy.
  */
 import { mkdirSync, writeFileSync } from 'fs';
 import { dirname, join } from 'path';
@@ -10,17 +10,17 @@ let pollTimer: ReturnType<typeof setInterval> | null = null;
 let lastVersion = 0;
 
 function controlPlaneUrl(): string | null {
-  return process.env['GUARDIAN_CONTROL_PLANE_URL']?.replace(/\/$/, '') || null;
+  return process.env['MASTYFF_AI_CONTROL_PLANE_URL']?.replace(/\/$/, '') || null;
 }
 
 function cloudApiKey(): string | null {
-  return process.env['GUARDIAN_CLOUD_API_KEY']?.trim()
+  return process.env['MASTYFF_AI_CLOUD_API_KEY']?.trim()
     || process.env['CONTROL_PLANE_API_KEY']?.trim()
     || null;
 }
 
 function tenantPolicyPath(tenantSlug: string): string {
-  const base = process.env['GUARDIAN_POLICY_TEMPLATES_DIR']
+  const base = process.env['MASTYFF_AI_POLICY_TEMPLATES_DIR']
     || join(process.cwd(), 'policy-templates');
   return join(base, 'tenants', tenantSlug, 'policy.yaml');
 }
@@ -29,7 +29,7 @@ export function isPolicySubscriberEnabled(): boolean {
   return Boolean(
     controlPlaneUrl()
     && cloudApiKey()
-    && process.env['GUARDIAN_POLICY_SYNC_ENABLED'] !== 'false',
+    && process.env['MASTYFF_AI_POLICY_SYNC_ENABLED'] !== 'false',
   );
 }
 
@@ -75,7 +75,7 @@ export function startPolicySubscriber(
   policyWatcher?: PolicyWatcher | null,
 ): void {
   if (pollTimer || !isPolicySubscriberEnabled()) return;
-  const intervalMs = parseInt(process.env['GUARDIAN_POLICY_SYNC_INTERVAL_MS'] || '60000', 10);
+  const intervalMs = parseInt(process.env['MASTYFF_AI_POLICY_SYNC_INTERVAL_MS'] || '60000', 10);
 
   const tick = () => {
     void fetchAndApplyCloudPolicy(tenantSlug, policyWatcher).catch((err: unknown) => {

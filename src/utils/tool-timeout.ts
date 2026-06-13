@@ -1,15 +1,15 @@
 /**
  * Per-tool request timeouts (enterprise).
- * GUARDIAN_TOOL_TIMEOUT_JSON='{"slow_query":120000,"read_file":10000}'
+ * MASTYFF_AI_TOOL_TIMEOUT_JSON='{"slow_query":120000,"read_file":10000}'
  */
-const DEFAULT_MS = parseInt(process.env['GUARDIAN_REQUEST_TIMEOUT_MS'] || '30000', 10) || 30_000;
+const DEFAULT_MS = parseInt(process.env['MASTYFF_AI_REQUEST_TIMEOUT_MS'] || '30000', 10) || 30_000;
 
 let cache: Record<string, number> | null = null;
 
 function loadMap(): Record<string, number> {
   if (cache) return cache;
   cache = {};
-  const raw = process.env['GUARDIAN_TOOL_TIMEOUT_JSON'];
+  const raw = process.env['MASTYFF_AI_TOOL_TIMEOUT_JSON'];
   if (!raw) return cache;
   try {
     const parsed = JSON.parse(raw) as Record<string, number>;

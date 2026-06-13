@@ -1,5 +1,5 @@
 {
-  "name": "mcp-guardian",
+  "name": "mastyff-ai",
   "version": "2.3.20",
   "description": "Runtime security, cost governance, and health monitoring proxy for MCP infrastructure — three-layer detection engine (regex → schema → LLM), YAML policy engine with hot-reload, 50+ secret patterns + Shannon entropy, AST command validation, JWT algorithm pinning, default-deny fail-closed, K8s Helm with probes and NetworkPolicy",
   "category": "Security",
@@ -15,9 +15,9 @@
     "observability",
     "cost-tracking"
   ],
-  "install": "npm install -g @mcp-guardian/server@latest",
-  "repository": "https://github.com/rudraneel93/mcp-guardian",
-  "homepage": "https://www.npmjs.com/package/@mcp-guardian/server",
+  "install": "npm install -g @mastyff-ai/server@latest",
+  "repository": "https://github.com/mastyff-ai/mastyff-ai",
+  "homepage": "https://www.npmjs.com/package/@mastyff-ai/server",
   "license": "MIT",
   "runtime": "node",
   "transport": [

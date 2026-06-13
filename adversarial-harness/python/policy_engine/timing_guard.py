@@ -50,15 +50,15 @@ USERNAME_ORACLE_PATTERNS: list[re.Pattern[str]] = [
 
 PROBE_WINDOW_S = 60.0
 ENUM_WINDOW_S = 120.0
-MAX_TIMING_PROBES = int(os.environ.get("MCP_GUARDIAN_MAX_TIMING_PROBES_PER_MIN", "8"))
-MAX_ENUM_PROBES = int(os.environ.get("MCP_GUARDIAN_MAX_ENUM_PROBES_PER_SESSION", "20"))
+MAX_TIMING_PROBES = int(os.environ.get("MASTYFF_AI_MAX_TIMING_PROBES_PER_MIN", "8"))
+MAX_ENUM_PROBES = int(os.environ.get("MASTYFF_AI_MAX_ENUM_PROBES_PER_SESSION", "20"))
 
 _probe_counters: dict[str, tuple[int, float]] = {}
 _enum_counters: dict[str, tuple[int, float]] = {}
 
 
 def is_timing_guard_enabled() -> bool:
-    return os.environ.get("GUARDIAN_TIMING_GUARD") != "false"
+    return os.environ.get("MASTYFF_AI_TIMING_GUARD") != "false"
 
 
 def reset_timing_probe_counters() -> None:
@@ -126,7 +126,7 @@ def _is_enumeration_probe_candidate(blob: str, tool_name: str) -> bool:
 
 
 def _probe_session_key(ctx: CallContext) -> str:
-    tenant = ctx.tenant_id or os.environ.get("GUARDIAN_TENANT_ID") or "default"
+    tenant = ctx.tenant_id or os.environ.get("MASTYFF_AI_TENANT_ID") or "default"
     sub = "anon"
     if ctx.agent_identity:
         sub = ctx.agent_identity.sub or ctx.agent_identity.client_id or "anon"

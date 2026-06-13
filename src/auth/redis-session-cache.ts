@@ -13,8 +13,8 @@ import { DEFAULT_TENANT_ID } from '../tenant/resolve-tenant.js';
  */
 export class RedisSessionCache extends SessionCache {
   private redis: Redis | Cluster;
-  private readonly prefix = 'mcp_guardian:session:';
-  private readonly noncePrefix = 'mcp_guardian:nonce:';
+  private readonly prefix = 'mastyff_ai:session:';
+  private readonly noncePrefix = 'mastyff_ai:nonce:';
 
   private redisSessionKey(tenantId: string, token: string): string {
     return `${this.prefix}tenant:${tenantId || DEFAULT_TENANT_ID}:${token}`;
@@ -72,11 +72,11 @@ export class RedisSessionCache extends SessionCache {
         return null;
       }
 
-      if (process.env['GUARDIAN_SESSION_ROTATE_ON_USE'] !== 'true') {
+      if (process.env['MASTYFF_AI_SESSION_ROTATE_ON_USE'] !== 'true') {
         return { identity: entry.identity };
       }
 
-      const newToken = `mcp_guardian_session_${randomUUID()}`;
+      const newToken = `mastyff_ai_session_${randomUUID()}`;
       const now = Date.now();
       const newEntry: SessionEntry = {
         ...entry,

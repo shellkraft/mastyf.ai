@@ -10,13 +10,13 @@ const LOCAL_PATTERNS: { id: string; category: string; severity: "critical" | "wa
 ];
 
 const THRESHOLD = parseFloat(
-  process.env["MCP_GUARDIAN_LOCAL_SEMANTIC_THRESHOLD"] ||
-    process.env["GUARDIAN_LOCAL_SEMANTIC_THRESHOLD"] ||
+  process.env["MASTYFF_AI_LOCAL_SEMANTIC_THRESHOLD"] ||
+    process.env["MASTYFF_AI_LOCAL_SEMANTIC_THRESHOLD"] ||
     "0.55",
 );
 
 export function isCoreLocalSemanticEnabled(): boolean {
-  const v = process.env["MCP_GUARDIAN_LOCAL_SEMANTIC"] ?? process.env["GUARDIAN_LOCAL_SEMANTIC"];
+  const v = process.env["MASTYFF_AI_LOCAL_SEMANTIC"] ?? process.env["MASTYFF_AI_LOCAL_SEMANTIC"];
   if (v === "false" || v === "0") return false;
   return true;
 }

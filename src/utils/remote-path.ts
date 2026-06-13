@@ -22,9 +22,9 @@ function parsePairSegment(segment: string): PathMapping | null {
   return { local: normalizeSlashes(local), remote: normalizeSlashes(remote) };
 }
 
-/** Parse GUARDIAN_REMOTE_PATH_MAP (JSON object or `local=/remote` comma-separated pairs). */
+/** Parse MASTYFF_AI_REMOTE_PATH_MAP (JSON object or `local=/remote` comma-separated pairs). */
 export function parseRemotePathMap(raw?: string): PathMapping[] {
-  const source = raw ?? process.env.GUARDIAN_REMOTE_PATH_MAP ?? '';
+  const source = raw ?? process.env.MASTYFF_AI_REMOTE_PATH_MAP ?? '';
   if (!source.trim()) return [];
 
   const trimmed = source.trim();
@@ -47,7 +47,7 @@ export function parseRemotePathMap(raw?: string): PathMapping[] {
 }
 
 export function isRemoteSshEnabled(): boolean {
-  return process.env.GUARDIAN_REMOTE_SSH === 'true';
+  return process.env.MASTYFF_AI_REMOTE_SSH === 'true';
 }
 
 function longestPrefixMatch(path: string, mappings: PathMapping[]): PathMapping | null {

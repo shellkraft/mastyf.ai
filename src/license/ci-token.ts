@@ -1,7 +1,7 @@
 /**
  * CI automation token verification.
  *
- * Instead of a plain env-var bypass (GUARDIAN_CI_BYPASS_LICENSE=true),
+ * Instead of a plain env-var bypass (MASTYFF_AI_CI_BYPASS_LICENSE=true),
  * CI pipelines must present a JWT signed with the maintainer's Ed25519 private key.
  *
  * The corresponding public key is embedded at build time. Without the private key,
@@ -46,7 +46,7 @@ export type CiTokenPayload = {
 let _verifiedPayloadCache: { payload: CiTokenPayload; verifiedAt: number } | null = null;
 
 function getToken(): string | undefined {
-  return process.env['GUARDIAN_CI_TOKEN']?.trim() || undefined;
+  return process.env['MASTYFF_AI_CI_TOKEN']?.trim() || undefined;
 }
 
 function tokenCacheValid(): boolean {

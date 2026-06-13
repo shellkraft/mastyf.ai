@@ -16,12 +16,12 @@ done
 sleep 1
 
 echo "=== Starting GitHub proxy on port 9001 ==="
-MCP_GUARDIAN_DB_PATH="$DB_DIR/proxy-github.db" nohup npx -y mcp-proxy --port 9001 --server sse -- node dist/cli.js proxy --config /tmp/cfg-github.json --policy ./default-policy.yaml &>/tmp/p9001.log &
+MASTYFF_AI_DB_PATH="$DB_DIR/proxy-github.db" nohup npx -y mcp-proxy --port 9001 --server sse -- node dist/cli.js proxy --config /tmp/cfg-github.json --policy ./default-policy.yaml &>/tmp/p9001.log &
 PID1=$!
 echo "GitHub proxy: PID $PID1"
 
 echo "=== Starting Filesystem proxy on port 9002 ==="
-MCP_GUARDIAN_DB_PATH="$DB_DIR/proxy-filesystem.db" nohup npx -y mcp-proxy --port 9002 --server sse -- node dist/cli.js proxy --config /tmp/cfg-fs.json --policy ./default-policy.yaml &>/tmp/p9002.log &
+MASTYFF_AI_DB_PATH="$DB_DIR/proxy-filesystem.db" nohup npx -y mcp-proxy --port 9002 --server sse -- node dist/cli.js proxy --config /tmp/cfg-fs.json --policy ./default-policy.yaml &>/tmp/p9002.log &
 PID2=$!
 echo "Filesystem proxy: PID $PID2"
 

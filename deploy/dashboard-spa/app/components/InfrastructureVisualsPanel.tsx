@@ -22,6 +22,8 @@ import {
   CHART_SERIES,
   formatAxisTime,
   topNBuckets,
+  classifyRule,
+  ruleCategoryColor,
 } from '@/lib/chartTheme';
 import { ChartCard } from './dashboard/ChartCard';
 import { ChartTooltip, ChartLegend } from './dashboard/chart-kit';
@@ -119,8 +121,8 @@ export function InfrastructureVisualsPanel({ refreshKey = 0 }: Props) {
   const trafficEmptyReason =
     data?.meta?.emptyReasons?.traffic
     ?? (data?.meta?.dbPath
-      ? `No proxy traffic in the selected ${window} window — widen the time window or route MCP through Guardian. Reading ${data.meta.dbPath}.`
-      : `No proxy traffic in the selected ${window} window — widen the time window or route MCP through Guardian.`);
+      ? `No proxy traffic in the selected ${window} window — widen the time window or route MCP through Mastyff AI. Reading ${data.meta.dbPath}.`
+      : `No proxy traffic in the selected ${window} window — widen the time window or route MCP through Mastyff AI.`);
 
   return (
     <section className="infra-visuals-panel" aria-label="Infrastructure visuals">
@@ -216,7 +218,11 @@ export function InfrastructureVisualsPanel({ refreshKey = 0 }: Props) {
                 <XAxis type="number" {...CHART_AXIS} />
                 <YAxis type="category" dataKey="plainEnglish" width={120} {...CHART_AXIS} />
                 <Tooltip content={<ChartTooltip />} />
-                <Bar dataKey="count" fill={CHART_SERIES.block} name="Blocks" />
+                <Bar dataKey="count" name="Blocks">
+                  {rules.map((r) => (
+                    <Cell key={r.rule} fill={ruleCategoryColor(classifyRule(r.rule))} />
+                  ))}
+                </Bar>
               </BarChart>
             </ResponsiveContainer>
           </ChartCard>

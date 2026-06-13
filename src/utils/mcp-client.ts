@@ -26,7 +26,7 @@ export interface McpProbeResult {
 
 export class McpClient {
   private static handshakeTimeoutMs(): number {
-    const n = parseInt(process.env['GUARDIAN_HEALTH_PROBE_TIMEOUT_MS'] || '15000', 10);
+    const n = parseInt(process.env['MASTYFF_AI_HEALTH_PROBE_TIMEOUT_MS'] || '15000', 10);
     return Number.isFinite(n) && n > 0 ? n : 15000;
   }
 
@@ -56,8 +56,8 @@ export class McpClient {
       let child: ChildProcess;
       try {
         child = spawn(cmd, args, { env, stdio: ['pipe', 'pipe', 'pipe'] });
-      } catch (err: any) {
-        return resolve({ success: false, authRequired: false, latencyMs: Date.now() - start, error: `Spawn failed: ${err?.message}` });
+      } catch (err: unknown) {
+        return resolve({ success: false, authRequired: false, latencyMs: Date.now() - start, error: `Spawn failed: ${err instanceof Error ? err.message : String(err)}` });
       }
       const timeout = setTimeout(() => { try { child.kill(); } catch {} resolve({ success: false, authRequired: false, latencyMs: Date.now() - start, error: 'Handshake timeout' }); }, McpClient.handshakeTimeoutMs());
       let handled = false;
@@ -67,7 +67,7 @@ export class McpClient {
       let initId: string, listId: string;
 
       initId = randomUUID();
-      child.stdin!.write(JSON.stringify({ jsonrpc: '2.0', id: initId, method: 'initialize', params: { protocolVersion: '2024-11-05', capabilities: {}, clientInfo: { name: 'mcp-guardian', version: '0.3.0' } } }) + '\n');
+      child.stdin!.write(JSON.stringify({ jsonrpc: '2.0', id: initId, method: 'initialize', params: { protocolVersion: '2024-11-05', capabilities: {}, clientInfo: { name: 'mastyff-ai', version: '0.3.0' } } }) + '\n');
 
       rl.on('line', (line: string) => {
         try {
@@ -140,7 +140,7 @@ export class McpClient {
     messageBase.searchParams.set('sessionId', sessionId);
 
     const initId = randomUUID();
-    const initBody = { jsonrpc: '2.0', id: initId, method: 'initialize', params: { protocolVersion: '2024-11-05', capabilities: {}, clientInfo: { name: 'mcp-guardian', version: '0.3.0' } } };
+    const initBody = { jsonrpc: '2.0', id: initId, method: 'initialize', params: { protocolVersion: '2024-11-05', capabilities: {}, clientInfo: { name: 'mastyff-ai', version: '0.3.0' } } };
     const initResp = await McpClient.postJson(messageBase, initBody, httpModule, overallTimeout);
     if (!initResp || initResp.error) {
       return { success: false, authRequired: initResp?.error?.code === -32001 || /auth/i.test(initResp?.error?.message || ''), latencyMs: Date.now() - start, error: initResp?.error?.message || 'Initialize failed' };

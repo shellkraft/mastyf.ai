@@ -11,10 +11,10 @@ import {
   resolveModelListRates,
 } from '../utils/cost-estimate.js';
 
-/** Per-tenant caps from GUARDIAN_TENANT_DAILY_BUDGET_JSON={"acme":100,"beta":50}. */
+/** Per-tenant caps from MASTYFF_AI_TENANT_DAILY_BUDGET_JSON={"acme":100,"beta":50}. */
 export function getTenantDailyBudgetMap(): Map<string, number> {
   const map = new Map<string, number>();
-  const raw = process.env['GUARDIAN_TENANT_DAILY_BUDGET_JSON'];
+  const raw = process.env['MASTYFF_AI_TENANT_DAILY_BUDGET_JSON'];
   if (!raw?.trim()) return map;
   try {
     const obj = JSON.parse(raw) as Record<string, number | string>;
@@ -35,13 +35,13 @@ function parseCallRecordTimestamp(timestamp: string): number {
   return Date.parse(timestamp.replace(' ', 'T') + 'Z');
 }
 
-/** Daily spend cap from GUARDIAN_DAILY_BUDGET_USD (preferred) or MCP_GUARDIAN_COST_BUDGET. */
+/** Daily spend cap from MASTYFF_AI_DAILY_BUDGET_USD (preferred) or MASTYFF_AI_COST_BUDGET. */
 export function getDailyBudgetCapUsd(tenantId?: string): number {
   if (tenantId) {
     const perTenant = getTenantDailyBudgetMap().get(tenantId);
     if (perTenant !== undefined) return perTenant;
   }
-  const daily = process.env['GUARDIAN_DAILY_BUDGET_USD'] ?? process.env['MCP_GUARDIAN_COST_BUDGET'];
+  const daily = process.env['MASTYFF_AI_DAILY_BUDGET_USD'] ?? process.env['MASTYFF_AI_COST_BUDGET'];
   if (!daily) return 0;
   const cap = parseFloat(daily);
   return Number.isFinite(cap) && cap > 0 ? cap : 0;
@@ -128,7 +128,7 @@ export class CostAuditor {
 
   /**
    * No proxy call_records: resolve real model, optionally probe connectivity,
-   * report list rates only (zero measured cost) unless GUARDIAN_COST_ALLOW_ESTIMATES=true.
+   * report list rates only (zero measured cost) unless MASTYFF_AI_COST_ALLOW_ESTIMATES=true.
    */
   private async auditWithoutProxyRecords(server: McpServerConfig): Promise<CostReport> {
     const tid = this.tenantId;
@@ -143,7 +143,7 @@ export class CostAuditor {
         const activeNames = await this.db.getDistinctActiveServers(tid);
         if (activeNames.length === 0) {
           proxyDataHint =
-            'No call_records in database — run `mcp-guardian proxy` and send tools/call (see scenarios/real-life/run-live-proxy-test.mjs)';
+            'No call_records in database — run `mastyff-ai proxy` and send tools/call (see scenarios/real-life/run-live-proxy-test.mjs)';
         } else if (!activeNames.includes(server.name)) {
           proxyDataHint = `No call_records for "${server.name}" — proxy traffic exists for: ${activeNames.join(', ')}`;
         }
@@ -170,7 +170,7 @@ export class CostAuditor {
           ? 'Server requires authentication — configure credentials in server env'
           : 'Could not reach server';
       const sseNote = untrackedSse
-        ? `${reason}. SSE traffic is untracked unless routed through \`mcp-guardian proxy\` or wrap.`
+        ? `${reason}. SSE traffic is untracked unless routed through \`mastyff-ai proxy\` or wrap.`
         : reason;
       return this.modelOnlyReport(server.name, modelId, provider, rates, sseNote, probe.tools?.length ?? 0);
     }
@@ -185,16 +185,16 @@ export class CostAuditor {
       `Model: ${modelId} (${provider})`,
       rates.priced
         ? `List rates: $${rates.inputPerM}/M input, $${rates.outputPerM}/M output (${rates.pricingSources.join(', ') || rates.pricingModel})`
-        : 'Rates unresolved — set GUARDIAN_MODEL or use Cline/LiteLLM pricing',
+        : 'Rates unresolved — set MASTYFF_AI_MODEL or use Cline/LiteLLM pricing',
       toolCount > 0
         ? `${toolCount} tool(s) reachable via tools/list — $0 measured (no proxy traffic)`
         : 'Server reachable — no tools listed',
       proxyDataHint,
-      'Run \`mcp-guardian proxy\` for measured token and USD costs from real tools/call traffic',
-      untrackedSse ? 'SSE IDE traffic is untracked unless clients use Guardian proxy/wrap' : null,
+      'Run \`mastyff-ai proxy\` for measured token and USD costs from real tools/call traffic',
+      untrackedSse ? 'SSE IDE traffic is untracked unless clients use Mastyff AI proxy/wrap' : null,
       allowsCostEstimates()
         ? null
-        : 'Set GUARDIAN_COST_ALLOW_ESTIMATES=true to enable legacy tools/list simulation',
+        : 'Set MASTYFF_AI_COST_ALLOW_ESTIMATES=true to enable legacy tools/list simulation',
     ].filter(Boolean);
 
     return {
@@ -259,12 +259,12 @@ export class CostAuditor {
   ): Promise<CostReport> {
     const estimate = await estimateServerCostFromTools(tools, modelId, this.tokenCounter);
     const noteParts = [
-      `LEGACY ESTIMATE (GUARDIAN_COST_ALLOW_ESTIMATES=true): simulated ${tools.length} tool(s) via tools/list`,
+      `LEGACY ESTIMATE (MASTYFF_AI_COST_ALLOW_ESTIMATES=true): simulated ${tools.length} tool(s) via tools/list`,
       `Model: ${modelId} (${provider})`,
       !estimate.priced
-        ? 'Rates unresolved — set GUARDIAN_MODEL or activate Cline/LiteLLM pricing'
+        ? 'Rates unresolved — set MASTYFF_AI_MODEL or activate Cline/LiteLLM pricing'
         : null,
-      untrackedSse ? 'SSE: live IDE traffic still untracked unless clients use Guardian proxy/wrap' : null,
+      untrackedSse ? 'SSE: live IDE traffic still untracked unless clients use Mastyff AI proxy/wrap' : null,
     ].filter(Boolean);
 
     return {
@@ -403,7 +403,7 @@ export class CostAuditor {
       note: [
         'Measured from proxy call_records',
         unpricedCalls > 0
-          ? `${unpricedCalls} call(s) could not be priced — set GUARDIAN_MODEL or use live pricing`
+          ? `${unpricedCalls} call(s) could not be priced — set MASTYFF_AI_MODEL or use live pricing`
           : null,
         apiSourcedCalls > 0 || estimatedCalls > 0
           ? `Token sources: ${apiSourcedCalls} API, ${estimatedCalls} estimated`

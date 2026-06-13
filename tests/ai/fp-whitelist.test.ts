@@ -13,16 +13,16 @@ describe('fp-whitelist', () => {
   let tempDir: string;
 
   beforeEach(() => {
-    tempDir = mkdtempSync(join(tmpdir(), 'mcp-guardian-fp-'));
-    process.env.GUARDIAN_FP_WHITELIST_PATH = join(tempDir, '.fp-whitelist.json');
-    process.env.GUARDIAN_FP_WHITELIST_THRESHOLD = '3';
+    tempDir = mkdtempSync(join(tmpdir(), 'mastyff-ai-fp-'));
+    process.env.MASTYFF_AI_FP_WHITELIST_PATH = join(tempDir, '.fp-whitelist.json');
+    process.env.MASTYFF_AI_FP_WHITELIST_THRESHOLD = '3';
     clearFpWhitelistForTests();
   });
 
   afterEach(() => {
     clearFpWhitelistForTests();
-    delete process.env.GUARDIAN_FP_WHITELIST_PATH;
-    delete process.env.GUARDIAN_FP_WHITELIST_THRESHOLD;
+    delete process.env.MASTYFF_AI_FP_WHITELIST_PATH;
+    delete process.env.MASTYFF_AI_FP_WHITELIST_THRESHOLD;
     rmSync(tempDir, { recursive: true, force: true });
   });
 

@@ -2,7 +2,7 @@
 
 import type { ReactNode } from 'react';
 import { RefreshCw, Shield } from 'lucide-react';
-import { resolveApiBase } from '@/lib/guardian-api';
+import { resolveApiBase } from '@/lib/mastyff-ai-api';
 import type { DashboardTabId, NavGroup } from '@/lib/dashboard-nav';
 import { TAB_LABELS } from '@/lib/dashboard-nav';
 
@@ -62,7 +62,7 @@ export function SocDashboardLayout({
             <div className="soc-logo-icon">
               <Shield size={18} />
             </div>
-            <span className="soc-logo-title">MCP Guardian</span>
+            <span className="soc-logo-title">MCP MastyffAi</span>
           </div>
           <div className="soc-logo-sub">SOC · LIVE OPERATIONS</div>
         </div>

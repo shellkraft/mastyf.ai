@@ -1,5 +1,5 @@
 /**
- * Policy types for the MCP Guardian active blocking engine.
+ * Policy types for the MCP Mastyff AI active blocking engine.
  */
 
 export type PolicyAction = 'pass' | 'block' | 'flag';
@@ -97,7 +97,7 @@ export interface CallContext {
   requestId: string | number;
   requestTokens: number;
   timestamp: string;
-  /** Multi-tenant isolation — set via GUARDIAN_TENANT_ID or X-Tenant-ID */
+  /** Multi-tenant isolation — set via MASTYFF_AI_TENANT_ID or X-Tenant-ID */
   tenantId?: string;
   /** v0.5.1: Agent identity from OAuth (for RBAC) */
   agentIdentity?: import('../auth/auth-types.js').AgentIdentity;

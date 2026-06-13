@@ -4,7 +4,7 @@ import path from 'path';
 export default defineConfig({
   resolve: {
     alias: {
-      '@mcp-guardian/plugin-sdk': path.resolve(__dirname, 'packages/plugin-sdk/dist/index.js'),
+      '@mastyff-ai/plugin-sdk': path.resolve(__dirname, 'packages/plugin-sdk/dist/index.js'),
     },
   },
   test: {
@@ -16,6 +16,11 @@ export default defineConfig({
       'adversarial-harness/**',
       'apps/cloud/**',
     ],
+    reporters: ['default', 'json', 'junit'],
+    outputFile: {
+      json: './test-results/results.json',
+      junit: './test-results/junit.xml',
+    },
     maxConcurrency: 1,
     fileParallelism: false,
     testTimeout: 90_000,

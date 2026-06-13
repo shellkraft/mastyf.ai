@@ -1,6 +1,6 @@
 # Adversarial Test Harness
 
-Enterprise security evaluation harness for MCP Guardian policy engine, proxy pipeline, and scanners.
+Enterprise security evaluation harness for MCP Mastyff AI policy engine, proxy pipeline, and scanners.
 
 ## Components
 

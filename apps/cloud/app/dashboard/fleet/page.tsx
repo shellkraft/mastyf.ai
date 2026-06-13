@@ -17,7 +17,7 @@ export default async function FleetPage() {
   const result = await getDb().execute(sql`
     SELECT instance_id, instance_name, region, version, hostname, status,
            metrics_snapshot, last_heartbeat
-    FROM guardian_fleet_instances
+    FROM mastyff_ai_fleet_instances
     WHERE org_id = ${ctx.org.id}
     ORDER BY last_heartbeat DESC
     LIMIT 200
@@ -46,7 +46,7 @@ export default async function FleetPage() {
       <DashboardNav />
       <section className="dashboard-section">
         <h1>Fleet</h1>
-        <p>Self-hosted Guardian instances registered via heartbeat ({instances.length})</p>
+        <p>Self-hosted Mastyff AI instances registered via heartbeat ({instances.length})</p>
         <LaunchDashboard />
         <table className="fleet-table">
           <thead>
@@ -74,8 +74,8 @@ export default async function FleetPage() {
             {instances.length === 0 && (
               <tr>
                 <td colSpan={5}>
-                  No instances yet. Set <code>GUARDIAN_CLOUD_API_KEY</code> and{' '}
-                  <code>GUARDIAN_CONTROL_PLANE_URL</code> on your Guardian host.
+                  No instances yet. Set <code>MASTYFF_AI_CLOUD_API_KEY</code> and{' '}
+                  <code>MASTYFF_AI_CONTROL_PLANE_URL</code> on your Mastyff AI host.
                 </td>
               </tr>
             )}

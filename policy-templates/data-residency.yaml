@@ -1,8 +1,8 @@
-# Data residency metadata — pair with GUARDIAN_REGION and tenant policy templates.
+# Data residency metadata — pair with MASTYFF_AI_REGION and tenant policy templates.
 policy:
   metadata:
     data_residency:
-      primary_region: ${GUARDIAN_REGION:-default}
+      primary_region: ${MASTYFF_AI_REGION:-default}
       audit_retention_days: 365
       cross_border_replication: false
   rules:

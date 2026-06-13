@@ -6,7 +6,7 @@
       "id": "c01",
       "tool": "search",
       "arguments": {
-        "query": "mcp-guardian security proxy"
+        "query": "mastyff-ai security proxy"
       },
       "expect": "pass",
       "expectedRule": "allowlist"

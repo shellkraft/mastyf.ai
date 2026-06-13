@@ -1,7 +1,7 @@
 /**
- * MCP Guardian — SOC Dashboard Backend API Server
+ * MCP Mastyff AI — SOC Dashboard Backend API Server
  *
- * Serves real data from MCP Guardian services:
+ * Serves real data from MCP Mastyff AI services:
  *   - SecurityScanner  → /api/security
  *   - HealthMonitor    → /api/health
  *   - CostAuditor      → /api/cost, /api/cost/breakdown, /api/cost/timeseries
@@ -21,14 +21,14 @@ import path from 'path';
 import yaml from 'js-yaml';
 import { createContainer } from './container.js';
 import { ConfigParser } from './config-parser.js';
-import { resolveMcpServerDbPath } from './utils/guardian-db-path.js';
+import { resolveMcpServerDbPath } from './utils/mastyff-ai-db-path.js';
 import { Logger } from './utils/logger.js';
 import type { IDatabase } from './database/database-interface.js';
 import type { McpServerConfig, SecurityReport, CostReport, HealthReport, ProxyCallRecord } from './types.js';
 import { parseWindowDays } from './utils/time-buckets.js';
 import { buildAuditHeatmapBundle } from './utils/audit-heatmap.js';
 
-// ── Types for API responses (matching guardian-api.ts in dashboard-spa) ─────
+// ── Types for API responses (matching mastyff-ai-api.ts in dashboard-spa) ─────
 
 interface AggregateMetrics {
   available: boolean;
@@ -236,7 +236,7 @@ async function getAllCallRecords(
 }
 
 function parseDailyBudget(): number {
-  const env = process.env['GUARDIAN_DAILY_BUDGET_USD'] ?? process.env['MCP_GUARDIAN_COST_BUDGET'];
+  const env = process.env['MASTYFF_AI_DAILY_BUDGET_USD'] ?? process.env['MASTYFF_AI_COST_BUDGET'];
   if (!env) return 0;
   const val = parseFloat(env);
   return Number.isFinite(val) && val > 0 ? val : 0;
@@ -245,7 +245,7 @@ function parseDailyBudget(): number {
 // ── Main API server factory ──────────────────────────────────────────────────
 
 export async function startSocApiServer(port = 4040): Promise<void> {
-  const dbPath = process.env['MCP_GUARDIAN_DB_PATH'] || resolveMcpServerDbPath();
+  const dbPath = process.env['MASTYFF_AI_DB_PATH'] || resolveMcpServerDbPath();
   const container = await createContainer(dbPath);
   const db = container.db;
 
@@ -268,7 +268,7 @@ export async function startSocApiServer(port = 4040): Promise<void> {
       res.setHeader('Access-Control-Allow-Origin', '*');
     }
     res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type,X-API-Key,X-Guardian-Tenant,X-Tenant-Id,X-CSRF-Token,Accept');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type,X-API-Key,X-Mastyff-Ai-Tenant,X-Tenant-Id,X-CSRF-Token,Accept');
     res.setHeader('Access-Control-Allow-Credentials', 'true');
     if (req.method === 'OPTIONS') { res.sendStatus(204); return; }
     next();
@@ -739,7 +739,7 @@ export async function startSocApiServer(port = 4040): Promise<void> {
   // ── GET /api/policy ────────────────────────────────────────────────────────
   app.get('/api/policy', (_req: Request, res: Response) => {
     try {
-      const policyPath = process.env['MCP_GUARDIAN_POLICY']
+      const policyPath = process.env['MASTYFF_AI_POLICY']
         || path.join(process.cwd(), 'default-policy.yaml');
 
       if (!fs.existsSync(policyPath)) {
@@ -771,7 +771,7 @@ export async function startSocApiServer(port = 4040): Promise<void> {
       const { yaml: yamlContent } = req.body as { yaml?: string };
       if (!yamlContent) { res.status(400).json({ error: 'yaml body required' }); return; }
 
-      const policyPath = process.env['MCP_GUARDIAN_POLICY']
+      const policyPath = process.env['MASTYFF_AI_POLICY']
         || path.join(process.cwd(), 'default-policy.yaml');
 
       // Validate YAML before writing
@@ -948,7 +948,7 @@ export async function startSocApiServer(port = 4040): Promise<void> {
           const used = (totalCost / (budget * windowDays)) * 100;
           bullets.push(`Budget utilization: ${used.toFixed(1)}% of $${(budget * windowDays).toFixed(2)} window budget`);
         } else {
-          bullets.push('No budget cap configured (set GUARDIAN_DAILY_BUDGET_USD to enable)');
+          bullets.push('No budget cap configured (set MASTYFF_AI_DAILY_BUDGET_USD to enable)');
         }
       }
 
@@ -966,7 +966,7 @@ export async function startSocApiServer(port = 4040): Promise<void> {
 
       if (bullets.length === 0) {
         bullets.push(`No data available for ${scope} scope in ${windowDays}d window`);
-        bullets.push('Use mcp-guardian proxy to capture real traffic');
+        bullets.push('Use mastyff-ai proxy to capture real traffic');
       }
 
       res.json({
@@ -1029,7 +1029,7 @@ export async function startSocApiServer(port = 4040): Promise<void> {
           instanceName: s.name,
           hostname: os.hostname(),
           status: 'active',
-          region: process.env['GUARDIAN_REGION'] || 'local',
+          region: process.env['MASTYFF_AI_REGION'] || 'local',
           lastHeartbeat: new Date().toISOString(),
           totalRequests: 0,
           blockedRequests: 0,
@@ -1044,7 +1044,7 @@ export async function startSocApiServer(port = 4040): Promise<void> {
       res.json({
         available: true,
         source: 'local',
-        region: process.env['GUARDIAN_REGION'] || 'local',
+        region: process.env['MASTYFF_AI_REGION'] || 'local',
         totalInstances: instances.length,
         activeInstances: instances.length,
         totalRequests: 0,
@@ -1060,7 +1060,7 @@ export async function startSocApiServer(port = 4040): Promise<void> {
   // ── GET /api/admin/tenant ─────────────────────────────────────────────────
   app.get('/api/admin/tenant', (_req: Request, res: Response) => {
     res.json({
-      tenantId: process.env['GUARDIAN_TENANT_ID'] || 'default',
+      tenantId: process.env['MASTYFF_AI_TENANT_ID'] || 'default',
       multiTenantMode: false,
     });
   });
@@ -1069,7 +1069,7 @@ export async function startSocApiServer(port = 4040): Promise<void> {
   app.get('/api/dashboard/regions', (_req: Request, res: Response) => {
     res.json({
       available: true,
-      regions: [process.env['GUARDIAN_REGION'] || 'local'],
+      regions: [process.env['MASTYFF_AI_REGION'] || 'local'],
     });
   });
 
@@ -1092,7 +1092,7 @@ export async function startSocApiServer(port = 4040): Promise<void> {
 
       if (!tool) { res.status(400).json({ error: 'tool required' }); return; }
 
-      const policyPath = process.env['MCP_GUARDIAN_POLICY']
+      const policyPath = process.env['MASTYFF_AI_POLICY']
         || path.join(process.cwd(), 'default-policy.yaml');
 
       if (!fs.existsSync(policyPath)) {
@@ -1181,7 +1181,7 @@ export async function startSocApiServer(port = 4040): Promise<void> {
       ready: false,
       labeledCount: 0,
       minRequired: 50,
-      modelName: 'guardian-tenant-default',
+      modelName: 'mastyff-ai-tenant-default',
       exportPath: '',
       message: 'Not enough labeled data yet',
     });
@@ -1260,8 +1260,8 @@ export async function startSocApiServer(port = 4040): Promise<void> {
     const scope = (req.query['scope'] as string) || 'overview';
     const windowDays = parseInt(String(req.query['window'] ?? '7'), 10);
     res.setHeader('Content-Type', 'text/markdown; charset=utf-8');
-    res.setHeader('Content-Disposition', `attachment; filename="guardian-briefing-${scope}-${windowDays}d.md"`);
-    res.send(`# MCP Guardian Briefing — ${scope} (${windowDays}d)\n\nGenerated: ${new Date().toISOString()}\n`);
+    res.setHeader('Content-Disposition', `attachment; filename="mastyff-ai-briefing-${scope}-${windowDays}d.md"`);
+    res.send(`# MCP Mastyff AI Briefing — ${scope} (${windowDays}d)\n\nGenerated: ${new Date().toISOString()}\n`);
   });
 
   // ── GET /health ────────────────────────────────────────────────────────────
@@ -1298,7 +1298,7 @@ export async function startSocApiServer(port = 4040): Promise<void> {
   // ── Start HTTP server ─────────────────────────────────────────────────────
   const httpServer = createServer(app);
   httpServer.listen(port, () => {
-    Logger.info(`[soc-api] MCP Guardian SOC API server listening on http://localhost:${port}`);
+    Logger.info(`[soc-api] MCP Mastyff AI SOC API server listening on http://localhost:${port}`);
     Logger.info(`[soc-api] DB path: ${dbPath}`);
   });
 

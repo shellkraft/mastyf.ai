@@ -27,7 +27,7 @@ export async function applySuggestionToPolicy(
 ): Promise<{ applied: boolean; policyPath: string | null; reason?: string; simulationSummary?: string }> {
   const path = policyPath || resolvePolicyPath();
   if (!path) {
-    return { applied: false, policyPath: null, reason: 'No policy file (set GUARDIAN_POLICY_PATH)' };
+    return { applied: false, policyPath: null, reason: 'No policy file (set MASTYFF_AI_POLICY_PATH)' };
   }
 
   const gate = await requirePolicySimulationBeforeApply({
@@ -61,7 +61,7 @@ export async function applySuggestionToPolicy(
     try {
       const { recordConfigProvenance } = await import('../agentic/provenance/config-provenance-chain.js');
       recordConfigProvenance({
-        actor: process.env.GUARDIAN_ACTOR ?? 'policy-applier',
+        actor: process.env.MASTYFF_AI_ACTOR ?? 'policy-applier',
         eventType: 'policy_apply',
         resourcePath: path,
         diff: { ruleName: rule.name, action: 'append' },
@@ -110,7 +110,7 @@ export function removeSuggestionRuleFromPolicy(
 ): { removed: boolean; policyPath: string | null; reason?: string } {
   const path = policyPath || resolvePolicyPath();
   if (!path) {
-    return { removed: false, policyPath: null, reason: 'No policy file (set GUARDIAN_POLICY_PATH)' };
+    return { removed: false, policyPath: null, reason: 'No policy file (set MASTYFF_AI_POLICY_PATH)' };
   }
   try {
     const raw = readFileSync(path, 'utf-8');

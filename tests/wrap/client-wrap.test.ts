@@ -10,22 +10,22 @@ describe('client-wrap', () => {
   let clientConfig: string;
 
   beforeEach(() => {
-    tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'guardian-wrap-'));
-    projectRoot = path.join(tmp, 'mcp-guardian');
+    tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'mastyff-ai-wrap-'));
+    projectRoot = path.join(tmp, 'mastyff-ai');
     fs.mkdirSync(path.join(projectRoot, 'scripts'), { recursive: true });
     fs.mkdirSync(path.join(projectRoot, 'dist'), { recursive: true });
     fs.writeFileSync(path.join(projectRoot, 'dist/cli.js'), '// stub\n', 'utf-8');
     fs.writeFileSync(
-      path.join(projectRoot, 'scripts/guardian-proxy.sh'),
+      path.join(projectRoot, 'scripts/mastyff-ai-proxy.sh'),
       '#!/bin/sh\nexec node "$@"\n',
       'utf-8',
     );
     fs.writeFileSync(
-      path.join(projectRoot, 'guardian-proxy.ps1'),
+      path.join(projectRoot, 'mastyff-ai-proxy.ps1'),
       '& node "$cliPath" proxy @args\n',
       'utf-8',
     );
-    fs.chmodSync(path.join(projectRoot, 'scripts/guardian-proxy.sh'), 0o755);
+    fs.chmodSync(path.join(projectRoot, 'scripts/mastyff-ai-proxy.sh'), 0o755);
     fs.writeFileSync(
       path.join(projectRoot, 'policy-audit.yaml'),
       "version: '1.0'\npolicy:\n  mode: audit\n  rules: []\n",
@@ -42,7 +42,7 @@ describe('client-wrap', () => {
             args: ['-y', '@modelcontextprotocol/server-github'],
             transport: 'stdio',
           },
-          'mcp-guardian': {
+          'mastyff-ai': {
             command: 'node',
             args: [path.join(projectRoot, 'dist/index.js')],
             transport: 'stdio',
@@ -57,7 +57,7 @@ describe('client-wrap', () => {
     fs.rmSync(tmp, { recursive: true, force: true });
   });
 
-  it('writes per-server guardian-configs and example wrapped JSON', () => {
+  it('writes per-server mastyff-ai-configs and example wrapped JSON', () => {
     const result = runWrap({
       client: 'auto',
       configPath: clientConfig,
@@ -67,8 +67,8 @@ describe('client-wrap', () => {
     });
 
     expect(result.wrapped).toEqual(['github']);
-    expect(result.skipped.some((s) => s.includes('mcp-guardian'))).toBe(true);
-    expect(fs.existsSync(path.join(projectRoot, 'guardian-configs/github.json'))).toBe(true);
+    expect(result.skipped.some((s) => s.includes('mastyff-ai'))).toBe(true);
+    expect(fs.existsSync(path.join(projectRoot, 'mastyff-ai-configs/github.json'))).toBe(true);
 
     const example = JSON.parse(
       fs.readFileSync(
@@ -76,10 +76,10 @@ describe('client-wrap', () => {
         'utf-8',
       ),
     );
-    expect(example.mcpServers.github.command).toContain('guardian-proxy.sh');
+    expect(example.mcpServers.github.command).toContain('mastyff-ai-proxy.sh');
   });
 
-  it('uses guardian-proxy.ps1 via powershell on win32', () => {
+  it('uses mastyff-ai-proxy.ps1 via powershell on win32', () => {
     const original = process.platform;
     Object.defineProperty(process, 'platform', { value: 'win32' });
     try {
@@ -93,7 +93,7 @@ describe('client-wrap', () => {
       const live = JSON.parse(fs.readFileSync(clientConfig, 'utf-8'));
       expect(live.mcpServers.github.command).toMatch(/powershell/i);
       expect(live.mcpServers.github.args).toContain('-File');
-      expect(result.wrapperScript).toContain('guardian-proxy.ps1');
+      expect(result.wrapperScript).toContain('mastyff-ai-proxy.ps1');
     } finally {
       Object.defineProperty(process, 'platform', { value: original });
     }

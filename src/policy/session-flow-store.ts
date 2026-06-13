@@ -13,9 +13,9 @@ function logSessionFlowBackend(): void {
   sessionFlowBackendLogged = true;
   const redis = isRedisConfigured();
   Metrics.sessionFlowBackend.set(redis ? 1 : 0);
-  if (process.env['GUARDIAN_ENTERPRISE_MODE'] === 'true' && !redis) {
+  if (process.env['MASTYFF_AI_ENTERPRISE_MODE'] === 'true' && !redis) {
     Logger.error(
-      '[SessionFlow] GUARDIAN_ENTERPRISE_MODE=true without REDIS_URL — session flow is per-process only',
+      '[SessionFlow] MASTYFF_AI_ENTERPRISE_MODE=true without REDIS_URL — session flow is per-process only',
     );
   } else {
     Logger.info(`[SessionFlow] backend=${redis ? 'redis' : 'memory'}`);

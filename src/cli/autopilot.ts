@@ -1,5 +1,5 @@
 /**
- * Guardian Autopilot CLI — init, start, status.
+ * Mastyff AI Autopilot CLI — init, start, status.
  */
 import { spawn } from 'child_process';
 import { existsSync } from 'fs';
@@ -28,14 +28,14 @@ export async function runAutopilotInit(opts: {
     console.log(chalk.yellow(`  Warning: ${policyPath} not found in project root — use --policy if elsewhere.`));
   }
 
-  console.log(chalk.bold('\nGuardian Autopilot — init\n'));
+  console.log(chalk.bold('\nMastyff AI Autopilot — init\n'));
   runOnboard({
     client: opts.client,
     configPath: opts.configPath,
     policyPath,
     projectRoot,
     apply: opts.apply,
-    skipNames: ['mcp-guardian', 'guardian'],
+    skipNames: ['mastyff-ai', 'mastyff-ai'],
     startProxy: true,
   });
 
@@ -63,18 +63,18 @@ export async function runAutopilotInit(opts: {
     if (lc.hasFeature('dashboard')) {
       console.log(chalk.green('  Pro license: dashboard feature OK'));
     } else {
-      console.log(chalk.yellow('  Pro license: set GUARDIAN_LICENSE_KEY for full Autopilot'));
+      console.log(chalk.yellow('  Pro license: set MASTYFF_AI_LICENSE_KEY for full Autopilot'));
     }
   } catch {
     console.log(chalk.dim('  License check skipped'));
   }
 
-  console.log(chalk.green(`\nAutopilot config written. Next: mcp-guardian autopilot start\n`));
+  console.log(chalk.green(`\nAutopilot config written. Next: mastyff-ai autopilot start\n`));
 }
 
 export async function runAutopilotStatus(historyDbAttached = false): Promise<void> {
   const status = await buildAutopilotStatus(undefined, historyDbAttached);
-  console.log(chalk.bold('\nGuardian Autopilot status\n'));
+  console.log(chalk.bold('\nMastyff AI Autopilot status\n'));
   console.log(`  Enabled: ${status.autopilotEnabled}`);
   console.log(`  History DB: ${status.protection.historyDbAttached ? 'attached' : 'none'}`);
   console.log(`  Pending suggestions: ${status.learning.pendingSuggestions}`);
@@ -98,7 +98,7 @@ export function runAutopilotStart(opts: {
   const projectRoot = resolve(opts.projectRoot);
   const cfg = readAutopilotConfig();
   if (!cfg) {
-    console.error(chalk.red('Run `mcp-guardian autopilot init` first.'));
+    console.error(chalk.red('Run `mastyff-ai autopilot init` first.'));
     process.exit(1);
   }
   forceAutopilotEnv(cfg);
@@ -109,20 +109,20 @@ export function runAutopilotStart(opts: {
     process.exit(1);
   }
 
-  const defaultConfigPath = join(projectRoot, 'guardian-configs', 'filesystem.json');
+  const defaultConfigPath = join(projectRoot, 'mastyff-ai-configs', 'filesystem.json');
   const config = opts.config || (existsSync(defaultConfigPath) ? defaultConfigPath : undefined);
 
   const args = ['proxy', '--policy', opts.policy || cfg.policyPath, '--blocking-mode', cfg.blockingMode];
   if (config) args.push('--config', config);
 
-  console.log(chalk.bold('\nStarting Guardian Autopilot proxy + dashboard…\n'));
-  console.log(chalk.dim(`  GUARDIAN_AUTOPILOT=true DASHBOARD_ENABLED=true`));
+  console.log(chalk.bold('\nStarting Mastyff AI Autopilot proxy + dashboard…\n'));
+  console.log(chalk.dim(`  MASTYFF_AI_AUTOPILOT=true DASHBOARD_ENABLED=true`));
   console.log(chalk.dim(`  node dist/cli.js ${args.join(' ')}\n`));
 
   const child = spawn(process.execPath, [distCli, ...args], {
     cwd: projectRoot,
     stdio: 'inherit',
-    env: { ...process.env, GUARDIAN_AUTOPILOT: 'true' },
+    env: { ...process.env, MASTYFF_AI_AUTOPILOT: 'true' },
   });
   child.on('exit', (code) => process.exit(code ?? 0));
 }

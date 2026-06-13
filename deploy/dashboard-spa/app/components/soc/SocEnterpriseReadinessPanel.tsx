@@ -9,7 +9,7 @@ import {
   type AggregateMetrics,
   type HealthResponse,
   type PolicyInfo,
-} from '@/lib/guardian-api';
+} from '@/lib/mastyff-ai-api';
 import { formatUsd } from '@/lib/chartTheme';
 import { SocCard, SocSectionHeader } from './primitives';
 
@@ -75,7 +75,7 @@ export function SocEnterpriseReadinessPanel() {
         <div>
           <div className="section-title">Your MCP Protection Status</div>
           <div className="section-sub">
-            Live data from Guardian — what&apos;s protected, what&apos;s blocked, and how your servers are doing
+            Live data from Mastyff AI — what&apos;s protected, what&apos;s blocked, and how your servers are doing
             {lastFetch && ` · Updated ${lastFetch}`}
           </div>
         </div>
@@ -135,7 +135,7 @@ export function SocEnterpriseReadinessPanel() {
               : '—'}
           </div>
           <div className="kpi-delta" style={{ color: 'var(--text-muted)' }}>
-            tracked by Guardian
+            tracked by MastyffAi
           </div>
         </div>
         <div className="kpi-card kpi-green">
@@ -252,7 +252,7 @@ export function SocEnterpriseReadinessPanel() {
 
       {policy && (
         <SocCard
-          title="What Guardian Is Blocking For You"
+          title="What Mastyff AI Is Blocking For You"
           icon={<Lock size={14} />}
           sub={`Policy: ${policy.mode} mode · ${policy.rules}`}
           style={{ marginBottom: 16 }}
@@ -303,7 +303,7 @@ export function SocEnterpriseReadinessPanel() {
             fontSize: 13,
           }}
         >
-          No proxy traffic recorded yet in the last 7 days. Once your AI agent makes tool calls through Guardian,
+          No proxy traffic recorded yet in the last 7 days. Once your AI agent makes tool calls through Mastyff AI,
           you&apos;ll see real block/pass data here.
         </div>
       )}
@@ -313,7 +313,7 @@ export function SocEnterpriseReadinessPanel() {
           <div style={{ display: 'flex', gap: 32, flexWrap: 'wrap', padding: '8px 0' }}>
             {[
               { l: 'Total requests', v: liveMetrics.totalRequests.toLocaleString(), c: 'var(--text-primary)' },
-              { l: 'Blocked by Guardian', v: liveMetrics.blockedRequests.toLocaleString(), c: 'var(--danger)' },
+              { l: 'Blocked by MastyffAi', v: liveMetrics.blockedRequests.toLocaleString(), c: 'var(--danger)' },
               { l: 'Allowed through', v: liveMetrics.passedRequests.toLocaleString(), c: 'var(--success)' },
               { l: 'Block rate', v: blockRate !== null ? `${blockRate}%` : '—', c: 'var(--accent)' },
               { l: 'Avg latency added', v: fmtMs(liveMetrics.avgLatencyMs), c: 'var(--warning)' },

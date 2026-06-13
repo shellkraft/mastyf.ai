@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { runThreatLab, runAutoThreatResearch, type ThreatDiscoveryStatus } from '@/lib/guardian-api';
+import { runThreatLab, runAutoThreatResearch, type ThreatDiscoveryStatus } from '@/lib/mastyff-ai-api';
 import { hasPermission } from '@/lib/dashboard-roles';
 
 type Props = {
@@ -67,7 +67,7 @@ export function ThreatDiscoveryRunControls({
       ) : null}
       {!llmOk ? (
         <p className="status status-error">
-          LLM offline: {status?.llm?.reason || 'Start Ollama and set GUARDIAN_LLM_ENABLED=true'}
+          LLM offline: {status?.llm?.reason || 'Start Ollama and set MASTYFF_AI_LLM_ENABLED=true'}
         </p>
       ) : null}
       <div className="threat-run-row">
@@ -99,7 +99,7 @@ export function ThreatDiscoveryRunControls({
         </div>
         <div className="threat-run-block">
           <p className="hint">
-            Auto research writes adv fixtures directly (requires GUARDIAN_THREAT_RESEARCH_AUTO +
+            Auto research writes adv fixtures directly (requires MASTYFF_AI_THREAT_RESEARCH_AUTO +
             SWARM_THREAT_RESEARCH_AUTO on server).
           </p>
           <button

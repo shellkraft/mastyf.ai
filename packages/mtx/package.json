@@ -1,5 +1,5 @@
 {
-  "name": "@mcp-guardian/mtx",
+  "name": "@mastyff-ai/mtx",
   "version": "4.1.7",
   "description": "MCP Threat Exchange (MTX) v1 format for anonymized threat intelligence",
   "type": "module",
@@ -21,7 +21,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/rudraneel93/mcp-guardian.git",
+    "url": "git+https://github.com/mastyff-ai/mastyff-ai.git",
     "directory": "packages/mtx"
   }
 }

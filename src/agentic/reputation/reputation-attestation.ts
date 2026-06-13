@@ -23,7 +23,7 @@ function fromB64url(input: string): string {
 }
 
 export function signReputationAttestation(payload: ReputationAttestationPayload): string {
-  const header = b64url(JSON.stringify({ alg: 'HS256', typ: 'GUARDIAN-REP+JWS' }));
+  const header = b64url(JSON.stringify({ alg: 'HS256', typ: 'MASTYFF_AI-REP+JWS' }));
   const body = b64url(JSON.stringify(payload));
   const signingInput = `${header}.${body}`;
   const signature = createHmac('sha256', getCertSigningKey()).update(signingInput).digest('base64url');

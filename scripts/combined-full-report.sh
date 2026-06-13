@@ -1,6 +1,6 @@
 #!/bin/bash
 cd "$(dirname "$0")/.." || exit 1
-OUT="${OUT:-./MCP_Guardian_Combined_Full_Report.txt}"
+OUT="${OUT:-./MCP_Mastyff_Ai_Combined_Full_Report.txt}"
 
 CFG="$HOME/Library/Application Support/Code/User/globalStorage/saoudrizwan.claude-dev/settings/cline_mcp_settings.json"
 
@@ -14,10 +14,10 @@ run_section() {
 }
 
 # Initialize
-echo "MCP GUARDIAN v2.3.3 — COMBINED FULL REPORT" > "$OUT"
+echo "MASTYFF AI v2.3.3 — COMBINED FULL REPORT" > "$OUT"
 echo "Generated: $(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> "$OUT"
-echo "Repository: https://github.com/rudraneel93/mcp-guardian" >> "$OUT"
-echo "npm: @mcp-guardian/server@2.3.3" >> "$OUT"
+echo "Repository: https://github.com/mastyff-ai/mastyff-ai" >> "$OUT"
+echo "npm: @mastyff-ai/server@2.3.3" >> "$OUT"
 echo "" >> "$OUT"
 
 # 1. TypeScript Compile

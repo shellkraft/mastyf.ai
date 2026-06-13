@@ -47,7 +47,7 @@ export function createStreamingInspectorState(): StreamingInspectorState {
 }
 
 export function isResponseScanSkipped(): boolean {
-  return process.env['GUARDIAN_SKIP_RESPONSE_SCAN'] === 'true';
+  return process.env['MASTYFF_AI_SKIP_RESPONSE_SCAN'] === 'true';
 }
 
 function mergeDlpFindings(state: StreamingInspectorState, findings: ResponseDlpFinding[]): void {

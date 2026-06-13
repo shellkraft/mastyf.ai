@@ -14,7 +14,7 @@ export interface DlqEvent {
   enqueuedAt: string;
 }
 
-const DLQ_DIR = join(homedir(), '.mcp-guardian', 'exporter-dlq');
+const DLQ_DIR = join(homedir(), '.mastyff-ai', 'exporter-dlq');
 const DLQ_PATH = join(DLQ_DIR, 'pending.jsonl');
 
 function ensureDlqDir(): void {
@@ -22,7 +22,7 @@ function ensureDlqDir(): void {
 }
 
 export function appendExporterDlq(entry: DlqEvent): void {
-  if (process.env['GUARDIAN_EXPORTER_DLQ'] === 'false') return;
+  if (process.env['MASTYFF_AI_EXPORTER_DLQ'] === 'false') return;
   ensureDlqDir();
   appendFileSync(DLQ_PATH, `${JSON.stringify(entry)}\n`, 'utf-8');
 }
@@ -55,7 +55,7 @@ export async function sendWithRetry(
   sendFn: () => Promise<void>,
   event: { type: string; payload: unknown; timestamp: string },
 ): Promise<void> {
-  const maxAttempts = parseInt(process.env['GUARDIAN_EXPORTER_MAX_RETRIES'] || '3', 10) || 3;
+  const maxAttempts = parseInt(process.env['MASTYFF_AI_EXPORTER_MAX_RETRIES'] || '3', 10) || 3;
   let lastErr = '';
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {

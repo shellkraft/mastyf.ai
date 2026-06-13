@@ -11,8 +11,8 @@ describe('policy-eval-cache opt-in', () => {
   });
 
   it('does not cache flood-protection pass by default', () => {
-    vi.stubEnv('GUARDIAN_POLICY_EVAL_CACHE_LEGACY_HEURISTIC', 'false');
-    vi.stubEnv('GUARDIAN_ENTERPRISE_MODE', 'true');
+    vi.stubEnv('MASTYFF_AI_POLICY_EVAL_CACHE_LEGACY_HEURISTIC', 'false');
+    vi.stubEnv('MASTYFF_AI_ENTERPRISE_MODE', 'true');
     expect(
       shouldCachePolicyDecision({
         action: 'pass',
@@ -32,7 +32,7 @@ describe('policy-eval-cache opt-in', () => {
   });
 
   it('legacy heuristic still caches benign passes when enabled', () => {
-    vi.stubEnv('GUARDIAN_POLICY_EVAL_CACHE_LEGACY_HEURISTIC', 'true');
+    vi.stubEnv('MASTYFF_AI_POLICY_EVAL_CACHE_LEGACY_HEURISTIC', 'true');
     expect(
       shouldCachePolicyDecision({
         action: 'pass',

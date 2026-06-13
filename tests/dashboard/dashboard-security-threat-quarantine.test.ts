@@ -48,9 +48,9 @@ describe('dashboard security threat quarantine actions', () => {
 
     process.env.DASHBOARD_ENABLED = 'true';
     process.env.DASHBOARD_AUTH_DISABLED = 'true';
-    process.env.GUARDIAN_CI_BYPASS_LICENSE = 'true';
-    process.env.MCP_GUARDIAN_HOME = tmpDir;
-    process.env.GUARDIAN_POLICY_PATH = policyPath;
+    process.env.MASTYFF_AI_CI_BYPASS_LICENSE = 'true';
+    process.env.MASTYFF_AI_HOME = tmpDir;
+    process.env.MASTYFF_AI_POLICY_PATH = policyPath;
     await startDashboardServer(PORT);
   });
 
@@ -59,9 +59,9 @@ describe('dashboard security threat quarantine actions', () => {
     rmSync(tmpDir, { recursive: true, force: true });
     delete process.env.DASHBOARD_ENABLED;
     delete process.env.DASHBOARD_AUTH_DISABLED;
-    delete process.env.GUARDIAN_CI_BYPASS_LICENSE;
-    delete process.env.MCP_GUARDIAN_HOME;
-    delete process.env.GUARDIAN_POLICY_PATH;
+    delete process.env.MASTYFF_AI_CI_BYPASS_LICENSE;
+    delete process.env.MASTYFF_AI_HOME;
+    delete process.env.MASTYFF_AI_POLICY_PATH;
   });
 
   it('returns enforcement metadata for monitor quarantine', async () => {

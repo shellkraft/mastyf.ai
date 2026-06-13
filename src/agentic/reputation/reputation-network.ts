@@ -3,7 +3,7 @@
  */
 import { createHash } from 'crypto';
 import type { IndustryStandardStore } from '../../database/industry-standard-store.js';
-import type { GuardianScore } from '../trust-score/guardian-score.js';
+import type { MastyffAiScore } from '../trust-score/mastyff-ai-score.js';
 import { signReputationAttestation, verifyReputationAttestation } from './reputation-attestation.js';
 import {
   computeTransitiveTrust,
@@ -20,7 +20,7 @@ export type ReputationDimension =
   | 'policy_compliance'
   | 'uptime'
   | 'community_rating'
-  | 'guardian_protected';
+  | 'mastyff-ai_protected';
 
 export interface ReputationDimensions {
   security_posture: number;
@@ -30,7 +30,7 @@ export interface ReputationDimensions {
   policy_compliance: number;
   uptime: number;
   community_rating: number;
-  guardian_protected: number;
+  mastyff_ai_protected: number;
 }
 
 export interface ReputationEntry {
@@ -59,7 +59,7 @@ export class ReputationNetwork {
 
   constructor(
     private readonly store?: IndustryStandardStore,
-    private readonly guardianScore?: GuardianScore,
+    private readonly mastyffAiScore?: MastyffAiScore,
   ) {}
 
   rateServer(params: {
@@ -71,7 +71,7 @@ export class ReputationNetwork {
   }): ReputationEntry {
     const serverHash = hashServer(params.serverName, params.packageName);
     const existing = this.entries.get(serverHash) ?? this.store?.getReputationEntry?.(serverHash);
-    const raterId = params.raterId ?? process.env.GUARDIAN_TENANT_ID ?? 'local-rater';
+    const raterId = params.raterId ?? process.env.MASTYFF_AI_TENANT_ID ?? 'local-rater';
     const raterTrust = this.store?.getRaterTrust?.(raterId).trustScore ?? 1.0;
     const raterWeight = (params.raterWeight ?? 1) * raterTrust;
 
@@ -83,7 +83,7 @@ export class ReputationNetwork {
       policy_compliance: 50,
       uptime: 50,
       community_rating: 50,
-      guardian_protected: existing ? 0 : 100,
+      mastyff_ai_protected: existing ? 0 : 100,
     };
 
     const merged: ReputationDimensions = { ...defaults, ...(existing?.dimensions ?? {}), ...params.dimensions };
@@ -148,7 +148,7 @@ export class ReputationNetwork {
     const anchor = resolveTrustAnchor();
     if (raterId !== anchor && edges.length > 0) {
       const trust = computeTransitiveTrust(raterId, edges, anchor);
-      if (trust < Number(process.env.GUARDIAN_REPUTATION_MIN_TRUST ?? '0.35')) {
+      if (trust < Number(process.env.MASTYFF_AI_REPUTATION_MIN_TRUST ?? '0.35')) {
         return { ok: false, reason: `untrusted_rater:${raterId} (trust=${trust.toFixed(2)})` };
       }
     }
@@ -207,8 +207,8 @@ export class ReputationNetwork {
     const local = this.queryServerReputation(serverName, packageName);
     if (local && local.raterCount > 0) return local;
 
-    const relayUrl = process.env.GUARDIAN_REPUTATION_RELAY_URL?.trim()
-      ?? process.env.GUARDIAN_CLOUD_URL?.trim();
+    const relayUrl = process.env.MASTYFF_AI_REPUTATION_RELAY_URL?.trim()
+      ?? process.env.MASTYFF_AI_CLOUD_URL?.trim();
     if (!relayUrl) return local;
 
     try {
@@ -262,7 +262,7 @@ export class ReputationNetwork {
     return { valid: true, networkLevel: rep.level };
   }
 
-  buildFromGuardianScore(serverName: string, score: ReturnType<GuardianScore['compute']>): ReputationEntry {
+  buildFromMastyffAiScore(serverName: string, score: ReturnType<MastyffAiScore['compute']>): ReputationEntry {
     const byName = (n: string) => score.categories.find(c => c.name === n)?.score ?? 50;
     return this.rateServer({
       serverName,
@@ -274,7 +274,7 @@ export class ReputationNetwork {
         policy_compliance: score.overallScore,
         uptime: byName('Configuration Freshness'),
         community_rating: score.overallScore,
-        guardian_protected: score.includesLiveData ? 100 : 50,
+        mastyff_ai_protected: score.includesLiveData ? 100 : 50,
       },
     });
   }
@@ -288,7 +288,7 @@ export class ReputationNetwork {
     const mesh = await publishReputationViaMeshRelay(serverName, entry, packageName);
     if (mesh.published) return { published: true, via: mesh.via };
 
-    const relayUrl = process.env.GUARDIAN_REPUTATION_RELAY_URL?.trim();
+    const relayUrl = process.env.MASTYFF_AI_REPUTATION_RELAY_URL?.trim();
     if (!relayUrl) return { published: false, error: mesh.error ?? 'relay_not_configured' };
     try {
       const res = await fetch(`${relayUrl.replace(/\/$/, '')}/api/v1/reputation/query`, {

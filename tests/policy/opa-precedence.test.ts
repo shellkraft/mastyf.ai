@@ -33,7 +33,7 @@ function makeContext(overrides: Partial<CallContext> = {}): CallContext {
 
 describe('OPA / YAML precedence', () => {
   const originalOpaUrl = process.env['OPA_URL'];
-  const originalStrict = process.env['GUARDIAN_STRICT_MODE'];
+  const originalStrict = process.env['MASTYFF_AI_STRICT_MODE'];
 
   beforeEach(() => {
     vi.restoreAllMocks();
@@ -43,8 +43,8 @@ describe('OPA / YAML precedence', () => {
   afterEach(() => {
     if (originalOpaUrl === undefined) delete process.env['OPA_URL'];
     else process.env['OPA_URL'] = originalOpaUrl;
-    if (originalStrict === undefined) delete process.env['GUARDIAN_STRICT_MODE'];
-    else process.env['GUARDIAN_STRICT_MODE'] = originalStrict;
+    if (originalStrict === undefined) delete process.env['MASTYFF_AI_STRICT_MODE'];
+    else process.env['MASTYFF_AI_STRICT_MODE'] = originalStrict;
   });
 
   it('resolvePolicyPrecedence: OPA block wins over YAML pass', () => {

@@ -13,7 +13,7 @@ import { exportTenantTrainingDataset } from '../../src/ai/tenant-model-export.js
 
 const args = process.argv.slice(2);
 const tenantArg = args.find((a) => a.startsWith('--tenant='));
-const tenantId = tenantArg?.slice('--tenant='.length) || process.env.GUARDIAN_TENANT_ID || 'default';
+const tenantId = tenantArg?.slice('--tenant='.length) || process.env.MASTYFF_AI_TENANT_ID || 'default';
 const exportOnly = args.includes('--export-only');
 
 function tryMlxTrain(datasetPath: string, adapterPath: string): boolean {
@@ -48,14 +48,14 @@ async function main(): Promise<void> {
   const modelName = tenantSemanticModelName(tenantId);
   const adapterPath = join(process.cwd(), 'exports', `adapter-${tenantId}`);
 
-  if (process.env.GUARDIAN_LORA_USE_MLX === 'true') {
+  if (process.env.MASTYFF_AI_LORA_USE_MLX === 'true') {
     const mlxOk = tryMlxTrain(exported.exportPath, adapterPath);
     if (mlxOk) console.log(`[train-tenant-model] MLX adapter → ${adapterPath}`);
   }
 
   execSync(`ollama create ${modelName} -f ${exported.modelfilePath}`, { stdio: 'inherit' });
   console.log(`[train-tenant-model] Registered ${modelName}`);
-  console.log(`Set: GUARDIAN_TENANT_SEMANTIC_MODEL=true GUARDIAN_SEMANTIC_LOCAL_MODEL=${modelName}`);
+  console.log(`Set: MASTYFF_AI_TENANT_SEMANTIC_MODEL=true MASTYFF_AI_SEMANTIC_LOCAL_MODEL=${modelName}`);
 }
 
 main().catch((e) => {

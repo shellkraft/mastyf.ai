@@ -10,7 +10,7 @@ describe('fleet-heartbeat', () => {
 
   it('parses valid heartbeat payload', () => {
     const result = parseHeartbeatBody({
-      instanceId: 'guardian-prod-1',
+      instanceId: 'mastyff-ai-prod-1',
       instanceName: 'prod-1',
       region: 'us-east-1',
       version: '3.2.0',
@@ -19,7 +19,7 @@ describe('fleet-heartbeat', () => {
     });
     expect(result.ok).toBe(true);
     if (result.ok) {
-      expect(result.data.instanceId).toBe('guardian-prod-1');
+      expect(result.data.instanceId).toBe('mastyff-ai-prod-1');
       expect(result.data.region).toBe('us-east-1');
       expect(result.data.metrics?.totalRequests).toBe(100);
     }

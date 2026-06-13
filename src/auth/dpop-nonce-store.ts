@@ -6,7 +6,7 @@ import { claimDpopJtiQuorum, getDpopQuorumClients, retryDelayWithJitter } from '
 
 /** Cross-region shared Redis for DPoP jti dedup (falls back to REDIS_URL). */
 export function resolveDpopRedisUrl(): string | null {
-  const crossRegion = process.env['GUARDIAN_DPOP_REDIS_URL']?.trim();
+  const crossRegion = process.env['MASTYFF_AI_DPOP_REDIS_URL']?.trim();
   if (crossRegion) return crossRegion;
   if (isRedisConfigured()) {
     return process.env['REDIS_URL']?.trim() || null;
@@ -63,9 +63,9 @@ function sleep(ms: number): Promise<void> {
 }
 
 export function isDpopLockFreeEnabled(): boolean {
-  if (process.env['GUARDIAN_DPOP_LOCK_FREE'] === 'false') return false;
-  if (process.env['GUARDIAN_DPOP_LOCK_FREE'] === 'true') return true;
-  return process.env['GUARDIAN_DPOP_LOCK_FREE'] !== 'legacy';
+  if (process.env['MASTYFF_AI_DPOP_LOCK_FREE'] === 'false') return false;
+  if (process.env['MASTYFF_AI_DPOP_LOCK_FREE'] === 'true') return true;
+  return process.env['MASTYFF_AI_DPOP_LOCK_FREE'] !== 'legacy';
 }
 
 /**
@@ -123,7 +123,7 @@ export async function claimDpopJtiOnRedis(
 
 export class RedisDPoPNonceStore implements DPoPNonceStore {
   private redis: Redis | Cluster;
-  private readonly prefix = 'mcp_guardian:dpop:jti:';
+  private readonly prefix = 'mastyff_ai:dpop:jti:';
   private quorumMode = false;
 
   constructor(
@@ -136,8 +136,8 @@ export class RedisDPoPNonceStore implements DPoPNonceStore {
       maxRetriesPerRequest: 3,
       lazyConnect: false,
     });
-    this.quorumMode = Boolean(process.env['GUARDIAN_DPOP_QUORUM_REDIS']?.trim());
-    const label = connectionString || process.env['GUARDIAN_DPOP_REDIS_URL']
+    this.quorumMode = Boolean(process.env['MASTYFF_AI_DPOP_QUORUM_REDIS']?.trim());
+    const label = connectionString || process.env['MASTYFF_AI_DPOP_REDIS_URL']
       ? 'cross-region'
       : getRedisConnectionLabel();
     Logger.info(
@@ -168,9 +168,9 @@ export function createDPoPNonceStore(ttlMs: number): DPoPNonceStore {
   if (dpopUrl || isRedisConfigured()) {
     return new RedisDPoPNonceStore(Math.ceil(ttlMs / 1000), undefined, dpopUrl || undefined);
   }
-  if (process.env['GUARDIAN_CLUSTER_MODE'] === 'true' || process.env['KUBERNETES_SERVICE_HOST']) {
+  if (process.env['MASTYFF_AI_CLUSTER_MODE'] === 'true' || process.env['KUBERNETES_SERVICE_HOST']) {
     Logger.warn(
-      '[dpop] Using in-memory DPoP nonce store in clustered deployment — set REDIS_URL or GUARDIAN_DPOP_REDIS_URL for replay protection across instances',
+      '[dpop] Using in-memory DPoP nonce store in clustered deployment — set REDIS_URL or MASTYFF_AI_DPOP_REDIS_URL for replay protection across instances',
     );
   }
   return new InMemoryDPoPNonceStore(ttlMs);

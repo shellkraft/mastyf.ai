@@ -1,5 +1,5 @@
 /**
- * OAuth 2.1 / OIDC JWT Validator for MCP Guardian proxy.
+ * OAuth 2.1 / OIDC JWT Validator for MCP Mastyff AI proxy.
  *
  * Validates bearer tokens from MCP requests against an OIDC provider.
  * Uses OIDC Discovery (RFC 8414) to auto-configure JWKS endpoint.
@@ -26,12 +26,12 @@ export class OAuthValidator {
   }
 
   private discoveryTtlMs(): number {
-    const n = parseInt(process.env['GUARDIAN_OIDC_DISCOVERY_TTL_MS'] || '3600000', 10);
+    const n = parseInt(process.env['MASTYFF_AI_OIDC_DISCOVERY_TTL_MS'] || '3600000', 10);
     return Number.isFinite(n) && n > 60_000 ? n : 3_600_000;
   }
 
   private jwksRefreshMs(): number {
-    const n = parseInt(process.env['GUARDIAN_JWKS_REFRESH_MS'] || '300000', 10);
+    const n = parseInt(process.env['MASTYFF_AI_JWKS_REFRESH_MS'] || '300000', 10);
     return Number.isFinite(n) && n >= 60_000 ? n : 300_000;
   }
 
@@ -127,8 +127,8 @@ export class OAuthValidator {
       }
       StructuredLogger.info({ event: 'oidc_discovery', issuer: this.config.issuer, jwks_uri: meta.jwks_uri });
       return meta;
-    } catch (err: any) {
-      StructuredLogger.logError({ event: 'oidc_discovery_error', serverName: 'oauth', error: `Failed to discover OIDC config: ${err?.message}` });
+    } catch (err: unknown) {
+      StructuredLogger.logError({ event: 'oidc_discovery_error', serverName: 'oauth', error: `Failed to discover OIDC config: ${err instanceof Error ? err.message : String(err)}` });
       throw err;
     }
   }
@@ -152,7 +152,7 @@ export class OAuthValidator {
   private async verifyToken(token: string): Promise<jose.JWTPayload> {
     if (!this.jwks) throw new Error('JWKS not initialized');
     const ALLOWED_ALGORITHMS = ['RS256', 'RS384', 'RS512', 'ES256', 'ES384', 'PS256'];
-    const maxLifetimeSec = parseInt(process.env['GUARDIAN_JWT_MAX_LIFETIME_SEC'] || '86400', 10);
+    const maxLifetimeSec = parseInt(process.env['MASTYFF_AI_JWT_MAX_LIFETIME_SEC'] || '86400', 10);
     const { payload } = await jose.jwtVerify(token, this.jwks, {
       issuer: this.config.issuer,
       audience: this.config.audience,
@@ -227,11 +227,11 @@ export class OAuthValidator {
   }
 
   /**
-   * RFC 7662 token introspection when GUARDIAN_OIDC_INTROSPECTION=true.
+   * RFC 7662 token introspection when MASTYFF_AI_OIDC_INTROSPECTION=true.
    * Returns true/false when introspection runs; null when skipped or unavailable.
    */
   private async introspectTokenActive(token: string): Promise<boolean | null> {
-    if (process.env['GUARDIAN_OIDC_INTROSPECTION'] !== 'true') return null;
+    if (process.env['MASTYFF_AI_OIDC_INTROSPECTION'] !== 'true') return null;
     try {
       const discovery = await this.discover();
       const endpoint = discovery.introspection_endpoint;
@@ -243,8 +243,8 @@ export class OAuthValidator {
         });
         return null;
       }
-      const clientId = process.env['GUARDIAN_OIDC_CLIENT_ID']?.trim();
-      const clientSecret = process.env['GUARDIAN_OIDC_CLIENT_SECRET']?.trim();
+      const clientId = process.env['MASTYFF_AI_OIDC_CLIENT_ID']?.trim();
+      const clientSecret = process.env['MASTYFF_AI_OIDC_CLIENT_SECRET']?.trim();
       const body = new URLSearchParams({ token, token_type_hint: 'access_token' });
       if (clientId) body.set('client_id', clientId);
       if (clientSecret) body.set('client_secret', clientSecret);
@@ -260,7 +260,7 @@ export class OAuthValidator {
           serverName: 'oauth',
           error: `Introspection HTTP ${res.status}`,
         });
-        return process.env['GUARDIAN_OIDC_INTROSPECTION_FAIL_OPEN'] === 'true' ? null : false;
+        return process.env['MASTYFF_AI_OIDC_INTROSPECTION_FAIL_OPEN'] === 'true' ? null : false;
       }
       const data = (await res.json()) as { active?: boolean };
       return data.active === true;
@@ -271,7 +271,7 @@ export class OAuthValidator {
         serverName: 'oauth',
         error: message,
       });
-      return process.env['GUARDIAN_OIDC_INTROSPECTION_FAIL_OPEN'] === 'true' ? null : false;
+      return process.env['MASTYFF_AI_OIDC_INTROSPECTION_FAIL_OPEN'] === 'true' ? null : false;
     }
   }
 
@@ -316,8 +316,8 @@ export class OAuthValidator {
     }
 
     const envToken =
-      process.env['MCP_GUARDIAN_BEARER_TOKEN'] ||
-      process.env['GUARDIAN_BEARER_TOKEN'] ||
+      process.env['MASTYFF_AI_BEARER_TOKEN'] ||
+      process.env['MASTYFF_AI_BEARER_TOKEN'] ||
       process.env['MCP_ACCESS_TOKEN'];
     if (envToken) {
       return envToken.startsWith('Bearer ') ? envToken : `Bearer ${envToken}`;

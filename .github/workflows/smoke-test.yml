@@ -23,13 +23,13 @@ jobs:
       postgres:
         image: postgres:16-alpine
         env:
-          POSTGRES_USER: guardian
-          POSTGRES_PASSWORD: guardian
-          POSTGRES_DB: guardian
+          POSTGRES_USER: mastyff-ai
+          POSTGRES_PASSWORD: mastyff-ai
+          POSTGRES_DB: mastyff-ai
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U guardian"
+          --health-cmd "pg_isready -U mastyff-ai"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
@@ -53,9 +53,9 @@ jobs:
         run: env -u DASHBOARD_AUTH_DISABLED pnpm enterprise:preflight
         env:
           REDIS_URL: redis://localhost:6379
-          DATABASE_URL: postgresql://guardian:guardian@localhost:5432/guardian
-          GUARDIAN_STRICT_MODE: 'true'
-          GUARDIAN_MULTI_TENANT_ENABLED: 'true'
+          DATABASE_URL: postgresql://mastyff-ai:mastyff-ai@localhost:5432/mastyff-ai
+          MASTYFF_AI_STRICT_MODE: 'true'
+          MASTYFF_AI_MULTI_TENANT_ENABLED: 'true'
       - name: Smoke test — server starts
         run: |
           timeout 5 node dist/index.js --version 2>&1 || true
@@ -72,13 +72,13 @@ jobs:
       - name: Smoke test — tarball audit
         run: |
           (cd packages/plugin-sdk && npm pack)
-          SDK_TGZ=$(ls packages/plugin-sdk/mcp-guardian-plugin-sdk-*.tgz | head -1)
+          SDK_TGZ=$(ls packages/plugin-sdk/mastyff-ai-plugin-sdk-*.tgz | head -1)
           npm pack
-          TGZ=$(ls mcp-guardian-server-*.tgz | head -1)
-          mkdir -p /tmp/mcp-guardian-smoke
-          cd /tmp/mcp-guardian-smoke
+          TGZ=$(ls mastyff-ai-server-*.tgz | head -1)
+          mkdir -p /tmp/mastyff-ai-smoke
+          cd /tmp/mastyff-ai-smoke
           npm install "$GITHUB_WORKSPACE/$SDK_TGZ" --no-audit --no-fund
           npm install "$GITHUB_WORKSPACE/$TGZ" --no-audit --no-fund
-          npx mcp-guardian --help
-          npx mcp-guardian scan --all
+          npx mastyff-ai --help
+          npx mastyff-ai scan --all
           echo "✓ Tarball smoke test passed"

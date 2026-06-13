@@ -1,5 +1,5 @@
 // Render.com startup — serves /.well-known/mcp/server-card.json for Smithery
-// and runs the MCP Guardian server on the Render-assigned port
+// and runs the MCP Mastyff AI server on the Render-assigned port
 import http from 'http';
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
@@ -26,11 +26,11 @@ const server = http.createServer((req, res) => {
     return;
   }
   res.writeHead(200, { 'Content-Type': 'text/html' });
-  res.end(`<html><body><h1>MCP Guardian</h1><p>${serverCard.description}</p><p>Tools: scan_security, audit_costs, check_health, full_report</p></body></html>`);
+  res.end(`<html><body><h1>MCP MastyffAi</h1><p>${serverCard.description}</p><p>Tools: scan_security, audit_costs, check_health, full_report</p></body></html>`);
 });
 
 server.listen(PORT, '0.0.0.0', () => {
-  console.log(`MCP Guardian running on port ${PORT} (${process.env.NODE_ENV || 'production'})`);
+  console.log(`MCP Mastyff AI running on port ${PORT} (${process.env.NODE_ENV || 'production'})`);
   console.log(`Well-known: /.well-known/mcp/server-card.json`);
   console.log(`Health: /health`);
 });

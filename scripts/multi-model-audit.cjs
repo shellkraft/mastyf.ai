@@ -37,7 +37,7 @@ const { load } = require('js-yaml');
     await new Promise(function(r) { setTimeout(r, 600); });
 
     var calls = [
-      { id: 'a1', method: 'tools/call', params: { name: 'search', arguments: { query: 'mcp guardian security' } } },
+      { id: 'a1', method: 'tools/call', params: { name: 'search', arguments: { query: 'mcp mastyff-ai security' } } },
       { id: 'a2', method: 'tools/call', params: { name: 'read_file', arguments: { path: 'README.md' } } },
       { id: 'a3', method: 'tools/call', params: { name: 'execute_command', arguments: { command: 'ls' } } },
     ];

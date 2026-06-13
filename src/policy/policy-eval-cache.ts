@@ -1,6 +1,6 @@
 /**
  * Distributed policy evaluation cache (Redis) — mirrors OPA LRU pattern for full YAML decisions.
- * Key: tenant + server + tool + args hash. TTL: GUARDIAN_POLICY_EVAL_CACHE_TTL_MS (default 5000).
+ * Key: tenant + server + tool + args hash. TTL: MASTYFF_AI_POLICY_EVAL_CACHE_TTL_MS (default 5000).
  */
 import { createHash } from 'crypto';
 import { LRUCache } from 'lru-cache';
@@ -14,7 +14,7 @@ type CacheEntry = { decision: PolicyDecision; expiresAt: number };
 const localCache = new LRUCache<string, CacheEntry>({ max: 2000 });
 
 function cacheTtlMs(): number {
-  const n = parseInt(process.env['GUARDIAN_POLICY_EVAL_CACHE_TTL_MS'] || '5000', 10);
+  const n = parseInt(process.env['MASTYFF_AI_POLICY_EVAL_CACHE_TTL_MS'] || '5000', 10);
   return Number.isFinite(n) && n >= 0 ? n : 5000;
 }
 
@@ -32,8 +32,8 @@ export function policyEvalCacheKey(ctx: CallContext): string {
 }
 
 export function isPolicyEvalCacheEnabled(): boolean {
-  if (process.env['GUARDIAN_POLICY_EVAL_CACHE'] === 'false') return false;
-  return process.env['GUARDIAN_POLICY_EVAL_CACHE'] === 'true' || isRedisConfigured();
+  if (process.env['MASTYFF_AI_POLICY_EVAL_CACHE'] === 'false') return false;
+  return process.env['MASTYFF_AI_POLICY_EVAL_CACHE'] === 'true' || isRedisConfigured();
 }
 
 const NON_CACHEABLE_RULE_PREFIXES = ['rate', 'idempotency', 'redis-rate', 'timing'];
@@ -54,14 +54,7 @@ function legacyCacheHeuristic(decision: PolicyDecision): boolean {
 }
 
 function useLegacyCacheHeuristic(): boolean {
-  if (process.env['GUARDIAN_POLICY_EVAL_CACHE_LEGACY_HEURISTIC'] === 'true') return true;
-  if (
-    process.env['GUARDIAN_ENTERPRISE_MODE'] === 'true'
-    && process.env['GUARDIAN_POLICY_EVAL_CACHE_LEGACY_HEURISTIC'] !== 'true'
-  ) {
-    return false;
-  }
-  return process.env['GUARDIAN_POLICY_EVAL_CACHE_LEGACY_HEURISTIC'] === 'true';
+  return process.env['MASTYFF_AI_POLICY_EVAL_CACHE_LEGACY_HEURISTIC'] === 'true';
 }
 
 /** Opt-in: only cache explicit allowlist passes unless legacy heuristic enabled. */

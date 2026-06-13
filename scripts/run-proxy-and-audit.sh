@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 cd "$(dirname "$0")/.." || exit 1
-rm -f ~/.mcp-guardian/history.db
+rm -f ~/.mastyff-ai/history.db
 
 echo "=== Starting proxy ==="
 node dist/cli.js proxy \
@@ -12,7 +12,7 @@ PROXY_PID=$!
 sleep 2
 
 echo "=== Sending realistic tools/call messages ==="
-echo '{"jsonrpc":"2.0","id":"1","method":"tools/call","params":{"name":"search_repositories","arguments":{"query":"mcp-guardian security proxy typeScript"}}}' | node dist/cli.js proxy --config "$HOME/Library/Application Support/Code/User/globalStorage/saoudrizwan.claude-dev/settings/cline_mcp_settings.json" 2>/dev/null &
+echo '{"jsonrpc":"2.0","id":"1","method":"tools/call","params":{"name":"search_repositories","arguments":{"query":"mastyff-ai security proxy typeScript"}}}' | node dist/cli.js proxy --config "$HOME/Library/Application Support/Code/User/globalStorage/saoudrizwan.claude-dev/settings/cline_mcp_settings.json" 2>/dev/null &
 sleep 1
 echo '{"jsonrpc":"2.0","id":"2","method":"tools/call","params":{"name":"get_file_contents","arguments":{"path":"README.md"}}}' | node dist/cli.js proxy --config "$HOME/Library/Application Support/Code/User/globalStorage/saoudrizwan.claude-dev/settings/cline_mcp_settings.json" 2>/dev/null &
 sleep 1

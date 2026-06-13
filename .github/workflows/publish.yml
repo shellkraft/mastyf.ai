@@ -35,7 +35,7 @@ jobs:
       - name: Build all packages
         run: pnpm run build
 
-      - name: Publish @mcp-guardian/plugin-sdk
+      - name: Publish @mastyff-ai/plugin-sdk
         working-directory: packages/plugin-sdk
         run: npm publish --provenance --access public
         env:
@@ -51,18 +51,18 @@ jobs:
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
 
-      - name: Publish @mcp-guardian/core
+      - name: Publish @mastyff-ai/core
         working-directory: packages/core
         run: npm publish --provenance --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
-      - name: Publish @mcp-guardian/server (root — full dep tree)
+      - name: Publish @mastyff-ai/server (root — full dep tree)
         run: npm publish --provenance --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
-      - name: Publish @mcp-guardian/cli
+      - name: Publish @mastyff-ai/cli
         working-directory: packages/cli
         run: npm publish --provenance --access public
         env:

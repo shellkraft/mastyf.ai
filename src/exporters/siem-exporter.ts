@@ -6,14 +6,14 @@
  * Enterprise Phase 1 of 4 — Sub-Phase 1: SIEM/CEF Integration
  *
  * Environment:
- *   GUARDIAN_SIEM_ENABLED=true          — master enable
- *   GUARDIAN_SIEM_ENDPOINT              — Splunk HEC URL or Syslog host:port
- *   GUARDIAN_SIEM_PROTOCOL              — cef | syslog | splunk-hec (default: cef)
- *   GUARDIAN_SIEM_TOKEN                 — Splunk HEC token (if splunk-hec)
- *   GUARDIAN_SIEM_FACILITY              — syslog facility (default: local0)
- *   GUARDIAN_SIEM_SEVERITY_MAP          — JSON map of policy actions to severity
- *   GUARDIAN_SIEM_BATCH_SIZE            — max events per flush (default: 50)
- *   GUARDIAN_SIEM_FLUSH_INTERVAL_MS     — batch flush interval (default: 5000)
+ *   MASTYFF_AI_SIEM_ENABLED=true          — master enable
+ *   MASTYFF_AI_SIEM_ENDPOINT              — Splunk HEC URL or Syslog host:port
+ *   MASTYFF_AI_SIEM_PROTOCOL              — cef | syslog | splunk-hec (default: cef)
+ *   MASTYFF_AI_SIEM_TOKEN                 — Splunk HEC token (if splunk-hec)
+ *   MASTYFF_AI_SIEM_FACILITY              — syslog facility (default: local0)
+ *   MASTYFF_AI_SIEM_SEVERITY_MAP          — JSON map of policy actions to severity
+ *   MASTYFF_AI_SIEM_BATCH_SIZE            — max events per flush (default: 50)
+ *   MASTYFF_AI_SIEM_FLUSH_INTERVAL_MS     — batch flush interval (default: 5000)
  */
 import { Logger } from '../utils/logger.js';
 import { StructuredLogger } from '../utils/structured-logger.js';
@@ -63,7 +63,7 @@ export interface SiemConfig {
 // ── Configuration ────────────────────────────────────────────────────
 
 function loadSiemConfig(): SiemConfig {
-  const rawMap = process.env['GUARDIAN_SIEM_SEVERITY_MAP'];
+  const rawMap = process.env['MASTYFF_AI_SIEM_SEVERITY_MAP'];
   let severityMap: Record<string, string> = {
     block: 'High',
     flag: 'Medium',
@@ -76,13 +76,13 @@ function loadSiemConfig(): SiemConfig {
   }
 
   return {
-    enabled: process.env['GUARDIAN_SIEM_ENABLED'] === 'true',
-    protocol: (process.env['GUARDIAN_SIEM_PROTOCOL'] as SiemConfig['protocol']) || 'cef',
-    endpoint: process.env['GUARDIAN_SIEM_ENDPOINT'] || '',
-    token: process.env['GUARDIAN_SIEM_TOKEN'],
-    facility: process.env['GUARDIAN_SIEM_FACILITY'] || 'local0',
-    batchSize: parseInt(process.env['GUARDIAN_SIEM_BATCH_SIZE'] || '50', 10),
-    flushIntervalMs: parseInt(process.env['GUARDIAN_SIEM_FLUSH_INTERVAL_MS'] || '5000', 10),
+    enabled: process.env['MASTYFF_AI_SIEM_ENABLED'] === 'true',
+    protocol: (process.env['MASTYFF_AI_SIEM_PROTOCOL'] as SiemConfig['protocol']) || 'cef',
+    endpoint: process.env['MASTYFF_AI_SIEM_ENDPOINT'] || '',
+    token: process.env['MASTYFF_AI_SIEM_TOKEN'],
+    facility: process.env['MASTYFF_AI_SIEM_FACILITY'] || 'local0',
+    batchSize: parseInt(process.env['MASTYFF_AI_SIEM_BATCH_SIZE'] || '50', 10),
+    flushIntervalMs: parseInt(process.env['MASTYFF_AI_SIEM_FLUSH_INTERVAL_MS'] || '5000', 10),
     severityMap,
   };
 }
@@ -100,8 +100,8 @@ function escapeCefField(value: string): string {
 
 function formatCef(event: SiemEvent, config: SiemConfig): string {
   const severity = config.severityMap[event.action] || 'Medium';
-  const deviceVendor = 'MCP Guardian';
-  const deviceProduct = 'Guardian Proxy';
+  const deviceVendor = 'Mastyff AI';
+  const deviceProduct = 'Mastyff AI Proxy';
   const deviceVersion = process.env['npm_package_version'] || '3.2.5';
 
   // CEF Header: CEF:0|Device Vendor|Device Product|Device Version|Signature ID|Signature Name|Severity
@@ -121,7 +121,7 @@ function formatCef(event: SiemEvent, config: SiemConfig): string {
     `cs3=${escapeCefField(event.agentIdentity || 'unknown')}`,
     `cs3Label=agentIdentity`,
     `requestId=${escapeCefField(event.requestId)}`,
-    `deviceProcessName=mcp-guardian`,
+    `deviceProcessName=mastyff-ai`,
   ];
 
   if (event.anomalyScore !== undefined) {
@@ -155,8 +155,8 @@ function formatSyslog(event: SiemEvent, config: SiemConfig): string {
     Low: 6,
   };
   const pri = (16 * 8) + (severityMap[severity] || 5); // facility * 8 + severity
-  const hostname = process.env['HOSTNAME'] || 'mcp-guardian';
-  const appName = 'mcp-guardian';
+  const hostname = process.env['HOSTNAME'] || 'mastyff-ai';
+  const appName = 'mastyff-ai';
   const procid = process.pid.toString();
   const msgid = event.requestId;
 
@@ -171,7 +171,7 @@ function formatSyslog(event: SiemEvent, config: SiemConfig): string {
     event.anomalyScore !== undefined ? `anomalyScore="${event.anomalyScore.toFixed(3)}"` : '',
   ].filter(Boolean).join(' ');
 
-  return `<${pri}>1 ${event.timestamp} ${hostname} ${appName} ${procid} ${msgid} [mcp-guardian@48577 ${structuredData}] ${event.reason}`;
+  return `<${pri}>1 ${event.timestamp} ${hostname} ${appName} ${procid} ${msgid} [mastyff-ai@48577 ${structuredData}] ${event.reason}`;
 }
 
 // ── Splunk HEC Formatter ─────────────────────────────────────────────
@@ -180,9 +180,9 @@ function formatSplunkHec(event: SiemEvent, _config: SiemConfig): string {
   const hecEvent = {
     time: Math.floor(new Date(event.timestamp).getTime() / 1000),
     host: event.serverName,
-    source: 'mcp-guardian',
-    sourcetype: 'mcp_guardian:policy',
-    index: 'mcp_guardian',
+    source: 'mastyff-ai',
+    sourcetype: 'mastyff_ai:policy',
+    index: 'mastyff_ai',
     event: {
       action: event.action,
       rule: event.rule,

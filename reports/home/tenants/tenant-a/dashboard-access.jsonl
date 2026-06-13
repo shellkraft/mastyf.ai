@@ -1,8 +1,0 @@
-{"userId":"anonymous","tenantId":"tenant-a","method":"GET","path":"/api/aggregate/audit","endpoint":"/api/aggregate/audit","status":200,"ip":"::ffff:127.0.0.1","timestamp":"2026-05-31T16:47:09.168Z"}
-{"userId":"anonymous","tenantId":"tenant-a","method":"GET","path":"/api/learning/semantic/outcomes","endpoint":"/api/learning/semantic/outcomes","status":200,"ip":"::ffff:127.0.0.1","timestamp":"2026-05-31T16:47:09.173Z"}
-{"userId":"anonymous","tenantId":"tenant-a","method":"GET","path":"/api/aggregate/audit","endpoint":"/api/aggregate/audit","status":200,"ip":"::ffff:127.0.0.1","timestamp":"2026-05-31T18:39:32.337Z"}
-{"userId":"anonymous","tenantId":"tenant-a","method":"GET","path":"/api/learning/semantic/outcomes","endpoint":"/api/learning/semantic/outcomes","status":200,"ip":"::ffff:127.0.0.1","timestamp":"2026-05-31T18:39:32.342Z"}
-{"userId":"anonymous","tenantId":"tenant-a","method":"GET","path":"/api/aggregate/audit","endpoint":"/api/aggregate/audit","status":200,"ip":"::ffff:127.0.0.1","timestamp":"2026-05-31T19:18:55.393Z"}
-{"userId":"anonymous","tenantId":"tenant-a","method":"GET","path":"/api/learning/semantic/outcomes","endpoint":"/api/learning/semantic/outcomes","status":200,"ip":"::ffff:127.0.0.1","timestamp":"2026-05-31T19:18:55.401Z"}
-{"userId":"anonymous","tenantId":"tenant-a","method":"GET","path":"/api/aggregate/audit","endpoint":"/api/aggregate/audit","status":200,"ip":"::ffff:127.0.0.1","timestamp":"2026-05-31T20:08:08.470Z"}
-{"userId":"anonymous","tenantId":"tenant-a","method":"GET","path":"/api/learning/semantic/outcomes","endpoint":"/api/learning/semantic/outcomes","status":200,"ip":"::ffff:127.0.0.1","timestamp":"2026-05-31T20:08:08.474Z"}

@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { buildMtxRecord, validateMtxRecord, hashSignature } from '../../packages/mtx/src/index.js';
 import { IntentEngine } from '../../src/agentic/intent-binding/intent-engine.js';
 import { SandboxTierEnforcer } from '../../src/agentic/sandbox-tier/enforcer.js';
-import { runGuardianBenchScorecard } from '../../src/utils/guardian-bench.js';
+import { runMastyffAiBenchScorecard } from '../../src/utils/mastyff-ai-bench.js';
 import { signCertAttestation, verifyCertAttestation } from '../../src/agentic/certification/cert-signing.js';
 
 describe('industry-standard foundations', () => {
@@ -31,13 +31,13 @@ describe('industry-standard foundations', () => {
   });
 
   it('bench scorecard returns structure', () => {
-    const card = runGuardianBenchScorecard('/nonexistent', 'test');
+    const card = runMastyffAiBenchScorecard('/nonexistent', 'test');
     expect(card.profile).toBe('test');
     expect(typeof card.blockRate).toBe('number');
   });
 
   it('cert attestation round-trips with key', () => {
-    process.env.GUARDIAN_CERT_SIGNING_KEY = 'test-key-industry-standard';
+    process.env.MASTYFF_AI_CERT_SIGNING_KEY = 'test-key-industry-standard';
     const token = signCertAttestation({
       serverName: 'fs',
       packageName: '@test/fs',
@@ -48,6 +48,6 @@ describe('industry-standard foundations', () => {
       expiresAt: new Date(Date.now() + 86400000).toISOString(),
     });
     expect(verifyCertAttestation(token).valid).toBe(true);
-    delete process.env.GUARDIAN_CERT_SIGNING_KEY;
+    delete process.env.MASTYFF_AI_CERT_SIGNING_KEY;
   });
 });

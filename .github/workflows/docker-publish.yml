@@ -29,11 +29,11 @@ jobs:
           context: .
           push: true
           tags: |
-            ghcr.io/rudraneel93/mcp-guardian:latest
-            ghcr.io/rudraneel93/mcp-guardian:${{ github.ref_name }}
+            ghcr.io/mastyff-ai/mastyff-ai:latest
+            ghcr.io/mastyff-ai/mastyff-ai:${{ github.ref_name }}
       - name: Smoke test image as non-root user
         run: |
-          docker run --rm --entrypoint sh ghcr.io/rudraneel93/mcp-guardian:${{ github.ref_name }} -c \
+          docker run --rm --entrypoint sh ghcr.io/mastyff-ai/mastyff-ai:${{ github.ref_name }} -c \
             'id | grep -q uid=1001 && node -e "require(\"better-sqlite3\")" && node dist/cli.js --version'
       - name: Install cosign
         uses: sigstore/cosign-installer@v3.7.0
@@ -42,10 +42,10 @@ jobs:
           COSIGN_EXPERIMENTAL: '1'
         run: |
           cosign sign --yes \
-            ghcr.io/rudraneel93/mcp-guardian:${{ github.ref_name }} \
-            ghcr.io/rudraneel93/mcp-guardian:latest
+            ghcr.io/mastyff-ai/mastyff-ai:${{ github.ref_name }} \
+            ghcr.io/mastyff-ai/mastyff-ai:latest
       - uses: aquasecurity/trivy-action@master
         with:
-          image-ref: ghcr.io/rudraneel93/mcp-guardian:${{ github.ref_name }}
+          image-ref: ghcr.io/mastyff-ai/mastyff-ai:${{ github.ref_name }}
           severity: CRITICAL,HIGH
           exit-code: 1

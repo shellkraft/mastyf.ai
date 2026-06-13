@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { UnifiedDataReader } from '../../src/utils/unified-data-reader.js';
 
 describe('UnifiedDataReader region filter', () => {
-  it('joins guardian_instances when region param set', async () => {
+  it('joins mastyff_ai_instances when region param set', async () => {
     let capturedSql = '';
     const fakePool = {
       connect: async () => ({
@@ -16,7 +16,7 @@ describe('UnifiedDataReader region filter', () => {
     };
     const reader = new UnifiedDataReader(fakePool as any);
     await reader.loadCallRecordsInWindow('default', 7, 'eu-west-1');
-    expect(capturedSql).toContain('guardian_instances');
+    expect(capturedSql).toContain('mastyff_ai_instances');
     expect(capturedSql).toContain("metadata->>'region'");
   });
 
@@ -33,6 +33,6 @@ describe('UnifiedDataReader region filter', () => {
     };
     const reader = new UnifiedDataReader(fakePool as any);
     await reader.loadCallRecordsInWindow('default', 7);
-    expect(capturedSql).not.toContain('guardian_instances');
+    expect(capturedSql).not.toContain('mastyff_ai_instances');
   });
 });

@@ -32,8 +32,8 @@ async function getJson(path: string, init?: RequestInit): Promise<{ status: numb
 async function main(): Promise<void> {
   process.env.DASHBOARD_ENABLED = 'true';
   process.env.DASHBOARD_AUTH_DISABLED = 'true';
-  process.env.GUARDIAN_WS_ENABLED = 'false';
-  process.env.GUARDIAN_CI_BYPASS_LICENSE = 'true';
+  process.env.MASTYFF_AI_WS_ENABLED = 'false';
+  process.env.MASTYFF_AI_CI_BYPASS_LICENSE = 'true';
   process.env.NODE_ENV = process.env.NODE_ENV || 'development';
 
   const seed = appendSemanticAuditRecord({

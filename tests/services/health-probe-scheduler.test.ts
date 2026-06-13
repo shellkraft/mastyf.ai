@@ -10,7 +10,7 @@ describe('health-probe-scheduler', () => {
   });
 
   it('does not start when interval is 0', async () => {
-    vi.stubEnv('GUARDIAN_HEALTH_PROBE_INTERVAL_MS', '0');
+    vi.stubEnv('MASTYFF_AI_HEALTH_PROBE_INTERVAL_MS', '0');
     const { startHealthProbeScheduler, stopHealthProbeScheduler } = await import(
       '../../src/services/health-probe-scheduler.js'
     );

@@ -109,3 +109,42 @@ export const CHART_MIN_HEIGHT = {
   pie: 260,
   sparkline: 36,
 } as const;
+
+/** Categorise a block rule as security-threat or policy-enforcement so the UI can distinguish them. */
+export type RuleCategory = 'security' | 'policy';
+
+const POLICY_RULES = new Set([
+  'require-certification',
+  'mcp-lifecycle-guard',
+  'tool-fingerprint-mismatch',
+  'request-timeout',
+  'proxy-max-inflight',
+  'payload-expanded-limit',
+  'cve-gate',
+  'allowlist-common-tools',
+]);
+
+const SECURITY_RULES = new Set([
+  'prompt-injection',
+  'multimodal-injection',
+  'semantic-path-guard',
+  'secret-scan',
+  'arg-entropy',
+  'response_gate',
+  'cve-gate',
+]);
+
+export function classifyRule(rule: string): RuleCategory {
+  if (POLICY_RULES.has(rule)) return 'policy';
+  if (SECURITY_RULES.has(rule)) return 'security';
+  return 'security';
+}
+
+export function ruleCategoryColor(category: RuleCategory): string {
+  return category === 'security' ? CHART_SERIES.block : CHART_SERIES.neutral;
+}
+
+export const RULE_CATEGORY_LABELS: Record<RuleCategory, string> = {
+  security: 'Security threat',
+  policy: 'Policy enforcement',
+};

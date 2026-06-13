@@ -1,8 +1,8 @@
 services:
   - type: web
-    name: mcp-guardian
+    name: mastyff-ai
     runtime: node
-    repo: https://github.com/rudraneel93/mcp-guardian
+    repo: https://github.com/mastyff-ai/mastyff-ai
     buildCommand: npm install -g pnpm && pnpm install --no-frozen-lockfile && pnpm run build
     startCommand: node render-start.js
     buildFilter:
@@ -14,5 +14,5 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
-      - key: MCP_GUARDIAN_DB_PATH
-        value: /tmp/guardian.db
+      - key: MASTYFF_AI_DB_PATH
+        value: /tmp/mastyff-ai.db

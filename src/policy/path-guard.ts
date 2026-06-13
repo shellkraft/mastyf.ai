@@ -57,9 +57,9 @@ export function extractPathArgumentValues(args: Record<string, unknown> | undefi
 
 function allowedPathPrefixes(): string[] {
   const prefixes: string[] = [];
-  const workspace = process.env.GUARDIAN_WORKSPACE?.trim();
+  const workspace = process.env.MASTYFF_AI_WORKSPACE?.trim();
   if (workspace) prefixes.push(translatePath(workspace));
-  const list = process.env.GUARDIAN_ALLOWED_PATH_PREFIXES?.split(',').map((s) => s.trim()).filter(Boolean);
+  const list = process.env.MASTYFF_AI_ALLOWED_PATH_PREFIXES?.split(',').map((s) => s.trim()).filter(Boolean);
   if (list?.length) prefixes.push(...list.map(translatePath));
   return prefixes;
 }

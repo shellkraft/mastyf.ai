@@ -13,7 +13,7 @@ RUN corepack enable && pnpm install --frozen-lockfile
 # Verify better-sqlite3 native prebuild (onlyBuiltDependencies in package.json)
 RUN node -e "require('better-sqlite3'); console.log('better-sqlite3 prebuild OK')"
 
-RUN pnpm --filter @mcp-guardian/plugin-sdk run build
+RUN pnpm --filter @mastyff-ai/plugin-sdk run build
 
 RUN cd packages/core && pnpm build
 RUN cd packages/server && pnpm build

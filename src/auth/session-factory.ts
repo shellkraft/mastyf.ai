@@ -4,9 +4,9 @@ import { Logger } from '../utils/logger.js';
 import { isRedisConfigured } from '../utils/redis-client.js';
 import type { SessionValidationResult } from './session-cache.js';
 
-export type GuardianSessionCache = SessionCache | RedisSessionCache;
+export type MastyffAiSessionCache = SessionCache | RedisSessionCache;
 
-export function createSessionCache(): GuardianSessionCache {
+export function createSessionCache(): MastyffAiSessionCache {
   if (isRedisConfigured()) {
     Logger.info('[session-factory] Using Redis-backed session cache');
     return new RedisSessionCache();
@@ -15,7 +15,7 @@ export function createSessionCache(): GuardianSessionCache {
 }
 
 export async function validateSessionToken(
-  cache: GuardianSessionCache | null,
+  cache: MastyffAiSessionCache | null,
   token: string,
   tenantId?: string,
 ): Promise<SessionValidationResult | null> {

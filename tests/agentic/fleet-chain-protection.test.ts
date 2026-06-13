@@ -5,11 +5,11 @@ import { IndustryStandardStore } from '../../src/database/industry-standard-stor
 import { HistoryDatabase } from '../../src/database/history-db.js';
 
 describe('global session id (A1)', () => {
-  it('prefers x-guardian-global-session header', () => {
+  it('prefers x-mastyff-ai-global-session header', () => {
     const id = resolveGlobalSessionId({
       requestId: 'req-1',
       agentId: 'agent-a',
-      headers: { 'x-guardian-global-session': 'fleet-sess-99' },
+      headers: { 'x-mastyff-ai-global-session': 'fleet-sess-99' },
     });
     expect(id).toBe('fleet-sess-99');
   });

@@ -11,7 +11,7 @@ import { runMigrations } from '../database/migration-runner.js';
 import { Logger } from '../utils/logger.js';
 import { ProxyCallRecord } from '../types.js';
 import type { AttackLearningState } from '../ai/instant-attack-learning.js';
-import { getGuardianRegion } from '../utils/region.js';
+import { getMastyffAiRegion } from '../utils/region.js';
 
 export interface SyncConfig {
   instanceId: string;
@@ -22,11 +22,11 @@ export interface SyncConfig {
 }
 
 const DEFAULT_CONFIG: SyncConfig = {
-  instanceId: process.env['GUARDIAN_INSTANCE_ID'] || `guardian-${process.pid}-${Date.now()}`,
-  instanceName: process.env['GUARDIAN_INSTANCE_NAME'] || process.env['HOSTNAME'] || 'unknown',
-  syncIntervalMs: parseInt(process.env['GUARDIAN_SYNC_INTERVAL_MS'] || '30000', 10),
-  batchSize: parseInt(process.env['GUARDIAN_SYNC_BATCH_SIZE'] || '100', 10),
-  databaseUrl: process.env['DATABASE_URL'] || 'postgresql://localhost:5432/mcp_guardian',
+  instanceId: process.env['MASTYFF_AI_INSTANCE_ID'] || `mastyff-ai-${process.pid}-${Date.now()}`,
+  instanceName: process.env['MASTYFF_AI_INSTANCE_NAME'] || process.env['HOSTNAME'] || 'unknown',
+  syncIntervalMs: parseInt(process.env['MASTYFF_AI_SYNC_INTERVAL_MS'] || '30000', 10),
+  batchSize: parseInt(process.env['MASTYFF_AI_SYNC_BATCH_SIZE'] || '100', 10),
+  databaseUrl: process.env['DATABASE_URL'] || 'postgresql://localhost:5432/mastyff_ai',
 };
 
 export class AuditTrailSync {
@@ -40,9 +40,9 @@ export class AuditTrailSync {
     this.config = { ...DEFAULT_CONFIG, ...config };
   }
 
-  /** Region label stored in guardian_instances.metadata for dashboard region filter. */
+  /** Region label stored in mastyff_ai_instances.metadata for dashboard region filter. */
   private instanceMetadata(): Record<string, string> {
-    return { region: getGuardianRegion() };
+    return { region: getMastyffAiRegion() };
   }
 
   async initialize(): Promise<void> {
@@ -59,11 +59,11 @@ export class AuditTrailSync {
     try {
       // Register this instance
       await client.query(
-        `INSERT INTO guardian_instances (instance_id, instance_name, hostname, version, started_at, last_heartbeat, status, metadata)
+        `INSERT INTO mastyff_ai_instances (instance_id, instance_name, hostname, version, started_at, last_heartbeat, status, metadata)
          VALUES ($1, $2, $3, $4, NOW(), NOW(), 'active', $5::jsonb)
          ON CONFLICT (instance_id) DO UPDATE
          SET last_heartbeat = NOW(), status = 'active', hostname = $3, version = $4,
-             metadata = COALESCE(guardian_instances.metadata, '{}'::jsonb) || EXCLUDED.metadata`,
+             metadata = COALESCE(mastyff_ai_instances.metadata, '{}'::jsonb) || EXCLUDED.metadata`,
         [
           this.config.instanceId,
           this.config.instanceName,
@@ -189,8 +189,9 @@ export class AuditTrailSync {
           }
         }
       }
-    } catch (err: any) {
-      Logger.warn(`[AuditTrailSync] Call record sync error: ${err?.message}`);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      Logger.warn(`[AuditTrailSync] Call record sync error: ${message}`);
     }
   }
 
@@ -226,8 +227,9 @@ export class AuditTrailSync {
           }
         }
       }
-    } catch (err: any) {
-      Logger.warn(`[AuditTrailSync] Security scan sync error: ${err?.message}`);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      Logger.warn(`[AuditTrailSync] Security scan sync error: ${message}`);
     }
   }
 
@@ -279,8 +281,9 @@ export class AuditTrailSync {
           }
         }
       }
-    } catch (err: any) {
-      Logger.warn(`[AuditTrailSync] Cost record sync error: ${err?.message}`);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      Logger.warn(`[AuditTrailSync] Cost record sync error: ${message}`);
     }
   }
 
@@ -319,8 +322,9 @@ export class AuditTrailSync {
           }
         }
       }
-    } catch (err: any) {
-      Logger.warn(`[AuditTrailSync] Health check sync error: ${err?.message}`);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      Logger.warn(`[AuditTrailSync] Health check sync error: ${message}`);
     }
   }
 
@@ -330,7 +334,7 @@ export class AuditTrailSync {
       const client = await this.pgPool.connect();
       try {
         await client.query(
-          `UPDATE guardian_instances
+          `UPDATE mastyff_ai_instances
            SET last_heartbeat = NOW(), status = $2,
                metadata = COALESCE(metadata, '{}'::jsonb) || $3::jsonb
            WHERE instance_id = $1`,
@@ -339,8 +343,9 @@ export class AuditTrailSync {
       } finally {
         client.release();
       }
-    } catch (err: any) {
-      Logger.warn(`[AuditTrailSync] Heartbeat failed: ${err?.message}`);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      Logger.warn(`[AuditTrailSync] Heartbeat failed: ${message}`);
     }
   }
 
@@ -389,14 +394,15 @@ export class AuditTrailSync {
             decision.authSuccess ?? null,
             decision.severity || 'info',
             JSON.stringify(decision.metadata || {}),
-            decision.tenantId || process.env['GUARDIAN_TENANT_ID'] || 'default',
+            decision.tenantId || process.env['MASTYFF_AI_TENANT_ID'] || 'default',
           ]
         );
       } finally {
         client.release();
       }
-    } catch (err: any) {
-      Logger.warn(`[AuditTrailSync] Decision record failed: ${err?.message}`);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      Logger.warn(`[AuditTrailSync] Decision record failed: ${message}`);
     }
   }
 
@@ -429,8 +435,9 @@ export class AuditTrailSync {
       } finally {
         client.release();
       }
-    } catch (err: any) {
-      Logger.warn(`[AuditTrailSync] Learning outcome failed: ${err?.message}`);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      Logger.warn(`[AuditTrailSync] Learning outcome failed: ${message}`);
     }
   }
 
@@ -474,8 +481,9 @@ export class AuditTrailSync {
       } finally {
         client.release();
       }
-    } catch (err: any) {
-      Logger.warn(`[AuditTrailSync] Baseline persist failed: ${err?.message}`);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      Logger.warn(`[AuditTrailSync] Baseline persist failed: ${message}`);
     }
   }
 
@@ -501,8 +509,9 @@ export class AuditTrailSync {
       } finally {
         client.release();
       }
-    } catch (err: any) {
-      Logger.warn(`[AuditTrailSync] Get baselines failed: ${err?.message}`);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      Logger.warn(`[AuditTrailSync] Get baselines failed: ${message}`);
       return [];
     }
   }
@@ -520,7 +529,7 @@ export class AuditTrailSync {
       const client = await this.pgPool.connect();
       try {
         const instances = await client.query(
-          'SELECT * FROM guardian_instances WHERE last_heartbeat > NOW() - INTERVAL \'5 minutes\'',
+          'SELECT * FROM mastyff_ai_instances WHERE last_heartbeat > NOW() - INTERVAL \'5 minutes\'',
         );
 
         if (tenantId) {
@@ -571,8 +580,9 @@ export class AuditTrailSync {
       } finally {
         client.release();
       }
-    } catch (err: any) {
-      Logger.warn(`[AuditTrailSync] Get metrics failed: ${err?.message}`);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      Logger.warn(`[AuditTrailSync] Get metrics failed: ${message}`);
       return { totalInstances: 0, activeInstances: 0, totalRequests: 0, totalBlocked: 0, totalCost: 0, instances: [] };
     }
   }
@@ -624,8 +634,9 @@ export class AuditTrailSync {
       } finally {
         client.release();
       }
-    } catch (err: any) {
-      Logger.warn(`[AuditTrailSync] Query ${table} failed: ${err?.message}`);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      Logger.warn(`[AuditTrailSync] Query ${table} failed: ${message}`);
       return [];
     }
   }
@@ -644,8 +655,9 @@ export class AuditTrailSync {
       } finally {
         client.release();
       }
-    } catch (err: any) {
-      Logger.warn(`[AuditTrailSync] Get attack learning state failed: ${err?.message}`);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      Logger.warn(`[AuditTrailSync] Get attack learning state failed: ${message}`);
       return null;
     }
   }
@@ -668,8 +680,9 @@ export class AuditTrailSync {
       } finally {
         client.release();
       }
-    } catch (err: any) {
-      Logger.warn(`[AuditTrailSync] Attack learning persist failed: ${err?.message}`);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      Logger.warn(`[AuditTrailSync] Attack learning persist failed: ${message}`);
     }
   }
 
@@ -715,8 +728,9 @@ export class AuditTrailSync {
       } finally {
         client.release();
       }
-    } catch (err: any) {
-      Logger.warn(`[AuditTrailSync] Get audit trail failed: ${err?.message}`);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      Logger.warn(`[AuditTrailSync] Get audit trail failed: ${message}`);
       return [];
     }
   }

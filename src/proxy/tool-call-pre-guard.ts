@@ -32,7 +32,7 @@ export async function runToolCallPreForwardGuard(
       return {
         blocked: true,
         code: -32001,
-        message: `Blocked by MCP Guardian: ${expanded.reason}`,
+        message: `Blocked by Mastyff AI: ${expanded.reason}`,
       };
     }
   }
@@ -49,7 +49,7 @@ export async function runToolCallPreForwardGuard(
       return {
         blocked: true,
         code: -32001,
-        message: `Blocked by MCP Guardian: ${agentic.reason || 'agentic policy'}`,
+        message: `Blocked by Mastyff AI: ${agentic.reason || 'agentic policy'}`,
       };
     }
     return { blocked: false, arguments: agentic.sanitizedArgs ?? args };

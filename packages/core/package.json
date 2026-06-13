@@ -1,5 +1,5 @@
 {
-  "name": "@mcp-guardian/core",
+  "name": "@mastyff-ai/core",
   "version": "4.1.7",
   "description": "Detection engine: regex + schema + semantic analysis for MCP tool definitions",
   "type": "module",

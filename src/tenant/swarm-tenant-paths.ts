@@ -11,9 +11,9 @@ const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 
 export const LEGACY_SWARM_DIR = join(REPO_ROOT, 'reports', 'security-swarm');
 
-/** Output dir for swarm / Threat Lab / auto-research (dashboard sets GUARDIAN_SWARM_DIR). */
+/** Output dir for swarm / Threat Lab / auto-research (dashboard sets MASTYFF_AI_SWARM_DIR). */
 export function resolveSwarmOutputDir(): string {
-  const override = process.env.GUARDIAN_SWARM_DIR?.trim();
+  const override = process.env.MASTYFF_AI_SWARM_DIR?.trim();
   return override || LEGACY_SWARM_DIR;
 }
 
@@ -39,7 +39,7 @@ export function getEffectiveSwarmDir(tenantId: string): string {
   if (hasTenantArtifacts) return tenantDir;
   if (
     tid === DEFAULT_TENANT_ID
-    && process.env.GUARDIAN_SWARM_USE_LEGACY_ARTIFACTS === 'true'
+    && process.env.MASTYFF_AI_SWARM_USE_LEGACY_ARTIFACTS === 'true'
   ) {
     const hasLegacy =
       existsSync(join(LEGACY_SWARM_DIR, 'job.json'))

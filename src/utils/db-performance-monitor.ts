@@ -1,6 +1,6 @@
 import { StructuredLogger } from './structured-logger.js';
 
-const SLOW_QUERY_MS = parseInt(process.env['GUARDIAN_DB_SLOW_QUERY_MS'] || '100', 10);
+const SLOW_QUERY_MS = parseInt(process.env['MASTYFF_AI_DB_SLOW_QUERY_MS'] || '100', 10);
 
 export function getSlowQueryThresholdMs(): number {
   return Number.isFinite(SLOW_QUERY_MS) && SLOW_QUERY_MS > 0 ? SLOW_QUERY_MS : 100;

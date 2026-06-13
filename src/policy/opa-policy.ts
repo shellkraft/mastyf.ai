@@ -1,9 +1,9 @@
 /**
  * Optional OPA/Rego policy evaluation (enterprise).
- * Enable with: OPA_URL=http://localhost:8181/v1/data/mcp_guardian
+ * Enable with: OPA_URL=http://localhost:8181/v1/data/mastyff_ai
  *
  * Precedence: OPA block wins over YAML; OPA allow (or no decision) falls through to YAML.
- * LRU cache: (tenantId, serverName, toolName, argsHash) — GUARDIAN_OPA_CACHE_TTL_MS (default 5000).
+ * LRU cache: (tenantId, serverName, toolName, argsHash) — MASTYFF_AI_OPA_CACHE_TTL_MS (default 5000).
  */
 import { createHash } from 'crypto';
 import { LRUCache } from 'lru-cache';
@@ -15,7 +15,7 @@ type OpaCacheEntry = { decision: PolicyDecision | null; expiresAt: number };
 const opaCache = new LRUCache<string, OpaCacheEntry>({ max: 1000 });
 
 function opaCacheTtlMs(): number {
-  const n = parseInt(process.env['GUARDIAN_OPA_CACHE_TTL_MS'] || '5000', 10);
+  const n = parseInt(process.env['MASTYFF_AI_OPA_CACHE_TTL_MS'] || '5000', 10);
   return Number.isFinite(n) && n >= 0 ? n : 5000;
 }
 
@@ -83,7 +83,7 @@ export async function evaluateOpaPolicy(ctx: CallContext): Promise<PolicyDecisio
       const parsed = parseOpaResult(data.result);
       if (!parsed.ok) {
         Logger.warn(`[opa] invalid result shape: ${parsed.error}`);
-        decision = process.env['GUARDIAN_STRICT_MODE'] === 'true'
+        decision = process.env['MASTYFF_AI_STRICT_MODE'] === 'true'
           ? { action: 'block', rule: 'opa', reason: 'OPA returned invalid result shape' }
           : null;
       } else if (parsed.allow === false) {
@@ -97,7 +97,7 @@ export async function evaluateOpaPolicy(ctx: CallContext): Promise<PolicyDecisio
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
     Logger.warn(`[opa] unreachable: ${message}`);
-    if (process.env['GUARDIAN_STRICT_MODE'] === 'true') {
+    if (process.env['MASTYFF_AI_STRICT_MODE'] === 'true') {
       decision = { action: 'block', rule: 'opa', reason: 'OPA unreachable in strict mode' };
     }
   }

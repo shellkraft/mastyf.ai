@@ -1,5 +1,5 @@
 /**
- * Unicode TR39 confusables for offline @mcp-guardian/core regex scans.
+ * Unicode TR39 confusables for offline @mastyff-ai/core regex scans.
  * Mirrors src/utils/confusables.ts; resolves repo-root assets/confusables.txt.
  */
 import { readFileSync, existsSync } from "node:fs";

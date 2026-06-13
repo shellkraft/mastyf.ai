@@ -261,8 +261,8 @@ function spawnDiscoveryJob(
     env: {
       ...process.env,
       ...extraEnv,
-      GUARDIAN_SWARM_DIR: outDir,
-      GUARDIAN_TENANT_ID: tenantId,
+      MASTYFF_AI_SWARM_DIR: outDir,
+      MASTYFF_AI_TENANT_ID: tenantId,
     },
   });
 
@@ -300,7 +300,7 @@ export function startAutoThreatResearchJob(
   tenantId: string = DEFAULT_TENANT_ID,
 ): ReturnType<typeof spawnDiscoveryJob> {
   return spawnDiscoveryJob(tenantId, 'auto-research', {
-    GUARDIAN_THREAT_RESEARCH_AUTO: 'true',
+    MASTYFF_AI_THREAT_RESEARCH_AUTO: 'true',
     SWARM_THREAT_RESEARCH_AUTO: 'true',
   });
 }

@@ -24,7 +24,7 @@ export class ConfigHardener {
     // Secrets
     const env = server.env || {}; const envStr = JSON.stringify(env);
     if (envStr.includes('password') || envStr.includes('secret') || envStr.includes('token') || envStr.includes('key')) {
-      recs.push({ category: 'secrets', severity: 'high', finding: 'Hardcoded credentials detected in environment variables', recommendation: 'Use a secrets vault (AWS Secrets Manager, HashiCorp Vault) or MCP Guardian secret provider', automatic: false });
+      recs.push({ category: 'secrets', severity: 'high', finding: 'Hardcoded credentials detected in environment variables', recommendation: 'Use a secrets vault (AWS Secrets Manager, HashiCorp Vault) or MCP Mastyff AI secret provider', automatic: false });
     }
 
     // Tools
@@ -32,7 +32,7 @@ export class ConfigHardener {
     if (hasExec) recs.push({ category: 'tools', severity: 'high', finding: 'Server command name suggests command execution capability', recommendation: 'Add strict argument allowlist to this tool', oneClickFix: 'Add deny rule for dangerous commands', automatic: true });
 
     // Policy
-    recs.push({ category: 'policy', severity: 'medium', finding: 'No MCP Guardian policy attached', recommendation: 'Apply default-policy.yaml for comprehensive protection', oneClickFix: 'Use default-policy.yaml with block mode', automatic: true });
+    recs.push({ category: 'policy', severity: 'medium', finding: 'No MCP Mastyff AI policy attached', recommendation: 'Apply default-policy.yaml for comprehensive protection', oneClickFix: 'Use default-policy.yaml with block mode', automatic: true });
 
     const criticalCount = recs.filter(r => r.severity === 'critical').length;
     const highCount = recs.filter(r => r.severity === 'high').length;

@@ -4,7 +4,7 @@
 import { Logger } from '../../utils/logger.js';
 import { signCertAttestation, verifyCertAttestation } from './cert-signing.js';
 import { IndustryStandardStore } from '../../database/industry-standard-store.js';
-import { GuardianScore, type ScoreInput } from '../trust-score/guardian-score.js';
+import { MastyffAiScore, type ScoreInput } from '../trust-score/mastyff-ai-score.js';
 import type { ReputationNetwork } from '../reputation/reputation-network.js';
 
 export interface CertificationResult {
@@ -25,19 +25,19 @@ export interface CertifyManualInputs {
 
 export class MCPCertifier {
   private registry = new Map<string, CertificationResult>();
-  private readonly guardianScore: GuardianScore;
+  private readonly mastyffAiScore: MastyffAiScore;
 
   constructor(
     private readonly store?: IndustryStandardStore,
-    guardianScore?: GuardianScore,
+    mastyffAiScore?: MastyffAiScore,
     private readonly reputationNetwork?: ReputationNetwork,
   ) {
-    this.guardianScore = guardianScore ?? new GuardianScore();
+    this.mastyffAiScore = mastyffAiScore ?? new MastyffAiScore();
   }
 
-  /** Auto-collect certification inputs from GuardianScore + CVE posture. */
-  collectFromGuardianScore(input: Partial<ScoreInput> & { serverName: string }): CertifyManualInputs {
-    const score = this.guardianScore.compute({
+  /** Auto-collect certification inputs from MastyffAiScore + CVE posture. */
+  collectFromMastyffAiScore(input: Partial<ScoreInput> & { serverName: string }): CertifyManualInputs {
+    const score = this.mastyffAiScore.compute({
       serverName: input.serverName,
       cveCount: input.cveCount ?? 0,
       maxCvss: input.maxCvss ?? 0,
@@ -53,7 +53,7 @@ export class MCPCertifier {
       blockedCalls: input.blockedCalls ?? 0,
       bypassedAttacks: input.bypassedAttacks ?? 0,
       responseDlpActive: input.responseDlpActive ?? false,
-      guardianProtected: input.guardianProtected ?? true,
+      mastyffAiProtected: input.mastyffAiProtected ?? true,
     });
     const cveFree = (input.cveCount ?? 0) === 0 || (input.maxCvss ?? 0) < 7;
     return {
@@ -134,7 +134,7 @@ export class MCPCertifier {
   }
 
   certifyFromScan(serverName: string, packageName: string, version: string, scan: Partial<ScoreInput>): CertificationResult {
-    const inputs = this.collectFromGuardianScore({ ...scan, serverName });
+    const inputs = this.collectFromMastyffAiScore({ ...scan, serverName });
     return this.certify(serverName, packageName, version, inputs);
   }
 

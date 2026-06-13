@@ -8,15 +8,15 @@ import { resetLlmConfigForTests } from '../../src/config/llm-config.js';
 
 describe('llm-cache', () => {
   const prevRedis = process.env.REDIS_URL;
-  const prevCacheFlag = process.env.GUARDIAN_LLM_CACHE;
-  const prevTtl = process.env.GUARDIAN_LLM_CACHE_TTL_SEC;
+  const prevCacheFlag = process.env.MASTYFF_AI_LLM_CACHE;
+  const prevTtl = process.env.MASTYFF_AI_LLM_CACHE_TTL_SEC;
 
   beforeEach(() => {
     resetLlmCacheForTests();
     resetLlmConfigForTests();
     delete process.env.REDIS_URL;
-    process.env.GUARDIAN_LLM_CACHE = 'true';
-    process.env.GUARDIAN_LLM_CACHE_TTL_SEC = '60';
+    process.env.MASTYFF_AI_LLM_CACHE = 'true';
+    process.env.MASTYFF_AI_LLM_CACHE_TTL_SEC = '60';
   });
 
   afterEach(() => {
@@ -24,21 +24,21 @@ describe('llm-cache', () => {
     resetLlmConfigForTests();
     if (prevRedis === undefined) delete process.env.REDIS_URL;
     else process.env.REDIS_URL = prevRedis;
-    if (prevCacheFlag === undefined) delete process.env.GUARDIAN_LLM_CACHE;
-    else process.env.GUARDIAN_LLM_CACHE = prevCacheFlag;
-    if (prevTtl === undefined) delete process.env.GUARDIAN_LLM_CACHE_TTL_SEC;
-    else process.env.GUARDIAN_LLM_CACHE_TTL_SEC = prevTtl;
+    if (prevCacheFlag === undefined) delete process.env.MASTYFF_AI_LLM_CACHE;
+    else process.env.MASTYFF_AI_LLM_CACHE = prevCacheFlag;
+    if (prevTtl === undefined) delete process.env.MASTYFF_AI_LLM_CACHE_TTL_SEC;
+    else process.env.MASTYFF_AI_LLM_CACHE_TTL_SEC = prevTtl;
   });
 
   it('enables cache by default when REDIS_URL is set', () => {
     process.env.REDIS_URL = 'redis://127.0.0.1:6379';
-    delete process.env.GUARDIAN_LLM_CACHE;
+    delete process.env.MASTYFF_AI_LLM_CACHE;
     expect(isLlmCacheEnabled()).toBe(true);
   });
 
-  it('disables cache when GUARDIAN_LLM_CACHE=false', () => {
+  it('disables cache when MASTYFF_AI_LLM_CACHE=false', () => {
     process.env.REDIS_URL = 'redis://127.0.0.1:6379';
-    process.env.GUARDIAN_LLM_CACHE = 'false';
+    process.env.MASTYFF_AI_LLM_CACHE = 'false';
     expect(isLlmCacheEnabled()).toBe(false);
   });
 
@@ -65,8 +65,8 @@ describe('llm-cache', () => {
     expect(await cache.get({ ...base, prompt: 'b' })).toBe('B');
   });
 
-  it('forces LRU-only path when GUARDIAN_LLM_CACHE=true without REDIS_URL', async () => {
-    process.env.GUARDIAN_LLM_CACHE = 'true';
+  it('forces LRU-only path when MASTYFF_AI_LLM_CACHE=true without REDIS_URL', async () => {
+    process.env.MASTYFF_AI_LLM_CACHE = 'true';
     delete process.env.REDIS_URL;
     const cache = getLlmCache();
     const key = {

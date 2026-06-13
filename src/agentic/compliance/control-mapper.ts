@@ -1,5 +1,5 @@
 /**
- * Compliance Control Mapper — maps MCP Guardian policy rules and blocked incidents
+ * Compliance Control Mapper — maps MCP Mastyff AI policy rules and blocked incidents
  * to compliance framework controls (SOC 2, HIPAA, PCI-DSS, FedRAMP, ISO 27001).
  *
  * Provides real-time compliance posture scoring and gap analysis.
@@ -14,7 +14,7 @@ export interface ControlMapping {
   framework: ComplianceFramework;
   controlName: string;
   description: string;
-  /** How this control is satisfied by Guardian policies */
+  /** How this control is satisfied by Mastyff AI policies */
   satisfiedBy: string[];
   /** Whether this control is currently satisfied */
   satisfied: boolean;

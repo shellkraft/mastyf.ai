@@ -5,7 +5,7 @@ import path from 'path';
 export default defineConfig({
   resolve: {
     alias: {
-      '@mcp-guardian/plugin-sdk': path.resolve(__dirname, 'packages/plugin-sdk/dist/index.js'),
+      '@mastyff-ai/plugin-sdk': path.resolve(__dirname, 'packages/plugin-sdk/dist/index.js'),
     },
   },
   test: {

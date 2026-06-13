@@ -22,7 +22,7 @@ describe('PolicyWatcher hot reload', () => {
   let watcher: PolicyWatcher | null = null;
 
   beforeEach(() => {
-    dir = mkdtempSync(join(tmpdir(), 'guardian-policy-'));
+    dir = mkdtempSync(join(tmpdir(), 'mastyff-ai-policy-'));
     policyPath = join(dir, 'policy.yaml');
     writeFileSync(policyPath, baseYaml, 'utf-8');
     watcher = new PolicyWatcher(policyPath);

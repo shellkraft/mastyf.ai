@@ -1,5 +1,5 @@
 /**
- * B2 — Pull anonymized ecosystem telemetry from Guardian Cloud / observatory relay.
+ * B2 — Pull anonymized ecosystem telemetry from Mastyff AI Cloud / observatory relay.
  */
 import { Logger } from '../../utils/logger.js';
 import type { ObservatorySnapshot } from './ecosystem-observatory.js';
@@ -15,7 +15,7 @@ export interface CloudObservatoryPayload {
 }
 
 export async function pullCloudObservatorySnapshot(): Promise<CloudObservatoryPayload | null> {
-  if (process.env.GUARDIAN_OBSERVATORY_STUB === 'true') {
+  if (process.env.MASTYFF_AI_OBSERVATORY_STUB === 'true') {
     return {
       avgBlockRate: 0.92,
       serverCount: 42,
@@ -26,8 +26,8 @@ export async function pullCloudObservatorySnapshot(): Promise<CloudObservatoryPa
     };
   }
 
-  const relayUrl = process.env.GUARDIAN_OBSERVATORY_RELAY_URL?.trim()
-    ?? process.env.GUARDIAN_CLOUD_URL?.trim();
+  const relayUrl = process.env.MASTYFF_AI_OBSERVATORY_RELAY_URL?.trim()
+    ?? process.env.MASTYFF_AI_CLOUD_URL?.trim();
   if (!relayUrl) return null;
 
   const base = relayUrl.replace(/\/$/, '');
@@ -37,11 +37,11 @@ export async function pullCloudObservatorySnapshot(): Promise<CloudObservatoryPa
       method: 'GET',
       headers: {
         Accept: 'application/json',
-        ...(process.env.GUARDIAN_OBSERVATORY_RELAY_API_KEY
-          ? { Authorization: `Bearer ${process.env.GUARDIAN_OBSERVATORY_RELAY_API_KEY}` }
+        ...(process.env.MASTYFF_AI_OBSERVATORY_RELAY_API_KEY
+          ? { Authorization: `Bearer ${process.env.MASTYFF_AI_OBSERVATORY_RELAY_API_KEY}` }
           : {}),
       },
-      signal: AbortSignal.timeout(Number(process.env.GUARDIAN_OBSERVATORY_RELAY_TIMEOUT_MS ?? 10_000)),
+      signal: AbortSignal.timeout(Number(process.env.MASTYFF_AI_OBSERVATORY_RELAY_TIMEOUT_MS ?? 10_000)),
     });
     if (!res.ok) {
       Logger.debug(`[ObservatoryCloud] relay ${res.status} from ${url}`);

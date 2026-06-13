@@ -68,7 +68,7 @@ export class PolicyWatcher {
       if (auditor?.hasChanged(yaml)) {
         auditor.record({
           timestamp: new Date().toISOString(),
-          actor: process.env['GUARDIAN_POLICY_ACTOR'] || 'system',
+          actor: process.env['MASTYFF_AI_POLICY_ACTOR'] || 'system',
           change: 'policy_hot_reload',
           newValue: auditor.computeHash(yaml),
           sourceHash: auditor.computeHash(yaml),
@@ -83,8 +83,8 @@ export class PolicyWatcher {
         (oldMode && oldMode !== config.policy.mode ? ` (mode changed from ${oldMode})` : ''),
       );
       return engine;
-    } catch (err: any) {
-      Logger.error(`[policy-watcher] Failed to load policy: ${err?.message}`);
+    } catch (err: unknown) {
+      Logger.error(`[policy-watcher] Failed to load policy: ${err instanceof Error ? err.message : String(err)}`);
       return null;
     }
   }
@@ -109,7 +109,7 @@ export class PolicyWatcher {
         try {
           const { recordConfigProvenance } = await import('../agentic/provenance/config-provenance-chain.js');
           recordConfigProvenance({
-            actor: process.env.GUARDIAN_POLICY_ACTOR ?? 'policy-watcher',
+            actor: process.env.MASTYFF_AI_POLICY_ACTOR ?? 'policy-watcher',
             eventType: 'policy_reload',
             resourcePath: this.policyPath,
             diff: { mode: pending.getMode(), rules: pending.getRules?.()?.length ?? 0 },

@@ -10,8 +10,8 @@ export interface FederatedPrivacyConfig {
 
 export function federatedPrivacyConfig(): FederatedPrivacyConfig {
   return {
-    epsilon: Number(process.env.GUARDIAN_FEDERATED_LEARNING_EPSILON ?? process.env.GUARDIAN_THREAT_MESH_EPSILON ?? '1.0'),
-    minReports: Number(process.env.GUARDIAN_FEDERATED_LEARNING_MIN_REPORTS ?? process.env.GUARDIAN_THREAT_MESH_MIN_REPORTS ?? '3'),
+    epsilon: Number(process.env.MASTYFF_AI_FEDERATED_LEARNING_EPSILON ?? process.env.MASTYFF_AI_THREAT_MESH_EPSILON ?? '1.0'),
+    minReports: Number(process.env.MASTYFF_AI_FEDERATED_LEARNING_MIN_REPORTS ?? process.env.MASTYFF_AI_THREAT_MESH_MIN_REPORTS ?? '3'),
   };
 }
 

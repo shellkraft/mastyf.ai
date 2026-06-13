@@ -33,7 +33,7 @@ export async function POST(request: Request) {
   const db = getDb();
   const rowId = randomUUID();
   await db.execute(sql`
-    INSERT INTO guardian_fleet_instances (
+    INSERT INTO mastyff_ai_fleet_instances (
       id, org_id, instance_id, instance_name, region, version, hostname,
       status, metrics_snapshot, last_heartbeat
     ) VALUES (

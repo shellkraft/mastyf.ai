@@ -13,8 +13,8 @@ export interface LlmCacheKeyInput {
 let sharedCache: LlmCache | null = null;
 
 export function isLlmCacheEnabled(): boolean {
-  if (process.env.GUARDIAN_LLM_CACHE === 'false') return false;
-  if (process.env.GUARDIAN_LLM_CACHE === 'true') return true;
+  if (process.env.MASTYFF_AI_LLM_CACHE === 'false') return false;
+  if (process.env.MASTYFF_AI_LLM_CACHE === 'true') return true;
   return Boolean(process.env.REDIS_URL);
 }
 
@@ -39,12 +39,12 @@ function hashCacheKey(input: LlmCacheKeyInput): string {
 }
 
 function ttlSec(): number {
-  const parsed = parseInt(process.env.GUARDIAN_LLM_CACHE_TTL_SEC || '3600', 10);
+  const parsed = parseInt(process.env.MASTYFF_AI_LLM_CACHE_TTL_SEC || '3600', 10);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : 3600;
 }
 
 function getRegion(): string {
-  return process.env.GUARDIAN_REGION || process.env.AWS_REGION || 'default';
+  return process.env.MASTYFF_AI_REGION || process.env.AWS_REGION || 'default';
 }
 
 const LRU_MAX = 500;
@@ -61,7 +61,7 @@ export class LlmCache {
   constructor() {
     this.enabled = isLlmCacheEnabled();
     this.ttlMs = ttlSec() * 1000;
-    this.redisPrefix = `mcp_guardian:llm_cache:${getRegion()}:`;
+    this.redisPrefix = `mastyff_ai:llm_cache:${getRegion()}:`;
     this.lru = new LRUCache<string, string>({ max: LRU_MAX, ttl: this.ttlMs });
 
     const redisUrl = process.env.REDIS_URL;

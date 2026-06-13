@@ -4,7 +4,7 @@
 import { loadSemanticAuditRecordsAsync } from './semantic-audit-store.js';
 import { isCalibratorSeededRecord } from './threat-lab.js';
 
-export const MIN_LORA_LABELED_ROWS = parseInt(process.env.GUARDIAN_TENANT_LORA_MIN_ROWS || '500', 10);
+export const MIN_LORA_LABELED_ROWS = parseInt(process.env.MASTYFF_AI_TENANT_LORA_MIN_ROWS || '500', 10);
 
 export type TenantModelReadiness = {
   tenantId: string;
@@ -18,14 +18,14 @@ export type TenantModelReadiness = {
 
 export function tenantSemanticModelName(tenantId: string): string {
   const slug = tenantId.replace(/[^a-zA-Z0-9_-]/g, '-');
-  return `mcp-guardian-threat:${slug}`;
+  return `mastyff-ai-threat:${slug}`;
 }
 
 export function resolveTenantSemanticModel(tenantId?: string): string | null {
-  const explicit = process.env.GUARDIAN_SEMANTIC_LOCAL_MODEL?.trim();
+  const explicit = process.env.MASTYFF_AI_SEMANTIC_LOCAL_MODEL?.trim();
   if (explicit) return explicit;
   if (!tenantId || tenantId === 'default') return null;
-  if (process.env.GUARDIAN_TENANT_SEMANTIC_MODEL !== 'true') return null;
+  if (process.env.MASTYFF_AI_TENANT_SEMANTIC_MODEL !== 'true') return null;
   return tenantSemanticModelName(tenantId);
 }
 
@@ -71,7 +71,7 @@ export function buildLoraExportManifest(tenantId: string, rowCount: number): Lor
     modelName,
     rowCount,
     generatedAt: new Date().toISOString(),
-    ollamaCreateHint: `pnpm ai:train-tenant-model -- --tenant=${tenantId} && GUARDIAN_SEMANTIC_LOCAL_MODEL=${modelName} GUARDIAN_TENANT_SEMANTIC_MODEL=true`,
+    ollamaCreateHint: `pnpm ai:train-tenant-model -- --tenant=${tenantId} && MASTYFF_AI_SEMANTIC_LOCAL_MODEL=${modelName} MASTYFF_AI_TENANT_SEMANTIC_MODEL=true`,
   };
 }
 
@@ -80,7 +80,7 @@ export function routeSemanticModelForTenant(tenantId?: string): {
   model: string | null;
   source: 'explicit' | 'tenant' | 'default';
 } {
-  const explicit = process.env.GUARDIAN_SEMANTIC_LOCAL_MODEL?.trim();
+  const explicit = process.env.MASTYFF_AI_SEMANTIC_LOCAL_MODEL?.trim();
   if (explicit) return { model: explicit, source: 'explicit' };
   const tenantModel = resolveTenantSemanticModel(tenantId);
   if (tenantModel) return { model: tenantModel, source: 'tenant' };

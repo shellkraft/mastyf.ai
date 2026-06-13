@@ -9,7 +9,7 @@ import {
   trackAdvancedAnalyticsEvent,
   type AutoCorpusEntry,
   type ThreatLabCandidate,
-} from '@/lib/guardian-api';
+} from '@/lib/mastyff-ai-api';
 import { SOURCE_LABELS } from '@/lib/threat-discovery-copy';
 import { ThreatCandidateDrawer } from './ThreatCandidateDrawer';
 import { IncidentInvestigatorDrawer } from './IncidentInvestigatorDrawer';

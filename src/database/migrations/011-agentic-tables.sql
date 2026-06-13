@@ -1,4 +1,4 @@
--- Migration 011: Agentic AI tables for MCP Guardian v3.4.0
+-- Migration 011: Agentic AI tables for MCP Mastyff AI v3.4.0
 -- Adds tables for all 10 agentic AI features
 
 -- Agentic task tracking
@@ -130,7 +130,7 @@ CREATE TABLE IF NOT EXISTS honeypot_sessions (
 CREATE TABLE IF NOT EXISTS trust_sessions (
   session_id TEXT PRIMARY KEY,
   remote_agent_id TEXT NOT NULL,
-  remote_guardian TEXT NOT NULL,
+  remote_mastyff-ai TEXT NOT NULL,
   allowed_tools TEXT NOT NULL,  -- JSON array
   scope TEXT,  -- JSON blob
   rate_limit INTEGER NOT NULL,
@@ -146,7 +146,7 @@ CREATE TABLE IF NOT EXISTS trust_sessions (
 -- Trust registry
 CREATE TABLE IF NOT EXISTS trust_registry (
   agent_id TEXT PRIMARY KEY,
-  guardian_instance TEXT NOT NULL,
+  mastyff-ai_instance TEXT NOT NULL,
   capabilities TEXT NOT NULL,  -- JSON array
   attestation TEXT,
   created_at TEXT NOT NULL DEFAULT (datetime('now'))

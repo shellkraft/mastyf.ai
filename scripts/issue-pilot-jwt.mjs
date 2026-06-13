@@ -13,7 +13,7 @@ if (!secret) {
 }
 
 const key = new TextEncoder().encode(secret);
-const claim = process.env.GUARDIAN_JWT_TENANT_CLAIM ?? 'tenant_id';
+const claim = process.env.MASTYFF_AI_JWT_TENANT_CLAIM ?? 'tenant_id';
 
 async function token(tenantId, sub) {
   return new SignJWT({ [claim]: tenantId, role: 'tenant-admin' })

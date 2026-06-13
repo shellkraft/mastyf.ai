@@ -2,7 +2,7 @@ import { describe, it, expect, afterEach, beforeEach } from 'vitest';
 import { validateCostSourceAtStartup } from '../../src/utils/cost-estimate.js';
 
 describe('validateCostSourceAtStartup', () => {
-  const keys = ['GUARDIAN_COST_SOURCE', 'GUARDIAN_COST_ALLOW_ESTIMATES', 'NODE_ENV', 'GUARDIAN_STRICT_MODE'] as const;
+  const keys = ['MASTYFF_AI_COST_SOURCE', 'MASTYFF_AI_COST_ALLOW_ESTIMATES', 'NODE_ENV', 'MASTYFF_AI_STRICT_MODE'] as const;
   const prev: Record<string, string | undefined> = {};
 
   afterEach(() => {
@@ -17,19 +17,19 @@ describe('validateCostSourceAtStartup', () => {
   });
 
   it('allows model-only by default', () => {
-    delete process.env.GUARDIAN_COST_SOURCE;
+    delete process.env.MASTYFF_AI_COST_SOURCE;
     expect(() => validateCostSourceAtStartup()).not.toThrow();
   });
 
   it('rejects simulated alias', () => {
-    process.env.GUARDIAN_COST_SOURCE = 'simulated';
+    process.env.MASTYFF_AI_COST_SOURCE = 'simulated';
     expect(() => validateCostSourceAtStartup()).toThrow(/simulated/i);
   });
 
   it('rejects estimated in production without opt-in', () => {
-    process.env.GUARDIAN_COST_SOURCE = 'estimated';
+    process.env.MASTYFF_AI_COST_SOURCE = 'estimated';
     process.env.NODE_ENV = 'production';
-    delete process.env.GUARDIAN_COST_ALLOW_ESTIMATES;
-    expect(() => validateCostSourceAtStartup()).toThrow(/GUARDIAN_COST_ALLOW_ESTIMATES/i);
+    delete process.env.MASTYFF_AI_COST_ALLOW_ESTIMATES;
+    expect(() => validateCostSourceAtStartup()).toThrow(/MASTYFF_AI_COST_ALLOW_ESTIMATES/i);
   });
 });

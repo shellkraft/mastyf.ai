@@ -1,14 +1,14 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { fetchThreatDiscoveryStatus, type ThreatDiscoveryStatus } from '@/lib/guardian-api';
+import { fetchThreatDiscoveryStatus, type ThreatDiscoveryStatus } from '@/lib/mastyff-ai-api';
 import { ThreatDiscoveryOverview } from './ThreatDiscoveryOverview';
 import { ThreatLabWorkbench } from './ThreatLabWorkbench';
 import { AutoResearchMonitor } from './AutoResearchMonitor';
 import { ThreatArchitectureView } from './ThreatArchitectureView';
 import { ThreatDiscoveryAutomation } from './ThreatDiscoveryAutomation';
 import { ProUpgradeBanner } from './ProUpgradeBanner';
-import type { AuthStatus } from '@/lib/guardian-api';
+import type { AuthStatus } from '@/lib/mastyff-ai-api';
 
 import type { ThreatLabContext } from './IncidentInvestigatorDrawer';
 

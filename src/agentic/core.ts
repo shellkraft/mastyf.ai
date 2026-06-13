@@ -170,7 +170,7 @@ export class ApprovalGate {
     try {
       const { recordConfigProvenance } = await import('./provenance/config-provenance-chain.js');
       recordConfigProvenance({
-        actor: process.env.GUARDIAN_ACTOR ?? 'approval-gate',
+        actor: process.env.MASTYFF_AI_ACTOR ?? 'approval-gate',
         eventType: 'policy_apply',
         resourcePath: `approval://${req.toolName}`,
         diff: { eventType, toolName: req.toolName, description: req.description },

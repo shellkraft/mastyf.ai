@@ -23,8 +23,8 @@ describe('dashboard PUT /api/policy', () => {
     policyPath = join(tmpDir, 'test-policy.yaml');
     process.env.DASHBOARD_ENABLED = 'true';
     process.env.DASHBOARD_AUTH_DISABLED = 'true';
-    process.env.GUARDIAN_CI_BYPASS_LICENSE = 'true';
-    process.env.GUARDIAN_POLICY_PATH = policyPath;
+    process.env.MASTYFF_AI_CI_BYPASS_LICENSE = 'true';
+    process.env.MASTYFF_AI_POLICY_PATH = policyPath;
     await startDashboardServer(PORT);
   });
 
@@ -33,8 +33,8 @@ describe('dashboard PUT /api/policy', () => {
     rmSync(tmpDir, { recursive: true, force: true });
     delete process.env.DASHBOARD_ENABLED;
     delete process.env.DASHBOARD_AUTH_DISABLED;
-    delete process.env.GUARDIAN_POLICY_PATH;
-    delete process.env.GUARDIAN_CI_BYPASS_LICENSE;
+    delete process.env.MASTYFF_AI_POLICY_PATH;
+    delete process.env.MASTYFF_AI_CI_BYPASS_LICENSE;
   });
 
   it('rejects invalid YAML with 400', async () => {
@@ -46,7 +46,7 @@ describe('dashboard PUT /api/policy', () => {
     expect(res.status).toBe(400);
   });
 
-  it('saves valid policy YAML to GUARDIAN_POLICY_PATH', async () => {
+  it('saves valid policy YAML to MASTYFF_AI_POLICY_PATH', async () => {
     const res = await fetch(`http://127.0.0.1:${PORT}/api/policy`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },

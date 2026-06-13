@@ -90,12 +90,12 @@ Use realistic MCP tool names from the context. Patterns must be valid JavaScript
 Base corpusCandidate.arguments on the supplied context — do not invent placeholder comments.`;
 
 function defaultPolicyPath(): string {
-  return process.env.GUARDIAN_POLICY_PATH || DEFAULT_POLICY_PATH;
+  return process.env.MASTYFF_AI_POLICY_PATH || DEFAULT_POLICY_PATH;
 }
 
 /** Policy used for corpus fixture replay validation (independent of live proxy policy). */
 export function corpusReplayPolicyPath(): string {
-  return process.env.GUARDIAN_CORPUS_REPLAY_POLICY_PATH || DEFAULT_POLICY_PATH;
+  return process.env.MASTYFF_AI_CORPUS_REPLAY_POLICY_PATH || DEFAULT_POLICY_PATH;
 }
 
 function loadPolicyEngineFromPath(path: string): PolicyEngine | null {
@@ -202,7 +202,7 @@ export async function ensureThreatLabLlmReady(
     return {
       ok: false,
       llm: assistant,
-      reason: 'LLM disabled — set GUARDIAN_LLM_ENABLED=true and configure Ollama',
+      reason: 'LLM disabled — set MASTYFF_AI_LLM_ENABLED=true and configure Ollama',
     };
   }
   const maxAttempts = 3;
@@ -490,7 +490,7 @@ export async function discoverFromBypass(
 }
 
 export function semanticFlagMinConfidence(): number {
-  const n = parseFloat(process.env.GUARDIAN_THREAT_RESEARCH_SEMANTIC_MIN_CONFIDENCE || '0.85');
+  const n = parseFloat(process.env.MASTYFF_AI_THREAT_RESEARCH_SEMANTIC_MIN_CONFIDENCE || '0.85');
   return Number.isFinite(n) ? n : 0.85;
 }
 

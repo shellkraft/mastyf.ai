@@ -26,19 +26,19 @@ describe('json-rpc utils', () => {
 
 describe('payload guard', () => {
   it('rejects oversized raw payload', () => {
-    const prev = process.env.MCP_GUARDIAN_MAX_PAYLOAD_BYTES;
-    process.env.MCP_GUARDIAN_MAX_PAYLOAD_BYTES = '100';
+    const prev = process.env.MASTYFF_AI_MAX_PAYLOAD_BYTES;
+    process.env.MASTYFF_AI_MAX_PAYLOAD_BYTES = '100';
     const big = 'x'.repeat(200);
     expect(checkRawPayloadSize(big).ok).toBe(false);
-    if (prev === undefined) delete process.env.MCP_GUARDIAN_MAX_PAYLOAD_BYTES;
-    else process.env.MCP_GUARDIAN_MAX_PAYLOAD_BYTES = prev;
+    if (prev === undefined) delete process.env.MASTYFF_AI_MAX_PAYLOAD_BYTES;
+    else process.env.MASTYFF_AI_MAX_PAYLOAD_BYTES = prev;
   });
 
   it('rejects expanded args over limit', () => {
-    const prev = process.env.GUARDIAN_MAX_EXPANDED_PAYLOAD_BYTES;
-    process.env.GUARDIAN_MAX_EXPANDED_PAYLOAD_BYTES = '50';
+    const prev = process.env.MASTYFF_AI_MAX_EXPANDED_PAYLOAD_BYTES;
+    process.env.MASTYFF_AI_MAX_EXPANDED_PAYLOAD_BYTES = '50';
     expect(checkExpandedPayload({ data: 'x'.repeat(100) }).ok).toBe(false);
-    if (prev === undefined) delete process.env.GUARDIAN_MAX_EXPANDED_PAYLOAD_BYTES;
-    else process.env.GUARDIAN_MAX_EXPANDED_PAYLOAD_BYTES = prev;
+    if (prev === undefined) delete process.env.MASTYFF_AI_MAX_EXPANDED_PAYLOAD_BYTES;
+    else process.env.MASTYFF_AI_MAX_EXPANDED_PAYLOAD_BYTES = prev;
   });
 });

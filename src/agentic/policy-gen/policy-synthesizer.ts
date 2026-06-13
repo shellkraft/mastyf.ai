@@ -12,7 +12,7 @@
 import type { AnalysisResult, ToolProfile } from './pattern-analyzer.js';
 
 export interface SynthesizedPolicy {
-  /** MCP Guardian 格式的完整 YAML 策略 */
+  /** MCP Mastyff AI 格式的完整 YAML 策略 */
   yaml: string;
   /** 人类可读的变更摘要 */
   summary: string;
@@ -50,7 +50,7 @@ export class PolicySynthesizer {
   private readonly version = '1.0.0';
 
   /**
-   * 从分析结果中合成完整的 MCP Guardian 策略。
+   * 从分析结果中合成完整的 MCP Mastyff AI 策略。
    */
   synthesize(analysis: AnalysisResult): SynthesizedPolicy {
     const sections: string[] = [];
@@ -61,14 +61,14 @@ export class PolicySynthesizer {
     let securityRulesGenerated = 0;
 
     // ═══ 头部 ═══
-    sections.push(`# 由 MCP Guardian 自动生成`);
+    sections.push(`# 由 MCP Mastyff AI 自动生成`);
     sections.push(`# 观测周期: ${analysis.windowId}`);
     sections.push(`# 持续时间: ${analysis.durationMin.toFixed(1)} 分钟`);
     sections.push(`# 观测到的调用: ${analysis.totalObservations}`);
     sections.push(`# 观测到的工具: ${analysis.toolProfiles.length}`);
     sections.push('');
     sections.push('version: "1.0"');
-    sections.push(`generated_by: mcp-guardian-policy-synthesizer-v${this.version}`);
+    sections.push(`generated_by: mastyff-ai-policy-synthesizer-v${this.version}`);
     sections.push(`generated_at: "${new Date().toISOString()}"`);
     sections.push('');
 

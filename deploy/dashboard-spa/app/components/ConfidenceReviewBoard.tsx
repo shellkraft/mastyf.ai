@@ -9,7 +9,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import type { ThreatLabCandidate } from '@/lib/guardian-api';
+import type { ThreatLabCandidate } from '@/lib/mastyff-ai-api';
 import { CHART_AXIS, CHART_GRID, CHART_SERIES } from '@/lib/chartTheme';
 import { ChartTooltip } from './dashboard/chart-kit';
 

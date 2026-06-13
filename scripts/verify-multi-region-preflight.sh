@@ -2,7 +2,7 @@
 # Multi-region preflight — Redis RTT, PG connectivity, region labels.
 set -eu
 
-REGION="${GUARDIAN_REGION:-us-east-1}"
+REGION="${MASTYFF_AI_REGION:-us-east-1}"
 echo "[multi-region] region=${REGION}"
 
 if [ -z "${DATABASE_URL:-}" ]; then
@@ -27,7 +27,7 @@ if [ -n "${REDIS_URL:-}" ]; then
       const rtt = Date.now() - t0;
       await r.quit();
       console.log('OK: Redis RTT=' + rtt + 'ms');
-      if (rtt > 80 && [process.env.GUARDIAN_MULTI_REGION_MODE].includes('active-active')) {
+      if (rtt > 80 && [process.env.MASTYFF_AI_MULTI_REGION_MODE].includes('active-active')) {
         console.warn('WARN: Redis RTT > 80ms — cross-region global cap may be best-effort');
       }
     }).catch((e) => { console.error('FAIL: Redis', e.message); process.exit(1); });
@@ -36,8 +36,8 @@ else
   echo "WARN: REDIS_URL not set — skip Redis RTT"
 fi
 
-if [ -z "${GUARDIAN_REGION:-}" ]; then
-  echo "WARN: GUARDIAN_REGION not set — fleet/charts may not group by region"
+if [ -z "${MASTYFF_AI_REGION:-}" ]; then
+  echo "WARN: MASTYFF_AI_REGION not set — fleet/charts may not group by region"
 fi
 
 echo "[multi-region] preflight complete"

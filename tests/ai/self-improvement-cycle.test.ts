@@ -6,7 +6,7 @@ import { SelfImprovement } from '../../src/ai/self-improvement.js';
 
 describe('SelfImprovement.recordCycleComplete', () => {
   it('persists learning state to disk', () => {
-    const dir = mkdtempSync(join(tmpdir(), 'guardian-ai-'));
+    const dir = mkdtempSync(join(tmpdir(), 'mastyff-ai-ai-'));
     const path = join(dir, '.ai-learning.json');
     const engine = new SelfImprovement(path);
     engine.recordCycleComplete({

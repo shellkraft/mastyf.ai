@@ -4,12 +4,12 @@ import { SessionProvider } from '@/components/SessionProvider';
 import './globals.css';
 
 export const metadata: Metadata = {
-  metadataBase: new URL('https://mcp-guardian-cloud.vercel.app'),
-  title: 'MCP Guardian — Stop AI agents from becoming your next breach vector',
+  metadataBase: new URL('https://mastyff-ai-cloud.vercel.app'),
+  title: 'MCP Mastyff AI — Stop AI agents from becoming your next breach vector',
   description:
     'Purpose-built MCP security proxy: 557+ adversarial fixtures, Security Swarm, LLM threat discovery, three-layer detection. 11k+ npm downloads. Enterprise-ready Helm deploy.',
   openGraph: {
-    title: 'MCP Guardian — Runtime security for MCP',
+    title: 'MCP Mastyff AI — Runtime security for MCP',
     description:
       'The defining product for AI agent security — inspect every tools/call, self-improving Security Swarm, HIPAA/PCI overlays.',
     images: ['/assets/security-swarm-architecture.png'],

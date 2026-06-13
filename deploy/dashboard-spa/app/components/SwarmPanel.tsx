@@ -4,7 +4,7 @@ import { FlowPipelineStrip } from './FlowPipelineStrip';
 import { SwarmResultsView } from './SwarmResultsView';
 import { SwarmRunControls } from './SwarmRunControls';
 import type { PipelineState } from '@/lib/flow-types';
-import type { SwarmJobStatus } from '@/lib/guardian-api';
+import type { SwarmJobStatus } from '@/lib/mastyff-ai-api';
 
 type Props = {
   roles?: string[];

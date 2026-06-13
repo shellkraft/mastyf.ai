@@ -56,13 +56,13 @@ export function loadAutopilotThresholds(): AutopilotSafetyThresholds {
     return Number.isFinite(n) ? n : fallback;
   };
   return {
-    minReplayCoverage: envNum('GUARDIAN_AUTOPILOT_MIN_REPLAY_COVERAGE', DEFAULT_AUTOPILOT_THRESHOLDS.minReplayCoverage),
-    minConfidence: envNum('GUARDIAN_AUTOPILOT_MIN_CONFIDENCE', DEFAULT_AUTOPILOT_THRESHOLDS.minConfidence),
-    maxFalsePositiveDelta: envNum('GUARDIAN_AUTOPILOT_MAX_FP_DELTA', DEFAULT_AUTOPILOT_THRESHOLDS.maxFalsePositiveDelta),
-    maxBypassDelta: envNum('GUARDIAN_AUTOPILOT_MAX_BYPASS_DELTA', DEFAULT_AUTOPILOT_THRESHOLDS.maxBypassDelta),
-    maxBlastRadiusPercent: envNum('GUARDIAN_AUTOPILOT_MAX_BLAST_RADIUS', DEFAULT_AUTOPILOT_THRESHOLDS.maxBlastRadiusPercent),
-    minRollbackConfidence: envNum('GUARDIAN_AUTOPILOT_MIN_ROLLBACK_CONFIDENCE', DEFAULT_AUTOPILOT_THRESHOLDS.minRollbackConfidence),
-    maxCanarySizePercent: envNum('GUARDIAN_AUTOPILOT_MAX_CANARY_SIZE', DEFAULT_AUTOPILOT_THRESHOLDS.maxCanarySizePercent),
+    minReplayCoverage: envNum('MASTYFF_AI_AUTOPILOT_MIN_REPLAY_COVERAGE', DEFAULT_AUTOPILOT_THRESHOLDS.minReplayCoverage),
+    minConfidence: envNum('MASTYFF_AI_AUTOPILOT_MIN_CONFIDENCE', DEFAULT_AUTOPILOT_THRESHOLDS.minConfidence),
+    maxFalsePositiveDelta: envNum('MASTYFF_AI_AUTOPILOT_MAX_FP_DELTA', DEFAULT_AUTOPILOT_THRESHOLDS.maxFalsePositiveDelta),
+    maxBypassDelta: envNum('MASTYFF_AI_AUTOPILOT_MAX_BYPASS_DELTA', DEFAULT_AUTOPILOT_THRESHOLDS.maxBypassDelta),
+    maxBlastRadiusPercent: envNum('MASTYFF_AI_AUTOPILOT_MAX_BLAST_RADIUS', DEFAULT_AUTOPILOT_THRESHOLDS.maxBlastRadiusPercent),
+    minRollbackConfidence: envNum('MASTYFF_AI_AUTOPILOT_MIN_ROLLBACK_CONFIDENCE', DEFAULT_AUTOPILOT_THRESHOLDS.minRollbackConfidence),
+    maxCanarySizePercent: envNum('MASTYFF_AI_AUTOPILOT_MAX_CANARY_SIZE', DEFAULT_AUTOPILOT_THRESHOLDS.maxCanarySizePercent),
   };
 }
 

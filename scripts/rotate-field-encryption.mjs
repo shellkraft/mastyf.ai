@@ -4,7 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { encryptField, decryptField, getFieldEncryptionStatus } from '../dist/utils/field-encryption.js';
 
-const dbPath = process.env.MCP_GUARDIAN_DB_PATH || path.join(os.homedir(), '.mcp-guardian', 'history.db');
+const dbPath = process.env.MASTYFF_AI_DB_PATH || path.join(os.homedir(), '.mastyff-ai', 'history.db');
 const dryRun = process.argv.includes('--dry-run');
 const status = getFieldEncryptionStatus();
 
@@ -14,7 +14,7 @@ if (!status.enabled) {
 }
 
 if (!status.rotationEnabled) {
-  console.log('[rotate-field-encryption] rotation disabled; set GUARDIAN_DB_ENCRYPTION_ROTATION_ENABLED=true');
+  console.log('[rotate-field-encryption] rotation disabled; set MASTYFF_AI_DB_ENCRYPTION_ROTATION_ENABLED=true');
   process.exit(0);
 }
 

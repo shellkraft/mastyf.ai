@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Dogfood scenario — MCP Guardian between AI agent and MCP servers.
+ * Dogfood scenario — MCP Mastyff AI between AI agent and MCP servers.
  * Sandboxed DB, built dist/ only, no IDE config changes.
  */
 const { spawn, spawnSync } = require('child_process');
@@ -68,10 +68,10 @@ function parseRpcLines(text) {
 }
 
 async function runCliProxyCorpus(serverName, calls, sandboxEnv) {
-  const proxyCfg = join(SCENARIO, 'guardian-configs', `${serverName}.json`);
+  const proxyCfg = join(SCENARIO, 'mastyff-ai-configs', `${serverName}.json`);
   const proc = spawn('node', [CLI, 'proxy', '--config', proxyCfg, '--policy', POLICY, '--blocking-mode', 'block'], {
     cwd: ROOT,
-    env: { ...process.env, ...sandboxEnv, GUARDIAN_ALLOW_MODE_OVERRIDE: 'true' },
+    env: { ...process.env, ...sandboxEnv, MASTYFF_AI_ALLOW_MODE_OVERRIDE: 'true' },
     stdio: ['pipe', 'pipe', 'pipe'],
   });
   let stdout = '';
@@ -108,7 +108,7 @@ async function runCliProxyCorpus(serverName, calls, sandboxEnv) {
 }
 
 (async function main() {
-  banner('MCP GUARDIAN — SANDBOXED DOGFOOD SCENARIO (v2.5.1 build)');
+  banner('MASTYFF AI — SANDBOXED DOGFOOD SCENARIO (v2.5.1 build)');
 
   if (!existsSync(CLI)) {
     log('dist/cli.js missing — running pnpm run build ...');
@@ -123,13 +123,13 @@ async function runCliProxyCorpus(serverName, calls, sandboxEnv) {
 
   const dbPath = join(SANDBOX, 'history.db');
   const sandboxEnv = {
-    MCP_GUARDIAN_DB_PATH: dbPath,
+    MASTYFF_AI_DB_PATH: dbPath,
     DASHBOARD_ENABLED: 'false',
-    GUARDIAN_WS_ENABLED: 'false',
+    MASTYFF_AI_WS_ENABLED: 'false',
     METRICS_ENABLED: 'false',
-    GUARDIAN_ALLOW_MODE_OVERRIDE: 'true',
-    GUARDIAN_SKIP_PREFLIGHT_SCAN: 'true',
-    GUARDIAN_BLOCK_ON_CVE: 'false',
+    MASTYFF_AI_ALLOW_MODE_OVERRIDE: 'true',
+    MASTYFF_AI_SKIP_PREFLIGHT_SCAN: 'true',
+    MASTYFF_AI_BLOCK_ON_CVE: 'false',
     HOME: process.env.HOME,
     PATH: process.env.PATH,
   };

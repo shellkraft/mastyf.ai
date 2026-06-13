@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { investigateIncident } from '@/lib/guardian-api';
+import { investigateIncident } from '@/lib/mastyff-ai-api';
 
 export type ThreatLabContext = {
   semanticAuditId: string;

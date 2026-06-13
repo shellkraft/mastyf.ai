@@ -36,7 +36,7 @@ function verifySignedManifest(manifest, label) {
       process.exit(1);
     }
   } else if (manifest.signature) {
-    console.error(`[open-corpus-pr] ${label} manifest is signed but GUARDIAN_SWARM_EVASION_SIGNING_KEY is unset`);
+    console.error(`[open-corpus-pr] ${label} manifest is signed but MASTYFF_AI_SWARM_EVASION_SIGNING_KEY is unset`);
     process.exit(1);
   }
 }

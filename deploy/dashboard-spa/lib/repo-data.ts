@@ -7,7 +7,7 @@
  *   sca/ai-learning-metrics.json                    → real AI metrics
  *   benchmarks/results/proxy-slo-by-concurrency-*  → real SLO data
  *   reports/tenants/default/security-swarm/*        → real swarm/traffic
- *   scenarios/dogfood/guardian-configs/*.json       → real MCP configs
+ *   scenarios/dogfood/mastyff-ai-configs/*.json       → real MCP configs
  *   security-swarm/config/gates.json                → real gate thresholds
  * ─────────────────────────────────────────────────────────────────
  * NO synthetic, mock, or hardcoded data — everything is read from the
@@ -24,7 +24,7 @@ import swarmLatestRaw    from '../app/data/swarm-latest.json';
 import calibrationRaw    from '../app/data/calibration.json';
 import bypassesRaw       from '../app/data/bypasses.json';
 import gatesRaw          from '../app/data/gates.json';
-import guardianCfgsRaw   from '../app/data/guardian-configs.json';
+import mastyffAiCfgsRaw   from '../app/data/mastyff-ai-configs.json';
 import threatLabJobRaw   from '../app/data/threat-lab-job.json';
 import autoResJobRaw     from '../app/data/auto-research-job.json';
 import benchReportRaw    from '../app/data/benchmark-report.json';
@@ -268,8 +268,8 @@ export const CALIBRATION = calibrationRaw as {
   totals: { records: number; flagged: number; labeled: number; truePositive: number; falsePositive: number };
   metrics: { avgFlagConfidence: number; labeledFpRate: number };
   thresholds: {
-    current: { GUARDIAN_SEMANTIC_MIN_CONFIDENCE: number; GUARDIAN_LOCAL_SEMANTIC_THRESHOLD: number };
-    recommended: { GUARDIAN_SEMANTIC_MIN_CONFIDENCE: number; GUARDIAN_LOCAL_SEMANTIC_THRESHOLD: number };
+    current: { MASTYFF_AI_SEMANTIC_MIN_CONFIDENCE: number; MASTYFF_AI_LOCAL_SEMANTIC_THRESHOLD: number };
+    recommended: { MASTYFF_AI_SEMANTIC_MIN_CONFIDENCE: number; MASTYFF_AI_LOCAL_SEMANTIC_THRESHOLD: number };
     note: string;
   };
   profile: string;
@@ -295,8 +295,8 @@ export const GATES_CONFIG = gatesRaw as {
   vitest: { maxFailures: number };
 };
 
-// ── Guardian Configs (real dogfood MCP server configs) ───────────
-export const GUARDIAN_CONFIGS = guardianCfgsRaw as {
+// ── Mastyff AI Configs (real dogfood MCP server configs) ───────────
+export const MASTYFF_AI_CONFIGS = mastyffAiCfgsRaw as {
   name: string;
   description: string;
   content: string;

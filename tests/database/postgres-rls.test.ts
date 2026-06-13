@@ -4,14 +4,14 @@ import { isPostgresRlsEnabled } from '../../src/database/postgres-tenant-session
 const LIVE_PG = process.env.DATABASE_URL?.startsWith('postgres');
 
 describe('Postgres RLS session', () => {
-  it('is disabled unless GUARDIAN_PG_RLS_ENABLED=true', () => {
-    const prev = process.env.GUARDIAN_PG_RLS_ENABLED;
-    delete process.env.GUARDIAN_PG_RLS_ENABLED;
+  it('is disabled unless MASTYFF_AI_PG_RLS_ENABLED=true', () => {
+    const prev = process.env.MASTYFF_AI_PG_RLS_ENABLED;
+    delete process.env.MASTYFF_AI_PG_RLS_ENABLED;
     expect(isPostgresRlsEnabled()).toBe(false);
-    process.env.GUARDIAN_PG_RLS_ENABLED = 'true';
+    process.env.MASTYFF_AI_PG_RLS_ENABLED = 'true';
     expect(isPostgresRlsEnabled()).toBe(true);
-    if (prev !== undefined) process.env.GUARDIAN_PG_RLS_ENABLED = prev;
-    else delete process.env.GUARDIAN_PG_RLS_ENABLED;
+    if (prev !== undefined) process.env.MASTYFF_AI_PG_RLS_ENABLED = prev;
+    else delete process.env.MASTYFF_AI_PG_RLS_ENABLED;
   });
 
   it.skipIf(!LIVE_PG)('sets app.tenant_id per session', async () => {

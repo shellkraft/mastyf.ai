@@ -43,8 +43,8 @@ const USERNAME_ORACLE_PATTERNS: RegExp[] = [
 const PROBE_WINDOW_MS = 60_000;
 const ENUM_WINDOW_MS = 120_000;
 
-const MAX_TIMING_PROBES_PER_SESSION = envInt('MCP_GUARDIAN_MAX_TIMING_PROBES_PER_MIN', 8);
-const MAX_ENUM_PROBES_PER_SESSION = envInt('MCP_GUARDIAN_MAX_ENUM_PROBES_PER_SESSION', 20);
+const MAX_TIMING_PROBES_PER_SESSION = envInt('MASTYFF_AI_MAX_TIMING_PROBES_PER_MIN', 8);
+const MAX_ENUM_PROBES_PER_SESSION = envInt('MASTYFF_AI_MAX_ENUM_PROBES_PER_SESSION', 20);
 
 const probeCounters = new LRUCache<string, { count: number; resetAt: number }>({
   max: 20_000,
@@ -57,11 +57,11 @@ const enumCounters = new LRUCache<string, { count: number; resetAt: number }>({
 });
 
 export function isTimingGuardEnabled(): boolean {
-  return process.env['GUARDIAN_TIMING_GUARD'] !== 'false';
+  return process.env['MASTYFF_AI_TIMING_GUARD'] !== 'false';
 }
 
 function probeSessionKey(ctx: CallContext): string {
-  const tenant = ctx.tenantId || process.env['GUARDIAN_TENANT_ID'] || 'default';
+  const tenant = ctx.tenantId || process.env['MASTYFF_AI_TENANT_ID'] || 'default';
   const sub = ctx.agentIdentity?.sub || ctx.agentIdentity?.clientId || 'anon';
   return `${tenant}:${ctx.serverName}:${sub}`;
 }

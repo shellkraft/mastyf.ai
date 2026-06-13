@@ -20,9 +20,9 @@ describe('audit hash chain', () => {
 
   afterEach(() => {
     rmSync(dir, { recursive: true, force: true });
-    delete process.env.GUARDIAN_AUDIT_HASH_CHAIN;
-    delete process.env.GUARDIAN_AUDIT_HASH_CHAIN_SIEM;
-    delete process.env.GUARDIAN_AUDIT_HASH_CHAIN_SIEM_LOG;
+    delete process.env.MASTYFF_AI_AUDIT_HASH_CHAIN;
+    delete process.env.MASTYFF_AI_AUDIT_HASH_CHAIN_SIEM;
+    delete process.env.MASTYFF_AI_AUDIT_HASH_CHAIN_SIEM_LOG;
     delete process.env.POLICY_AUDIT_ENABLED;
   });
 
@@ -55,9 +55,9 @@ describe('audit hash chain', () => {
   });
 
   it('appends SIEM events to chained log when enabled', () => {
-    process.env.GUARDIAN_AUDIT_HASH_CHAIN = 'true';
+    process.env.MASTYFF_AI_AUDIT_HASH_CHAIN = 'true';
     const path = join(dir, 'siem.jsonl');
-    process.env.GUARDIAN_AUDIT_HASH_CHAIN_SIEM_LOG = path;
+    process.env.MASTYFF_AI_AUDIT_HASH_CHAIN_SIEM_LOG = path;
     appendSiemChainedEvent('tool_blocked', { toolName: 'eval', serverName: 's1' });
     appendSiemChainedEvent('policy_decision', { toolName: 'eval', serverName: 's1' });
     const lines = readFileSync(path, 'utf-8')
@@ -70,7 +70,7 @@ describe('audit hash chain', () => {
 
   it('policy auditor uses hash chain when enabled', () => {
     process.env.POLICY_AUDIT_ENABLED = 'true';
-    process.env.GUARDIAN_AUDIT_HASH_CHAIN = 'true';
+    process.env.MASTYFF_AI_AUDIT_HASH_CHAIN = 'true';
     const path = join(dir, 'policy.jsonl');
     const auditor = new PolicyAuditor(path);
     auditor.record({ timestamp: 't1', actor: 'test', change: 'rule added' });

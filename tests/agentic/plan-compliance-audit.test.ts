@@ -14,7 +14,7 @@ describe('plan compliance audit', () => {
   });
 
   it('A1 ONNX path returns null without model file', async () => {
-    delete process.env.GUARDIAN_FLEET_GRAPH_ONNX_MODEL;
+    delete process.env.MASTYFF_AI_FLEET_GRAPH_ONNX_MODEL;
     const result = await scoreGraphEventsWithOnnx([
       {
         globalSessionId: 's',
@@ -30,11 +30,11 @@ describe('plan compliance audit', () => {
   });
 
   it('B2 observatory stub returns cloud payload without relay URL', async () => {
-    process.env.GUARDIAN_OBSERVATORY_STUB = 'true';
-    delete process.env.GUARDIAN_OBSERVATORY_RELAY_URL;
-    delete process.env.GUARDIAN_CLOUD_URL;
+    process.env.MASTYFF_AI_OBSERVATORY_STUB = 'true';
+    delete process.env.MASTYFF_AI_OBSERVATORY_RELAY_URL;
+    delete process.env.MASTYFF_AI_CLOUD_URL;
     const payload = await pullCloudObservatorySnapshot();
-    delete process.env.GUARDIAN_OBSERVATORY_STUB;
+    delete process.env.MASTYFF_AI_OBSERVATORY_STUB;
     expect(payload?.avgBlockRate).toBeGreaterThan(0);
     expect(payload?.serverCount).toBeGreaterThan(0);
   });

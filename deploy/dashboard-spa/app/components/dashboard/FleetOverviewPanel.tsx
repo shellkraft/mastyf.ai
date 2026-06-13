@@ -1,6 +1,6 @@
 'use client';
 
-import type { FleetInstance, FleetResponse } from '@/lib/guardian-api';
+import type { FleetInstance, FleetResponse } from '@/lib/mastyff-ai-api';
 import { DashboardSection } from './DashboardSection';
 import { KpiCard } from './KpiCard';
 import { DataTablePro, type Column } from './DataTablePro';
@@ -11,8 +11,8 @@ type Props = {
 };
 
 const SOURCE_LABELS: Record<string, string> = {
-  postgres: 'PostgreSQL guardian_instances',
-  'multi-sqlite': 'GUARDIAN_FLEET_DB_PATHS',
+  postgres: 'PostgreSQL mastyff_ai_instances',
+  'multi-sqlite': 'MASTYFF_AI_FLEET_DB_PATHS',
   sqlite: 'SQLite fleet path',
   local: 'This dashboard host',
   none: 'No fleet data',
@@ -79,7 +79,7 @@ export function FleetOverviewPanel({ fleet, meta }: Props) {
   return (
     <DashboardSection
       title="Fleet instances"
-      subtitle={`${sourceLabel}${meta?.region ? ` · region ${meta.region}` : ''} — same data as mcp-guardian fleet status`}
+      subtitle={`${sourceLabel}${meta?.region ? ` · region ${meta.region}` : ''} — same data as mastyff-ai fleet status`}
     >
       <div className="kpi-row">
         <KpiCard label="Instances" value={meta?.totalInstances ?? fleet.length} sub={`${activeCount} active`} />
@@ -91,7 +91,7 @@ export function FleetOverviewPanel({ fleet, meta }: Props) {
       {fleet.length === 0 ? (
         <p className="muted">
           No fleet instances found. Set <code>DATABASE_URL</code> + <code>DB_TYPE=postgres</code> for
-          multi-replica registry, or <code>GUARDIAN_FLEET_DB_PATHS</code> for comma-separated SQLite DBs.
+          multi-replica registry, or <code>MASTYFF_AI_FLEET_DB_PATHS</code> for comma-separated SQLite DBs.
         </p>
       ) : (
         <>
@@ -120,7 +120,7 @@ export function FleetOverviewPanel({ fleet, meta }: Props) {
             columns={columns}
             rows={fleet}
             rowKey={(r) => r.instanceId}
-            exportFilename="guardian-fleet.csv"
+            exportFilename="mastyff-ai-fleet.csv"
           />
         </>
       )}

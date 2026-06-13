@@ -25,9 +25,9 @@ const fixtures = JSON.parse(
 
 describe('transport parity contract', () => {
   it('keeps shared post-policy gate behavior stable', async () => {
-    process.env.GUARDIAN_SEMANTIC_SYNC_REQUEST = 'true';
-    process.env.GUARDIAN_SEMANTIC_SYNC_REQUEST_LLM = 'true';
-    process.env.GUARDIAN_SEMANTIC_FAIL_CLOSED_MEDIUM = 'false';
+    process.env.MASTYFF_AI_SEMANTIC_SYNC_REQUEST = 'true';
+    process.env.MASTYFF_AI_SEMANTIC_SYNC_REQUEST_LLM = 'true';
+    process.env.MASTYFF_AI_SEMANTIC_FAIL_CLOSED_MEDIUM = 'false';
 
     for (const fx of fixtures) {
       const result = await runSyncSemanticRequestGate(

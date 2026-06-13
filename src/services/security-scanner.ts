@@ -209,7 +209,7 @@ function generateRecommendations(
   if (!auth.isTransportEncrypted) recs.push('Use HTTPS or secure transport for remote servers');
   if (untrackedSse) {
     recs.push(
-      'SSE/HTTP server: traffic is untracked unless the IDE uses Guardian proxy or `mcp-guardian wrap` — point clients at the guarded endpoint',
+      'SSE/HTTP server: traffic is untracked unless the IDE uses Mastyff AI proxy or `mastyff-ai wrap` — point clients at the guarded endpoint',
     );
   }
   if (typos.length > 0) recs.push(`Verify package name against official registry — possible typo-squatting: ${typos.map((t) => t.similarityTo).join(', ')}`);

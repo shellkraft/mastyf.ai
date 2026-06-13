@@ -8,7 +8,7 @@ export async function sendSwarmFailureAlert({ outDir, latest, steps }) {
 
   const failed = (steps || []).filter((s) => !s.ok).map((s) => s.label);
   const body = {
-    text: `MCP Guardian Security Swarm FAILED`,
+    text: `MCP Mastyff AI Security Swarm FAILED`,
     attachments: [
       {
         color: 'danger',

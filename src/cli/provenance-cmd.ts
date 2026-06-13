@@ -1,5 +1,5 @@
 /**
- * CLI: guardian policy provenance verify|export
+ * CLI: mastyff-ai policy provenance verify|export
  */
 import { writeFileSync } from 'fs';
 import { ConfigProvenanceChain } from '../agentic/provenance/config-provenance-chain.js';
@@ -30,7 +30,7 @@ export async function runProvenanceVerify(tenantId = 'default'): Promise<{
   merkleRoot: string;
   reason?: string;
 }> {
-  const db = await createDatabase(process.env.MCP_GUARDIAN_DB_PATH);
+  const db = await createDatabase(process.env.MASTYFF_AI_DB_PATH);
   const store = new IndustryStandardStore(db);
   const mapped = mapEvents(store, tenantId);
   const chain = new ConfigProvenanceChain(store, tenantId);
@@ -42,7 +42,7 @@ export async function runProvenanceExport(
   tenantId = 'default',
   opts?: { format?: 'json' | 'signed' | 'tarball'; output?: string },
 ): Promise<unknown> {
-  const db = await createDatabase(process.env.MCP_GUARDIAN_DB_PATH);
+  const db = await createDatabase(process.env.MASTYFF_AI_DB_PATH);
   const store = new IndustryStandardStore(db);
   const mapped = mapEvents(store, tenantId);
   const chain = new ConfigProvenanceChain(store, tenantId);

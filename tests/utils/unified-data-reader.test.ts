@@ -7,26 +7,26 @@ describe('federated-data-source', () => {
   beforeEach(() => {
     process.env = { ...env };
     delete process.env.DATABASE_URL;
-    delete process.env.GUARDIAN_DASHBOARD_DATA_SOURCE;
-    delete process.env.GUARDIAN_AUDIT_SYNC_ENABLED;
-    delete process.env.GUARDIAN_FLEET_DB_PATHS;
+    delete process.env.MASTYFF_AI_DASHBOARD_DATA_SOURCE;
+    delete process.env.MASTYFF_AI_AUDIT_SYNC_ENABLED;
+    delete process.env.MASTYFF_AI_FLEET_DB_PATHS;
     delete process.env.DB_TYPE;
   });
 
   it('selects unified when DATABASE_URL and audit sync enabled (auto)', () => {
     process.env.DATABASE_URL = 'postgresql://localhost/test';
-    process.env.GUARDIAN_AUDIT_SYNC_ENABLED = 'true';
+    process.env.MASTYFF_AI_AUDIT_SYNC_ENABLED = 'true';
     expect(resolveFederatedMode(null)).toBe('unified');
   });
 
   it('selects local when pref=local', () => {
     process.env.DATABASE_URL = 'postgresql://localhost/test';
-    process.env.GUARDIAN_DASHBOARD_DATA_SOURCE = 'local';
+    process.env.MASTYFF_AI_DASHBOARD_DATA_SOURCE = 'local';
     expect(resolveFederatedMode(null)).toBe('local');
   });
 
   it('selects sqlite-fleet when multiple fleet paths', () => {
-    process.env.GUARDIAN_FLEET_DB_PATHS = '/a/history.db,/b/history.db';
+    process.env.MASTYFF_AI_FLEET_DB_PATHS = '/a/history.db,/b/history.db';
     expect(resolveFederatedMode(null)).toBe('sqlite-fleet');
   });
 

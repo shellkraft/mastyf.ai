@@ -13,8 +13,8 @@ import {
 
 export type DashboardWindow = '1h' | '12h' | '24h' | '7d' | '30d' | '90d';
 
-const STORAGE_KEY = 'guardian-dashboard-window';
-const CHANGE_EVENT = 'guardian-dashboard-window-changed';
+const STORAGE_KEY = 'mastyff-ai-dashboard-window';
+const CHANGE_EVENT = 'mastyff-ai-dashboard-window-changed';
 const DEFAULT_WINDOW: DashboardWindow = '7d';
 
 const WINDOW_DAYS: Record<DashboardWindow, number> = {

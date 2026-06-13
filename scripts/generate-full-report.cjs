@@ -4,7 +4,7 @@ const { execSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 
-const OUT = process.env.REPORT_OUTPUT || path.join(process.cwd(), 'MCP_Guardian_Report.txt');
+const OUT = process.env.REPORT_OUTPUT || path.join(process.cwd(), 'MCP_Mastyff_Ai_Report.txt');
 const PROJECT = process.cwd();
 const VERSION = JSON.parse(fs.readFileSync(path.join(PROJECT, 'package.json'), 'utf-8')).version;
 
@@ -14,10 +14,10 @@ function header(text) { append('\n' + '='.repeat(80)); append(text); append('='.
 // Initialize
 fs.writeFileSync(OUT, '');
 append('╔══════════════════════════════════════════════════════════════════════════════════════╗');
-append('║  MCP GUARDIAN v' + VERSION + ' — COMPREHENSIVE TEST & ANALYSIS REPORT' + ' '.repeat(Math.max(0, 67 - VERSION.length)) + '║');
+append('║  MASTYFF AI v' + VERSION + ' — COMPREHENSIVE TEST & ANALYSIS REPORT' + ' '.repeat(Math.max(0, 67 - VERSION.length)) + '║');
 append('║  Generated: ' + new Date().toISOString() + '                                           ║');
-append('║  Repository: https://github.com/rudraneel93/mcp-guardian                              ║');
-append('║  npm: @mcp-guardian/server@' + VERSION + ' '.repeat(Math.max(0, 50 - VERSION.length)) + '║');
+append('║  Repository: https://github.com/mastyff-ai/mastyff-ai                              ║');
+append('║  npm: @mastyff-ai/server@' + VERSION + ' '.repeat(Math.max(0, 50 - VERSION.length)) + '║');
 append('╚══════════════════════════════════════════════════════════════════════════════════════╝');
 
 // 1. TypeScript Compile

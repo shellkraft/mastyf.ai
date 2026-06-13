@@ -37,10 +37,10 @@ describe('dashboard threat intel actions', () => {
     }));
     process.env.DASHBOARD_ENABLED = 'true';
     process.env.DASHBOARD_AUTH_DISABLED = 'true';
-    process.env.GUARDIAN_CI_BYPASS_LICENSE = 'true';
-    process.env.GUARDIAN_AI_DISABLE_THREAT_POLL = 'true';
-    process.env.GUARDIAN_THREAT_STATE_PATH = threatStatePath;
-    process.env.GUARDIAN_POLICY_PATH = policyPath;
+    process.env.MASTYFF_AI_CI_BYPASS_LICENSE = 'true';
+    process.env.MASTYFF_AI_AI_DISABLE_THREAT_POLL = 'true';
+    process.env.MASTYFF_AI_THREAT_STATE_PATH = threatStatePath;
+    process.env.MASTYFF_AI_POLICY_PATH = policyPath;
     await startDashboardServer(PORT);
   });
 
@@ -49,10 +49,10 @@ describe('dashboard threat intel actions', () => {
     rmSync(tmpDir, { recursive: true, force: true });
     delete process.env.DASHBOARD_ENABLED;
     delete process.env.DASHBOARD_AUTH_DISABLED;
-    delete process.env.GUARDIAN_CI_BYPASS_LICENSE;
-    delete process.env.GUARDIAN_AI_DISABLE_THREAT_POLL;
-    delete process.env.GUARDIAN_THREAT_STATE_PATH;
-    delete process.env.GUARDIAN_POLICY_PATH;
+    delete process.env.MASTYFF_AI_CI_BYPASS_LICENSE;
+    delete process.env.MASTYFF_AI_AI_DISABLE_THREAT_POLL;
+    delete process.env.MASTYFF_AI_THREAT_STATE_PATH;
+    delete process.env.MASTYFF_AI_POLICY_PATH;
   });
 
   it('dismisses and restores threat-intel rows', async () => {

@@ -1,7 +1,7 @@
 /**
- * Registers self-hosted Guardian instances with MCP Guardian Cloud (heartbeat).
+ * Registers self-hosted Mastyff AI instances with MCP Mastyff AI Cloud (heartbeat).
  */
-import { getGuardianRegion } from '../utils/region.js';
+import { getMastyffAiRegion } from '../utils/region.js';
 import { Logger } from '../utils/logger.js';
 import type { ThreatSignature } from '../utils/fleet-threat-signatures.js';
 
@@ -16,12 +16,12 @@ export type HeartbeatMetrics = {
 let heartbeatTimer: ReturnType<typeof setInterval> | null = null;
 
 function controlPlaneUrl(): string | null {
-  const url = process.env['GUARDIAN_CONTROL_PLANE_URL']?.replace(/\/$/, '');
+  const url = process.env['MASTYFF_AI_CONTROL_PLANE_URL']?.replace(/\/$/, '');
   return url || null;
 }
 
 function cloudApiKey(): string | null {
-  return process.env['GUARDIAN_CLOUD_API_KEY']?.trim()
+  return process.env['MASTYFF_AI_CLOUD_API_KEY']?.trim()
     || process.env['CONTROL_PLANE_API_KEY']?.trim()
     || null;
 }
@@ -35,7 +35,7 @@ export async function sendInstanceHeartbeat(metrics?: HeartbeatMetrics): Promise
   const apiKey = cloudApiKey();
   if (!base || !apiKey) return false;
 
-  if (process.env.GUARDIAN_FEDERATED_LEARNING === 'true') {
+  if (process.env.MASTYFF_AI_FEDERATED_LEARNING === 'true') {
     try {
       const { syncFleetSignatureHintsFromCloud } = await import('../utils/federated-signature-exchange.js');
       await syncFleetSignatureHintsFromCloud();
@@ -45,9 +45,9 @@ export async function sendInstanceHeartbeat(metrics?: HeartbeatMetrics): Promise
   }
 
   const payload = {
-    instanceId: process.env['GUARDIAN_INSTANCE_ID'] || `guardian-${process.pid}`,
-    instanceName: process.env['GUARDIAN_INSTANCE_NAME'] || process.env['HOSTNAME'] || 'guardian',
-    region: getGuardianRegion(),
+    instanceId: process.env['MASTYFF_AI_INSTANCE_ID'] || `mastyff-ai-${process.pid}`,
+    instanceName: process.env['MASTYFF_AI_INSTANCE_NAME'] || process.env['HOSTNAME'] || 'mastyff-ai',
+    region: getMastyffAiRegion(),
     version: process.env.npm_package_version || 'unknown',
     hostname: process.env['HOSTNAME'] || 'unknown',
     metrics: metrics || {},
@@ -77,7 +77,7 @@ export async function sendInstanceHeartbeat(metrics?: HeartbeatMetrics): Promise
 
 export function startInstanceRegistry(metricsProvider?: () => Promise<HeartbeatMetrics>): void {
   if (heartbeatTimer || !isInstanceRegistryEnabled()) return;
-  const intervalMs = parseInt(process.env['GUARDIAN_HEARTBEAT_INTERVAL_MS'] || '60000', 10);
+  const intervalMs = parseInt(process.env['MASTYFF_AI_HEARTBEAT_INTERVAL_MS'] || '60000', 10);
 
   const tick = () => {
     void (async () => {

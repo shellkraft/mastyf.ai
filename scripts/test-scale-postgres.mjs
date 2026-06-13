@@ -6,7 +6,7 @@
 import pg from 'pg';
 
 const CONCURRENCY = parseInt(process.env.SCALE_TEST_CONCURRENCY || '50', 10);
-const TENANT = process.env.GUARDIAN_TENANT_ID || 'scale-test';
+const TENANT = process.env.MASTYFF_AI_TENANT_ID || 'scale-test';
 
 async function main() {
   const url = process.env.DATABASE_URL;

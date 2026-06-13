@@ -85,8 +85,9 @@ export class DataCollector {
         all.push(...await this.db.getCallRecordsForServer(srv));
       }
       return all;
-    } catch (err: any) {
-      Logger.warn(`[DataCollector] callRecords failed: ${err?.message}`);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      Logger.warn(`[DataCollector] callRecords failed: ${message}`);
       return [];
     }
   }
@@ -106,8 +107,9 @@ export class DataCollector {
     if (this.securityScanner) {
       try {
         return await Promise.all(servers.map(s => this.securityScanner!.scanServer(s)));
-      } catch (err: any) {
-        Logger.warn(`[DataCollector] securityReports failed: ${err?.message}`);
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : String(err);
+        Logger.warn(`[DataCollector] securityReports failed: ${message}`);
         return [];
       }
     }
@@ -129,8 +131,9 @@ export class DataCollector {
     if (!this.costAuditor) return [];
     try {
       return await Promise.all(servers.map(s => this.costAuditor!.auditServer(s)));
-    } catch (err: any) {
-      Logger.warn(`[DataCollector] costReports failed: ${err?.message}`);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      Logger.warn(`[DataCollector] costReports failed: ${message}`);
       return [];
     }
   }
@@ -139,8 +142,9 @@ export class DataCollector {
     if (this.healthMonitor) {
       try {
         return await Promise.all(servers.map(s => this.healthMonitor!.checkServer(s)));
-      } catch (err: any) {
-        Logger.warn(`[DataCollector] healthReports failed: ${err?.message}`);
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : String(err);
+        Logger.warn(`[DataCollector] healthReports failed: ${message}`);
         return [];
       }
     }

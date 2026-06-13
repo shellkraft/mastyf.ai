@@ -3,14 +3,14 @@ import { routeSemanticModelForTenant, tenantSemanticModelName } from '../../src/
 
 describe('tenant-semantic-model routing', () => {
   it('resolves tenant model name slug', () => {
-    expect(tenantSemanticModelName('acme corp')).toBe('mcp-guardian-threat:acme-corp');
+    expect(tenantSemanticModelName('acme corp')).toBe('mastyff-ai-threat:acme-corp');
   });
 
   it('routes explicit model first', () => {
-    const prev = process.env.GUARDIAN_SEMANTIC_LOCAL_MODEL;
-    process.env.GUARDIAN_SEMANTIC_LOCAL_MODEL = 'custom:model';
+    const prev = process.env.MASTYFF_AI_SEMANTIC_LOCAL_MODEL;
+    process.env.MASTYFF_AI_SEMANTIC_LOCAL_MODEL = 'custom:model';
     expect(routeSemanticModelForTenant('acme').source).toBe('explicit');
-    if (prev) process.env.GUARDIAN_SEMANTIC_LOCAL_MODEL = prev;
-    else delete process.env.GUARDIAN_SEMANTIC_LOCAL_MODEL;
+    if (prev) process.env.MASTYFF_AI_SEMANTIC_LOCAL_MODEL = prev;
+    else delete process.env.MASTYFF_AI_SEMANTIC_LOCAL_MODEL;
   });
 });

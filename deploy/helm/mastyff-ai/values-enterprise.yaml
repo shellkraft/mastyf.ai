@@ -1,0 +1,132 @@
+# Enterprise production overlay — use with:
+#   helm upgrade --install mastyff-ai ./deploy/helm/mastyff-ai \
+#     -f deploy/helm/mastyff-ai/values.yaml \
+#     -f deploy/helm/mastyff-ai/values-enterprise.yaml
+#
+# See docs/ENTERPRISE_DEPLOY.md and README Production Checklist.
+
+replicaCount: 3
+
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 2
+
+redis:
+  enabled: true
+  sentinel:
+    external: true
+    # Example: host:26379,host:26379 — set per cluster
+    sentinels: ""
+    masterName: mymaster
+
+config:
+  policy:
+    mode: block
+  env:
+    MASTYFF_AI_UPSTREAM_TIMEOUT_MS: "30000"
+    NODE_ENV: production
+    DASHBOARD_ENABLED: "true"
+    DASHBOARD_AUTH_DISABLED: "false"
+    METRICS_ENABLED: "true"
+    MASTYFF_AI_STRICT_MODE: "true"
+    MASTYFF_AI_REQUIRE_PGBOUNCER: "true"
+    MASTYFF_AI_MULTI_TENANT_ENABLED: "true"
+    MASTYFF_AI_AI_AUTO_APPLY: "false"
+    POLICY_AUDIT_ENABLED: "true"
+    MASTYFF_AI_ENCODING_GUARD: "true"
+    MASTYFF_AI_HTTP_TOOLS_POLICY: "true"
+    MASTYFF_AI_GATEWAY_MODE: "true"
+    MASTYFF_AI_SEMANTIC_ASYNC: "true"
+    MASTYFF_AI_SEMANTIC_SYNC_RESPONSE: "true"
+    MASTYFF_AI_LOCAL_SEMANTIC: "true"
+    MASTYFF_AI_SEMANTIC_LLM_MAX_PER_MIN: "10"
+    MASTYFF_AI_LLM_CACHE: "true"
+    MASTYFF_AI_LLM_CACHE_TTL_SEC: "86400"
+    MASTYFF_AI_PG_RLS_ENABLED: "true"
+    MASTYFF_AI_PRO_CHECKOUT_URL: "https://mastyff-ai.lemonsqueezy.com/checkout/buy/f725abfe-93c0-4bd7-8add-d15af13958fb"
+    MASTYFF_AI_AUDIT_HASH_CHAIN: "true"
+    MASTYFF_AI_AUDIT_HASH_CHAIN_SIEM: "true"
+    MASTYFF_AI_AUDIT_SYNC_ENABLED: "true"
+    MASTYFF_AI_DASHBOARD_DATA_SOURCE: "auto"
+    MASTYFF_AI_DPOP_LOCK_FREE: "true"
+    OLLAMA_ENABLED: "true"
+database:
+  type: postgres
+  # Route through PgBouncer (transaction mode), port 6432 — NOT postgres:5432
+  url: ""
+
+pgbouncer:
+  enabled: true
+  requireMastyffAiEnforcement: true
+  poolMaxPerReplica: 4
+  port: 6432
+  postgresHost: postgres
+  postgresPort: 5432
+  maxClientConn: 1000
+  defaultPoolSize: 20
+  serverIdleTimeout: 300
+  queryTimeout: 120
+
+postgres:
+  maxConnections: 300
+
+dashboard:
+  enabled: true
+  authEnabled: true
+  allowedCidr: ""
+
+dpop:
+  require: true
+
+multiTenant:
+  enabled: true
+
+gateway:
+  enabled: true
+  websocketPort: 8081
+  service:
+    type: ClusterIP
+    port: 8080
+  ingress:
+    enabled: true
+    host: mastyff-ai.example.com
+    tls: true
+    tlsSecret: ""
+    annotations: {}
+
+# Optional MCP Mastyff AI Cloud control plane (policy sync / SSO — no license paywall)
+controlPlane:
+  url: ""  # e.g. https://cloud.example.com
+  # licenseKey: optional gcp_... API key from cloud Settings
+  licenseKey: ""
+
+monitoring:
+  serviceMonitor:
+    enabled: true
+    interval: 30s
+
+networkPolicy:
+  enabled: true
+
+mtls:
+  enabled: false
+  # Set existingSecret when upstream MCP requires client certs
+
+backup:
+  enabled: true
+  schedule: "0 2 * * *"
+  retentionDays: 7
+  postgresImage: postgres:16-alpine
+  postgresHost: postgres
+  postgresPort: 5432
+  postgresUser: postgres
+  postgresSecret: ""
+  postgresPasswordKey: postgres-password
+
+resources:
+  requests:
+    cpu: 500m
+    memory: 512Mi
+  limits:
+    cpu: 2000m
+    memory: 2Gi

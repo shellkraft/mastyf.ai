@@ -21,8 +21,8 @@ export interface EntropyFinding {
   entropy: number;
 }
 
-const MIN_BLOB_LEN = parseInt(process.env.GUARDIAN_ENTROPY_MIN_LENGTH || '48', 10);
-const ENTROPY_THRESHOLD = parseFloat(process.env.GUARDIAN_ENTROPY_THRESHOLD || '4.2');
+const MIN_BLOB_LEN = parseInt(process.env.MASTYFF_AI_ENTROPY_MIN_LENGTH || '48', 10);
+const ENTROPY_THRESHOLD = parseFloat(process.env.MASTYFF_AI_ENTROPY_THRESHOLD || '4.2');
 
 export function scanArgumentEntropy(text: string): EntropyFinding[] {
   const findings: EntropyFinding[] = [];
@@ -67,7 +67,7 @@ export function scanArgumentEntropy(text: string): EntropyFinding[] {
 }
 
 export function isProxyEntropyCheckEnabled(policyMode?: string): boolean {
-  if (process.env.GUARDIAN_PROXY_ENTROPY === 'false') return false;
-  if (process.env.GUARDIAN_PROXY_ENTROPY === 'true') return true;
+  if (process.env.MASTYFF_AI_PROXY_ENTROPY === 'false') return false;
+  if (process.env.MASTYFF_AI_PROXY_ENTROPY === 'true') return true;
   return policyMode === 'block';
 }

@@ -40,7 +40,7 @@ export class MeshRelayClient {
       h['Authorization'] = `Bearer ${this.config.apiKey}`;
     }
     if (this.config.tenantId) {
-      h['X-Guardian-Tenant'] = this.config.tenantId;
+      h['X-Mastyff-Ai-Tenant'] = this.config.tenantId;
     }
     return h;
   }

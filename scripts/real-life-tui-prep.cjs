@@ -1,5 +1,5 @@
 /**
- * Seeds ~/.mcp-guardian for TUI: real-life config scan + 20-call block scenario.
+ * Seeds ~/.mastyff-ai for TUI: real-life config scan + 20-call block scenario.
  */
 const { spawn } = require('child_process');
 const { writeFileSync, mkdirSync, existsSync } = require('fs');
@@ -11,7 +11,7 @@ const { PolicyEngine } = require('../dist/policy/policy-engine.js');
 const { readFileSync } = require('fs');
 const { load } = require('js-yaml');
 
-const GUARDIAN_DIR = join(homedir(), '.mcp-guardian');
+const MASTYFF_AI_DIR = join(homedir(), '.mastyff-ai');
 const ECHO_CODE = 'var rl=require("readline").createInterface({input:process.stdin});rl.on("line",function(l){try{var m=JSON.parse(l);var resp={jsonrpc:"2.0",id:m.id};if(m.method==="tools/call"){resp.result={content:[{type:"text",text:JSON.stringify(m.params&&m.params.arguments||{})}]}}else if(m.method==="initialize"){resp.result={protocolVersion:"2024-11-05",serverInfo:{name:"echo",version:"1.0"},capabilities:{tools:{}}}}else if(m.method==="tools/list"){resp.result={tools:[{name:"search"},{name:"read_file"},{name:"list_directory"},{name:"get_file_contents"},{name:"search_repositories"},{name:"query"},{name:"execute"},{name:"write_to_file"}]}};process.stdout.write(JSON.stringify(resp)+"\\n")}catch(e){}})';
 
 function run(cmd, args) {
@@ -22,8 +22,8 @@ function run(cmd, args) {
 }
 
 function seedAiState() {
-  mkdirSync(GUARDIAN_DIR, { recursive: true });
-  writeFileSync(join(GUARDIAN_DIR, '.ai-learning.json'), JSON.stringify({
+  mkdirSync(MASTYFF_AI_DIR, { recursive: true });
+  writeFileSync(join(MASTYFF_AI_DIR, '.ai-learning.json'), JSON.stringify({
     outcomes: [
       { suggestionId: 'baseline-0', ruleName: 'auto-token-cap-read_file', source: 'baseline', action: 'applied', confidence: 0.9, timestamp: new Date().toISOString() },
       { suggestionId: 'cost-1', ruleName: 'cost-burst-execute_command', source: 'cost', action: 'applied', confidence: 0.87, timestamp: new Date().toISOString() },
@@ -34,7 +34,7 @@ function seedAiState() {
     moduleWeights: { baseline: 0.95, cost: 0.87, threat: 1.0, assist: 1.0 },
     lastUpdated: new Date().toISOString(),
   }, null, 2));
-  writeFileSync(join(GUARDIAN_DIR, '.threat-state.json'), JSON.stringify({
+  writeFileSync(join(MASTYFF_AI_DIR, '.threat-state.json'), JSON.stringify({
     ids: ['osv-GHSA-345p-7cg4-v4c7', 'gh-GHSA-r8j5-8747-88cm', 'gh-GHSA-wf8q-wvv8-p8jf'],
     updated: new Date().toISOString(),
   }, null, 2));
@@ -66,7 +66,7 @@ function seedAiState() {
   await new Promise((r) => setTimeout(r, 800));
 
   const calls = [
-    { target: 'github', id: 'c01', name: 'search', args: { query: 'mcp-guardian security proxy' } },
+    { target: 'github', id: 'c01', name: 'search', args: { query: 'mastyff-ai security proxy' } },
     { target: 'filesystem', id: 'c03', name: 'read_file', args: { path: 'src/index.ts' } },
     { target: 'postgres', id: 'c06', name: 'query', args: { sql: 'SELECT * FROM users LIMIT 10' } },
     { target: 'github', id: 'c08', name: 'execute_command', args: { command: 'ls -la' } },
@@ -108,7 +108,7 @@ function seedAiState() {
   db.close();
 
   console.log(`\n   Recorded ${total} calls (${blocked} blocked by policy)`);
-  console.log(`   DB: ${join(GUARDIAN_DIR, 'history.db')}`);
+  console.log(`   DB: ${join(MASTYFF_AI_DIR, 'history.db')}`);
   console.log('\n3/3 Done. Run: node dist/cli.js tui');
   console.log('    (Docker dashboard optional: --dashboard-url http://localhost:4000)\n');
 })().catch((e) => {

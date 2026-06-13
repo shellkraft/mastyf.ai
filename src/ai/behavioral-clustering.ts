@@ -14,10 +14,10 @@
  * Cluster labels auto-assigned via LLM every 24 hours if available.
  *
  * Environment:
- *   GUARDIAN_BEHAVIORAL_CLUSTERING_ENABLED   Master enable (default: false)
- *   GUARDIAN_BEHAVIORAL_CLUSTER_EPS           DBSCAN epsilon (default: 0.5)
- *   GUARDIAN_BEHAVIORAL_MIN_CLUSTER_SIZE       Min points per cluster (default: 3)
- *   GUARDIAN_BEHAVIORAL_FEATURE_DIM           Feature vector dimensions (default: 5)
+ *   MASTYFF_AI_BEHAVIORAL_CLUSTERING_ENABLED   Master enable (default: false)
+ *   MASTYFF_AI_BEHAVIORAL_CLUSTER_EPS           DBSCAN epsilon (default: 0.5)
+ *   MASTYFF_AI_BEHAVIORAL_MIN_CLUSTER_SIZE       Min points per cluster (default: 3)
+ *   MASTYFF_AI_BEHAVIORAL_FEATURE_DIM           Feature vector dimensions (default: 5)
  */
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
@@ -63,14 +63,14 @@ export interface ClusterSummary {
 
 // ── Configuration ────────────────────────────────────────────────────
 
-const STATE_PATH = join(homedir(), '.mcp-guardian', 'behavioral-clusters.json');
+const STATE_PATH = join(homedir(), '.mastyff-ai', 'behavioral-clusters.json');
 
 function eps(): number {
-  return parseFloat(process.env['GUARDIAN_BEHAVIORAL_CLUSTER_EPS'] || '0.8');
+  return parseFloat(process.env['MASTYFF_AI_BEHAVIORAL_CLUSTER_EPS'] || '0.8');
 }
 
 function minClusterSize(): number {
-  return parseInt(process.env['GUARDIAN_BEHAVIORAL_MIN_CLUSTER_SIZE'] || '3', 10);
+  return parseInt(process.env['MASTYFF_AI_BEHAVIORAL_MIN_CLUSTER_SIZE'] || '3', 10);
 }
 
 // ── Feature Extraction ────────────────────────────────────────────────
@@ -248,7 +248,7 @@ export function recordBehavioralCall(
   serverName: string,
   callId: string,
 ): void {
-  if (process.env['GUARDIAN_BEHAVIORAL_CLUSTERING_ENABLED'] !== 'true') return;
+  if (process.env['MASTYFF_AI_BEHAVIORAL_CLUSTERING_ENABLED'] !== 'true') return;
 
   const vector = extractFeatureVector(toolName, args, keyPath, serverName);
   callBuffer.push({ id: callId, vector });

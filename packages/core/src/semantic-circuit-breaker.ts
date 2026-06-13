@@ -1,13 +1,13 @@
 /** In-process circuit breaker for core semantic LLM calls. */
 const THRESHOLD = parseInt(
-  process.env["MCP_GUARDIAN_SEMANTIC_CIRCUIT_THRESHOLD"] ||
-    process.env["GUARDIAN_SEMANTIC_CIRCUIT_THRESHOLD"] ||
+  process.env["MASTYFF_AI_SEMANTIC_CIRCUIT_THRESHOLD"] ||
+    process.env["MASTYFF_AI_SEMANTIC_CIRCUIT_THRESHOLD"] ||
     "5",
   10,
 );
 const RESET_MS = parseInt(
-  process.env["MCP_GUARDIAN_SEMANTIC_CIRCUIT_RESET_MS"] ||
-    process.env["GUARDIAN_SEMANTIC_CIRCUIT_RESET_MS"] ||
+  process.env["MASTYFF_AI_SEMANTIC_CIRCUIT_RESET_MS"] ||
+    process.env["MASTYFF_AI_SEMANTIC_CIRCUIT_RESET_MS"] ||
     "60000",
   10,
 );

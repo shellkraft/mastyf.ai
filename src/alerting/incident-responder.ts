@@ -9,14 +9,14 @@
  *   - Hourly block rate spike > 3σ → SIEM event + incident
  *
  * Environment:
- *   GUARDIAN_INCIDENT_WEBHOOK_URL         Default incident webhook (Slack/Discord)
- *   GUARDIAN_INCIDENT_PAGERDUTY_KEY       PagerDuty Events API v2 routing key
- *   GUARDIAN_INCIDENT_SERVICENOW_URL      ServiceNow incident table API
- *   GUARDIAN_INCIDENT_JIRA_URL            Jira REST API URL
- *   GUARDIAN_INCIDENT_JIRA_PROJECT        Jira project key (default: MCPG)
- *   GUARDIAN_INCIDENT_LLM_OFFLINE_MIN     Minutes before LLM offline alert (default: 10)
- *   GUARDIAN_INCIDENT_REGRESSION_THRESHOLD  Detection drop threshold (default: 0.05)
- *   GUARDIAN_INCIDENT_BLOCK_SPIKE_SIGMA   Sigma multiplier for block spike (default: 3)
+ *   MASTYFF_AI_INCIDENT_WEBHOOK_URL         Default incident webhook (Slack/Discord)
+ *   MASTYFF_AI_INCIDENT_PAGERDUTY_KEY       PagerDuty Events API v2 routing key
+ *   MASTYFF_AI_INCIDENT_SERVICENOW_URL      ServiceNow incident table API
+ *   MASTYFF_AI_INCIDENT_JIRA_URL            Jira REST API URL
+ *   MASTYFF_AI_INCIDENT_JIRA_PROJECT        Jira project key (default: MCPG)
+ *   MASTYFF_AI_INCIDENT_LLM_OFFLINE_MIN     Minutes before LLM offline alert (default: 10)
+ *   MASTYFF_AI_INCIDENT_REGRESSION_THRESHOLD  Detection drop threshold (default: 0.05)
+ *   MASTYFF_AI_INCIDENT_BLOCK_SPIKE_SIGMA   Sigma multiplier for block spike (default: 3)
  */
 import { Logger } from '../utils/logger.js';
 import { StructuredLogger } from '../utils/structured-logger.js';
@@ -41,19 +41,19 @@ export interface IncidentResponseResult {
 // ── Configuration ────────────────────────────────────────────────────
 
 function getWebhookUrl(): string {
-  return process.env['GUARDIAN_INCIDENT_WEBHOOK_URL'] || '';
+  return process.env['MASTYFF_AI_INCIDENT_WEBHOOK_URL'] || '';
 }
 
 function getPagerDutyKey(): string {
-  return process.env['GUARDIAN_INCIDENT_PAGERDUTY_KEY'] || '';
+  return process.env['MASTYFF_AI_INCIDENT_PAGERDUTY_KEY'] || '';
 }
 
 function getServiceNowUrl(): string {
-  return process.env['GUARDIAN_INCIDENT_SERVICENOW_URL'] || '';
+  return process.env['MASTYFF_AI_INCIDENT_SERVICENOW_URL'] || '';
 }
 
 function getJiraUrl(): string {
-  return process.env['GUARDIAN_INCIDENT_JIRA_URL'] || '';
+  return process.env['MASTYFF_AI_INCIDENT_JIRA_URL'] || '';
 }
 
 // ── Slack/Discord Webhook ────────────────────────────────────────────
@@ -70,7 +70,7 @@ async function sendSlackDiscord(incident: IncidentContext): Promise<IncidentResp
   };
 
   const payload = {
-    text: `${severityEmoji[incident.severity]} **MCP Guardian Incident: ${incident.type.replace(/_/g, ' ')}**`,
+    text: `${severityEmoji[incident.severity]} **MCP Mastyff AI Incident: ${incident.type.replace(/_/g, ' ')}**`,
     blocks: [
       {
         type: 'header',
@@ -116,7 +116,7 @@ async function createPagerDutyIncident(incident: IncidentContext): Promise<Incid
     payload: {
       summary: incident.summary,
       severity: incident.severity,
-      source: 'mcp-guardian',
+      source: 'mastyff-ai',
       component: 'proxy',
       group: 'security',
       class: incident.type,
@@ -155,9 +155,9 @@ async function createServiceNowIncident(incident: IncidentContext): Promise<Inci
     urgency: incident.severity === 'critical' ? 1 : incident.severity === 'high' ? 2 : 3,
     impact: incident.severity === 'critical' ? 1 : incident.severity === 'high' ? 2 : 3,
     category: 'Security',
-    subcategory: 'MCP Guardian',
+    subcategory: 'Mastyff AI',
     contact_type: 'automated',
-    caller_id: 'mcp-guardian',
+    caller_id: 'mastyff-ai',
   };
 
   try {
@@ -186,7 +186,7 @@ async function createJiraTicket(incident: IncidentContext): Promise<IncidentResp
   const url = getJiraUrl();
   if (!url) return { ok: false, channel: 'jira', error: 'No Jira URL configured' };
 
-  const project = process.env['GUARDIAN_INCIDENT_JIRA_PROJECT'] || 'MCPG';
+  const project = process.env['MASTYFF_AI_INCIDENT_JIRA_PROJECT'] || 'MCPG';
   const priorityMap = { critical: 'Highest', high: 'High', medium: 'Medium', low: 'Low' };
 
   const payload = {
@@ -196,7 +196,7 @@ async function createJiraTicket(incident: IncidentContext): Promise<IncidentResp
       description: `*Incident Type:* ${incident.type}\n*Severity:* ${incident.severity}\n*Time:* ${incident.timestamp}\n\n*Details:*\n${JSON.stringify(incident.details, null, 2)}`,
       issuetype: { name: 'Bug' },
       priority: { name: priorityMap[incident.severity] },
-      labels: ['mcp-guardian', 'auto-generated', incident.type],
+      labels: ['mastyff-ai', 'auto-generated', incident.type],
     },
   };
 
@@ -289,7 +289,7 @@ export async function checkAndRespondToRegression(
   baselineRecall: number,
   delta: number,
 ): Promise<void> {
-  const threshold = parseFloat(process.env['GUARDIAN_INCIDENT_REGRESSION_THRESHOLD'] || '0.05');
+  const threshold = parseFloat(process.env['MASTYFF_AI_INCIDENT_REGRESSION_THRESHOLD'] || '0.05');
   if (delta <= threshold) return;
 
   await respondToIncident({
@@ -315,7 +315,7 @@ export function trackLlmHealth(online: boolean): void {
   }
 
   const offlineMinutes = (now - _llmOfflineSince) / 60000;
-  const threshold = parseInt(process.env['GUARDIAN_INCIDENT_LLM_OFFLINE_MIN'] || '10', 10);
+  const threshold = parseInt(process.env['MASTYFF_AI_INCIDENT_LLM_OFFLINE_MIN'] || '10', 10);
 
   if (offlineMinutes >= threshold) {
     void respondToIncident({
@@ -341,7 +341,7 @@ export function trackBlockSpike(blocked: boolean): void {
   const mean = _lastBlockRate.length / 60; // blocks per minute
   const variance = _lastBlockRate.reduce((sum, b) => sum + Math.pow(1 - mean, 2), 0) / _lastBlockRate.length;
   const stddev = Math.sqrt(variance);
-  const sigma = parseFloat(process.env['GUARDIAN_INCIDENT_BLOCK_SPIKE_SIGMA'] || '3');
+  const sigma = parseFloat(process.env['MASTYFF_AI_INCIDENT_BLOCK_SPIKE_SIGMA'] || '3');
 
   const recentBlocks = _lastBlockRate.filter((b) => now - b.timestamp < 60000).length;
   if (recentBlocks > mean + sigma * stddev) {

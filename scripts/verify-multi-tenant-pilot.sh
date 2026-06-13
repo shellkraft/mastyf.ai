@@ -16,8 +16,8 @@ BASE_URL="${PILOT_BASE_URL:-http://127.0.0.1:${DASHBOARD_PORT}}"
 echo "[pilot] Multi-tenant staging pilot verification"
 echo "[pilot] Base URL: $BASE_URL"
 
-if [ "${GUARDIAN_MULTI_TENANT_ENABLED:-}" != "true" ]; then
-  warn "GUARDIAN_MULTI_TENANT_ENABLED is not true — set for production pilot"
+if [ "${MASTYFF_AI_MULTI_TENANT_ENABLED:-}" != "true" ]; then
+  warn "MASTYFF_AI_MULTI_TENANT_ENABLED is not true — set for production pilot"
 fi
 
 # Step 6: automated dashboard regression
@@ -28,7 +28,7 @@ else
 fi
 
 # Step 3: tenant-scoped audit API (requires running dashboard on PILOT_BASE_URL)
-if curl -sf "${BASE_URL}/api/aggregate/audit" -H 'X-Guardian-Tenant: tenant-a' >/tmp/pilot-a.json 2>/dev/null; then
+if curl -sf "${BASE_URL}/api/aggregate/audit" -H 'X-Mastyff-Ai-Tenant: tenant-a' >/tmp/pilot-a.json 2>/dev/null; then
   if grep -q 'only-b' /tmp/pilot-a.json 2>/dev/null; then
     fail "tenant-a audit leaked tenant-b rows"
   else

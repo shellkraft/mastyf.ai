@@ -44,7 +44,7 @@ export function AgenticToolsPanel() {
         <h2 className="text-xl font-bold">Admin tools</h2>
         <p className="text-sm text-gray-500">
           Run agentic actions on demand. Results appear inline below each button (not in a sidebar).
-          Lab tools may require GUARDIAN_AGENTIC_DEMO_MODE for sample data.
+          Lab tools may require MASTYFF_AI_AGENTIC_DEMO_MODE for sample data.
         </p>
       </div>
       {TOOL_GROUPS.map((group) => (

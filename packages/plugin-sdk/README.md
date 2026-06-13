@@ -1,13 +1,13 @@
-# @mcp-guardian/plugin-sdk
+# @mastyff-ai/plugin-sdk
 
-Stable v3.0 detector plugin API for MCP Guardian.
+Stable v3.0 detector plugin API for Mastyff AI.
 
 ```bash
-pnpm add @mcp-guardian/plugin-sdk
+pnpm add @mastyff-ai/plugin-sdk
 ```
 
 ```typescript
-import { createDetectorPlugin } from '@mcp-guardian/plugin-sdk';
+import { createDetectorPlugin } from '@mastyff-ai/plugin-sdk';
 
 export default createDetectorPlugin({
   name: 'acme-pii-scanner',
@@ -25,8 +25,8 @@ export default createDetectorPlugin({
 Enable at runtime:
 
 ```bash
-export GUARDIAN_PLUGINS_ENABLED=true
-export GUARDIAN_PLUGIN_PATH=/path/to/built/plugins
+export MASTYFF_AI_PLUGINS_ENABLED=true
+export MASTYFF_AI_PLUGIN_PATH=/path/to/built/plugins
 ```
 
 See [docs/PLUGIN_SDK.md](../../docs/PLUGIN_SDK.md) for publishing and lifecycle details.

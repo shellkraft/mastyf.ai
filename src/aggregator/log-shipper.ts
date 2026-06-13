@@ -1,6 +1,6 @@
 /**
  * Log Shipper — Pino transport that ships structured JSON logs to
- * PostgreSQL guardian_logs table for centralized log aggregation.
+ * PostgreSQL mastyff_ai_logs table for centralized log aggregation.
  *
  * Integrates with existing pino logger in src/utils/structured-logger.ts
  * to provide real-time log shipping alongside stdout/file outputs.
@@ -44,12 +44,12 @@ const LEVEL_NAMES: Record<number, string> = {
 };
 
 const DEFAULT_CONFIG: LogShipperConfig = {
-  instanceId: process.env['GUARDIAN_INSTANCE_ID'] || `guardian-${process.pid}`,
-  databaseUrl: process.env['DATABASE_URL'] || 'postgresql://localhost:5432/mcp_guardian',
-  minLevel: parseInt(process.env['GUARDIAN_LOG_SHIP_LEVEL'] || '30', 10),
-  batchSize: parseInt(process.env['GUARDIAN_LOG_BATCH_SIZE'] || '50', 10),
-  flushIntervalMs: parseInt(process.env['GUARDIAN_LOG_FLUSH_MS'] || '5000', 10),
-  enabled: process.env['GUARDIAN_LOG_SHIP_ENABLED'] !== 'false',
+  instanceId: process.env['MASTYFF_AI_INSTANCE_ID'] || `mastyff-ai-${process.pid}`,
+  databaseUrl: process.env['DATABASE_URL'] || 'postgresql://localhost:5432/mastyff_ai',
+  minLevel: parseInt(process.env['MASTYFF_AI_LOG_SHIP_LEVEL'] || '30', 10),
+  batchSize: parseInt(process.env['MASTYFF_AI_LOG_BATCH_SIZE'] || '50', 10),
+  flushIntervalMs: parseInt(process.env['MASTYFF_AI_LOG_FLUSH_MS'] || '5000', 10),
+  enabled: process.env['MASTYFF_AI_LOG_SHIP_ENABLED'] !== 'false',
 };
 
 export class LogShipper {
@@ -82,7 +82,7 @@ export class LogShipper {
   /** Start the log shipper */
   async start(): Promise<void> {
     if (!this.config.enabled) {
-      Logger.info('[LogShipper] Disabled — set GUARDIAN_LOG_SHIP_ENABLED=true to enable');
+      Logger.info('[LogShipper] Disabled — set MASTYFF_AI_LOG_SHIP_ENABLED=true to enable');
       return;
     }
 
@@ -92,7 +92,7 @@ export class LogShipper {
 
     this.flushTimer = setInterval(() => {
       this.flush().catch(err => {
-        Logger.error(`[LogShipper] Flush failed: ${err?.message}`);
+        Logger.error(`[LogShipper] Flush failed: ${err instanceof Error ? err.message : String(err)}`);
       });
     }, this.config.flushIntervalMs);
   }
@@ -126,7 +126,7 @@ export class LogShipper {
     if (this.buffer.length >= this.config.batchSize) {
       // Fire-and-forget flush (don't block the log call)
       this.flush().catch(err => {
-        Logger.error(`[LogShipper] Auto-flush failed: ${err?.message}`);
+        Logger.error(`[LogShipper] Auto-flush failed: ${err instanceof Error ? err.message : String(err)}`);
       });
     }
   }
@@ -212,7 +212,7 @@ export class LogShipper {
       }
 
       await client.query(
-        `INSERT INTO guardian_logs
+        `INSERT INTO mastyff_ai_logs
          (instance_id, timestamp, level, level_name, message, module,
           server_name, tool_name, request_id, error, stack, metadata)
          VALUES ${placeholders.join(', ')}`,
@@ -254,7 +254,7 @@ export class LogShipper {
       const pool = await this.ensurePool();
       const client = await pool.connect();
       try {
-        let query = 'SELECT * FROM guardian_logs WHERE 1=1';
+        let query = 'SELECT * FROM mastyff_ai_logs WHERE 1=1';
         const params: any[] = [];
         let paramIdx = 1;
 
@@ -279,8 +279,8 @@ export class LogShipper {
       } finally {
         client.release();
       }
-    } catch (err: any) {
-      Logger.warn(`[LogShipper] Query logs failed: ${err?.message}`);
+    } catch (err: unknown) {
+      Logger.warn(`[LogShipper] Query logs failed: ${err instanceof Error ? err.message : String(err)}`);
       return [];
     }
   }
@@ -297,20 +297,20 @@ export class LogShipper {
       try {
         const [levelResult, serverResult, totalResult] = await Promise.all([
           client.query(
-            `SELECT level_name, COUNT(*) as count FROM guardian_logs
+            `SELECT level_name, COUNT(*) as count FROM mastyff_ai_logs
              WHERE timestamp > NOW() - INTERVAL '1 hour' * $1
              GROUP BY level_name ORDER BY count DESC`,
             [hoursBack]
           ),
           client.query(
-            `SELECT server_name, COUNT(*) as count FROM guardian_logs
+            `SELECT server_name, COUNT(*) as count FROM mastyff_ai_logs
              WHERE timestamp > NOW() - INTERVAL '1 hour' * $1
              AND server_name IS NOT NULL
              GROUP BY server_name ORDER BY count DESC LIMIT 20`,
             [hoursBack]
           ),
           client.query(
-            `SELECT COUNT(*) as total FROM guardian_logs
+            `SELECT COUNT(*) as total FROM mastyff_ai_logs
              WHERE timestamp > NOW() - INTERVAL '1 hour' * $1`,
             [hoursBack]
           ),
@@ -334,8 +334,8 @@ export class LogShipper {
       } finally {
         client.release();
       }
-    } catch (err: any) {
-      Logger.warn(`[LogShipper] Log stats failed: ${err?.message}`);
+    } catch (err: unknown) {
+      Logger.warn(`[LogShipper] Log stats failed: ${err instanceof Error ? err.message : String(err)}`);
       return { total: 0, byLevel: {}, byServer: {} };
     }
   }

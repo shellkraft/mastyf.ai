@@ -13,15 +13,15 @@ describe('sync-semantic-request', () => {
   });
 
   it('reports disabled when not enterprise and env unset', () => {
-    vi.stubEnv('GUARDIAN_ENTERPRISE_MODE', 'false');
-    vi.stubEnv('GUARDIAN_SEMANTIC_SYNC_REQUEST', 'false');
+    vi.stubEnv('MASTYFF_AI_ENTERPRISE_MODE', 'false');
+    vi.stubEnv('MASTYFF_AI_SEMANTIC_SYNC_REQUEST', 'false');
     expect(isSyncSemanticRequestEnabled()).toBe(false);
     expect(getSemanticRequestGateStatus().semanticRequestGate).toBe('disabled');
   });
 
   it('returns disabled result without blocking when gate off', async () => {
-    vi.stubEnv('GUARDIAN_SEMANTIC_SYNC_REQUEST', 'false');
-    vi.stubEnv('GUARDIAN_ENTERPRISE_MODE', 'false');
+    vi.stubEnv('MASTYFF_AI_SEMANTIC_SYNC_REQUEST', 'false');
+    vi.stubEnv('MASTYFF_AI_ENTERPRISE_MODE', 'false');
     const out = await evaluateSyncSemanticRequest({
       context: {
         serverName: 's',
@@ -38,10 +38,10 @@ describe('sync-semantic-request', () => {
   });
 
   it('blocks paraphrase in enterprise mode when mock LLM flags suspicious', async () => {
-    vi.stubEnv('GUARDIAN_ENTERPRISE_MODE', 'true');
-    vi.stubEnv('GUARDIAN_SEMANTIC_SYNC_REQUEST', 'true');
-    vi.stubEnv('GUARDIAN_SEMANTIC_SYNC_REQUEST_LLM', 'true');
-    vi.stubEnv('GUARDIAN_LLM_PROVIDER', 'ollama');
+    vi.stubEnv('MASTYFF_AI_ENTERPRISE_MODE', 'true');
+    vi.stubEnv('MASTYFF_AI_SEMANTIC_SYNC_REQUEST', 'true');
+    vi.stubEnv('MASTYFF_AI_SEMANTIC_SYNC_REQUEST_LLM', 'true');
+    vi.stubEnv('MASTYFF_AI_LLM_PROVIDER', 'ollama');
     vi.stubEnv('OLLAMA_BASE_URL', 'http://127.0.0.1:11434');
 
     vi.spyOn(LlmAssistant.prototype, 'isAvailable').mockReturnValue(true);

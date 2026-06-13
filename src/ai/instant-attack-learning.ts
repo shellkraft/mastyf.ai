@@ -94,21 +94,21 @@ function setTenantStateCache(tenantId: string, state: AttackLearningState): void
 }
 
 function instantLearningEnabled(): boolean {
-  if (process.env.GUARDIAN_AI_INSTANT_LEARNING === 'false') return false;
+  if (process.env.MASTYFF_AI_AI_INSTANT_LEARNING === 'false') return false;
   return isAiLearningEnabled();
 }
 
 function instantLlmEnabled(): boolean {
-  return process.env.GUARDIAN_AI_INSTANT_LLM === 'true' && instantLearningEnabled();
+  return process.env.MASTYFF_AI_AI_INSTANT_LLM === 'true' && instantLearningEnabled();
 }
 
 function windowMs(): number {
-  const n = parseInt(process.env.GUARDIAN_AI_INSTANT_WINDOW_MS || '300000', 10);
+  const n = parseInt(process.env.MASTYFF_AI_AI_INSTANT_WINDOW_MS || '300000', 10);
   return Number.isFinite(n) && n > 0 ? n : 300_000;
 }
 
 function llmRateLimitMs(): number {
-  const n = parseInt(process.env.GUARDIAN_AI_INSTANT_LLM_RATE_MS || '60000', 10);
+  const n = parseInt(process.env.MASTYFF_AI_AI_INSTANT_LLM_RATE_MS || '60000', 10);
   return Number.isFinite(n) && n > 0 ? n : 60_000;
 }
 
@@ -147,7 +147,7 @@ export function loadAttackLearningState(tenantId?: string): AttackLearningState 
   }
 }
 
-/** Load from PostgreSQL shared store (call at bootstrap when GUARDIAN_AUDIT_SYNC_ENABLED). */
+/** Load from PostgreSQL shared store (call at bootstrap when MASTYFF_AI_AUDIT_SYNC_ENABLED). */
 export async function loadAttackLearningFromSharedStore(tenantId?: string): Promise<void> {
   if (!sharedStore?.getAttackLearningState) return;
   const tid = attackLearningTenantId(tenantId);
@@ -491,7 +491,7 @@ export function recordInstantBlockEvent(event: InstantBlockEvent): {
     }
   }
 
-  if (process.env.GUARDIAN_AI_INSTANT_LLM === 'true') {
+  if (process.env.MASTYFF_AI_AI_INSTANT_LLM === 'true') {
     void maybeRunInstantLlm(event, attackClassFromBlockRule(event.block_rule) || 'unknown').then((llm) => {
       if (llm.argPatterns?.length) {
         const slug = `${event.block_rule}-${event.toolName}`.replace(/[^a-z0-9-]+/gi, '-').slice(0, 40);

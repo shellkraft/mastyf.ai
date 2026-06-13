@@ -17,11 +17,11 @@ def _env_int(name: str, default: int) -> int:
 
 
 def is_policy_timing_envelope_enabled() -> bool:
-    return os.environ.get("GUARDIAN_POLICY_TIMING_ENVELOPE") != "false"
+    return os.environ.get("MASTYFF_AI_POLICY_TIMING_ENVELOPE") != "false"
 
 
 def policy_min_eval_ms() -> int:
-    return _env_int("MCP_GUARDIAN_POLICY_MIN_EVAL_MS", 25)
+    return _env_int("MASTYFF_AI_POLICY_MIN_EVAL_MS", 25)
 
 
 def wait_policy_timing_envelope_sync(started_at: float) -> None:

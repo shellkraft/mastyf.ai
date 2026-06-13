@@ -11,7 +11,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { fetchCost, trackAdvancedAnalyticsEvent, type CostResponse, type SecurityResponse } from '@/lib/guardian-api';
+import { fetchCost, trackAdvancedAnalyticsEvent, type CostResponse, type SecurityResponse } from '@/lib/mastyff-ai-api';
 import { CHART_AXIS, CHART_COLORS, CHART_GRID, CHART_TOOLTIP_STYLE, severityColor } from '@/lib/chartTheme';
 import { DashboardSection } from './DashboardSection';
 import { KpiCard } from './KpiCard';
@@ -179,7 +179,7 @@ export function SecurityPosturePanel({ security, refreshKey = 0, onOpenThreatDis
           columns={columns}
           rows={security.serverReports || []}
           rowKey={(r) => r.name}
-          exportFilename="guardian-security-posture.csv"
+          exportFilename="mastyff-ai-security-posture.csv"
         />
       </DashboardSection>
     </div>

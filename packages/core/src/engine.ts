@@ -57,7 +57,7 @@ function deduplicateIssues(issues: Issue[]): Issue[] {
 const DEFAULT_MAX_TOOLS_PER_SCAN = 200;
 
 function scanConcurrency(): number {
-  const n = parseInt(process.env["MCP_GUARDIAN_SCAN_CONCURRENCY"] || "32", 10);
+  const n = parseInt(process.env["MASTYFF_AI_SCAN_CONCURRENCY"] || "32", 10);
   return Number.isFinite(n) && n > 0 ? n : 32;
 }
 

@@ -1,7 +1,7 @@
 {
   "generatedAt": "2026-05-24T16:38:23.026Z",
   "windowDays": 7,
-  "dbPath": "/Users/rudraneeldas/.mcp-guardian/history.db",
+  "dbPath": "/Users/rudraneeldas/.mastyff-ai/history.db",
   "hasData": true,
   "totalCalls": 27800,
   "totalBlocked": 25214,

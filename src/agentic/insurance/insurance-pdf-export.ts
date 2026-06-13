@@ -7,12 +7,12 @@ import type { InsuranceRiskReport } from '../insurance/risk-quantifier.js';
 import { writePdfFromLines } from '../compliance/compliance-pdf-export.js';
 
 export function insuranceReportDir(): string {
-  return process.env.GUARDIAN_INSURANCE_REPORT_DIR || join(homedir(), '.mcp-guardian', 'insurance-reports');
+  return process.env.MASTYFF_AI_INSURANCE_REPORT_DIR || join(homedir(), '.mastyff-ai', 'insurance-reports');
 }
 
 export function writeInsuranceRiskPdf(report: InsuranceRiskReport): { path: string; pdfBase64: string } {
   const lines = [
-    'MCP Guardian — Cyber Insurance Risk Report',
+    'MCP Mastyff AI — Cyber Insurance Risk Report',
     `Server: ${report.serverName}`,
     `Generated: ${report.generatedAt}`,
     `Risk tier: ${report.riskTier.toUpperCase()}`,

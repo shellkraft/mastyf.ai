@@ -6,7 +6,7 @@ import { HistoryDatabase } from '../../src/database/history-db.js';
 import { startMcpSseEchoFixture } from '../fixtures/start-mcp-echo-fixture.js';
 
 describe('SseProxyServer', () => {
-  const prevDlp = process.env.GUARDIAN_RESPONSE_DLP_MODE;
+  const prevDlp = process.env.MASTYFF_AI_RESPONSE_DLP_MODE;
   let upstream: Awaited<ReturnType<typeof startMcpSseEchoFixture>> | null = null;
   let db: HistoryDatabase;
 
@@ -16,8 +16,8 @@ describe('SseProxyServer', () => {
   });
 
   afterEach(async () => {
-    if (prevDlp) process.env.GUARDIAN_RESPONSE_DLP_MODE = prevDlp;
-    else delete process.env.GUARDIAN_RESPONSE_DLP_MODE;
+    if (prevDlp) process.env.MASTYFF_AI_RESPONSE_DLP_MODE = prevDlp;
+    else delete process.env.MASTYFF_AI_RESPONSE_DLP_MODE;
     await upstream?.close();
     upstream = null;
     db.close();
@@ -88,7 +88,7 @@ describe('SseProxyServer', () => {
   });
 
   it('redacts PII echoed from upstream when DLP redact mode is on', async () => {
-    process.env.GUARDIAN_RESPONSE_DLP_MODE = 'redact';
+    process.env.MASTYFF_AI_RESPONSE_DLP_MODE = 'redact';
     upstream = await startMcpSseEchoFixture();
     const policy = new PolicyEngine({
       version: '1.0',

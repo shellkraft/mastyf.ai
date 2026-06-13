@@ -1,11 +1,12 @@
 /**
  * Shadow / dry-run policy evaluation on live traffic.
- * GUARDIAN_POLICY_SHADOW_PATH — YAML policy evaluated in parallel; logs only.
+ * MASTYFF_AI_POLICY_SHADOW_PATH — YAML policy evaluated in parallel; logs only.
  */
 import { readFileSync, existsSync } from 'fs';
 import { load } from 'js-yaml';
 import { PolicyEngine } from './policy-engine.js';
-import type { CallContext, PolicyConfig } from './policy-types.js';
+import type { CallContext } from './policy-types.js';
+import { parsePolicyConfig } from './policy-schema.js';
 import { StructuredLogger } from '../utils/structured-logger.js';
 import { Logger } from '../utils/logger.js';
 
@@ -17,14 +18,14 @@ export function resetShadowPolicyForTests(): void {
 
 function loadShadowEngine(): PolicyEngine | null {
   if (shadowEngine !== undefined) return shadowEngine;
-  const path = process.env['GUARDIAN_POLICY_SHADOW_PATH']?.trim();
+  const path = process.env['MASTYFF_AI_POLICY_SHADOW_PATH']?.trim();
   if (!path || !existsSync(path)) {
     shadowEngine = null;
     return null;
   }
   try {
     const raw = readFileSync(path, 'utf-8');
-    const config = load(raw) as PolicyConfig;
+    const config = parsePolicyConfig(load(raw));
     shadowEngine = new PolicyEngine(config);
     Logger.info(`[shadow-policy] Loaded shadow policy from ${path}`);
     return shadowEngine;

@@ -17,7 +17,7 @@ export async function requirePolicySimulationBeforeApply(opts: {
   tenantId?: string;
   skip?: boolean;
 }): Promise<PolicyApplyGateResult> {
-  if (opts.skip || process.env.GUARDIAN_POLICY_SIM_GATE === 'false') {
+  if (opts.skip || process.env.MASTYFF_AI_POLICY_SIM_GATE === 'false') {
     return { allowed: true };
   }
 
@@ -34,8 +34,8 @@ export async function requirePolicySimulationBeforeApply(opts: {
       report.counterfactual.sampleCount > 0
         ? report.counterfactual.newBlocks / report.counterfactual.sampleCount
         : 0;
-    const maxFp = parseFloat(process.env.GUARDIAN_POLICY_SIM_MAX_FP || '0.15');
-    const maxBlockDelta = parseFloat(process.env.GUARDIAN_POLICY_SIM_MAX_BLOCK_DELTA || '0.25');
+    const maxFp = parseFloat(process.env.MASTYFF_AI_POLICY_SIM_MAX_FP || '0.15');
+    const maxBlockDelta = parseFloat(process.env.MASTYFF_AI_POLICY_SIM_MAX_BLOCK_DELTA || '0.25');
 
     if (fpRate > maxFp) {
       return {
@@ -56,7 +56,7 @@ export async function requirePolicySimulationBeforeApply(opts: {
     return { allowed: true, simulationSummary: report.combinedSummary };
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
-    if (process.env.GUARDIAN_POLICY_SIM_FAIL_OPEN === 'true') {
+    if (process.env.MASTYFF_AI_POLICY_SIM_FAIL_OPEN === 'true') {
       Logger.warn(`[PolicyApplyGate] Simulation failed (fail-open): ${msg}`);
       return { allowed: true, reason: msg };
     }

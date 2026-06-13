@@ -1,5 +1,5 @@
 #!/usr/bin/env sh
-# Start MCP Guardian proxy with dashboard SPA + live metrics from MCP_GUARDIAN_DB_PATH.
+# Start MCP Mastyff AI proxy with dashboard SPA + live metrics from MASTYFF_AI_DB_PATH.
 set -e
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
@@ -11,7 +11,7 @@ elif [ ! -f dist/utils/dashboard-server.js ] \
   || [ src/utils/dashboard-server.ts -nt dist/utils/dashboard-server.js ] \
   || [ ! -f dist/ai/mcp-health-report.js ] \
   || [ src/ai/mcp-health-report.ts -nt dist/ai/mcp-health-report.js 2>/dev/null ] \
-  || [ src/ai/guardian-full-analysis.ts -nt dist/ai/guardian-full-analysis.js 2>/dev/null ]; then
+  || [ src/ai/mastyff-ai-full-analysis.ts -nt dist/ai/mastyff-ai-full-analysis.js 2>/dev/null ]; then
   echo "[dashboard-proxy] Rebuilding dist (dashboard API changed)…" >&2
   pnpm exec tsc --project tsconfig.json
 fi
@@ -40,20 +40,20 @@ if command -v lsof >/dev/null 2>&1; then
 fi
 
 # Proxy and dashboard read the same history DB — set explicitly when using a repo-local DB:
-#   MCP_GUARDIAN_DB_PATH="$PWD/reports/local-history.db" ./scripts/start-dashboard-proxy.sh
-export MCP_GUARDIAN_DB_PATH="${MCP_GUARDIAN_DB_PATH:-$HOME/.mcp-guardian/history.db}"
+#   MASTYFF_AI_DB_PATH="$PWD/reports/local-history.db" ./scripts/start-dashboard-proxy.sh
+export MASTYFF_AI_DB_PATH="${MASTYFF_AI_DB_PATH:-$HOME/.mastyff-ai/history.db}"
 export DASHBOARD_ENABLED=true
 export DASHBOARD_AUTH_DISABLED="${DASHBOARD_AUTH_DISABLED:-true}"
-export GUARDIAN_WS_ENABLED="${GUARDIAN_WS_ENABLED:-true}"
+export MASTYFF_AI_WS_ENABLED="${MASTYFF_AI_WS_ENABLED:-true}"
 export OLLAMA_BASE_URL="${OLLAMA_BASE_URL:-http://127.0.0.1:11434}"
 # Local dev: enable dashboard REST API without Pro license (see CHANGELOG / docs/PRO_SETUP.md)
-export GUARDIAN_CI_BYPASS_LICENSE="${GUARDIAN_CI_BYPASS_LICENSE:-true}"
-export GUARDIAN_LLM_ENABLED="${GUARDIAN_LLM_ENABLED:-true}"
-export GUARDIAN_CORPUS_REPLAY_POLICY_PATH="${GUARDIAN_CORPUS_REPLAY_POLICY_PATH:-default-policy.yaml}"
-export GUARDIAN_THREAT_RESEARCH_AUTO="${GUARDIAN_THREAT_RESEARCH_AUTO:-true}"
+export MASTYFF_AI_CI_BYPASS_LICENSE="${MASTYFF_AI_CI_BYPASS_LICENSE:-true}"
+export MASTYFF_AI_LLM_ENABLED="${MASTYFF_AI_LLM_ENABLED:-true}"
+export MASTYFF_AI_CORPUS_REPLAY_POLICY_PATH="${MASTYFF_AI_CORPUS_REPLAY_POLICY_PATH:-default-policy.yaml}"
+export MASTYFF_AI_THREAT_RESEARCH_AUTO="${MASTYFF_AI_THREAT_RESEARCH_AUTO:-true}"
 export SWARM_THREAT_RESEARCH_AUTO="${SWARM_THREAT_RESEARCH_AUTO:-true}"
-export GUARDIAN_THREAT_RESEARCH_REQUIRE_REPLAY="${GUARDIAN_THREAT_RESEARCH_REQUIRE_REPLAY:-false}"
-export MCP_GUARDIAN_HOME="${MCP_GUARDIAN_HOME:-$PWD/reports/home}"
+export MASTYFF_AI_THREAT_RESEARCH_REQUIRE_REPLAY="${MASTYFF_AI_THREAT_RESEARCH_REQUIRE_REPLAY:-false}"
+export MASTYFF_AI_HOME="${MASTYFF_AI_HOME:-$PWD/reports/home}"
 export METRICS_ENABLED="${METRICS_ENABLED:-true}"
 export DASHBOARD_PORT="${DASHBOARD_PORT:-4000}"
 export METRICS_PORT="${METRICS_PORT:-9090}"
@@ -67,9 +67,9 @@ const { readdirSync, readFileSync, existsSync } = require('fs');
 const { join } = require('path');
 const root = process.cwd();
 const candidates = [
-  join(root, 'guardian-configs', 'filesystem.json'),
+  join(root, 'mastyff-ai-configs', 'filesystem.json'),
   ...(() => {
-    const dir = join(root, 'guardian-configs');
+    const dir = join(root, 'mastyff-ai-configs');
     if (!existsSync(dir)) return [];
     return readdirSync(dir)
       .filter((f) => f.endsWith('.json'))
@@ -101,18 +101,18 @@ if [ -z "$CONFIG" ]; then
     :
   else
     echo "[dashboard-proxy] No single-server MCP config found." >&2
-    echo "  Pass a config path: pnpm dashboard:proxy -- guardian-configs/filesystem.json" >&2
+    echo "  Pass a config path: pnpm dashboard:proxy -- mastyff-ai-configs/filesystem.json" >&2
     echo "  Multi-server configs (e.g. scenarios/real-life/mcp-config.json) need one proxy per server — see docs/REAL_WORLD_INTEGRATION.md" >&2
     exit 1
   fi
 fi
 
-BLOCKING="${GUARDIAN_BLOCKING_MODE:-block}"
+BLOCKING="${MASTYFF_AI_BLOCKING_MODE:-block}"
 
-echo "[dashboard-proxy] DB: $MCP_GUARDIAN_DB_PATH" >&2
+echo "[dashboard-proxy] DB: $MASTYFF_AI_DB_PATH" >&2
 echo "[dashboard-proxy] Dashboard: http://localhost:${DASHBOARD_PORT}/" >&2
 echo "[dashboard-proxy] Config: $CONFIG  Policy: $POLICY  Mode: $BLOCKING" >&2
-echo "[dashboard-proxy] Corpus replay policy: $GUARDIAN_CORPUS_REPLAY_POLICY_PATH" >&2
+echo "[dashboard-proxy] Corpus replay policy: $MASTYFF_AI_CORPUS_REPLAY_POLICY_PATH" >&2
 
 if command -v curl >/dev/null 2>&1; then
   if ! curl -sf "${OLLAMA_BASE_URL}/api/tags" >/dev/null 2>&1; then

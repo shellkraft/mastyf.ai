@@ -132,7 +132,7 @@ export async function runSemanticScan(
   const temperature = options.temperature ?? llmConfig.temperature;
   const userPrompt = buildUserPrompt(tool, priorIssues);
   const cache = getLlmCache();
-  const policyMode = process.env.GUARDIAN_POLICY_MODE || "block";
+  const policyMode = process.env.MASTYFF_AI_POLICY_MODE || "block";
   const cacheKey = {
     model,
     prompt: userPrompt,
@@ -152,7 +152,7 @@ export async function runSemanticScan(
 
   const apiKey = options.apiKey ?? llmConfig.anthropicApiKey;
   const ollamaExplicit =
-    process.env.GUARDIAN_LLM_PROVIDER === "ollama"
+    process.env.MASTYFF_AI_LLM_PROVIDER === "ollama"
     || process.env.OLLAMA_ENABLED === "true";
   const useOllama = ollamaExplicit && llmConfig.provider === "ollama";
 
@@ -240,7 +240,7 @@ export async function runSemanticScan(
     recordCoreSemanticFailure(err);
     const ollamaFallbackEnabled =
       process.env.OLLAMA_ENABLED === "true"
-      || process.env.GUARDIAN_LLM_PROVIDER === "ollama";
+      || process.env.MASTYFF_AI_LLM_PROVIDER === "ollama";
     if (!useOllama && ollamaFallbackEnabled) {
       try {
         const rawText = await runSemanticViaOllama(userPrompt, model, timeoutMs, temperature);

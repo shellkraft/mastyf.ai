@@ -1,10 +1,10 @@
 {
   "mcpServers": {
     "official-filesystem": {
-      "command": "/Users/rudraneeldas/.nvm/versions/node/v23.11.0/bin/node",
+      "command": "/nix/store/l62aza10kx0xp1f235q2lbrzzqj5lcs9-nodejs-20.19.4/bin/node",
       "args": [
-        "/Users/rudraneeldas/Desktop/mcp-guardian/node_modules/@modelcontextprotocol/server-filesystem/dist/index.js",
-        "/var/folders/8k/zjxbk9cj4q369h37ybgy6r7c0000gn/T/mcp-guardian-real-life-RZroHm"
+        "/home/arjun/Desktop/mcp-guardian/node_modules/@modelcontextprotocol/server-filesystem/dist/index.js",
+        "/tmp/nix-shell-77242-0/mastyff-ai-real-life-mmrWv3"
       ],
       "env": {},
       "transport": "stdio"

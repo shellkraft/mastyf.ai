@@ -9,8 +9,8 @@ from typing import Any, Optional
 from .arg_walker import walk_string_leaves
 from .types import CallContext, PolicyDecision
 
-MAX_POLICY_ARGS_BYTES = int(os.environ.get("MCP_GUARDIAN_MAX_POLICY_ARGS_BYTES", "2097152"))
-MAX_JSON_DEPTH = int(os.environ.get("MCP_GUARDIAN_MAX_JSON_DEPTH", "32"))
+MAX_POLICY_ARGS_BYTES = int(os.environ.get("MASTYFF_AI_MAX_POLICY_ARGS_BYTES", "2097152"))
+MAX_JSON_DEPTH = int(os.environ.get("MASTYFF_AI_MAX_JSON_DEPTH", "32"))
 
 
 def _json_depth(value: Any, depth: int = 0) -> int:

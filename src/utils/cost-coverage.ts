@@ -16,7 +16,7 @@ export type CostCoverage = {
 };
 
 const COVERAGE_DISCLAIMER =
-  'Spend is estimated from proxied MCP tool calls only. Direct IDE traffic without Guardian is not tracked.';
+  'Spend is estimated from proxied MCP tool calls only. Direct IDE traffic without Mastyff AI is not tracked.';
 
 export function buildCostCoverage(records: ProxyCallRecord[]): CostCoverage {
   const sum = summarizeRecords(records);

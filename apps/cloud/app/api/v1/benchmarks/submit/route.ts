@@ -43,7 +43,7 @@ export async function POST(request: Request) {
         body.scorecard && typeof body.scorecard === 'object'
           ? (body.scorecard as Record<string, unknown>)
           : {},
-      guardianVersion: body.guardianVersion ? String(body.guardianVersion) : undefined,
+      mastyffAiVersion: body.mastyffAiVersion ? String(body.mastyffAiVersion) : undefined,
     });
     return NextResponse.json({ ok: true, id: result.id }, { status: 201 });
   } catch (err: unknown) {

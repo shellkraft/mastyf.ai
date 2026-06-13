@@ -22,14 +22,14 @@ export function isDemoThreatId(id: string): boolean {
 
 export function defaultPolicyPath(): string {
   return (
-    process.env.GUARDIAN_POLICY_PATH
-    || process.env.MCP_GUARDIAN_POLICY_PATH
+    process.env.MASTYFF_AI_POLICY_PATH
+    || process.env.MASTYFF_AI_POLICY_PATH
     || 'default-policy.yaml'
   );
 }
 
 export function parseCostBudgetUsd(): number | null {
-  const raw = process.env.GUARDIAN_COST_BUDGET_USD;
+  const raw = process.env.MASTYFF_AI_COST_BUDGET_USD;
   if (!raw) return null;
   const n = parseFloat(raw);
   return Number.isFinite(n) && n > 0 ? n : null;

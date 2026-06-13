@@ -1,5 +1,5 @@
 /**
- * Optional stdio worker pool for wrap mode (GUARDIAN_STDIO_POOL_SIZE, default 1 = disabled).
+ * Optional stdio worker pool for wrap mode (MASTYFF_AI_STDIO_POOL_SIZE, default 1 = disabled).
  */
 import { McpProxyServer } from './proxy-server.js';
 import type { IDatabase } from '../database/database-interface.js';
@@ -9,7 +9,7 @@ import type { TenantPolicyRegistry } from '../policy/tenant-policy-registry.js';
 import { Logger } from '../utils/logger.js';
 
 export function stdioPoolSize(): number {
-  const raw = process.env['GUARDIAN_STDIO_POOL_SIZE'] || '1';
+  const raw = process.env['MASTYFF_AI_STDIO_POOL_SIZE'] || '1';
   const n = parseInt(raw, 10);
   if (!Number.isFinite(n) || n < 1) return 1;
   return Math.min(n, 4);

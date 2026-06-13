@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { fetchComplianceReport } from '@/lib/guardian-api';
+import { fetchComplianceReport } from '@/lib/mastyff-ai-api';
 import { useDashboardWindow } from '../dashboard/DashboardWindowContext';
 
 export function LiveCompliancePanel() {

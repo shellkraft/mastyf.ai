@@ -56,7 +56,7 @@ export function buildLocalFederatedStats(
       labeledCount: thresholds.labeledCount,
       rationale: thresholds.rationale,
     },
-    optIn: process.env.GUARDIAN_FEDERATED_LEARNING === 'true',
+    optIn: process.env.MASTYFF_AI_FEDERATED_LEARNING === 'true',
   };
 }
 
@@ -88,13 +88,13 @@ export function mergeFederatedStats(stats: FederatedThreatStats[]): {
 }
 
 export async function collectFederatedThreatStats(): Promise<FederatedThreatStats | null> {
-  if (process.env.GUARDIAN_FEDERATED_LEARNING !== 'true') return null;
+  if (process.env.MASTYFF_AI_FEDERATED_LEARNING !== 'true') return null;
   const { loadSemanticAuditRecordsAsync } = await import('../ai/semantic-audit-store.js');
-  const { getGuardianRegion } = await import('./region.js');
+  const { getMastyffAiRegion } = await import('./region.js');
   const { resolveTenantId } = await import('../tenant/resolve-tenant.js');
   const records = await loadSemanticAuditRecordsAsync({
     sinceMs: 7 * 24 * 60 * 60 * 1000,
     limit: 1000,
   });
-  return buildLocalFederatedStats(resolveTenantId(), getGuardianRegion(), records);
+  return buildLocalFederatedStats(resolveTenantId(), getMastyffAiRegion(), records);
 }

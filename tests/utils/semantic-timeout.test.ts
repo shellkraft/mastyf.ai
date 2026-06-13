@@ -6,7 +6,7 @@ import {
 } from '../../src/utils/semantic-timeout.js';
 
 describe('semantic-timeout', () => {
-  const prev = process.env.GUARDIAN_SEMANTIC_TIMEOUT_MS;
+  const prev = process.env.MASTYFF_AI_SEMANTIC_TIMEOUT_MS;
 
   beforeEach(() => {
     vi.useFakeTimers();
@@ -14,32 +14,32 @@ describe('semantic-timeout', () => {
 
   afterEach(() => {
     vi.useRealTimers();
-    if (prev === undefined) delete process.env.GUARDIAN_SEMANTIC_TIMEOUT_MS;
-    else process.env.GUARDIAN_SEMANTIC_TIMEOUT_MS = prev;
+    if (prev === undefined) delete process.env.MASTYFF_AI_SEMANTIC_TIMEOUT_MS;
+    else process.env.MASTYFF_AI_SEMANTIC_TIMEOUT_MS = prev;
   });
 
   it('defaults to 500ms', () => {
-    delete process.env.GUARDIAN_SEMANTIC_TIMEOUT_MS;
+    delete process.env.MASTYFF_AI_SEMANTIC_TIMEOUT_MS;
     expect(getSemanticTimeoutMs()).toBe(500);
   });
 
   it('instant LLM timeout defaults to 500ms', () => {
-    delete process.env.GUARDIAN_AI_INSTANT_LLM_TIMEOUT_MS;
+    delete process.env.MASTYFF_AI_AI_INSTANT_LLM_TIMEOUT_MS;
     expect(getInstantLlmTimeoutMs()).toBe(500);
   });
 
-  it('respects GUARDIAN_AI_INSTANT_LLM_TIMEOUT_MS', () => {
-    process.env.GUARDIAN_AI_INSTANT_LLM_TIMEOUT_MS = '250';
+  it('respects MASTYFF_AI_AI_INSTANT_LLM_TIMEOUT_MS', () => {
+    process.env.MASTYFF_AI_AI_INSTANT_LLM_TIMEOUT_MS = '250';
     expect(getInstantLlmTimeoutMs()).toBe(250);
   });
 
-  it('respects GUARDIAN_SEMANTIC_TIMEOUT_MS', () => {
-    process.env.GUARDIAN_SEMANTIC_TIMEOUT_MS = '1200';
+  it('respects MASTYFF_AI_SEMANTIC_TIMEOUT_MS', () => {
+    process.env.MASTYFF_AI_SEMANTIC_TIMEOUT_MS = '1200';
     expect(getSemanticTimeoutMs()).toBe(1200);
   });
 
   it('returns fallback on slow operation', async () => {
-    process.env.GUARDIAN_SEMANTIC_TIMEOUT_MS = '100';
+    process.env.MASTYFF_AI_SEMANTIC_TIMEOUT_MS = '100';
     const promise = withSemanticTimeout(
       'test',
       () => new Promise<string>((resolve) => setTimeout(() => resolve('ok'), 500)),

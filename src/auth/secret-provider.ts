@@ -6,7 +6,7 @@
  * Swap in HashiCorpVaultProvider or AwsSecretsManagerProvider for production.
  *
  * Usage:
- *   const secrets = createSecretProvider();  // reads GUARDIAN_SECRET_PROVIDER env var
+ *   const secrets = createSecretProvider();  // reads MASTYFF_AI_SECRET_PROVIDER env var
  *   const oauthKey = await secrets.get('OAUTH_CLIENT_SECRET');
  */
 
@@ -126,11 +126,11 @@ export class AwsSecretsManagerProvider implements SecretProvider {
 }
 
 /**
- * Factory: creates the appropriate secret provider based on GUARDIAN_SECRET_PROVIDER env var.
+ * Factory: creates the appropriate secret provider based on MASTYFF_AI_SECRET_PROVIDER env var.
  * Accepted values: 'env' (default), 'hashicorp-vault', 'aws-secrets-manager'
  */
 export function createSecretProvider(): SecretProvider {
-  const providerType = process.env['GUARDIAN_SECRET_PROVIDER'] || 'env';
+  const providerType = process.env['MASTYFF_AI_SECRET_PROVIDER'] || 'env';
 
   switch (providerType) {
     case 'hashicorp-vault':
@@ -144,6 +144,6 @@ export function createSecretProvider(): SecretProvider {
 }
 
 export function isManagedSecretProviderConfigured(): boolean {
-  const providerType = process.env['GUARDIAN_SECRET_PROVIDER'] || 'env';
+  const providerType = process.env['MASTYFF_AI_SECRET_PROVIDER'] || 'env';
   return providerType !== 'env';
 }

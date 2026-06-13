@@ -18,8 +18,8 @@ const DEFAULT_POLICY = path.resolve(PROJECT_ROOT, 'default-policy.yaml');
 const ECHO_SERVER = path.resolve(PROJECT_ROOT, 'benchmarks', 'fixtures', 'echo-server.cjs');
 const TEST_CONFIG_PATH = path.resolve(__dirname, 'adversarial-test-config.json');
 const E2E_DB_PATH =
-  process.env.MCP_GUARDIAN_DB_PATH ||
-  join(mkdtempSync(join(tmpdir(), 'mcp-guardian-adv-e2e-')), 'history.db');
+  process.env.MASTYFF_AI_DB_PATH ||
+  join(mkdtempSync(join(tmpdir(), 'mastyff-ai-adv-e2e-')), 'history.db');
 
 /** Ten corpus-derived attacks — must block at proxy (JSON-RPC error -32001). */
 const CORPUS_ATTACKS: { id: string; toolName: string; arguments: Record<string, unknown> }[] = [
@@ -96,12 +96,12 @@ describe('E2E: Adversarial corpus via proxy', () => {
           stdio: ['pipe', 'pipe', 'pipe'],
           env: {
             ...process.env,
-            MCP_GUARDIAN_DB_PATH: E2E_DB_PATH,
+            MASTYFF_AI_DB_PATH: E2E_DB_PATH,
             DASHBOARD_ENABLED: 'false',
-            GUARDIAN_WS_ENABLED: 'false',
-            GUARDIAN_SKIP_PREFLIGHT_SCAN: 'true',
+            MASTYFF_AI_WS_ENABLED: 'false',
+            MASTYFF_AI_SKIP_PREFLIGHT_SCAN: 'true',
             METRICS_ENABLED: 'false',
-            GUARDIAN_ALLOW_MODE_OVERRIDE: 'true',
+            MASTYFF_AI_ALLOW_MODE_OVERRIDE: 'true',
           },
         },
       );
@@ -119,7 +119,7 @@ describe('E2E: Adversarial corpus via proxy', () => {
       });
 
       const checkReady = setInterval(() => {
-        if (stderr.includes('Proxy started for') || stderr.includes('MCP Guardian proxy running')) {
+        if (stderr.includes('Proxy started for') || stderr.includes('MCP Mastyff AI proxy running')) {
           clearInterval(checkReady);
           _resolve();
         }

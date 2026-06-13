@@ -10,8 +10,8 @@ const SECRET_PATTERNS: RegExp[] = [
   /-----BEGIN [A-Z ]+-----[\s\S]+?-----END [A-Z ]+-----/g,
 ];
 
-const MAX_STRING_LEN = parseInt(process.env.GUARDIAN_AUDIT_ARGS_MAX_STRING || '512', 10);
-const MAX_KEYS = parseInt(process.env.GUARDIAN_AUDIT_ARGS_MAX_KEYS || '32', 10);
+const MAX_STRING_LEN = parseInt(process.env.MASTYFF_AI_AUDIT_ARGS_MAX_STRING || '512', 10);
+const MAX_KEYS = parseInt(process.env.MASTYFF_AI_AUDIT_ARGS_MAX_KEYS || '32', 10);
 
 function redactString(value: string): string {
   let out = value.length > MAX_STRING_LEN ? `${value.slice(0, MAX_STRING_LEN)}…` : value;

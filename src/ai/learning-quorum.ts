@@ -26,11 +26,11 @@ export interface QuorumConfig {
 }
 
 export function getQuorumConfig(): QuorumConfig {
-  const minDistinct = parseInt(process.env.GUARDIAN_AI_MIN_DISTINCT_LABELERS || '2', 10);
-  const minTotal = parseInt(process.env.GUARDIAN_AI_MIN_TOTAL_LABELS || '10', 10);
-  const defaultWeight = parseFloat(process.env.GUARDIAN_AI_LABEL_WEIGHT || '1');
+  const minDistinct = parseInt(process.env.MASTYFF_AI_AI_MIN_DISTINCT_LABELERS || '2', 10);
+  const minTotal = parseInt(process.env.MASTYFF_AI_AI_MIN_TOTAL_LABELS || '10', 10);
+  const defaultWeight = parseFloat(process.env.MASTYFF_AI_AI_LABEL_WEIGHT || '1');
   const adminUsers = new Set(
-    (process.env.GUARDIAN_AI_ADMIN_USERS || '')
+    (process.env.MASTYFF_AI_AI_ADMIN_USERS || '')
       .split(',')
       .map((s) => s.trim())
       .filter(Boolean),
@@ -51,7 +51,7 @@ export function learningFingerprint(ruleName: string, pattern?: string): string 
 }
 
 export function resolveLabelUserId(userId?: string): string {
-  return userId?.trim() || process.env.GUARDIAN_TUI_USER || process.env.USER || 'anonymous';
+  return userId?.trim() || process.env.MASTYFF_AI_TUI_USER || process.env.USER || 'anonymous';
 }
 
 /** Rapid same-user bursts (max 3/hour per fingerprint) count as one effective label. */

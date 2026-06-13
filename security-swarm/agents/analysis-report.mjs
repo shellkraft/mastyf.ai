@@ -162,7 +162,7 @@ function sectionLearning(live, cal) {
     lines.push(`    TP: ${cal.totals?.truePositive ?? 0}  FP: ${cal.totals?.falsePositive ?? 0}`);
     lines.push(`    recommended profile: ${cal.profile ?? '?'}`);
     lines.push(
-      `    GUARDIAN_SEMANTIC_MIN_CONFIDENCE: ${cal.thresholds?.current?.GUARDIAN_SEMANTIC_MIN_CONFIDENCE ?? '?'} → ${cal.thresholds?.recommended?.GUARDIAN_SEMANTIC_MIN_CONFIDENCE ?? '?'}`,
+      `    MASTYFF_AI_SEMANTIC_MIN_CONFIDENCE: ${cal.thresholds?.current?.MASTYFF_AI_SEMANTIC_MIN_CONFIDENCE ?? '?'} → ${cal.thresholds?.recommended?.MASTYFF_AI_SEMANTIC_MIN_CONFIDENCE ?? '?'}`,
     );
   } else {
     lines.push('  Semantic calibration: (no calibration.json — run pnpm security-swarm:calibrate)');
@@ -344,7 +344,7 @@ export function buildDetailedAnalysisTxt(meta = {}) {
   const hr = '='.repeat(72);
   const lines = [];
   lines.push(hr);
-  lines.push('MCP GUARDIAN — SECURITY SWARM DETAILED ANALYSIS');
+  lines.push('MASTYFF AI — SECURITY SWARM DETAILED ANALYSIS');
   lines.push(hr);
   lines.push('');
   lines.push(`Generated:     ${new Date().toISOString()}`);

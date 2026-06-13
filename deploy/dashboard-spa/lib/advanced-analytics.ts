@@ -5,7 +5,7 @@ import type {
   SecurityResponse,
   SemanticOutcome,
   ThreatDiscoveryStatus,
-} from './guardian-api';
+} from './mastyff-ai-api';
 
 type ConfidenceBand = 'high' | 'medium' | 'low';
 

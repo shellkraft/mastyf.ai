@@ -49,8 +49,8 @@ describe('OAuthValidator.extractAuthFromMcpMessage', () => {
     expect(OAuthValidator.extractToken(header)).toBe('init-token');
   });
 
-  it('falls back to MCP_GUARDIAN_BEARER_TOKEN env', () => {
-    process.env.MCP_GUARDIAN_BEARER_TOKEN = 'env-secret';
+  it('falls back to MASTYFF_AI_BEARER_TOKEN env', () => {
+    process.env.MASTYFF_AI_BEARER_TOKEN = 'env-secret';
     const header = OAuthValidator.extractAuthFromMcpMessage({
       jsonrpc: '2.0',
       method: 'tools/call',

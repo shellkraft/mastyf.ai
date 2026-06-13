@@ -35,7 +35,7 @@ interface SseProxyOptions {
   db: import('../database/database-interface.js').IDatabase;
   authHeader?: string;
   mtlsConfig?: MtlsConfig;
-  /** Local listen port (0 = ephemeral). Set via GUARDIAN_SSE_PROXY_PORT or config. */
+  /** Local listen port (0 = ephemeral). Set via MASTYFF_AI_SSE_PROXY_PORT or config. */
   listenPort?: number;
 }
 
@@ -81,7 +81,7 @@ export class SseProxyServer extends EventEmitter {
     const port =
       listenPort ??
       this.opts.listenPort ??
-      (parseInt(process.env['GUARDIAN_SSE_PROXY_PORT'] || '0', 10) || 0);
+      (parseInt(process.env['MASTYFF_AI_SSE_PROXY_PORT'] || '0', 10) || 0);
 
     this.httpServer = createServer((req, res) => {
       void this.handleHttpRequest(req, res);
@@ -359,7 +359,7 @@ export class SseProxyServer extends EventEmitter {
           id: jsonRpcRequest.id,
           error: {
             code: -32005,
-            message: `MCP Guardian: proxy overloaded (${inflight.current}/${inflight.max} in flight)`,
+            message: `Mastyff AI: proxy overloaded (${inflight.current}/${inflight.max} in flight)`,
           },
         };
       }
@@ -371,7 +371,7 @@ export class SseProxyServer extends EventEmitter {
           error: {
             code: -32001,
             message:
-              'Blocked by MCP Guardian policy: tool definitions changed mid-session (rug-pull)',
+              'Blocked by MCP Mastyff AI policy: tool definitions changed mid-session (rug-pull)',
           },
         };
       }
@@ -438,7 +438,7 @@ export class SseProxyServer extends EventEmitter {
           id: jsonRpcRequest.id,
           error: {
             code: -32001,
-            message: `Blocked by MCP Guardian policy: ${decision.reason}`,
+            message: `Blocked by MCP Mastyff AI policy: ${decision.reason}`,
           },
         };
       }
@@ -451,7 +451,7 @@ export class SseProxyServer extends EventEmitter {
           id: jsonRpcRequest.id,
           error: {
             code: -32001,
-            message: `Blocked by MCP Guardian semantic gate: ${semGate.reason}`,
+            message: `Blocked by MCP Mastyff AI semantic gate: ${semGate.reason}`,
           },
         };
       }

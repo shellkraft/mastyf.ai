@@ -260,11 +260,11 @@ describe("scanTool — semantic layer (no API key)", () => {
   beforeEach(() => {
     envBackup.ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
     envBackup.OPENAI_API_KEY = process.env.OPENAI_API_KEY;
-    envBackup.GUARDIAN_LLM_PROVIDER = process.env.GUARDIAN_LLM_PROVIDER;
+    envBackup.MASTYFF_AI_LLM_PROVIDER = process.env.MASTYFF_AI_LLM_PROVIDER;
     envBackup.OLLAMA_ENABLED = process.env.OLLAMA_ENABLED;
     delete process.env.ANTHROPIC_API_KEY;
     delete process.env.OPENAI_API_KEY;
-    process.env.GUARDIAN_LLM_PROVIDER = "anthropic";
+    process.env.MASTYFF_AI_LLM_PROVIDER = "anthropic";
     delete process.env.OLLAMA_ENABLED;
     resetLlmConfigForTests();
   });
@@ -274,8 +274,8 @@ describe("scanTool — semantic layer (no API key)", () => {
     else delete process.env.ANTHROPIC_API_KEY;
     if (envBackup.OPENAI_API_KEY !== undefined) process.env.OPENAI_API_KEY = envBackup.OPENAI_API_KEY;
     else delete process.env.OPENAI_API_KEY;
-    if (envBackup.GUARDIAN_LLM_PROVIDER !== undefined) process.env.GUARDIAN_LLM_PROVIDER = envBackup.GUARDIAN_LLM_PROVIDER;
-    else delete process.env.GUARDIAN_LLM_PROVIDER;
+    if (envBackup.MASTYFF_AI_LLM_PROVIDER !== undefined) process.env.MASTYFF_AI_LLM_PROVIDER = envBackup.MASTYFF_AI_LLM_PROVIDER;
+    else delete process.env.MASTYFF_AI_LLM_PROVIDER;
     if (envBackup.OLLAMA_ENABLED !== undefined) process.env.OLLAMA_ENABLED = envBackup.OLLAMA_ENABLED;
     else delete process.env.OLLAMA_ENABLED;
     resetLlmConfigForTests();

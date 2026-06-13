@@ -10,7 +10,7 @@ Golden reference for STRIDE/LINDDUN threat model output.
 
 ### Nodes
 - **client** (client): AI Agent / Client
-- **proxy** (proxy): MCP Guardian Proxy
+- **proxy** (proxy): MCP Mastyff AI Proxy
 
 ### Edges
 - client → proxy: JSON-RPC
@@ -24,4 +24,4 @@ Golden reference for STRIDE/LINDDUN threat model output.
 
 **Mitigations**
 - Enforce default-deny policy with explicit tool allowlists
-- CC6.7 — MCP Guardian audit trail captures tool-call decisions
+- CC6.7 — MCP Mastyff AI audit trail captures tool-call decisions

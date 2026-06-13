@@ -27,7 +27,7 @@ describe('federated-threat-radar', () => {
     const stats = buildLocalFederatedStats('default', 'us-east-1', records);
     expect(stats.attackClassCounts['prompt-injection']).toBe(1);
     expect(stats.ruleEfficacy[0].rule).toBe('path-guard');
-    expect(stats.optIn).toBe(process.env.GUARDIAN_FEDERATED_LEARNING === 'true');
+    expect(stats.optIn).toBe(process.env.MASTYFF_AI_FEDERATED_LEARNING === 'true');
   });
 
   it('merges stats across instances', () => {

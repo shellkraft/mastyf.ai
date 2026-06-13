@@ -76,7 +76,7 @@ function loadMtxHashPatterns(): RegExp[] {
 }
 
 function getPatterns(): RegExp[] {
-  if (process.env.GUARDIAN_DISABLE_THREAT_INTEL_GUARD === 'true') return [];
+  if (process.env.MASTYFF_AI_DISABLE_THREAT_INTEL_GUARD === 'true') return [];
   const now = Date.now();
   if (cachedPatterns && now - cachedAt < CACHE_TTL_MS) return cachedPatterns;
   cachedPatterns = [...loadBaselinePatterns(), ...loadDynamicPatterns(), ...loadMtxHashPatterns()];

@@ -5,21 +5,21 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
 import { join } from 'path';
 import { homedir } from 'os';
 import { createDatabase } from '../database/create-database.js';
-import { resolveGuardianDbPath } from './guardian-db-path.js';
+import { resolveMastyffAiDbPath } from './mastyff-ai-db-path.js';
 import { getOnboardingStatus, type OnboardingStatus } from './server-registry.js';
 import { REPO_ROOT } from './swarm-artifacts.js';
 
-const SETUP_DIR = join(homedir(), '.mcp-guardian');
+const SETUP_DIR = join(homedir(), '.mastyff-ai');
 const SETUP_FILE = join(SETUP_DIR, 'setup.json');
 
-export type GuardianSetupConfig = {
+export type MastyffAiSetupConfig = {
   upstreamUrl?: string;
   listenPort?: number;
   authToken?: string;
   updatedAt?: string;
 };
 
-export type SetupGuardianConfigView = {
+export type SetupMastyffAiConfigView = {
   upstreamUrl: string;
   listenPort: number;
   authTokenPreview: string | null;
@@ -53,23 +53,23 @@ export type SetupStatusPayload = {
   available: boolean;
   completedCount: number;
   totalSteps: number;
-  guardianConfig: SetupGuardianConfigView;
+  mastyffAiConfig: SetupMastyffAiConfigView;
   database: SetupDatabaseHealth;
   proxyTraffic: SetupProxyTraffic;
   cloud: SetupCloudView;
   onboarding: OnboardingStatus;
 };
 
-function readSetupFile(): GuardianSetupConfig {
+function readSetupFile(): MastyffAiSetupConfig {
   if (!existsSync(SETUP_FILE)) return {};
   try {
-    return JSON.parse(readFileSync(SETUP_FILE, 'utf-8')) as GuardianSetupConfig;
+    return JSON.parse(readFileSync(SETUP_FILE, 'utf-8')) as MastyffAiSetupConfig;
   } catch {
     return {};
   }
 }
 
-export function writeSetupFile(patch: GuardianSetupConfig): GuardianSetupConfig {
+export function writeSetupFile(patch: MastyffAiSetupConfig): MastyffAiSetupConfig {
   mkdirSync(SETUP_DIR, { recursive: true });
   const cur = readSetupFile();
   const next = { ...cur, ...patch, updatedAt: new Date().toISOString() };
@@ -85,7 +85,7 @@ function maskToken(token: string | undefined): string | null {
 }
 
 export async function probeDatabaseHealth(): Promise<SetupDatabaseHealth> {
-  const dbPath = resolveGuardianDbPath();
+  const dbPath = resolveMastyffAiDbPath();
   const start = Date.now();
   try {
     const db = await createDatabase(dbPath);
@@ -113,22 +113,22 @@ export async function probeDatabaseHealth(): Promise<SetupDatabaseHealth> {
 
 function defaultControlPlaneUrl(): string {
   return (
-    process.env.GUARDIAN_CONTROL_PLANE_URL?.trim()
-    || process.env.GUARDIAN_CLOUD_URL?.trim()
-    || 'https://mcp-guardian-cloud.vercel.app'
+    process.env.MASTYFF_AI_CONTROL_PLANE_URL?.trim()
+    || process.env.MASTYFF_AI_CLOUD_URL?.trim()
+    || 'https://mastyff-ai-cloud.vercel.app'
   );
 }
 
 export function readCloudSetup(): SetupCloudView {
   const file = readSetupFile();
-  const envUrl = process.env.GUARDIAN_CONTROL_PLANE_URL?.trim();
-  const connected = !!(envUrl || file.upstreamUrl?.includes('vercel') || process.env.GUARDIAN_CLOUD_API_KEY?.trim());
+  const envUrl = process.env.MASTYFF_AI_CONTROL_PLANE_URL?.trim();
+  const connected = !!(envUrl || file.upstreamUrl?.includes('vercel') || process.env.MASTYFF_AI_CLOUD_API_KEY?.trim());
   return {
     connected,
     controlPlaneUrl: file.upstreamUrl || envUrl || defaultControlPlaneUrl(),
-    ssoEnabled: file.authToken != null || process.env.GUARDIAN_CLOUD_API_KEY != null,
-    policyStrictnessPct: Number(process.env.GUARDIAN_POLICY_STRICTNESS_PCT || '85'),
-    apiKeyRotationEnabled: process.env.GUARDIAN_CLOUD_API_KEY_ROTATION === 'true',
+    ssoEnabled: file.authToken != null || process.env.MASTYFF_AI_CLOUD_API_KEY != null,
+    policyStrictnessPct: Number(process.env.MASTYFF_AI_POLICY_STRICTNESS_PCT || '85'),
+    apiKeyRotationEnabled: process.env.MASTYFF_AI_CLOUD_API_KEY_ROTATION === 'true',
   };
 }
 
@@ -137,14 +137,14 @@ export async function buildSetupStatus(projectRoot = REPO_ROOT): Promise<SetupSt
   const file = readSetupFile();
   const dbHealth = await probeDatabaseHealth();
   const hasTraffic = onboarding.hasTraffic || onboarding.totalCalls > 0;
-  const guardianDone = !!(file.upstreamUrl && file.listenPort) || onboarding.configCount > 0;
+  const mastyffAiDone = !!(file.upstreamUrl && file.listenPort) || onboarding.configCount > 0;
 
-  const guardianConfig: SetupGuardianConfigView = {
+  const mastyffAiConfig: SetupMastyffAiConfigView = {
     upstreamUrl: file.upstreamUrl || 'https://api.internal.acme.co',
     listenPort: file.listenPort ?? 8443,
-    authTokenPreview: maskToken(file.authToken || process.env.GUARDIAN_CLOUD_API_KEY),
-    configured: guardianDone,
-    done: guardianDone,
+    authTokenPreview: maskToken(file.authToken || process.env.MASTYFF_AI_CLOUD_API_KEY),
+    configured: mastyffAiDone,
+    done: mastyffAiDone,
   };
 
   const database: SetupDatabaseHealth = {
@@ -165,14 +165,14 @@ export async function buildSetupStatus(projectRoot = REPO_ROOT): Promise<SetupSt
 
   const cloud = readCloudSetup();
 
-  const steps = [guardianConfig.done, database.done, proxyTraffic.done];
+  const steps = [mastyffAiConfig.done, database.done, proxyTraffic.done];
   const completedCount = steps.filter(Boolean).length;
 
   return {
     available: true,
     completedCount,
     totalSteps: 3,
-    guardianConfig,
+    mastyffAiConfig,
     database,
     proxyTraffic,
     cloud,
@@ -192,10 +192,10 @@ export function connectCloudSetup(body: {
     listenPort: 8443,
   });
   if (body.policyStrictnessPct != null) {
-    process.env.GUARDIAN_POLICY_STRICTNESS_PCT = String(body.policyStrictnessPct);
+    process.env.MASTYFF_AI_POLICY_STRICTNESS_PCT = String(body.policyStrictnessPct);
   }
   if (body.apiKeyRotationEnabled) {
-    process.env.GUARDIAN_CLOUD_API_KEY_ROTATION = 'true';
+    process.env.MASTYFF_AI_CLOUD_API_KEY_ROTATION = 'true';
   }
   const launchUrl = `${url.replace(/\/$/, '')}/dashboard`;
   return { ok: true, launchUrl };

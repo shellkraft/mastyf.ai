@@ -11,7 +11,7 @@ import {
   type QuarantinePolicyDetail,
   type QuarantineRecord,
   type SecurityMonitorQuarantineRecord,
-} from '@/lib/guardian-api';
+} from '@/lib/mastyff-ai-api';
 import { hasPermission } from '@/lib/dashboard-roles';
 import { DataTablePro, type Column } from '../dashboard/DataTablePro';
 import { QuarantinePolicyDrawer } from './QuarantinePolicyDrawer';

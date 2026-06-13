@@ -24,12 +24,12 @@ describe('semantic-layer', () => {
   it('isSemanticLlmConfigured is false without API keys', () => {
     delete process.env.ANTHROPIC_API_KEY;
     delete process.env.OPENAI_API_KEY;
-    process.env.GUARDIAN_LLM_PROVIDER = 'anthropic';
+    process.env.MASTYFF_AI_LLM_PROVIDER = 'anthropic';
     expect(isSemanticLlmConfigured()).toBe(false);
   });
 
-  it('isSemanticStrictMode respects GUARDIAN_SEMANTIC_STRICT', () => {
-    process.env.GUARDIAN_SEMANTIC_STRICT = 'true';
+  it('isSemanticStrictMode respects MASTYFF_AI_SEMANTIC_STRICT', () => {
+    process.env.MASTYFF_AI_SEMANTIC_STRICT = 'true';
     expect(isSemanticStrictMode()).toBe(true);
   });
 

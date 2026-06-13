@@ -33,7 +33,7 @@ const MIN_SAMPLES_DEFAULT = 50;
 const ANOMALY_THRESHOLD = 0.72;
 
 function minSamplesRequired(): number {
-  const parsed = parseInt(process.env.GUARDIAN_BIOMETRICS_MIN_SAMPLES ?? '', 10);
+  const parsed = parseInt(process.env.MASTYFF_AI_BIOMETRICS_MIN_SAMPLES ?? '', 10);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : MIN_SAMPLES_DEFAULT;
 }
 

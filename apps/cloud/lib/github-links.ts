@@ -1,5 +1,5 @@
-/** Public MCP Guardian repository — free tier destination after sign-in. */
-export const GITHUB_REPO_URL = 'https://github.com/rudraneel93/mcp-guardian';
+/** Public MCP Mastyff AI repository — free tier destination after sign-in. */
+export const GITHUB_REPO_URL = 'https://github.com/mastyff-ai/mastyff-ai';
 
 export const GITHUB_README_URL = `${GITHUB_REPO_URL}/blob/master/README.md`;
 

@@ -124,8 +124,9 @@ export class ProxyManager {
         }
         stdioStarted++;
         Logger.info(`[proxy] stdio active for "${config.name}" → ${config.command}`);
-      } catch (err: any) {
-        Logger.error(`[proxy] FAILED stdio for "${config.name}": ${err?.message}`);
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : String(err);
+        Logger.error(`[proxy] FAILED stdio for "${config.name}": ${message}`);
       }
     }
 
@@ -146,7 +147,7 @@ export class ProxyManager {
           policy: this.policyEngine,
           db: this.db,
           authHeader,
-          listenPort: parseInt(config.env?.['GUARDIAN_SSE_PROXY_PORT'] || '0', 10) || 0,
+          listenPort: parseInt(config.env?.['MASTYFF_AI_SSE_PROXY_PORT'] || '0', 10) || 0,
         });
         sseProxy.on('blocked', ({ reason }) => {
           Logger.warn(`[proxy][${config.name}] BLOCKED: ${reason}`);
@@ -163,8 +164,9 @@ export class ProxyManager {
           message: `Point MCP client at http://127.0.0.1:${listenPort}/sse (GET) + /message (POST)`,
         });
         Logger.info(`[proxy] SSE active for "${config.name}" → ${url} (local :${listenPort})`);
-      } catch (err: any) {
-        Logger.error(`[proxy] FAILED SSE for "${config.name}": ${err?.message}`);
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : String(err);
+        Logger.error(`[proxy] FAILED SSE for "${config.name}": ${message}`);
       }
     }
 
@@ -176,7 +178,7 @@ export class ProxyManager {
           continue;
         }
         const listenPort = parseInt(
-          config.env?.['GUARDIAN_WS_PROXY_PORT'] || config.env?.['GUARDIAN_SSE_PROXY_PORT'] || '0',
+          config.env?.['MASTYFF_AI_WS_PROXY_PORT'] || config.env?.['MASTYFF_AI_SSE_PROXY_PORT'] || '0',
           10,
         ) || 0;
         const wsProxy = new WebSocketProxyServer({
@@ -193,8 +195,9 @@ export class ProxyManager {
         Logger.info(
           `[proxy] WebSocket active for "${config.name}" → ${url} (local ws://127.0.0.1:${boundPort})`,
         );
-      } catch (err: any) {
-        Logger.error(`[proxy] FAILED WebSocket for "${config.name}": ${err?.message}`);
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : String(err);
+        Logger.error(`[proxy] FAILED WebSocket for "${config.name}": ${message}`);
       }
     }
 
@@ -216,7 +219,7 @@ export class ProxyManager {
 
     Logger.info(
       `╔══════════════════════════════════════════╗\n` +
-      `║  MCP Guardian Proxy — Protection Active  ║\n` +
+      `║  MCP Mastyff AI Proxy — Protection Active  ║\n` +
       `╠══════════════════════════════════════════╣\n` +
       `║  Stdio: ${String(stdioStarted).padStart(4)} servers              ║\n` +
       `║  SSE:   ${String(sseStarted).padStart(4)} servers              ║\n` +

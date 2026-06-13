@@ -29,7 +29,7 @@ const CLI = resolve(ROOT, 'dist/cli.js');
 const OUT_DIR = resolve(__dirname, 'output');
 const SESSION_OUT = resolve(OUT_DIR, 'live-filesystem-session.json');
 
-const MCP_FS_ROOT = process.env.MCP_FS_ROOT || mkdtempSync(join(tmpdir(), 'mcp-guardian-real-life-'));
+const MCP_FS_ROOT = process.env.MCP_FS_ROOT || mkdtempSync(join(tmpdir(), 'mastyff-ai-real-life-'));
 const BURST_REPEATS = parseInt(process.env.REAL_LIFE_BURST_REPEATS || '6', 10);
 const SKIP_BURST = process.argv.includes('--skip-burst');
 
@@ -192,7 +192,7 @@ function pickFreeTcpPort() {
 
 /** Proxy accepts MCP on stdin only after cli.ts prints this (after AI/dashboard init). */
 const PROXY_READY_MARKERS = [
-  'MCP Guardian proxy running',
+  'MCP Mastyff AI proxy running',
 ];
 
 function isProxyReady(stderr) {
@@ -237,7 +237,7 @@ async function mcpHandshake(proc, responses) {
     rpc('init', 'initialize', {
       protocolVersion: '2024-11-05',
       capabilities: {},
-      clientInfo: { name: 'mcp-guardian-real-life', version: '1.0.0' },
+      clientInfo: { name: 'mastyff-ai-real-life', version: '1.0.0' },
     }),
   );
   const initResp = await waitForResponse(responses, 'init', 15000);
@@ -365,7 +365,7 @@ export async function runOneCall(proc, responses, scenario, id) {
 }
 
 export function loadLearningSnapshot() {
-  const base = join(homedir(), '.mcp-guardian');
+  const base = join(homedir(), '.mastyff-ai');
   const paths = {
     attackState: join(base, '.attack-learning-state.json'),
     pendingSuggestions: join(base, '.ai-pending-suggestions.json'),
@@ -398,46 +398,46 @@ export function buildHybridEnv(metricsPort, liveDbPath, liveHomeDir) {
     // Keep live scenario deterministic: disable agentic adaptive gates
     // (zero-trust/certification lifecycle side-effects) so expected benign
     // calls pass while static policy protections are still exercised.
-    GUARDIAN_AGENTIC_ENABLED: 'false',
+    MASTYFF_AI_AGENTIC_ENABLED: 'false',
     DASHBOARD_ENABLED: 'false',
-    GUARDIAN_WS_ENABLED: 'false',
+    MASTYFF_AI_WS_ENABLED: 'false',
     METRICS_ENABLED: metricsEnabled ? 'true' : 'false',
     METRICS_PORT: metricsPort,
-    MCP_GUARDIAN_DB_PATH: liveDbPath,
-    MCP_GUARDIAN_HOME: liveHomeDir,
-    GUARDIAN_AUDIT_SYNC_ENABLED: 'false',
-    GUARDIAN_POLICY_SYNC_ENABLED: 'false',
-    GUARDIAN_ALLOW_MODE_OVERRIDE: 'true',
-    GUARDIAN_AI_ENABLED: process.env.GUARDIAN_AI_ENABLED ?? 'true',
-    GUARDIAN_AI_INSTANT_LEARNING: process.env.GUARDIAN_AI_INSTANT_LEARNING ?? 'true',
-    GUARDIAN_SEMANTIC_ASYNC: process.env.GUARDIAN_SEMANTIC_ASYNC ?? 'true',
-    GUARDIAN_DISABLE_SEMANTIC: 'false',
-    GUARDIAN_POLICY_TIMING_ENVELOPE: 'false',
-    GUARDIAN_SEMANTIC_STORE_CALIBRATION:
-      process.env.GUARDIAN_SEMANTIC_STORE_CALIBRATION
+    MASTYFF_AI_DB_PATH: liveDbPath,
+    MASTYFF_AI_HOME: liveHomeDir,
+    MASTYFF_AI_AUDIT_SYNC_ENABLED: 'false',
+    MASTYFF_AI_POLICY_SYNC_ENABLED: 'false',
+    MASTYFF_AI_ALLOW_MODE_OVERRIDE: 'true',
+    MASTYFF_AI_AI_ENABLED: process.env.MASTYFF_AI_AI_ENABLED ?? 'true',
+    MASTYFF_AI_AI_INSTANT_LEARNING: process.env.MASTYFF_AI_AI_INSTANT_LEARNING ?? 'true',
+    MASTYFF_AI_SEMANTIC_ASYNC: process.env.MASTYFF_AI_SEMANTIC_ASYNC ?? 'true',
+    MASTYFF_AI_DISABLE_SEMANTIC: 'false',
+    MASTYFF_AI_POLICY_TIMING_ENVELOPE: 'false',
+    MASTYFF_AI_SEMANTIC_STORE_CALIBRATION:
+      process.env.MASTYFF_AI_SEMANTIC_STORE_CALIBRATION
       ?? (process.env.SWARM_CALIBRATE_CAPTURE !== 'false' ? 'true' : 'false'),
   };
 }
 
-/** Resolve DB/home for live proxy — shared dashboard DB when MCP_GUARDIAN_DB_PATH is set. */
+/** Resolve DB/home for live proxy — shared dashboard DB when MASTYFF_AI_DB_PATH is set. */
 export function resolveLiveProxyPaths() {
-  const sharedDb = process.env.MCP_GUARDIAN_DB_PATH?.trim();
+  const sharedDb = process.env.MASTYFF_AI_DB_PATH?.trim();
   if (sharedDb) {
     const liveDbPath = resolve(sharedDb);
     const liveHomeDir =
-      process.env.MCP_GUARDIAN_HOME?.trim()
+      process.env.MASTYFF_AI_HOME?.trim()
       || join(dirname(liveDbPath), 'home');
     mkdirSync(liveHomeDir, { recursive: true });
     return { liveDbPath, liveHomeDir, shared: true };
   }
-  const liveDbDir = mkdtempSync(join(tmpdir(), 'guardian-live-proxy-'));
+  const liveDbDir = mkdtempSync(join(tmpdir(), 'mastyff-ai-live-proxy-'));
   const liveDbPath = join(liveDbDir, 'history.db');
   const liveHomeDir = join(liveDbDir, 'home');
   mkdirSync(liveHomeDir, { recursive: true });
   return { liveDbPath, liveHomeDir, shared: false };
 }
 
-/** Start Guardian proxy + official filesystem MCP; returns session handle for live calls. */
+/** Start Mastyff AI proxy + official filesystem MCP; returns session handle for live calls. */
 export async function createLiveProxySession() {
   if (!existsSync(CLI)) {
     throw new Error('dist/cli.js missing — run pnpm build first');
@@ -485,7 +485,7 @@ export async function createLiveProxySession() {
     async drainAndKill() {
       const drainMs = parseInt(
         process.env.REAL_LIFE_SEMANTIC_DRAIN_MS
-          || (hybridEnv.GUARDIAN_SEMANTIC_ASYNC === 'true' ? '18000' : '1500'),
+          || (hybridEnv.MASTYFF_AI_SEMANTIC_ASYNC === 'true' ? '18000' : '1500'),
         10,
       );
       await new Promise((r) => setTimeout(r, drainMs));
@@ -567,9 +567,9 @@ export async function runOfficialFilesystemScenario(opts = {}) {
     toolsDiscovered: toolNames,
     profile: 'hybrid',
     env: {
-      GUARDIAN_AI_INSTANT_LEARNING: hybridEnv.GUARDIAN_AI_INSTANT_LEARNING,
-      GUARDIAN_SEMANTIC_ASYNC: hybridEnv.GUARDIAN_SEMANTIC_ASYNC,
-      GUARDIAN_DISABLE_SEMANTIC: hybridEnv.GUARDIAN_DISABLE_SEMANTIC,
+      MASTYFF_AI_AI_INSTANT_LEARNING: hybridEnv.MASTYFF_AI_AI_INSTANT_LEARNING,
+      MASTYFF_AI_SEMANTIC_ASYNC: hybridEnv.MASTYFF_AI_SEMANTIC_ASYNC,
+      MASTYFF_AI_DISABLE_SEMANTIC: hybridEnv.MASTYFF_AI_DISABLE_SEMANTIC,
     },
     policyPath,
     proxyResults: results,

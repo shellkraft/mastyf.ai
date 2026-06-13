@@ -1,11 +1,11 @@
 /**
- * `mcp-guardian setup` — one-shot dev install (git clone).
+ * `mastyff-ai setup` — one-shot dev install (git clone).
  */
 import { spawn } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import chalk from 'chalk';
-import { resolveGuardianInstallRoot } from '../utils/guardian-package-root.js';
+import { resolveMastyffAiInstallRoot } from '../utils/mastyff-ai-package-root.js';
 
 export interface SetupOptions {
   projectRoot?: string;
@@ -25,17 +25,17 @@ function runCmd(cmd: string, args: string[], cwd: string): Promise<void> {
 }
 
 export async function runSetup(opts: SetupOptions = {}): Promise<void> {
-  const root = resolve(opts.projectRoot ?? resolveGuardianInstallRoot());
+  const root = resolve(opts.projectRoot ?? resolveMastyffAiInstallRoot());
   const workspace = join(root, 'pnpm-workspace.yaml');
   const pkg = join(root, 'package.json');
 
   if (!existsSync(workspace) || !existsSync(pkg)) {
-    console.error(chalk.red('mcp-guardian setup is for git clones of the monorepo.'));
-    console.error(chalk.dim('  npm users: npm install -g @mcp-guardian/server && mcp-guardian onboard --apply && mcp-guardian start'));
+    console.error(chalk.red('mastyff-ai setup is for git clones of the monorepo.'));
+    console.error(chalk.dim('  npm users: npm install -g @mastyff-ai/server && mastyff-ai onboard --apply && mastyff-ai start'));
     process.exit(1);
   }
 
-  console.log(chalk.bold('\nMCP Guardian — developer setup\n'));
+  console.log(chalk.bold('\nMCP Mastyff AI — developer setup\n'));
   console.log(chalk.dim(`  Project root: ${root}\n`));
 
   try {
@@ -56,6 +56,6 @@ export async function runSetup(opts: SetupOptions = {}): Promise<void> {
   }
 
   console.log(chalk.green('\nSetup complete.\n'));
-  console.log(chalk.cyan('  Next: mcp-guardian start'));
+  console.log(chalk.cyan('  Next: mastyff-ai start'));
   console.log(chalk.dim('  Or:   pnpm dashboard:proxy\n'));
 }

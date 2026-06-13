@@ -1,6 +1,6 @@
 /**
  * Synchronous semantic gate on tools/call requests (before forward to upstream).
- * Enterprise default ON when GUARDIAN_ENTERPRISE_MODE=true and LLM configured.
+ * Enterprise default ON when MASTYFF_AI_ENTERPRISE_MODE=true and LLM configured.
  */
 import type { CallContext } from '../policy/policy-types.js';
 import type { PolicyDecision } from '../policy/policy-types.js';
@@ -27,8 +27,8 @@ import {
 } from './semantic-risk-tier.js';
 
 const MIN_CONFIDENCE = parseFloat(
-  process.env['GUARDIAN_SEMANTIC_SYNC_REQUEST_MIN_CONFIDENCE']
-    || process.env['GUARDIAN_SEMANTIC_MIN_CONFIDENCE']
+  process.env['MASTYFF_AI_SEMANTIC_SYNC_REQUEST_MIN_CONFIDENCE']
+    || process.env['MASTYFF_AI_SEMANTIC_MIN_CONFIDENCE']
     || '0.6',
 );
 
@@ -148,7 +148,7 @@ Respond ONLY with JSON: {"suspicious":boolean,"confidence":0-1,"categories":stri
     'sync_semantic_request',
     () => llm.generate(systemPrompt, userPrompt),
     null,
-    parseInt(process.env['GUARDIAN_SEMANTIC_SYNC_REQUEST_TIMEOUT_MS'] || '2500', 10),
+    parseInt(process.env['MASTYFF_AI_SEMANTIC_SYNC_REQUEST_TIMEOUT_MS'] || '2500', 10),
   );
 
   if (!response?.text) {

@@ -13,17 +13,17 @@ import {
 } from '../../src/ai/threat-research-pipeline.js';
 import { ensureThreatLabLlmReady } from '../../src/ai/threat-lab.js';
 
-const dir = mkdtempSync(join(tmpdir(), 'guardian-threat-e2e-'));
+const dir = mkdtempSync(join(tmpdir(), 'mastyff-ai-threat-e2e-'));
 const customDir = join(dir, 'custom-attacks');
 mkdirSync(customDir, { recursive: true });
 
-process.env.GUARDIAN_THREAT_RESEARCH_AUTO = 'true';
-process.env.GUARDIAN_CI_BYPASS_LICENSE = 'true';
-process.env.GUARDIAN_AUTO_CORPUS_DIR = customDir;
-process.env.GUARDIAN_AUTO_CORPUS_MANIFEST = join(dir, 'auto-corpus-manifest.json');
-process.env.GUARDIAN_THREAT_RESEARCH_STATE_PATH = dir;
-process.env.GUARDIAN_THREAT_RESEARCH_REQUIRE_REPLAY = 'false';
-process.env.GUARDIAN_LLM_ENABLED = 'true';
+process.env.MASTYFF_AI_THREAT_RESEARCH_AUTO = 'true';
+process.env.MASTYFF_AI_CI_BYPASS_LICENSE = 'true';
+process.env.MASTYFF_AI_AUTO_CORPUS_DIR = customDir;
+process.env.MASTYFF_AI_AUTO_CORPUS_MANIFEST = join(dir, 'auto-corpus-manifest.json');
+process.env.MASTYFF_AI_THREAT_RESEARCH_STATE_PATH = dir;
+process.env.MASTYFF_AI_THREAT_RESEARCH_REQUIRE_REPLAY = 'false';
+process.env.MASTYFF_AI_LLM_ENABLED = 'true';
 
 resetThreatResearchQueueForTests();
 

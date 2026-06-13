@@ -1,5 +1,5 @@
 /**
- * Generate per-server guardian-configs and optional patched client MCP JSON.
+ * Generate per-server mastyff-ai-configs and optional patched client MCP JSON.
  */
 import fs from 'fs';
 import path from 'path';
@@ -8,8 +8,8 @@ import { ConfigParser } from '../config-parser.js';
 import { McpServerConfig } from '../types.js';
 import {
   buildWrappedMcpServerEntry,
-  isGuardianProxyCommand,
-  resolveGuardianProxyWrapper,
+  isMastyffAiProxyCommand,
+  resolveMastyffAiProxyWrapper,
 } from '../utils/windows-paths.js';
 import { isRemoteSshEnabled } from '../utils/remote-path.js';
 
@@ -20,7 +20,7 @@ export interface WrapOptions {
   configPath?: string;
   /** Package root with dist/cli.js and proxy wrapper scripts */
   projectRoot: string;
-  /** Where guardian-configs/ and examples/ are written (default: projectRoot) */
+  /** Where mastyff-ai-configs/ and examples/ are written (default: projectRoot) */
   workspaceRoot?: string;
   policyPath: string;
   apply: boolean;
@@ -57,7 +57,7 @@ const CLIENT_PATHS: Record<Exclude<WrapClient, 'auto'>, string[]> = {
   windsurf: [path.join(os.homedir(), '.codeium/windsurf/mcp_config.json')],
 };
 
-const DEFAULT_SKIP = new Set(['mcp-guardian', 'guardian']);
+const DEFAULT_SKIP = new Set(['mastyff-ai', 'mastyff-ai']);
 
 export function resolveClientConfigPath(client: WrapClient, explicit?: string): string | null {
   if (explicit) {
@@ -77,7 +77,7 @@ function isAlreadyWrapped(server: McpServerConfig): boolean {
   const args = server.args ?? [];
   if (args.includes('proxy')) return true;
   const cmd = server.command ?? '';
-  return isGuardianProxyCommand(cmd);
+  return isMastyffAiProxyCommand(cmd);
 }
 
 function sanitizeFileName(name: string): string {
@@ -116,8 +116,8 @@ export function runWrap(opts: WrapOptions): WrapResult {
 
   const installRoot = path.resolve(opts.projectRoot);
   const workspaceRoot = path.resolve(opts.workspaceRoot ?? opts.projectRoot);
-  const configsDir = path.join(workspaceRoot, 'guardian-configs');
-  const wrapperScript = resolveGuardianProxyWrapper(installRoot);
+  const configsDir = path.join(workspaceRoot, 'mastyff-ai-configs');
+  const wrapperScript = resolveMastyffAiProxyWrapper(installRoot);
   const policyCandidates = path.isAbsolute(opts.policyPath)
     ? [opts.policyPath]
     : [
@@ -133,7 +133,7 @@ export function runWrap(opts: WrapOptions): WrapResult {
 
   if (!fs.existsSync(path.join(installRoot, 'dist/cli.js'))) {
     throw new Error(
-      `Build required: dist/cli.js not found under ${installRoot}. Reinstall @mcp-guardian/server or run pnpm build in the repo.`,
+      `Build required: dist/cli.js not found under ${installRoot}. Reinstall @mastyff-ai/server or run pnpm build in the repo.`,
     );
   }
   if (!fs.existsSync(wrapperScript)) {
@@ -152,12 +152,12 @@ export function runWrap(opts: WrapOptions): WrapResult {
 
   const remoteEnv: Record<string, string> | undefined = (() => {
     if (!isRemoteSshEnabled()) return undefined;
-    const env: Record<string, string> = { GUARDIAN_REMOTE_SSH: 'true' };
-    if (process.env.GUARDIAN_REMOTE_PATH_MAP) {
-      env.GUARDIAN_REMOTE_PATH_MAP = process.env.GUARDIAN_REMOTE_PATH_MAP;
+    const env: Record<string, string> = { MASTYFF_AI_REMOTE_SSH: 'true' };
+    if (process.env.MASTYFF_AI_REMOTE_PATH_MAP) {
+      env.MASTYFF_AI_REMOTE_PATH_MAP = process.env.MASTYFF_AI_REMOTE_PATH_MAP;
     }
-    if (process.env.GUARDIAN_WORKSPACE) {
-      env.GUARDIAN_WORKSPACE = process.env.GUARDIAN_WORKSPACE;
+    if (process.env.MASTYFF_AI_WORKSPACE) {
+      env.MASTYFF_AI_WORKSPACE = process.env.MASTYFF_AI_WORKSPACE;
     }
     return env;
   })();
@@ -167,7 +167,7 @@ export function runWrap(opts: WrapOptions): WrapResult {
 
   for (const server of servers) {
     if (skip.has(server.name)) {
-      skipped.push(`${server.name} (guardian meta-server)`);
+      skipped.push(`${server.name} (mastyff-ai meta-server)`);
       continue;
     }
     if (isAlreadyWrapped(server)) {

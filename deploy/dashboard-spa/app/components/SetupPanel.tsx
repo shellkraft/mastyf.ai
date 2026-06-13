@@ -6,7 +6,7 @@ import {
   fetchServerRegistry,
   type OnboardingStatus,
   type ServerRegistryEntry,
-} from '@/lib/guardian-api';
+} from '@/lib/mastyff-ai-api';
 
 type Props = {
   onGoToAgentFlow?: () => void;
@@ -62,7 +62,7 @@ export function SetupPanel({ onGoToAgentFlow }: Props) {
     <section aria-label="Setup">
       <h2>Setup</h2>
       <p className="setup-lead">
-        Connect your IDE MCP servers through Guardian, observe traffic, then run one-click security
+        Connect your IDE MCP servers through Mastyff AI, observe traffic, then run one-click security
         analysis from the <strong>Agent flow</strong> tab.
       </p>
 
@@ -80,12 +80,12 @@ export function SetupPanel({ onGoToAgentFlow }: Props) {
           <li className={wrapped ? 'setup-done' : ''}>
             <strong>1. Connect — wrap MCP servers</strong>
             <p className="hint">
-              Patches your IDE config so each MCP server runs through Guardian (audit mode by
+              Patches your IDE config so each MCP server runs through Mastyff AI (audit mode by
               default).
             </p>
             {wrapped ? (
               <span className="setup-badge">
-                {status.configCount} server config(s) in guardian-configs/
+                {status.configCount} server config(s) in mastyff-ai-configs/
               </span>
             ) : (
               <span className="setup-badge setup-warn">Not wrapped yet</span>
@@ -96,7 +96,7 @@ export function SetupPanel({ onGoToAgentFlow }: Props) {
             </div>
             <p className="hint">
               Run from the <strong>repo root</strong> after <code>pnpm build</code> (global{' '}
-              <code>mcp-guardian</code> from npm may not include <code>onboard</code> yet).
+              <code>mastyff-ai</code> from npm may not include <code>onboard</code> yet).
             </p>
             <p className="hint">
               After <code>--apply</code>, <strong>reload MCP in Cursor</strong> (restart or
@@ -191,7 +191,7 @@ export function SetupPanel({ onGoToAgentFlow }: Props) {
           </table>
         </>
       ) : status && !wrapped ? (
-        <p className="hint">No servers in guardian-configs/ — complete step 1 first.</p>
+        <p className="hint">No servers in mastyff-ai-configs/ — complete step 1 first.</p>
       ) : null}
 
       <div className="btn-row">

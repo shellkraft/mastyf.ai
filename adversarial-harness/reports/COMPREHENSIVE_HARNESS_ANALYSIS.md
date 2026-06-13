@@ -1,7 +1,7 @@
 # Comprehensive Adversarial Test Harness — Results & Analysis
 
 **Generated:** 2026-05-24T18:03:38.308079+00:00
-**Policy source:** `/Users/rudraneeldas/Desktop/mcp-guardian/default-policy.yaml`
+**Policy source:** `/Users/rudraneeldas/Desktop/mastyff-ai/default-policy.yaml`
 
 ## Executive summary
 

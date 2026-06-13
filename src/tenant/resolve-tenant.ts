@@ -46,7 +46,7 @@ export function extractTenantHeader(
   const normalized = Object.fromEntries(
     Object.entries(headers).map(([k, v]) => [k.toLowerCase(), v]),
   );
-  for (const key of ['x-guardian-tenant', 'x-tenant-id']) {
+  for (const key of ['x-mastyff-ai-tenant', 'x-tenant-id']) {
     const val = normalized[key];
     if (typeof val === 'string' && val.trim()) return val.trim();
     if (Array.isArray(val) && val[0]) return String(val[0]).trim();
@@ -75,7 +75,7 @@ export function resolveTenantContext(sources?: {
     return { tenantId: validateTenantId(fromRequest), source: 'header' };
   }
 
-  const envRaw = process.env['GUARDIAN_TENANT_ID'] || DEFAULT_TENANT_ID;
+  const envRaw = process.env['MASTYFF_AI_TENANT_ID'] || DEFAULT_TENANT_ID;
   try {
     return { tenantId: validateTenantId(envRaw), source: 'env' };
   } catch {
@@ -92,24 +92,24 @@ export function resolveTenantId(sources?: {
   return resolveTenantContext(sources).tenantId;
 }
 
-/** CLI/batch jobs with no HTTP headers — uses GUARDIAN_TENANT_ID or `default`. */
+/** CLI/batch jobs with no HTTP headers — uses MASTYFF_AI_TENANT_ID or `default`. */
 export function resolveTenantFromEnv(): string {
   return resolveTenantId();
 }
 
 /**
- * Resolve tenant for CLI batch scans. Prefers `--tenant`, then GUARDIAN_TENANT_ID.
- * When GUARDIAN_MULTI_TENANT_ENABLED=true, requires an explicit tenant via flag or env.
+ * Resolve tenant for CLI batch scans. Prefers `--tenant`, then MASTYFF_AI_TENANT_ID.
+ * When MASTYFF_AI_MULTI_TENANT_ENABLED=true, requires an explicit tenant via flag or env.
  */
 export function resolveCliTenantId(opts?: { tenant?: string }): string {
   const fromFlag = opts?.tenant?.trim();
   if (fromFlag) {
     return validateTenantId(fromFlag);
   }
-  const envSet = Boolean(process.env['GUARDIAN_TENANT_ID']?.trim());
+  const envSet = Boolean(process.env['MASTYFF_AI_TENANT_ID']?.trim());
   if (isMultiTenantModeEnabled() && !envSet) {
     throw new InvalidTenantIdError(
-      'Multi-tenant mode requires --tenant <id> or GUARDIAN_TENANT_ID for batch scans',
+      'Multi-tenant mode requires --tenant <id> or MASTYFF_AI_TENANT_ID for batch scans',
     );
   }
   return resolveTenantFromEnv();
@@ -123,13 +123,13 @@ export function tenantRateLimitKey(tenantId: string, key: string): string {
 
 /** Whether multi-tenant header routing is enabled (shared gateway mode). */
 export function isMultiTenantModeEnabled(): boolean {
-  return process.env['GUARDIAN_MULTI_TENANT_ENABLED'] === 'true';
+  return process.env['MASTYFF_AI_MULTI_TENANT_ENABLED'] === 'true';
 }
 
 export function resolveTenantPolicyPath(tenantId: string, baseDir?: string): string {
-  const root = baseDir || process.env['GUARDIAN_POLICY_ROOT'] || '.';
+  const root = baseDir || process.env['MASTYFF_AI_POLICY_ROOT'] || '.';
   if (tenantId === DEFAULT_TENANT_ID) {
-    return process.env['GUARDIAN_POLICY_PATH'] || `${root}/default-policy.yaml`;
+    return process.env['MASTYFF_AI_POLICY_PATH'] || `${root}/default-policy.yaml`;
   }
   const templatePath = `${root}/policy-templates/tenants/${tenantId}/policy.yaml`;
   const legacyPath = `${root}/policies/${tenantId}/policy.yaml`;

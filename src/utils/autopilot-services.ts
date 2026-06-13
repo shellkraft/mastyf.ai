@@ -19,14 +19,14 @@ export function startAutopilotServices(
   const cfg = readAutopilotConfig();
   const autopilot =
     isAutopilotMode()
-    || process.env.GUARDIAN_THREAT_DISCOVERY_AUTOSTART === 'true'
+    || process.env.MASTYFF_AI_THREAT_DISCOVERY_AUTOSTART === 'true'
     || cfg?.enabled;
 
   if (autopilot) {
     maybeAutoStart(tenantId);
   }
 
-  const schedule = process.env.GUARDIAN_REPORT_SCHEDULE || cfg?.reportSchedule;
+  const schedule = process.env.MASTYFF_AI_REPORT_SCHEDULE || cfg?.reportSchedule;
   if (schedule && schedule !== 'off') {
     startReportScheduler(historyDb, tenantId);
   }

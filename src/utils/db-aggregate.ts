@@ -83,7 +83,7 @@ export async function loadAllCallRecords(
   return all;
 }
 
-/** Per-MCP-server row for TUI Instances tab (not a single Guardian process). */
+/** Per-MCP-server row for TUI Instances tab (not a single Mastyff AI process). */
 export interface ServerInstanceRow {
   instanceId: string;
   instanceName: string;
@@ -98,7 +98,7 @@ export interface ServerInstanceRow {
 }
 
 function liveTrafficWindowMs(): number {
-  const n = parseInt(process.env.GUARDIAN_TUI_ACTIVE_WINDOW_MS || String(15 * 60 * 1000), 10);
+  const n = parseInt(process.env.MASTYFF_AI_TUI_ACTIVE_WINDOW_MS || String(15 * 60 * 1000), 10);
   return Number.isFinite(n) && n > 0 ? n : 15 * 60 * 1000;
 }
 

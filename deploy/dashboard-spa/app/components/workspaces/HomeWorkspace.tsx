@@ -1,6 +1,6 @@
 'use client';
 
-import type { AggregateMetrics, AuditResponse } from '@/lib/guardian-api';
+import type { AggregateMetrics, AuditResponse } from '@/lib/mastyff-ai-api';
 import { ExecutiveOverviewPanel } from '../dashboard/ExecutiveOverviewPanel';
 import { HealthReportPanel } from '../reports/HealthReportPanel';
 import { SocEnterpriseReadinessPanel } from '../soc/SocEnterpriseReadinessPanel';
@@ -21,7 +21,7 @@ export function HomeWorkspace({ refreshKey, metrics, audit, proxyOnline, onRepor
       <section className="briefing-hero">
         <h2>Your MCP protection at a glance</h2>
         <p className="briefing-hero-lead">
-          Measured metrics from the Guardian proxy and a downloadable health report in plain language.
+          Measured metrics from the Mastyff AI proxy and a downloadable health report in plain language.
           Use Activity for live tool flow and Security for threats and policy.
         </p>
       </section>

@@ -1,6 +1,6 @@
 /**
  * Tamper-evident append-only audit log chaining (SHA-256).
- * Enable: GUARDIAN_AUDIT_HASH_CHAIN=true
+ * Enable: MASTYFF_AI_AUDIT_HASH_CHAIN=true
  */
 import { createHash } from 'crypto';
 import { appendFileSync, readFileSync, existsSync, mkdirSync } from 'fs';
@@ -9,17 +9,17 @@ import { homedir } from 'os';
 import { checkpointAuditChain } from './audit-attestation.js';
 
 export function isAuditHashChainEnabled(): boolean {
-  return process.env['GUARDIAN_AUDIT_HASH_CHAIN'] === 'true';
+  return process.env['MASTYFF_AI_AUDIT_HASH_CHAIN'] === 'true';
 }
 
 export function isSiemAuditHashChainEnabled(): boolean {
-  return isAuditHashChainEnabled() && process.env['GUARDIAN_AUDIT_HASH_CHAIN_SIEM'] !== 'false';
+  return isAuditHashChainEnabled() && process.env['MASTYFF_AI_AUDIT_HASH_CHAIN_SIEM'] !== 'false';
 }
 
 export function resolveSiemAuditChainPath(): string {
-  const custom = process.env['GUARDIAN_AUDIT_HASH_CHAIN_SIEM_LOG']?.trim();
+  const custom = process.env['MASTYFF_AI_AUDIT_HASH_CHAIN_SIEM_LOG']?.trim();
   if (custom) return custom;
-  return join(homedir(), '.mcp-guardian', 'siem-audit-chained.jsonl');
+  return join(homedir(), '.mastyff-ai', 'siem-audit-chained.jsonl');
 }
 
 /** Append a SIEM/security event to the chained JSONL trail (best-effort). */
@@ -38,7 +38,7 @@ export function appendSiemChainedEvent(type: string, payload: Record<string, unk
   }
 }
 
-const GENESIS = createHash('sha256').update('mcp-guardian-audit-genesis').digest('hex');
+const GENESIS = createHash('sha256').update('mastyff-ai-audit-genesis').digest('hex');
 
 export interface ChainedAuditLine {
   prev_hash: string;
@@ -94,7 +94,7 @@ export function appendChainedJsonlLine(filePath: string, payload: Record<string,
   const chain = new AuditHashChain(tip);
   const line = chain.append(payload);
   appendFileSync(filePath, `${JSON.stringify(line)}\n`, { encoding: 'utf-8' });
-  if (process.env['GUARDIAN_AUDIT_ATTESTATION_ENABLED'] === 'true') {
+  if (process.env['MASTYFF_AI_AUDIT_ATTESTATION_ENABLED'] === 'true') {
     try {
       checkpointAuditChain(line.entry_hash);
     } catch {

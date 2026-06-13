@@ -34,11 +34,11 @@ describe("local semantic fallback", () => {
 describe("semantic queue per-tenant cap", () => {
   beforeEach(() => {
     resetSemanticQueueForTests();
-    process.env.MCP_GUARDIAN_SEMANTIC_PER_TENANT_MAX = "1";
+    process.env.MASTYFF_AI_SEMANTIC_PER_TENANT_MAX = "1";
   });
 
   afterEach(() => {
-    delete process.env.MCP_GUARDIAN_SEMANTIC_PER_TENANT_MAX;
+    delete process.env.MASTYFF_AI_SEMANTIC_PER_TENANT_MAX;
     resetSemanticQueueForTests();
   });
 

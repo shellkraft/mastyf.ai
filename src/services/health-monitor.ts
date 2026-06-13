@@ -16,7 +16,7 @@ export class HealthMonitor {
     const start = Date.now();
     const maxAttempts = Math.max(
       1,
-      parseInt(process.env['GUARDIAN_HEALTH_PROBE_RETRIES'] || '2', 10) + 1,
+      parseInt(process.env['MASTYFF_AI_HEALTH_PROBE_RETRIES'] || '2', 10) + 1,
     );
 
     let probe: McpProbeResult = { success: false, authRequired: false, latencyMs: 0, error: 'No attempts' };

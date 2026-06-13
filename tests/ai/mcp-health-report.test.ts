@@ -44,7 +44,7 @@ describe('mcp-health-report', () => {
     expect(report).not.toBeNull();
     expect(report!.source).toBe('measured');
     expect(report!.servers.length).toBeGreaterThan(0);
-    expect(report!.markdown).toContain('MCP Guardian');
+    expect(report!.markdown).toContain('Mastyff AI');
     expect(report!.executiveSummary.length).toBeGreaterThan(0);
     expect(report!.securityPosture.topBlockRules.some((r) => r.includes('SHELL-BLOCK'))).toBe(true);
   });

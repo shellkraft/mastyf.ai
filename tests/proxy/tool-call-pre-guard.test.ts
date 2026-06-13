@@ -6,7 +6,7 @@ describe('toolCallGuardBlockResponse', () => {
     const res = toolCallGuardBlockResponse(0, {
       blocked: true,
       code: -32001,
-      message: 'Blocked by MCP Guardian: oversize',
+      message: 'Blocked by Mastyff AI: oversize',
     });
     expect(res.id).toBe(0);
     expect((res.error as { code: number }).code).toBe(-32001);

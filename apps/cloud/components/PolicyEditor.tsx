@@ -185,7 +185,7 @@ export function PolicyEditor({ initialYaml }: { initialYaml: string }) {
       <h2>Policy YAML</h2>
       <p className="muted">
         Edit your tenant policy. Deploy to{' '}
-        <code>policy-templates/tenants/&lt;tenant-id&gt;/policy.yaml</code> on your Guardian
+        <code>policy-templates/tenants/&lt;tenant-id&gt;/policy.yaml</code> on your MastyffAi
         host, or pull via <code>/api/v1/policy</code>.
       </p>
       <textarea

@@ -6,9 +6,9 @@ import pino from 'pino';
  * ALL log output must go to stderr.
  */
 export function detectMcpServerMode(): boolean {
-  if (process.env['MCP_GUARDIAN_MODE'] === 'server') return true;
-  if (process.env['MCP_GUARDIAN_MODE'] === 'cli') return false;
-  if (process.env['MCP_GUARDIAN_MODE'] === 'proxy') return true;
+  if (process.env['MASTYFF_AI_MODE'] === 'server') return true;
+  if (process.env['MASTYFF_AI_MODE'] === 'cli') return false;
+  if (process.env['MASTYFF_AI_MODE'] === 'proxy') return true;
   const arg0 = process.argv[1] ?? '';
   const args = process.argv.join(' ');
   if (arg0.endsWith('index.js') || arg0.endsWith('index.ts')) return true;

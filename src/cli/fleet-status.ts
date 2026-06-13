@@ -11,7 +11,7 @@ export async function runFleetStatus(opts: { json?: boolean }): Promise<number> 
     return 0;
   }
 
-  console.log(chalk.bold.cyan(`\nMCP Guardian Fleet — region ${report.region} (${report.source})\n`));
+  console.log(chalk.bold.cyan(`\nMCP Mastyff AI Fleet — region ${report.region} (${report.source})\n`));
   console.log(
     chalk.dim(
       `  Instances: ${report.totalInstances} (${report.activeInstances} active)  |  ` +
@@ -21,7 +21,7 @@ export async function runFleetStatus(opts: { json?: boolean }): Promise<number> 
   );
 
   if (report.instances.length === 0) {
-    console.log(chalk.yellow('  No fleet data. Set DATABASE_URL + DB_TYPE=postgres or GUARDIAN_FLEET_DB_PATHS.\n'));
+    console.log(chalk.yellow('  No fleet data. Set DATABASE_URL + DB_TYPE=postgres or MASTYFF_AI_FLEET_DB_PATHS.\n'));
     return 0;
   }
 

@@ -37,21 +37,21 @@ describe('auto-corpus-writer', () => {
   };
 
   beforeEach(() => {
-    dir = mkdtempSync(join(tmpdir(), 'guardian-auto-corpus-'));
+    dir = mkdtempSync(join(tmpdir(), 'mastyff-ai-auto-corpus-'));
     customDir = join(dir, 'custom-attacks');
     manifestPath = join(dir, 'auto-corpus-manifest.json');
     statePath = join(dir, 'threat-research-processed.json');
     mkdirSync(customDir, { recursive: true });
-    process.env.GUARDIAN_AUTO_CORPUS_DIR = customDir;
-    process.env.GUARDIAN_AUTO_CORPUS_MANIFEST = manifestPath;
-    process.env.GUARDIAN_THREAT_RESEARCH_STATE_PATH = dir;
+    process.env.MASTYFF_AI_AUTO_CORPUS_DIR = customDir;
+    process.env.MASTYFF_AI_AUTO_CORPUS_MANIFEST = manifestPath;
+    process.env.MASTYFF_AI_THREAT_RESEARCH_STATE_PATH = dir;
     writeFileSync(join(customDir, 'adv-001.json'), '{}');
   });
 
   afterEach(() => {
-    delete process.env.GUARDIAN_AUTO_CORPUS_DIR;
-    delete process.env.GUARDIAN_AUTO_CORPUS_MANIFEST;
-    delete process.env.GUARDIAN_THREAT_RESEARCH_STATE_PATH;
+    delete process.env.MASTYFF_AI_AUTO_CORPUS_DIR;
+    delete process.env.MASTYFF_AI_AUTO_CORPUS_MANIFEST;
+    delete process.env.MASTYFF_AI_THREAT_RESEARCH_STATE_PATH;
   });
 
   it('allocates next adv id', () => {

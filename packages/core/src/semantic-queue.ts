@@ -4,8 +4,8 @@ const tenantInflight = new Map<string, number>();
 
 export function semanticQueueMax(): number {
   const n = parseInt(
-    process.env["GUARDIAN_SEMANTIC_ASYNC_MAX_QUEUE"] ||
-      process.env["MCP_GUARDIAN_SEMANTIC_MAX_QUEUE"] ||
+    process.env["MASTYFF_AI_SEMANTIC_ASYNC_MAX_QUEUE"] ||
+      process.env["MASTYFF_AI_SEMANTIC_MAX_QUEUE"] ||
       "1000",
     10,
   );
@@ -14,8 +14,8 @@ export function semanticQueueMax(): number {
 
 export function semanticPerTenantMax(): number {
   const n = parseInt(
-    process.env["MCP_GUARDIAN_SEMANTIC_PER_TENANT_MAX"] ||
-      process.env["GUARDIAN_SEMANTIC_PER_TENANT_MAX"] ||
+    process.env["MASTYFF_AI_SEMANTIC_PER_TENANT_MAX"] ||
+      process.env["MASTYFF_AI_SEMANTIC_PER_TENANT_MAX"] ||
       "50",
     10,
   );

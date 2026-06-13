@@ -15,13 +15,13 @@
  *   - containsSuspiciousChars (0/1 — null bytes, homoglyphs, encoding patterns)
  *
  * Online learning: updates weights on every 100 benign calls (stochastic gradient descent).
- * Model persists to ~/.mcp-guardian/autoencoder-model.json for cold-start recovery.
+ * Model persists to ~/.mastyff-ai/autoencoder-model.json for cold-start recovery.
  *
  * Environment:
- *   GUARDIAN_AUTOENCODER_ENABLED       Master enable (default: false)
- *   GUARDIAN_AUTOENCODER_THRESHOLD      Reconstruction error threshold (default: 0.85)
- *   GUARDIAN_AUTOENCODER_BATCH_SIZE     Online learning batch size (default: 100)
- *   GUARDIAN_AUTOENCODER_LEARNING_RATE  SGD learning rate (default: 0.01)
+ *   MASTYFF_AI_AUTOENCODER_ENABLED       Master enable (default: false)
+ *   MASTYFF_AI_AUTOENCODER_THRESHOLD      Reconstruction error threshold (default: 0.85)
+ *   MASTYFF_AI_AUTOENCODER_BATCH_SIZE     Online learning batch size (default: 100)
+ *   MASTYFF_AI_AUTOENCODER_LEARNING_RATE  SGD learning rate (default: 0.01)
  */
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
@@ -49,22 +49,22 @@ export interface AutoencoderResult {
 
 // ── Configuration ────────────────────────────────────────────────────
 
-const MODEL_PATH = join(homedir(), '.mcp-guardian', 'autoencoder-model.json');
+const MODEL_PATH = join(homedir(), '.mastyff-ai', 'autoencoder-model.json');
 
 function enabled(): boolean {
-  return process.env['GUARDIAN_AUTOENCODER_ENABLED'] === 'true';
+  return process.env['MASTYFF_AI_AUTOENCODER_ENABLED'] === 'true';
 }
 
 function threshold(): number {
-  return parseFloat(process.env['GUARDIAN_AUTOENCODER_THRESHOLD'] || '0.85');
+  return parseFloat(process.env['MASTYFF_AI_AUTOENCODER_THRESHOLD'] || '0.85');
 }
 
 function batchSize(): number {
-  return parseInt(process.env['GUARDIAN_AUTOENCODER_BATCH_SIZE'] || '100', 10);
+  return parseInt(process.env['MASTYFF_AI_AUTOENCODER_BATCH_SIZE'] || '100', 10);
 }
 
 function learningRate(): number {
-  return parseFloat(process.env['GUARDIAN_AUTOENCODER_LEARNING_RATE'] || '0.01');
+  return parseFloat(process.env['MASTYFF_AI_AUTOENCODER_LEARNING_RATE'] || '0.01');
 }
 
 // ── Autoencoder Architecture (64→16→64) ─────────────────────────────

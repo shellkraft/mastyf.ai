@@ -20,15 +20,15 @@ export function SignInButtons({
         <p className="muted">
           Cloud sign-in is not configured yet. The operator must add Google and/or GitHub OAuth
           credentials to Vercel. See{' '}
-          <a href="https://github.com/rudraneel93/mcp-guardian/blob/master/docs/OAUTH_CLOUD_SETUP.md">
+          <a href="https://github.com/mastyff-ai/mastyff-ai/blob/master/docs/OAUTH_CLOUD_SETUP.md">
             docs/OAUTH_CLOUD_SETUP.md
           </a>
           .
         </p>
         <p className="muted" style={{ marginTop: '0.75rem', fontSize: '0.875rem' }}>
           Pro license validation does not require sign-in — use{' '}
-          <code>GUARDIAN_LICENSE_KEY</code> with{' '}
-          <code>GUARDIAN_CONTROL_PLANE_URL=https://mcp-guardian-cloud.vercel.app</code>.
+          <code>MASTYFF_AI_LICENSE_KEY</code> with{' '}
+          <code>MASTYFF_AI_CONTROL_PLANE_URL=https://mastyff-ai-cloud.vercel.app</code>.
         </p>
       </section>
     );

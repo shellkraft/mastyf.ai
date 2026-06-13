@@ -12,13 +12,13 @@ export function onShutdown(hook: ShutdownHook): void {
 async function runShutdown(signal: string): Promise<void> {
   if (shuttingDown) return;
   shuttingDown = true;
-  Logger.info(`[guardian] Received ${signal} — shutting down gracefully`);
+  Logger.info(`[mastyff-ai] Received ${signal} — shutting down gracefully`);
 
   for (const hook of hooks) {
     try {
       await Promise.resolve(hook());
     } catch (err) {
-      Logger.error('[guardian] Shutdown hook error: ' + (err instanceof Error ? err.message : String(err)));
+      Logger.error('[mastyff-ai] Shutdown hook error: ' + (err instanceof Error ? err.message : String(err)));
     }
   }
 
@@ -29,7 +29,7 @@ export function registerShutdownHandlers(): void {
   process.on('SIGINT',  () => void runShutdown('SIGINT'));
   process.on('SIGTERM', () => void runShutdown('SIGTERM'));
   process.on('uncaughtException', (err) => {
-    Logger.error('[guardian] Uncaught exception: ' + (err instanceof Error ? err.message : String(err)));
+    Logger.error('[mastyff-ai] Uncaught exception: ' + (err instanceof Error ? err.message : String(err)));
     void runShutdown('uncaughtException');
   });
 }

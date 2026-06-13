@@ -8,12 +8,12 @@ import {
 describe('token revocation', () => {
   beforeEach(() => {
     resetTokenRevocationForTests();
-    process.env['GUARDIAN_TOKEN_REVOCATION_REDIS'] = 'false';
+    process.env['MASTYFF_AI_TOKEN_REVOCATION_REDIS'] = 'false';
   });
 
   afterEach(() => {
     resetTokenRevocationForTests();
-    delete process.env['GUARDIAN_TOKEN_REVOCATION_REDIS'];
+    delete process.env['MASTYFF_AI_TOKEN_REVOCATION_REDIS'];
   });
 
   it('revokes by jti in memory', async () => {

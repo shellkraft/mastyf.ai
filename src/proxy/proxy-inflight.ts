@@ -2,7 +2,7 @@
  * Shared max in-flight limit for tools/call across proxy transports.
  */
 export function proxyMaxInflight(): number {
-  const raw = process.env['GUARDIAN_PROXY_MAX_INFLIGHT'] ?? '50';
+  const raw = process.env['MASTYFF_AI_PROXY_MAX_INFLIGHT'] ?? '50';
   const n = parseInt(raw, 10);
   return Number.isFinite(n) && n > 0 ? n : 50;
 }

@@ -14,14 +14,14 @@ type LocalBucket = { count: number; usd: number; resetAt: number };
 const localBuckets = new Map<string, LocalBucket>();
 
 export const semanticAuditSkippedTotal = new Counter({
-  name: 'mcp_guardian_semantic_audit_skipped_total',
+  name: 'mastyff_ai_semantic_audit_skipped_total',
   help: 'Semantic audit skipped (circuit, rate limit, no API key)',
   labelNames: ['reason', 'tenant_id'],
   registers: [registry],
 });
 
 function getMaxPerMin(): number {
-  return parseInt(process.env.GUARDIAN_SEMANTIC_LLM_MAX_PER_MIN || '10', 10);
+  return parseInt(process.env.MASTYFF_AI_SEMANTIC_LLM_MAX_PER_MIN || '10', 10);
 }
 
 export function reportSemanticAuditSkipped(
@@ -35,7 +35,7 @@ export function reportSemanticAuditSkipped(
 }
 
 export function getSemanticLlmMaxUsdPerMin(): number {
-  const explicit = parseFloat(process.env.GUARDIAN_SEMANTIC_LLM_MAX_USD_PER_MIN || '0');
+  const explicit = parseFloat(process.env.MASTYFF_AI_SEMANTIC_LLM_MAX_USD_PER_MIN || '0');
   if (Number.isFinite(explicit) && explicit > 0) return explicit;
   return getEstimatedSemanticCostUsd() * getMaxPerMin();
 }

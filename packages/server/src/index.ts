@@ -1,6 +1,6 @@
 /**
- * @mcp-guardian/server — MCP server exposing security scan tools to AI assistants.
- * Integrates with @mcp-guardian/core detection engine at runtime.
+ * @mastyff-ai/server — MCP server exposing security scan tools to AI assistants.
+ * Integrates with @mastyff-ai/core detection engine at runtime.
  */
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
@@ -8,10 +8,10 @@ import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js';
-import { scanServer, verifyToolDefinitions, fetchToolsFromStdio, fetchToolsFromHttp } from '@mcp-guardian/core';
+import { scanServer, verifyToolDefinitions, fetchToolsFromStdio, fetchToolsFromHttp } from '@mastyff-ai/core';
 
 const server = new Server(
-  { name: 'mcp-guardian', version: process.env.npm_package_version || '2.3.4' },
+  { name: 'mastyff-ai', version: process.env.npm_package_version || '2.3.4' },
   { capabilities: { tools: {} } }
 );
 

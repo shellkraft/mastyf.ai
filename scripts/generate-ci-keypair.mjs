@@ -3,8 +3,8 @@
  * Generate an Ed25519 keypair for CI token signing.
  *
  * The PRIVATE key (with 'd' parameter) goes to the maintainer:
- *   - Store in GitHub Secrets as GUARDIAN_CI_PRIVATE_KEY
- *   - Or save to a file referenced by GUARDIAN_CI_KEY_FILE
+ *   - Store in GitHub Secrets as MASTYFF_AI_CI_PRIVATE_KEY
+ *   - Or save to a file referenced by MASTYFF_AI_CI_KEY_FILE
  *
  * The PUBLIC key (without 'd') is embedded in src/license/ci-token.ts.
  * This script can also output the patch-ready public key constant.
@@ -27,7 +27,7 @@ async function main() {
   const publicJwk = await subtle.exportKey('jwk', keyPair.publicKey);
 
   console.error('═══════════════════════════════════════════════════════');
-  console.error('  MCP Guardian — CI Token Keypair');
+  console.error('  MCP Mastyff AI — CI Token Keypair');
   console.error('═══════════════════════════════════════════════════════');
   console.error('');
   console.error('PRIVATE KEY (keep secret — never commit to source):');
@@ -36,8 +36,8 @@ async function main() {
   console.error('');
   console.error('─────────────────────────────────────────────────────');
   console.error('');
-  console.error('Store as GitHub Secret: GUARDIAN_CI_PRIVATE_KEY');
-  console.error('Or save to a file and set GUARDIAN_CI_KEY_FILE=<path>');
+  console.error('Store as GitHub Secret: MASTYFF_AI_CI_PRIVATE_KEY');
+  console.error('Or save to a file and set MASTYFF_AI_CI_KEY_FILE=<path>');
   console.error('');
   console.error('PUBLIC KEY (embed in src/license/ci-token.ts):');
   console.error('─────────────────────────────────────────────────────');

@@ -13,19 +13,19 @@ describe('pgbouncer-check', () => {
   });
 
   it('detects pgbouncer host and port 6432', () => {
-    expect(isPgbouncerConnectionUrl('postgresql://u:p@pgbouncer:6432/guardian')).toBe(true);
-    expect(isPgbouncerConnectionUrl('postgresql://u:p@mcp-pooler:6432/guardian')).toBe(true);
+    expect(isPgbouncerConnectionUrl('postgresql://u:p@pgbouncer:6432/mastyff-ai')).toBe(true);
+    expect(isPgbouncerConnectionUrl('postgresql://u:p@mcp-pooler:6432/mastyff-ai')).toBe(true);
   });
 
   it('detects direct postgres on 5432', () => {
-    expect(isDirectPostgresUrl('postgresql://u:p@postgres:5432/guardian')).toBe(true);
-    expect(isDirectPostgresUrl('postgresql://u:p@pgbouncer:6432/guardian')).toBe(false);
+    expect(isDirectPostgresUrl('postgresql://u:p@postgres:5432/mastyff-ai')).toBe(true);
+    expect(isDirectPostgresUrl('postgresql://u:p@pgbouncer:6432/mastyff-ai')).toBe(false);
   });
 
-  it('errors when GUARDIAN_REQUIRE_PGBOUNCER and direct URL', () => {
+  it('errors when MASTYFF_AI_REQUIRE_PGBOUNCER and direct URL', () => {
     const result = evaluatePgBouncerStartup({
       dbType: 'postgres',
-      databaseUrl: 'postgresql://u:p@postgres:5432/guardian',
+      databaseUrl: 'postgresql://u:p@postgres:5432/mastyff-ai',
       replicaCount: 3,
       inK8s: true,
       redisConfigured: true,
@@ -38,7 +38,7 @@ describe('pgbouncer-check', () => {
   it('errors on direct postgres when strict mode and replicas > 50', () => {
     const result = evaluatePgBouncerStartup({
       dbType: 'postgres',
-      databaseUrl: 'postgresql://u:p@postgres:5432/guardian',
+      databaseUrl: 'postgresql://u:p@postgres:5432/mastyff-ai',
       replicaCount: 87,
       inK8s: true,
       redisConfigured: true,
@@ -51,7 +51,7 @@ describe('pgbouncer-check', () => {
   it('warns on direct postgres in k8s multi-replica', () => {
     const result = evaluatePgBouncerStartup({
       dbType: 'postgres',
-      databaseUrl: 'postgresql://u:p@postgres:5432/guardian',
+      databaseUrl: 'postgresql://u:p@postgres:5432/mastyff-ai',
       replicaCount: 10,
       inK8s: true,
       redisConfigured: true,

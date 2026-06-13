@@ -49,7 +49,7 @@ setTimeout(async function() {
 
   setTimeout(async function() {
     var calls = [
-      {id:"a1",method:"tools/call",params:{name:"search",arguments:{query:"mcp-guardian security proxy TypeScript"}}},
+      {id:"a1",method:"tools/call",params:{name:"search",arguments:{query:"mastyff-ai security proxy TypeScript"}}},
       {id:"a2",method:"tools/call",params:{name:"read_file",arguments:{path:"README.md"}}},
       {id:"a3",method:"tools/call",params:{name:"get_file_contents",arguments:{path:"src/index.ts"}}},
       {id:"a4",method:"tools/call",params:{name:"list_directory",arguments:{path:"src"}}},
@@ -77,7 +77,7 @@ setTimeout(async function() {
 
     var records = await db.getCallRecordsForServer('echo-server');
     console.log('\n╔══════════════════════════════════════════╗');
-    console.log('║   MCP GUARDIAN — LIVE COST AUDIT        ║');
+    console.log('║   MASTYFF AI — LIVE COST AUDIT        ║');
     console.log('╚══════════════════════════════════════════╝\n');
     console.log('PROXY CALL RECORDS CAPTURED: ' + records.length + ' tools/call intercepted\n');
     records.forEach(function(r) {

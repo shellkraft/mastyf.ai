@@ -127,7 +127,7 @@ export function redactArguments(args: unknown, maxStringLen = 200): Record<strin
 }
 
 function debounceMs(): number {
-  const n = parseInt(process.env.GUARDIAN_AI_BLOCK_DEBOUNCE_MS || String(DEFAULT_DEBOUNCE_MS), 10);
+  const n = parseInt(process.env.MASTYFF_AI_AI_BLOCK_DEBOUNCE_MS || String(DEFAULT_DEBOUNCE_MS), 10);
   return Number.isFinite(n) && n >= 0 ? n : DEFAULT_DEBOUNCE_MS;
 }
 
@@ -178,7 +178,7 @@ export function onPolicyBlock(
 }
 
 function blockLearningLockTtlMs(): number {
-  const n = parseInt(process.env.GUARDIAN_AI_BLOCK_DEBOUNCE_MS || String(DEFAULT_DEBOUNCE_MS), 10);
+  const n = parseInt(process.env.MASTYFF_AI_AI_BLOCK_DEBOUNCE_MS || String(DEFAULT_DEBOUNCE_MS), 10);
   return Number.isFinite(n) && n > 0 ? n : DEFAULT_DEBOUNCE_MS;
 }
 
@@ -201,7 +201,7 @@ async function flushBlockLearning(): Promise<void> {
   pendingContext = null;
   if (!ctx || !isAiLearningEnabled() || !aiLearningLicensed()) return;
 
-  const lockTenant = pendingTenantId || process.env['GUARDIAN_TENANT_ID'] || 'default';
+  const lockTenant = pendingTenantId || process.env['MASTYFF_AI_TENANT_ID'] || 'default';
   pendingTenantId = undefined;
   if (!(await acquireBlockLearningLock(lockTenant))) {
     Logger.debug(`[block-learning] Skipping cycle — another pod holds lock (tenant=${lockTenant})`);

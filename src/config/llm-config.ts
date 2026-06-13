@@ -19,7 +19,7 @@ export interface LlmConfig {
 let cached: LlmConfig | null = null;
 
 function resolveProvider(): LlmProvider {
-  const explicit = process.env.GUARDIAN_LLM_PROVIDER?.toLowerCase();
+  const explicit = process.env.MASTYFF_AI_LLM_PROVIDER?.toLowerCase();
   if (explicit === 'anthropic' || explicit === 'openai' || explicit === 'ollama') {
     return explicit;
   }
@@ -44,7 +44,7 @@ export function getLlmConfig(): LlmConfig {
   if (cached) return cached;
 
   const provider = resolveProvider();
-  const model = process.env.GUARDIAN_LLM_MODEL || defaultModelForProvider(provider);
+  const model = process.env.MASTYFF_AI_LLM_MODEL || defaultModelForProvider(provider);
 
   cached = {
     provider,
@@ -55,10 +55,10 @@ export function getLlmConfig(): LlmConfig {
       process.env.OLLAMA_BASE_URL ||
       process.env.OLLAMA_URL ||
       'http://localhost:11434',
-    maxTokens: parseInt(process.env.GUARDIAN_LLM_MAX_TOKENS || '512', 10),
-    timeoutMs: parseInt(process.env.GUARDIAN_LLM_TIMEOUT_MS || '30000', 10),
-    temperature: parseFloat(process.env.GUARDIAN_LLM_TEMPERATURE || '0.1'),
-    enabled: process.env.GUARDIAN_LLM_ENABLED !== 'false',
+    maxTokens: parseInt(process.env.MASTYFF_AI_LLM_MAX_TOKENS || '512', 10),
+    timeoutMs: parseInt(process.env.MASTYFF_AI_LLM_TIMEOUT_MS || '30000', 10),
+    temperature: parseFloat(process.env.MASTYFF_AI_LLM_TEMPERATURE || '0.1'),
+    enabled: process.env.MASTYFF_AI_LLM_ENABLED !== 'false',
   };
   return cached;
 }
@@ -68,8 +68,8 @@ export function resetLlmConfigForTests(): void {
 }
 
 const GLOBAL_MODEL_ENV_KEYS = [
-  'GUARDIAN_MODEL',
-  'GUARDIAN_LLM_MODEL',
+  'MASTYFF_AI_MODEL',
+  'MASTYFF_AI_LLM_MODEL',
   'ANTHROPIC_MODEL',
   'OPENAI_MODEL',
   'MCP_PRICING_MODEL',
@@ -80,8 +80,8 @@ const GLOBAL_MODEL_ENV_KEYS = [
 ] as const;
 
 const SERVER_MODEL_ENV_KEYS = [
-  'GUARDIAN_MODEL',
-  'GUARDIAN_LLM_MODEL',
+  'MASTYFF_AI_MODEL',
+  'MASTYFF_AI_LLM_MODEL',
   'ANTHROPIC_MODEL',
   'OPENAI_MODEL',
   'MCP_MODEL',
@@ -138,13 +138,13 @@ export function extractModelFromServerArgs(args?: string[]): string | undefined 
  * Model discovery chain (first match wins):
  *
  * **Per-server (audit / proxy record time)**
- * 1. MCP server `env` — GUARDIAN_MODEL, GUARDIAN_LLM_MODEL, ANTHROPIC_MODEL, OPENAI_MODEL, MCP_MODEL, MODEL
+ * 1. MCP server `env` — MASTYFF_AI_MODEL, MASTYFF_AI_LLM_MODEL, ANTHROPIC_MODEL, OPENAI_MODEL, MCP_MODEL, MODEL
  * 2. MCP server `args` — `--model`, `-m`, `--model=id`
- * 3. Process env `GUARDIAN_MODEL_<NORMALIZED_SERVER_NAME>`
+ * 3. Process env `MASTYFF_AI_MODEL_<NORMALIZED_SERVER_NAME>`
  *
  * **Global / IDE**
- * 4. `resolveModelId(payloadModel)` — message metadata, then GUARDIAN_MODEL, ANTHROPIC_MODEL, OPENAI_MODEL,
- *    MCP_PRICING_MODEL, CURSOR_MODEL, CLINE_MODEL, GUARDIAN_LLM_MODEL, `getLlmConfig().model`
+ * 4. `resolveModelId(payloadModel)` — message metadata, then MASTYFF_AI_MODEL, ANTHROPIC_MODEL, OPENAI_MODEL,
+ *    MCP_PRICING_MODEL, CURSOR_MODEL, CLINE_MODEL, MASTYFF_AI_LLM_MODEL, `getLlmConfig().model`
  * 5. Cline `~/.cline/data/globalState.json` act-mode model ids (when no env model)
  */
 export function resolveModelId(payloadModel?: string | null): string {
@@ -162,7 +162,7 @@ export function resolveModelId(payloadModel?: string | null): string {
   return getLlmConfig().model;
 }
 
-/** Per-server model: server env → args → GUARDIAN_MODEL_<SERVER> → global resolveModelId(). */
+/** Per-server model: server env → args → MASTYFF_AI_MODEL_<SERVER> → global resolveModelId(). */
 export function resolveModelIdForServer(
   serverName: string,
   serverEnv?: Record<string, string>,
@@ -177,7 +177,7 @@ export function resolveModelIdForServer(
   if (fromArgs) return fromArgs;
 
   const normalized = serverName.toUpperCase().replace(/[^A-Z0-9]/g, '_');
-  const perServer = process.env[`GUARDIAN_MODEL_${normalized}`]?.trim();
+  const perServer = process.env[`MASTYFF_AI_MODEL_${normalized}`]?.trim();
   if (perServer) return perServer;
 
   return resolveModelId();

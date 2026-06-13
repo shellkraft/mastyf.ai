@@ -12,7 +12,7 @@ import {
   YAxis,
   CartesianGrid,
 } from 'recharts';
-import type { ThreatDiscoveryStatus } from '@/lib/guardian-api';
+import type { ThreatDiscoveryStatus } from '@/lib/mastyff-ai-api';
 import { ExplainableStatCard } from './ExplainableStatCard';
 import { ThreatDiscoveryRunControls } from './ThreatDiscoveryRunControls';
 import { THREAT_DISCOVERY_EXPLAINERS } from '@/lib/threat-discovery-copy';
@@ -86,7 +86,7 @@ export function ThreatDiscoveryOverview({
       {!status.features.threatLabEnabled && !status.features.autoResearchEnabled ? (
         <p className="hint banner-inline">
           Enable <code>SWARM_THREAT_LAB=true</code> and/or{' '}
-          <code>GUARDIAN_THREAT_RESEARCH_AUTO=true</code> +{' '}
+          <code>MASTYFF_AI_THREAT_RESEARCH_AUTO=true</code> +{' '}
           <code>SWARM_THREAT_RESEARCH_AUTO=true</code> on the proxy server, or use Run buttons
           below (sets env for child job only).
         </p>

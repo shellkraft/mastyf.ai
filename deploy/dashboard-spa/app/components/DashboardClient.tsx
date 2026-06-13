@@ -5,7 +5,7 @@ import {
   fetchAggregateMetrics,
   fetchAudit,
   fetchAuthStatus,
-  guardianFetch,
+  mastyffAiFetch,
   fetchCost,
   fetchHealth,
   fetchFleetInstances,
@@ -18,7 +18,7 @@ import {
   type CostResponse,
   type HealthResponse,
   type SecurityResponse,
-} from '@/lib/guardian-api';
+} from '@/lib/mastyff-ai-api';
 import { useDashboardWs } from '@/lib/use-dashboard-ws';
 import {
   DEFAULT_WORKSPACE,
@@ -64,14 +64,14 @@ import {
 import { DashboardRegionProvider, DashboardRegionSelector } from './dashboard/DashboardRegionContext';
 import { VisualsProvider } from './dashboard/VisualsProvider';
 import { hasPermission } from '@/lib/dashboard-roles';
-import type { AuthStatus } from '@/lib/guardian-api';
+import type { AuthStatus } from '@/lib/mastyff-ai-api';
 import type { ThreatLabContext } from './IncidentInvestigatorDrawer';
 import { ProtectionWorkspace } from './workspaces/ProtectionWorkspace';
 import { AgenticWorkspace } from './workspaces/AgenticWorkspace';
 import { HelpWorkspace } from './workspaces/HelpWorkspace';
 import { LiveThreatIntelPanel } from './live/LiveThreatIntelPanel';
 import { LiveMcpServersPanel } from './live/LiveMcpServersPanel';
-import type { SwarmJobStatus } from '@/lib/guardian-api';
+import type { SwarmJobStatus } from '@/lib/mastyff-ai-api';
 
 const POLL_FAILURES_BEFORE_DOWN = 3;
 const STATUS_DEBOUNCE_MS = 400;
@@ -223,7 +223,7 @@ export function DashboardClient() {
 
   const refreshAll = useCallback(async () => {
     try {
-      const authProbe = await guardianFetch('/api/auth/status');
+      const authProbe = await mastyffAiFetch('/api/auth/status');
       const apiUp = authProbe.ok;
 
       const loadCost = workspace === 'operations' && operationsView === 'cost';
@@ -669,7 +669,7 @@ export function DashboardClient() {
 function OfflineNotice() {
   return (
     <div className="banner" role="status">
-      Guardian API not reachable. Run the proxy with <code>DASHBOARD_ENABLED=true</code> on port
+      Mastyff AI API not reachable. Run the proxy with <code>DASHBOARD_ENABLED=true</code> on port
       4000, restart after <code>pnpm dashboard:build</code>, or set{' '}
       <code>?apiBase=http://localhost:4000</code>.
     </div>

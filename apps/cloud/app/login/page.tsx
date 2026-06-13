@@ -50,7 +50,7 @@ export default async function LoginPage({ searchParams }: Props) {
     <main className="container">
       <section className="hero">
         <h1>Sign in</h1>
-        <p className="muted">Use Google or GitHub to access MCP Guardian Cloud.</p>
+        <p className="muted">Use Google or GitHub to access MCP Mastyff AI Cloud.</p>
       </section>
       {errorMessage ? (
         <p className="alert alert-warn" role="alert">

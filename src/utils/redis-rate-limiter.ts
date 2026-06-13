@@ -1,6 +1,6 @@
 import type { Redis, Cluster } from 'ioredis';
 import { Logger } from './logger.js';
-import { getGuardianRegion } from './region.js';
+import { getMastyffAiRegion } from './region.js';
 import { createRedisClient, getRedisConnectionLabel, isRedisConfigured } from './redis-client.js';
 import { DEFAULT_TENANT_ID, tenantRateLimitKey } from '../tenant/resolve-tenant.js';
 
@@ -8,18 +8,18 @@ export { tenantRateLimitKey };
 
 /**
  * Redis-backed rate limit counters for multi-replica HA.
- * Keys include GUARDIAN_REGION for observability and active-passive isolation.
+ * Keys include MASTYFF_AI_REGION for observability and active-passive isolation.
  * Enable with REDIS_URL, REDIS_SENTINELS, or REDIS_CLUSTER_NODES (see docs/REDIS_HA.md).
  */
 let sharedLimiter: RedisRateLimiter | null = null;
 let globalLimiter: RedisRateLimiter | null = null;
 
 function isActiveActiveMode(): boolean {
-  return (process.env['GUARDIAN_MULTI_REGION_MODE'] || '').toLowerCase() === 'active-active';
+  return (process.env['MASTYFF_AI_MULTI_REGION_MODE'] || '').toLowerCase() === 'active-active';
 }
 
 function globalRateLimitRedisUrl(): string | null {
-  return process.env['GUARDIAN_GLOBAL_RATE_LIMIT_REDIS_URL']?.trim() || null;
+  return process.env['MASTYFF_AI_GLOBAL_RATE_LIMIT_REDIS_URL']?.trim() || null;
 }
 
 export function getSharedRedisRateLimiter(): RedisRateLimiter {
@@ -52,11 +52,11 @@ export class RedisRateLimiter {
     if (!isRedisConfigured() && !opts?.redisUrl) {
       throw new Error('RedisRateLimiter requires REDIS_URL, REDIS_SENTINELS, or REDIS_CLUSTER_NODES');
     }
-    this.region = getGuardianRegion();
+    this.region = getMastyffAiRegion();
     this.globalScope = opts?.globalScope === true;
     const scopeLabel = this.globalScope ? 'global' : this.region;
-    this.prefix = `mcp_guardian:ratelimit:${scopeLabel}:`;
-    this.lockPrefix = `mcp_guardian:ratelimit_lock:${scopeLabel}:`;
+    this.prefix = `mastyff_ai:ratelimit:${scopeLabel}:`;
+    this.lockPrefix = `mastyff_ai:ratelimit_lock:${scopeLabel}:`;
     this.redis = opts?.redisUrl
       ? createRedisClient({ connectionString: opts.redisUrl, maxRetriesPerRequest: 2, lazyConnect: false })
       : createRedisClient({ maxRetriesPerRequest: 2, lazyConnect: false });
@@ -74,7 +74,7 @@ export class RedisRateLimiter {
    * Returns true if lock acquired or lock not required.
    */
   async acquireWindowLock(key: string, windowMs: number): Promise<boolean> {
-    if (process.env['GUARDIAN_RATE_LIMIT_DISTRIBUTED_LOCK'] !== 'true') return true;
+    if (process.env['MASTYFF_AI_RATE_LIMIT_DISTRIBUTED_LOCK'] !== 'true') return true;
     const lockKey = `${this.lockPrefix}${key}`;
     try {
       const ok = await this.redis.set(lockKey, '1', 'PX', windowMs, 'NX');
@@ -109,9 +109,9 @@ export class RedisRateLimiter {
       isActiveActiveMode()
       && !this.globalScope
       && globalRateLimitRedisUrl()
-      && process.env['GUARDIAN_GLOBAL_RATE_LIMIT_MAX']
+      && process.env['MASTYFF_AI_GLOBAL_RATE_LIMIT_MAX']
     ) {
-      const globalMax = parseInt(process.env['GUARDIAN_GLOBAL_RATE_LIMIT_MAX'] || '0', 10);
+      const globalMax = parseInt(process.env['MASTYFF_AI_GLOBAL_RATE_LIMIT_MAX'] || '0', 10);
       if (globalMax > 0) {
         const globalLimiterInstance = getGlobalRedisRateLimiter();
         const globalResult = await globalLimiterInstance.checkAndIncrementLocal(
@@ -165,7 +165,7 @@ export class RedisRateLimiter {
 
       return { allowed: count <= maxRequests, count };
     } catch (err: unknown) {
-      if (process.env['GUARDIAN_STRICT_MODE'] === 'true') {
+      if (process.env['MASTYFF_AI_STRICT_MODE'] === 'true') {
         const message = err instanceof Error ? err.message : String(err);
         Logger.error(`[redis-rate-limiter] Redis unavailable in strict mode: ${message}`);
         return { allowed: false, count: maxRequests + 1 };
@@ -194,7 +194,7 @@ export function getGlobalRedisRateLimiter(): RedisRateLimiter {
   if (!globalLimiter) {
     const url = globalRateLimitRedisUrl();
     if (!url) {
-      throw new Error('GUARDIAN_GLOBAL_RATE_LIMIT_REDIS_URL required for global rate limiter');
+      throw new Error('MASTYFF_AI_GLOBAL_RATE_LIMIT_REDIS_URL required for global rate limiter');
     }
     globalLimiter = new RedisRateLimiter({ redisUrl: url, globalScope: true });
   }

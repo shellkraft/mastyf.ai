@@ -9,15 +9,15 @@ const PREFIX_V3 = 'genc3:';
 const SALT_LEN = 16;
 
 function deploymentSalt(): Buffer {
-  const fromEnv = process.env['GUARDIAN_DB_ENCRYPTION_SALT']?.trim();
+  const fromEnv = process.env['MASTYFF_AI_DB_ENCRYPTION_SALT']?.trim();
   if (fromEnv) {
     return Buffer.from(createHash('sha256').update(fromEnv).digest().subarray(0, SALT_LEN));
   }
-  const keyRaw = process.env['GUARDIAN_DB_ENCRYPTION_KEY']?.trim();
+  const keyRaw = process.env['MASTYFF_AI_DB_ENCRYPTION_KEY']?.trim();
   if (keyRaw) {
     return Buffer.from(createHash('sha256').update(`salt:${keyRaw}`).digest().subarray(0, SALT_LEN));
   }
-  return Buffer.from(createHash('sha256').update('mcp-guardian-field-v1').digest().subarray(0, SALT_LEN));
+  return Buffer.from(createHash('sha256').update('mastyff-ai-field-v1').digest().subarray(0, SALT_LEN));
 }
 
 function deriveKey(raw: string, salt: Buffer): Buffer {
@@ -25,14 +25,14 @@ function deriveKey(raw: string, salt: Buffer): Buffer {
 }
 
 export function isFieldEncryptionEnabled(): boolean {
-  return Boolean(process.env['GUARDIAN_DB_ENCRYPTION_KEY']?.trim());
+  return Boolean(process.env['MASTYFF_AI_DB_ENCRYPTION_KEY']?.trim());
 }
 
 export function isAuditArgsEncryptionEnabled(): boolean {
-  return isFieldEncryptionEnabled() && process.env['GUARDIAN_DB_ENCRYPT_AUDIT_ARGS'] === 'true';
+  return isFieldEncryptionEnabled() && process.env['MASTYFF_AI_DB_ENCRYPT_AUDIT_ARGS'] === 'true';
 }
 
-/** Encrypt redacted argument snippets when GUARDIAN_DB_ENCRYPT_AUDIT_ARGS=true. */
+/** Encrypt redacted argument snippets when MASTYFF_AI_DB_ENCRYPT_AUDIT_ARGS=true. */
 export function encryptAuditArgsField(plaintext: string | null | undefined): string | null {
   if (plaintext == null || plaintext === '') return plaintext ?? null;
   if (!isAuditArgsEncryptionEnabled()) return plaintext;
@@ -46,17 +46,17 @@ export function decryptAuditArgsField(stored: string | null | undefined): string
 }
 
 export function getFieldEncryptionKey(): string | undefined {
-  const k = process.env['GUARDIAN_DB_ENCRYPTION_KEY']?.trim();
+  const k = process.env['MASTYFF_AI_DB_ENCRYPTION_KEY']?.trim();
   return k || undefined;
 }
 
 function activeKeyVersion(): string {
-  return (process.env['GUARDIAN_DB_ENCRYPTION_KEY_VERSION'] || 'v1').trim();
+  return (process.env['MASTYFF_AI_DB_ENCRYPTION_KEY_VERSION'] || 'v1').trim();
 }
 
 function keyForVersion(version: string): string | undefined {
   if (version === activeKeyVersion()) return getFieldEncryptionKey();
-  const env = process.env[`GUARDIAN_DB_ENCRYPTION_KEY_${version.toUpperCase()}`]?.trim();
+  const env = process.env[`MASTYFF_AI_DB_ENCRYPTION_KEY_${version.toUpperCase()}`]?.trim();
   return env || undefined;
 }
 
@@ -68,7 +68,7 @@ export function getFieldEncryptionStatus(): {
   return {
     enabled: isFieldEncryptionEnabled(),
     activeVersion: activeKeyVersion(),
-    rotationEnabled: process.env['GUARDIAN_DB_ENCRYPTION_ROTATION_ENABLED'] === 'true',
+    rotationEnabled: process.env['MASTYFF_AI_DB_ENCRYPTION_ROTATION_ENABLED'] === 'true',
   };
 }
 
@@ -123,7 +123,7 @@ export function decryptField(stored: string | null | undefined): string | null {
   }
 
   if (stored.startsWith(PREFIX_V1)) {
-    const key = scryptSync(keyRaw, 'mcp-guardian-field-v1', 32);
+    const key = scryptSync(keyRaw, 'mastyff-ai-field-v1', 32);
     const buf = Buffer.from(stored.slice(PREFIX_V1.length), 'base64');
     const iv = buf.subarray(0, IV_LEN);
     const tag = buf.subarray(IV_LEN, IV_LEN + TAG_LEN);

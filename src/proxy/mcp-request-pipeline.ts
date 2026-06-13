@@ -80,7 +80,7 @@ export function mcpResponseBlockJson(
   id: string | number | null | undefined,
   reason: string,
 ): Record<string, unknown> {
-  return jsonRpcErrorBody(id, -32002, reason ?? 'Resource/prompt blocked by MCP Guardian') as Record<
+  return jsonRpcErrorBody(id, -32002, reason ?? 'Resource/prompt blocked by Mastyff AI') as Record<
     string,
     unknown
   >;

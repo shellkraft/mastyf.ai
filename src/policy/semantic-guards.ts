@@ -149,9 +149,9 @@ function extractPathLikeLeaves(args: Record<string, unknown>): string[] {
 }
 
 function githubAllowedRepos(): string[] | null {
-  const repos = process.env.GUARDIAN_GITHUB_ALLOWED_REPOS?.split(',').map((s) => s.trim()).filter(Boolean);
+  const repos = process.env.MASTYFF_AI_GITHUB_ALLOWED_REPOS?.split(',').map((s) => s.trim()).filter(Boolean);
   if (repos?.length) return repos;
-  const orgs = process.env.GUARDIAN_GITHUB_ALLOWED_ORGS?.split(',').map((s) => s.trim()).filter(Boolean);
+  const orgs = process.env.MASTYFF_AI_GITHUB_ALLOWED_ORGS?.split(',').map((s) => s.trim()).filter(Boolean);
   if (orgs?.length) return orgs.map((o) => `${o}/`);
   return null;
 }

@@ -3,9 +3,9 @@ import { MTLS_HELM_MOUNT_PATHS, resolveMtlsEnvFromMounts } from '../../src/utils
 
 describe('mtls-config helm mounts', () => {
   it('exposes default Helm mount paths', () => {
-    expect(MTLS_HELM_MOUNT_PATHS.ca).toBe('/etc/mcp-guardian/tls/ca.pem');
-    expect(MTLS_HELM_MOUNT_PATHS.cert).toBe('/etc/mcp-guardian/tls/tls.crt');
-    expect(MTLS_HELM_MOUNT_PATHS.key).toBe('/etc/mcp-guardian/tls/tls.key');
+    expect(MTLS_HELM_MOUNT_PATHS.ca).toBe('/etc/mastyff-ai/tls/ca.pem');
+    expect(MTLS_HELM_MOUNT_PATHS.cert).toBe('/etc/mastyff-ai/tls/tls.crt');
+    expect(MTLS_HELM_MOUNT_PATHS.key).toBe('/etc/mastyff-ai/tls/tls.key');
   });
 
   it('resolveMtlsEnvFromMounts is safe when files missing', () => {

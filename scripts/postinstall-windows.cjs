@@ -7,7 +7,7 @@ if (process.platform !== 'win32') {
 }
 
 const hints = [
-  'MCP Guardian on Windows: better-sqlite3 failed to load.',
+  'MCP Mastyff AI on Windows: better-sqlite3 failed to load.',
   '',
   'Official npm installs ship prebuilt binaries for Node 20 win32-x64.',
   'If install used --ignore-scripts or a custom Node build, native compile may be required:',

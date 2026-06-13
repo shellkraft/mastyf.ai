@@ -89,7 +89,7 @@ export class CapabilityGraphBuilder {
   ): { nodes: Array<{ id: string; type: 'client' | 'proxy' | 'server' | 'tool' | 'datastore'; label: string }>; edges: Array<{ from: string; to: string; label: string }> } {
     const nodes: Array<{ id: string; type: 'client' | 'proxy' | 'server' | 'tool' | 'datastore'; label: string }> = [
       { id: 'client', type: 'client', label: 'AI Agent / Client' },
-      { id: 'proxy', type: 'proxy', label: 'MCP Guardian Proxy' },
+      { id: 'proxy', type: 'proxy', label: 'MCP Mastyff AI Proxy' },
     ];
     const edges: Array<{ from: string; to: string; label: string }> = [
       { from: 'client', to: 'proxy', label: 'JSON-RPC' },

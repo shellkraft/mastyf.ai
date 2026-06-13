@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Pull org policy + env snippet from MCP Guardian Cloud control plane.
+ * Pull org policy + env snippet from MCP Mastyff AI Cloud control plane.
  *
  * Usage:
  *   CONTROL_PLANE_URL=https://cloud.example.com \
@@ -41,21 +41,21 @@ async function main() {
 
   mkdirSync(outDir, { recursive: true });
   const policyPath = join(outDir, 'policy.yaml');
-  const envPath = join(outDir, 'guardian.env');
+  const envPath = join(outDir, 'mastyff-ai.env');
   const tenantDir = join(outDir, 'policy-templates', 'tenants', org.slug);
 
   mkdirSync(tenantDir, { recursive: true });
   writeFileSync(join(tenantDir, 'policy.yaml'), policyYaml);
   writeFileSync(policyPath, policyYaml);
 
-  const envBlock = `# Generated from MCP Guardian Cloud (free OSS — no subscription required)
-GUARDIAN_MULTI_TENANT_ENABLED=true
-GUARDIAN_TENANT_ID=${org.slug}
-GUARDIAN_CONTROL_PLANE_URL=${baseUrl}
+  const envBlock = `# Generated from MCP Mastyff AI Cloud (free OSS — no subscription required)
+MASTYFF_AI_MULTI_TENANT_ENABLED=true
+MASTYFF_AI_TENANT_ID=${org.slug}
+MASTYFF_AI_CONTROL_PLANE_URL=${baseUrl}
 # Optional: sync policy via API
-# GUARDIAN_LICENSE_KEY=${apiKey}
+# MASTYFF_AI_LICENSE_KEY=${apiKey}
 DASHBOARD_JWT_SECRET=<generate-a-secret>
-GUARDIAN_CLOUD_JWT_SECRET=<match-cloud-LICENSE_JWT_SECRET-or-AUTH_SECRET>
+MASTYFF_AI_CLOUD_JWT_SECRET=<match-cloud-LICENSE_JWT_SECRET-or-AUTH_SECRET>
 # Mount ${tenantDir}/policy.yaml → policy-templates/tenants/${org.slug}/policy.yaml
 `;
   writeFileSync(envPath, envBlock);

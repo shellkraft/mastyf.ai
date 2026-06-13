@@ -28,14 +28,14 @@ export type FederatedQueryContext = {
 };
 
 function dashboardDataSourcePref(): string {
-  return (process.env['GUARDIAN_DASHBOARD_DATA_SOURCE'] || 'auto').toLowerCase();
+  return (process.env['MASTYFF_AI_DASHBOARD_DATA_SOURCE'] || 'auto').toLowerCase();
 }
 
 export function resolveFederatedMode(localDb: IDatabase | null): FederatedMode {
   const pref = dashboardDataSourcePref();
   const hasPgUrl = Boolean(process.env['DATABASE_URL']);
   const dbType = (process.env['DB_TYPE'] || 'sqlite').toLowerCase();
-  const fleetPaths = (process.env['GUARDIAN_FLEET_DB_PATHS'] || '')
+  const fleetPaths = (process.env['MASTYFF_AI_FLEET_DB_PATHS'] || '')
     .split(',')
     .map((p) => p.trim())
     .filter(Boolean);
@@ -45,7 +45,7 @@ export function resolveFederatedMode(localDb: IDatabase | null): FederatedMode {
   if (pref === 'unified' && hasPgUrl) return 'unified';
 
   if (pref === 'auto' || pref === 'unified') {
-    if (hasPgUrl && (process.env['GUARDIAN_AUDIT_SYNC_ENABLED'] === 'true' || pref === 'unified')) {
+    if (hasPgUrl && (process.env['MASTYFF_AI_AUDIT_SYNC_ENABLED'] === 'true' || pref === 'unified')) {
       return 'unified';
     }
     if (hasPgUrl && dbType === 'postgres') return 'postgres-direct';
@@ -74,7 +74,7 @@ async function loadFleetMergedRecords(
   tenantId: string | undefined,
   windowDays: number,
 ): Promise<ProxyCallRecord[]> {
-  const paths = (process.env['GUARDIAN_FLEET_DB_PATHS'] || '')
+  const paths = (process.env['MASTYFF_AI_FLEET_DB_PATHS'] || '')
     .split(',')
     .map((p) => p.trim())
     .filter((p) => p && existsSync(p));

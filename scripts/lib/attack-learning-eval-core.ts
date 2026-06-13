@@ -238,13 +238,13 @@ function readQueueSize(): number {
 }
 
 function setupEnv(dir: string, instant: boolean): void {
-  process.env.GUARDIAN_AI_ENABLED = 'true';
-  process.env.GUARDIAN_AI_INSTANT_LEARNING = instant ? 'true' : 'false';
-  process.env.GUARDIAN_AI_ATTACK_MIN_BLOCKS = '3';
-  process.env.GUARDIAN_AI_INSTANT_WINDOW_MS = String(REPEAT_WINDOW_MS);
-  process.env.GUARDIAN_AI_BLOCK_DEBOUNCE_MS = String(DEBOUNCE_MS);
-  process.env.GUARDIAN_AI_ATTACK_STATE_PATH = join(dir, '.attack-learning-state.json');
-  process.env.GUARDIAN_AI_SUGGESTIONS_PATH = join(dir, '.ai-pending-suggestions.json');
+  process.env.MASTYFF_AI_AI_ENABLED = 'true';
+  process.env.MASTYFF_AI_AI_INSTANT_LEARNING = instant ? 'true' : 'false';
+  process.env.MASTYFF_AI_AI_ATTACK_MIN_BLOCKS = '3';
+  process.env.MASTYFF_AI_AI_INSTANT_WINDOW_MS = String(REPEAT_WINDOW_MS);
+  process.env.MASTYFF_AI_AI_BLOCK_DEBOUNCE_MS = String(DEBOUNCE_MS);
+  process.env.MASTYFF_AI_AI_ATTACK_STATE_PATH = join(dir, '.attack-learning-state.json');
+  process.env.MASTYFF_AI_AI_SUGGESTIONS_PATH = join(dir, '.ai-pending-suggestions.json');
   resetInstantAttackLearningState();
   resetBlockLearningDebounce();
   for (const f of ['.attack-learning-state.json', '.ai-pending-suggestions.json']) {
@@ -307,7 +307,7 @@ function buildRepeatClusters(
 }
 
 export function runInstantScenario(events: SimBlockEvent[], topClusters = 15): ScenarioMetrics {
-  const dir = mkdtempSync(join(tmpdir(), 'guardian-eval-instant-'));
+  const dir = mkdtempSync(join(tmpdir(), 'mastyff-ai-eval-instant-'));
   setupEnv(dir, true);
 
   const firstBlockAt = new Map<string, number>();
@@ -383,7 +383,7 @@ export function runInstantScenario(events: SimBlockEvent[], topClusters = 15): S
 }
 
 export function runBatchScenario(events: SimBlockEvent[], topClusters = 15): ScenarioMetrics {
-  const dir = mkdtempSync(join(tmpdir(), 'guardian-eval-batch-'));
+  const dir = mkdtempSync(join(tmpdir(), 'mastyff-ai-eval-batch-'));
   setupEnv(dir, false);
 
   const categoryByGroup = new Map<string, AttackCategory>();

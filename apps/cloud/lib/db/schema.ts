@@ -117,7 +117,7 @@ export const licenseExchangeTokens = pgTable('license_exchange_tokens', {
     .notNull()
     .references(() => organizations.id, { onDelete: 'cascade' }),
   tokenHash: text('token_hash').notNull().unique(),
-  guardianUrl: text('guardian_url'),
+  mastyffAiUrl: text('mastyff-ai_url'),
   expiresAt: timestamp('expires_at', { mode: 'date', withTimezone: true }).notNull(),
   usedAt: timestamp('used_at', { mode: 'date', withTimezone: true }),
   createdAt: timestamp('created_at', { mode: 'date', withTimezone: true }).notNull().defaultNow(),

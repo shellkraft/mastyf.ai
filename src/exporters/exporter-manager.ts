@@ -17,30 +17,30 @@ export class ExporterManager {
   constructor() {
     this.config = {
       splunk: {
-        enabled: process.env['MCP_GUARDIAN_SIEM_SPLUNK_ENABLED'] === 'true',
-        hecUrl: process.env['MCP_GUARDIAN_SIEM_SPLUNK_HEC_URL'] || '',
-        hecToken: process.env['MCP_GUARDIAN_SIEM_SPLUNK_HEC_TOKEN'] || '',
+        enabled: process.env['MASTYFF_AI_SIEM_SPLUNK_ENABLED'] === 'true',
+        hecUrl: process.env['MASTYFF_AI_SIEM_SPLUNK_HEC_URL'] || '',
+        hecToken: process.env['MASTYFF_AI_SIEM_SPLUNK_HEC_TOKEN'] || '',
       },
       elastic: {
-        enabled: process.env['MCP_GUARDIAN_SIEM_ELASTIC_ENABLED'] === 'true',
-        url: process.env['MCP_GUARDIAN_SIEM_ELASTIC_URL'] || '',
-        apiKey: process.env['MCP_GUARDIAN_SIEM_ELASTIC_API_KEY'],
-        username: process.env['MCP_GUARDIAN_SIEM_ELASTIC_USERNAME'],
-        password: process.env['MCP_GUARDIAN_SIEM_ELASTIC_PASSWORD'],
+        enabled: process.env['MASTYFF_AI_SIEM_ELASTIC_ENABLED'] === 'true',
+        url: process.env['MASTYFF_AI_SIEM_ELASTIC_URL'] || '',
+        apiKey: process.env['MASTYFF_AI_SIEM_ELASTIC_API_KEY'],
+        username: process.env['MASTYFF_AI_SIEM_ELASTIC_USERNAME'],
+        password: process.env['MASTYFF_AI_SIEM_ELASTIC_PASSWORD'],
       },
       datadog: {
-        enabled: process.env['MCP_GUARDIAN_SIEM_DATADOG_ENABLED'] === 'true',
-        apiKey: process.env['MCP_GUARDIAN_SIEM_DATADOG_API_KEY'] || '',
-        site: process.env['MCP_GUARDIAN_SIEM_DATADOG_SITE'] || 'datadoghq.com',
+        enabled: process.env['MASTYFF_AI_SIEM_DATADOG_ENABLED'] === 'true',
+        apiKey: process.env['MASTYFF_AI_SIEM_DATADOG_API_KEY'] || '',
+        site: process.env['MASTYFF_AI_SIEM_DATADOG_SITE'] || 'datadoghq.com',
       },
       chronicle: {
-        enabled: process.env['MCP_GUARDIAN_SIEM_CHRONICLE_ENABLED'] === 'true',
-        customerId: process.env['MCP_GUARDIAN_SIEM_CHRONICLE_CUSTOMER_ID'] || '',
-        serviceAccountKey: process.env['MCP_GUARDIAN_SIEM_CHRONICLE_SA_KEY'] || '',
+        enabled: process.env['MASTYFF_AI_SIEM_CHRONICLE_ENABLED'] === 'true',
+        customerId: process.env['MASTYFF_AI_SIEM_CHRONICLE_CUSTOMER_ID'] || '',
+        serviceAccountKey: process.env['MASTYFF_AI_SIEM_CHRONICLE_SA_KEY'] || '',
       },
       otel: {
-        enabled: process.env['MCP_GUARDIAN_SIEM_OTEL_ENABLED'] === 'true',
-        endpoint: process.env['MCP_GUARDIAN_SIEM_OTEL_ENDPOINT'] || 'http://localhost:4318/v1/logs',
+        enabled: process.env['MASTYFF_AI_SIEM_OTEL_ENABLED'] === 'true',
+        endpoint: process.env['MASTYFF_AI_SIEM_OTEL_ENDPOINT'] || 'http://localhost:4318/v1/logs',
       },
     };
   }
@@ -104,7 +104,7 @@ export class ExporterManager {
     }
 
     Logger.info(`[ExporterManager] Started with ${count} exporters`);
-    if (process.env['GUARDIAN_EXPORTER_DLQ_FLUSH'] !== 'false') {
+    if (process.env['MASTYFF_AI_EXPORTER_DLQ_FLUSH'] !== 'false') {
       void this.flushDlq();
     }
   }
@@ -137,7 +137,7 @@ export class ExporterManager {
         body: JSON.stringify({
           time: Date.now() / 1000,
           host: process.env['HOSTNAME'] || 'unknown',
-          source: 'mcp-guardian',
+          source: 'mastyff-ai',
           sourcetype: '_json',
           index: cfg.index || 'main',
           event,
@@ -161,7 +161,7 @@ export class ExporterManager {
         headers['Authorization'] = 'Basic ' + Buffer.from(`${cfg.username}:${cfg.password || ''}`).toString('base64');
       }
 
-      const res = await fetch(`${cfg.url}/mcp-guardian-${new Date().toISOString().split('T')[0]}/_doc`, {
+      const res = await fetch(`${cfg.url}/mastyff-ai-${new Date().toISOString().split('T')[0]}/_doc`, {
         method: 'POST',
         headers,
         body: JSON.stringify({ '@timestamp': event.timestamp, ...event }),
@@ -183,10 +183,10 @@ export class ExporterManager {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          ddsource: 'mcp-guardian',
-          ddtags: `instance:${process.env['GUARDIAN_INSTANCE_ID'] || 'default'}`,
+          ddsource: 'mastyff-ai',
+          ddtags: `instance:${process.env['MASTYFF_AI_INSTANCE_ID'] || 'default'}`,
           hostname: process.env['HOSTNAME'] || 'unknown',
-          service: 'mcp-guardian',
+          service: 'mastyff-ai',
           message: JSON.stringify(event.payload),
           ...event,
         }),
@@ -209,7 +209,7 @@ export class ExporterManager {
           events: [{
             metadata: {
               event_timestamp: new Date(event.timestamp).toISOString(),
-              event_type: 'MCP_GUARDIAN_EVENT',
+              event_type: 'MASTYFF_AI_EVENT',
             },
             additional: event.payload,
           }],
@@ -231,7 +231,7 @@ export class ExporterManager {
           resourceLogs: [{
             resource: {
               attributes: [
-                { key: 'service.name', value: { stringValue: 'mcp-guardian' } },
+                { key: 'service.name', value: { stringValue: 'mastyff-ai' } },
               ],
             },
             scopeLogs: [{

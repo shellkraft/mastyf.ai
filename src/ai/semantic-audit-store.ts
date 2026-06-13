@@ -29,7 +29,7 @@ export interface StoredSemanticAudit {
   argumentsSnapshot?: Record<string, unknown>;
 }
 
-const MAX_RECORDS = parseInt(process.env.GUARDIAN_SEMANTIC_STORE_MAX || '5000', 10);
+const MAX_RECORDS = parseInt(process.env.MASTYFF_AI_SEMANTIC_STORE_MAX || '5000', 10);
 
 /** Shared dashboard / investigator lookup window (matches /api/learning/semantic/outcomes). */
 export const SEMANTIC_AUDIT_DASHBOARD_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
@@ -75,9 +75,9 @@ export async function loadSemanticAuditRecordsWithTenantFallback(opts?: {
 
 function storePath(tenantId?: string): string {
   const tid = tenantId || resolveTenantId();
-  const base = join(homedir(), '.mcp-guardian', 'tenants', tid);
+  const base = join(homedir(), '.mastyff-ai', 'tenants', tid);
   if (tid === 'default') {
-    return join(homedir(), '.mcp-guardian', 'semantic-audit-outcomes.jsonl');
+    return join(homedir(), '.mastyff-ai', 'semantic-audit-outcomes.jsonl');
   }
   return join(base, 'semantic-audit-outcomes.jsonl');
 }

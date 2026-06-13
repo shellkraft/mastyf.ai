@@ -17,7 +17,7 @@ import { publishFleetEventToRedis } from './fleet-chain-redis.js';
 const onnxBoostCache = new Map<string, number>();
 
 async function refreshGraphOnnxBoost(sessionId: string, events: FleetChainEvent[]): Promise<void> {
-  if (!process.env.GUARDIAN_FLEET_GRAPH_ONNX_MODEL?.trim()) return;
+  if (!process.env.MASTYFF_AI_FLEET_GRAPH_ONNX_MODEL?.trim()) return;
   try {
     const { scoreGraphEventsWithOnnx } = await import('./graph-onnx-inference.js');
     const result = await scoreGraphEventsWithOnnx(events);

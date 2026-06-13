@@ -8,7 +8,7 @@ import { randomUUID } from 'node:crypto';
 import { REPO_ROOT, resolveSwarmDir } from './swarm-dir.mjs';
 
 const __dir = dirname(fileURLToPath(import.meta.url));
-/** Override via GUARDIAN_SWARM_DIR for per-tenant dashboard runs. */
+/** Override via MASTYFF_AI_SWARM_DIR for per-tenant dashboard runs. */
 export { REPO_ROOT };
 export const SWARM_DIR = resolveSwarmDir();
 export const JOB_PATH = join(SWARM_DIR, 'job.json');

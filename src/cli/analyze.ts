@@ -1,11 +1,11 @@
 /**
- * CLI: full plain-English Guardian analysis.
+ * CLI: full plain-English Mastyff AI analysis.
  */
 import { existsSync, mkdirSync, writeFileSync } from 'fs';
 import { join, resolve } from 'path';
 import chalk from 'chalk';
 import { createContainer } from '../container.js';
-import { buildGuardianFullAnalysis } from '../ai/guardian-full-analysis.js';
+import { buildMastyffAiFullAnalysis } from '../ai/mastyff-ai-full-analysis.js';
 import { DEFAULT_TENANT_ID } from '../tenant/resolve-tenant.js';
 
 export async function runAnalyze(opts: {
@@ -16,17 +16,17 @@ export async function runAnalyze(opts: {
   tenantId?: string;
   projectRoot?: string;
 }): Promise<void> {
-  const tenantId = opts.tenantId || process.env.GUARDIAN_TENANT_ID || DEFAULT_TENANT_ID;
+  const tenantId = opts.tenantId || process.env.MASTYFF_AI_TENANT_ID || DEFAULT_TENANT_ID;
   const container = await createContainer();
   try {
-    const analysis = await buildGuardianFullAnalysis(container.db, tenantId, {
+    const analysis = await buildMastyffAiFullAnalysis(container.db, tenantId, {
       windowDays: opts.window,
       useLlm: !opts.noLlm,
       historyDbAttached: true,
     });
     if (!analysis) {
       console.error(chalk.yellow('No analysis — history database empty or unavailable.'));
-      console.error(chalk.dim('  Start the proxy with DASHBOARD_ENABLED=true and route MCP traffic through Guardian.'));
+      console.error(chalk.dim('  Start the proxy with DASHBOARD_ENABLED=true and route MCP traffic through Mastyff AI.'));
       process.exit(1);
     }
 
@@ -46,7 +46,7 @@ export async function runAnalyze(opts: {
     if (!opts.noLlm && analysis.source === 'measured') {
       console.error(
         chalk.dim(
-          '  Tip: start Ollama (qwen3:8b) for a richer plain-English narrative, or set GUARDIAN_FULL_ANALYSIS_LLM=true',
+          '  Tip: start Ollama (qwen3:8b) for a richer plain-English narrative, or set MASTYFF_AI_FULL_ANALYSIS_LLM=true',
         ),
       );
     }

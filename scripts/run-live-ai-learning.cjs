@@ -13,9 +13,9 @@ const CORPUS = JSON.parse(readFileSync(join(SCENARIO, 'agent-corpus.json'), 'utf
 const POLICY = join(ROOT, 'default-policy.yaml');
 const STUB = join(SCENARIO, 'enterprise-mcp-stub.cjs');
 const SERVER_NAMES = ['github', 'filesystem', 'puppeteer', 'postgres'];
-const GUARDIAN_DIR = join(homedir(), '.mcp-guardian');
-const DB_PATH = join(GUARDIAN_DIR, 'history-live-ai.db');
-const AI_STATE = join(GUARDIAN_DIR, '.ai-learning.json');
+const MASTYFF_AI_DIR = join(homedir(), '.mastyff-ai');
+const DB_PATH = join(MASTYFF_AI_DIR, 'history-live-ai.db');
+const AI_STATE = join(MASTYFF_AI_DIR, '.ai-learning.json');
 const QUICK = process.argv.includes('--quick');
 
 const log = (m) => process.stdout.write(m + '\n');
@@ -31,19 +31,19 @@ function readAiState() {
   log('  LIVE AI LEARNING TEST (real traffic, fast path)');
   log('══════════════════════════════════════════════════════════\n');
 
-  mkdirSync(GUARDIAN_DIR, { recursive: true });
+  mkdirSync(MASTYFF_AI_DIR, { recursive: true });
   for (const f of [AI_STATE, DB_PATH, DB_PATH + '.pid']) {
     if (existsSync(f)) rmSync(f, { force: true });
   }
 
-  process.env.MCP_GUARDIAN_DB_PATH = DB_PATH;
-  process.env.GUARDIAN_BLOCK_ON_CVE = 'false';
-  process.env.GUARDIAN_EXPERIMENTAL_AI = 'true';
-  process.env.GUARDIAN_AI_USE_DB_SNAPSHOTS = 'true';
-  process.env.GUARDIAN_AI_DISABLE_PERIODIC = 'true';
-  process.env.GUARDIAN_AI_DISABLE_THREAT_POLL = 'true';
-  process.env.GUARDIAN_AI_SKIP_INITIAL_CYCLE = 'true';
-  process.env.GUARDIAN_AI_AUTO_APPLY_THRESHOLD = '0.45';
+  process.env.MASTYFF_AI_DB_PATH = DB_PATH;
+  process.env.MASTYFF_AI_BLOCK_ON_CVE = 'false';
+  process.env.MASTYFF_AI_EXPERIMENTAL_AI = 'true';
+  process.env.MASTYFF_AI_AI_USE_DB_SNAPSHOTS = 'true';
+  process.env.MASTYFF_AI_AI_DISABLE_PERIODIC = 'true';
+  process.env.MASTYFF_AI_AI_DISABLE_THREAT_POLL = 'true';
+  process.env.MASTYFF_AI_AI_SKIP_INITIAL_CYCLE = 'true';
+  process.env.MASTYFF_AI_AI_AUTO_APPLY_THRESHOLD = '0.45';
 
   log('Phase A — Real proxy calls → DB');
   const { McpProxyServer } = require(join(ROOT, 'dist/proxy/proxy-server.js'));

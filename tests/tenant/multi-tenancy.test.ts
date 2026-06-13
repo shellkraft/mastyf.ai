@@ -44,11 +44,11 @@ const defaultPolicy = load(
 
 describe('multi-tenancy', () => {
   describe('resolve-tenant', () => {
-    const prevTenant = process.env.GUARDIAN_TENANT_ID;
+    const prevTenant = process.env.MASTYFF_AI_TENANT_ID;
 
     afterEach(() => {
-      if (prevTenant === undefined) delete process.env.GUARDIAN_TENANT_ID;
-      else process.env.GUARDIAN_TENANT_ID = prevTenant;
+      if (prevTenant === undefined) delete process.env.MASTYFF_AI_TENANT_ID;
+      else process.env.MASTYFF_AI_TENANT_ID = prevTenant;
     });
 
     it('accepts valid tenant ids', () => {
@@ -65,17 +65,17 @@ describe('multi-tenancy', () => {
     });
 
     it('resolves header over env', () => {
-      process.env.GUARDIAN_TENANT_ID = 'env-tenant';
+      process.env.MASTYFF_AI_TENANT_ID = 'env-tenant';
       const ctx = resolveTenantContext({
-        headers: { 'x-guardian-tenant': 'header-tenant' },
+        headers: { 'x-mastyff-ai-tenant': 'header-tenant' },
       });
       expect(ctx).toEqual({ tenantId: 'header-tenant', source: 'header' });
     });
 
     it('falls back to env/default', () => {
-      delete process.env.GUARDIAN_TENANT_ID;
+      delete process.env.MASTYFF_AI_TENANT_ID;
       expect(resolveTenantId()).toBe(DEFAULT_TENANT_ID);
-      process.env.GUARDIAN_TENANT_ID = 'pod-tenant';
+      process.env.MASTYFF_AI_TENANT_ID = 'pod-tenant';
       expect(resolveTenantContext().tenantId).toBe('pod-tenant');
       expect(resolveTenantContext().source).toBe('env');
     });
@@ -86,27 +86,27 @@ describe('multi-tenancy', () => {
       );
     });
 
-    it('resolveTenantFromEnv uses GUARDIAN_TENANT_ID', () => {
-      process.env.GUARDIAN_TENANT_ID = 'env-only';
+    it('resolveTenantFromEnv uses MASTYFF_AI_TENANT_ID', () => {
+      process.env.MASTYFF_AI_TENANT_ID = 'env-only';
       expect(resolveTenantFromEnv()).toBe('env-only');
     });
 
     it('resolveCliTenantId prefers --tenant over env', () => {
-      process.env.GUARDIAN_TENANT_ID = 'env-tenant';
+      process.env.MASTYFF_AI_TENANT_ID = 'env-tenant';
       expect(resolveCliTenantId({ tenant: 'flag-tenant' })).toBe('flag-tenant');
     });
 
     it('resolveCliTenantId requires tenant when multi-tenant mode without env', () => {
-      const prevMulti = process.env.GUARDIAN_MULTI_TENANT_ENABLED;
-      const prevTenant = process.env.GUARDIAN_TENANT_ID;
-      delete process.env.GUARDIAN_TENANT_ID;
-      process.env.GUARDIAN_MULTI_TENANT_ENABLED = 'true';
+      const prevMulti = process.env.MASTYFF_AI_MULTI_TENANT_ENABLED;
+      const prevTenant = process.env.MASTYFF_AI_TENANT_ID;
+      delete process.env.MASTYFF_AI_TENANT_ID;
+      process.env.MASTYFF_AI_MULTI_TENANT_ENABLED = 'true';
       expect(() => resolveCliTenantId()).toThrow(InvalidTenantIdError);
-      if (prevMulti === undefined) delete process.env.GUARDIAN_MULTI_TENANT_ENABLED;
-      else process.env.GUARDIAN_MULTI_TENANT_ENABLED = prevMulti;
-      if (prevTenant === undefined) delete process.env.GUARDIAN_TENANT_ID;
-      else process.env.GUARDIAN_TENANT_ID = prevTenant;
-      expect(isMultiTenantModeEnabled()).toBe(process.env.GUARDIAN_MULTI_TENANT_ENABLED === 'true');
+      if (prevMulti === undefined) delete process.env.MASTYFF_AI_MULTI_TENANT_ENABLED;
+      else process.env.MASTYFF_AI_MULTI_TENANT_ENABLED = prevMulti;
+      if (prevTenant === undefined) delete process.env.MASTYFF_AI_TENANT_ID;
+      else process.env.MASTYFF_AI_TENANT_ID = prevTenant;
+      expect(isMultiTenantModeEnabled()).toBe(process.env.MASTYFF_AI_MULTI_TENANT_ENABLED === 'true');
     });
   });
 
@@ -132,10 +132,10 @@ describe('multi-tenancy', () => {
     const createdPaths: string[] = [];
 
     beforeEach(() => {
-      root = mkdtempSync(join(tmpdir(), 'guardian-mt-'));
-      process.env.GUARDIAN_AI_ENABLED = 'true';
-      process.env.GUARDIAN_AI_INSTANT_LEARNING = 'true';
-      process.env.GUARDIAN_AI_ATTACK_STATE_PATH = join(root, 'default-attack.json');
+      root = mkdtempSync(join(tmpdir(), 'mastyff-ai-mt-'));
+      process.env.MASTYFF_AI_AI_ENABLED = 'true';
+      process.env.MASTYFF_AI_AI_INSTANT_LEARNING = 'true';
+      process.env.MASTYFF_AI_AI_ATTACK_STATE_PATH = join(root, 'default-attack.json');
       resetInstantAttackLearningState();
       resetBlockLearningDebounce();
     });
@@ -143,9 +143,9 @@ describe('multi-tenancy', () => {
     afterEach(() => {
       resetInstantAttackLearningState();
       resetBlockLearningDebounce();
-      delete process.env.GUARDIAN_AI_ENABLED;
-      delete process.env.GUARDIAN_AI_INSTANT_LEARNING;
-      delete process.env.GUARDIAN_AI_ATTACK_STATE_PATH;
+      delete process.env.MASTYFF_AI_AI_ENABLED;
+      delete process.env.MASTYFF_AI_AI_INSTANT_LEARNING;
+      delete process.env.MASTYFF_AI_AI_ATTACK_STATE_PATH;
       for (const p of createdPaths) {
         try { rmSync(p, { recursive: true, force: true }); } catch { /* ignore */ }
       }
@@ -323,11 +323,11 @@ describe('multi-tenancy', () => {
   });
 
   describe('jwt tenant binding', () => {
-    const prevMulti = process.env.GUARDIAN_MULTI_TENANT_ENABLED;
+    const prevMulti = process.env.MASTYFF_AI_MULTI_TENANT_ENABLED;
 
     afterEach(() => {
-      if (prevMulti === undefined) delete process.env.GUARDIAN_MULTI_TENANT_ENABLED;
-      else process.env.GUARDIAN_MULTI_TENANT_ENABLED = prevMulti;
+      if (prevMulti === undefined) delete process.env.MASTYFF_AI_MULTI_TENANT_ENABLED;
+      else process.env.MASTYFF_AI_MULTI_TENANT_ENABLED = prevMulti;
     });
 
     it('extracts tenant_id claim from JWT payload', () => {
@@ -335,19 +335,19 @@ describe('multi-tenancy', () => {
     });
 
     it('rejects tenant mismatch when multi-tenant mode enabled', () => {
-      process.env.GUARDIAN_MULTI_TENANT_ENABLED = 'true';
+      process.env.MASTYFF_AI_MULTI_TENANT_ENABLED = 'true';
       const result = validateJwtTenantBinding('header-tenant', 'jwt-tenant');
       expect(result.ok).toBe(false);
     });
 
     it('allows match when multi-tenant mode enabled', () => {
-      process.env.GUARDIAN_MULTI_TENANT_ENABLED = 'true';
+      process.env.MASTYFF_AI_MULTI_TENANT_ENABLED = 'true';
       const result = validateJwtTenantBinding('acme', 'acme');
       expect(result.ok).toBe(true);
     });
 
     it('requires JWT tenant claim when authenticated in multi-tenant mode', () => {
-      process.env.GUARDIAN_MULTI_TENANT_ENABLED = 'true';
+      process.env.MASTYFF_AI_MULTI_TENANT_ENABLED = 'true';
       expect(() =>
         resolveAuthenticatedTenant({
           authenticated: true,
@@ -357,22 +357,22 @@ describe('multi-tenancy', () => {
     });
 
     it('uses JWT tenant as authoritative when authenticated', () => {
-      process.env.GUARDIAN_MULTI_TENANT_ENABLED = 'true';
+      process.env.MASTYFF_AI_MULTI_TENANT_ENABLED = 'true';
       const resolved = resolveProxyTenantId({
         authenticated: true,
         jwtTenantId: 'acme-corp',
-        headers: { 'x-guardian-tenant': 'acme-corp' },
+        headers: { 'x-mastyff-ai-tenant': 'acme-corp' },
       });
       expect(resolved).toBe('acme-corp');
     });
 
     it('rejects header tenant mismatch with JWT in multi-tenant mode', () => {
-      process.env.GUARDIAN_MULTI_TENANT_ENABLED = 'true';
+      process.env.MASTYFF_AI_MULTI_TENANT_ENABLED = 'true';
       expect(() =>
         resolveProxyTenantId({
           authenticated: true,
           jwtTenantId: 'acme-corp',
-          headers: { 'x-guardian-tenant': 'other-corp' },
+          headers: { 'x-mastyff-ai-tenant': 'other-corp' },
         }),
       ).toThrow(JwtTenantRequiredError);
     });

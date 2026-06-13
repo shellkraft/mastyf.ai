@@ -193,7 +193,7 @@ const RESPONSE_EXFIL_PATTERNS: RegExp[] = [
 ];
 
 export function getResponseDlpMode(): ResponseDlpMode {
-  const raw = (process.env['GUARDIAN_RESPONSE_DLP_MODE'] || 'block').toLowerCase();
+  const raw = (process.env['MASTYFF_AI_RESPONSE_DLP_MODE'] || 'block').toLowerCase();
   if (raw === 'redact' || raw === 'audit') return raw;
   return 'block';
 }

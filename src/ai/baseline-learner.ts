@@ -31,7 +31,7 @@ export interface AnomalySuggestion {
 }
 
 function minBaselineSamples(): number {
-  const n = parseInt(process.env.GUARDIAN_AI_MIN_BASELINE_SAMPLES || '3', 10);
+  const n = parseInt(process.env.MASTYFF_AI_AI_MIN_BASELINE_SAMPLES || '3', 10);
   return Number.isFinite(n) && n >= 1 ? n : 3;
 }
 
@@ -69,8 +69,8 @@ export class BaselineLearner {
         }
       }
       Logger.info(`[BaselineLearner] Loaded ${rows.length} baselines from shared store`);
-    } catch (err: any) {
-      Logger.warn(`[BaselineLearner] Shared store load failed: ${err?.message}`);
+    } catch (err: unknown) {
+      Logger.warn(`[BaselineLearner] Shared store load failed: ${err instanceof Error ? err.message : String(err)}`);
     }
   }
 

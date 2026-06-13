@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { createDetectorPlugin, PLUGIN_SDK_VERSION } from '@mcp-guardian/plugin-sdk';
+import { createDetectorPlugin, PLUGIN_SDK_VERSION } from '@mastyff-ai/plugin-sdk';
 import { registerDetectorPlugin, runDetectorPlugins, clearDetectorPluginsForTests } from '../../src/plugins/detector-plugin.js';
 
 describe('plugin-sdk v3', () => {

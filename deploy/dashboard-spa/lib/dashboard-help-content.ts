@@ -52,7 +52,7 @@ export const HELP_TOPICS: HelpTopic[] = [
       'Reduces false confidence by requiring replay/validation before candidate promotion.',
       'Improves long-term protection quality by learning from actual attack attempts, not synthetic-only samples.',
     ],
-    trigger: ['Threats → Threat Lab → Run Threat Lab', 'Env: SWARM_THREAT_LAB=true, GUARDIAN_LLM_ENABLED'],
+    trigger: ['Threats → Threat Lab → Run Threat Lab', 'Env: SWARM_THREAT_LAB=true, MASTYFF_AI_LLM_ENABLED'],
     dataSources: ['bypasses.json', 'semantic audit store', 'ThreatIntel poll — no synthetic fallback'],
     outputs: ['threat-lab-candidates.json'],
     apis: [
@@ -67,7 +67,7 @@ export const HELP_TOPICS: HelpTopic[] = [
     id: 'auto-research',
     title: 'Auto Threat Research',
     category: 'Threats',
-    what: 'Automated corpus fixture writes when confidence ≥ GUARDIAN_THREAT_RESEARCH_MIN_CONFIDENCE (default 0.85). Policy is never auto-applied.',
+    what: 'Automated corpus fixture writes when confidence ≥ MASTYFF_AI_THREAT_RESEARCH_MIN_CONFIDENCE (default 0.85). Policy is never auto-applied.',
     how: [
       'Scheduler and on-demand runs collect new high-confidence discoveries from semantic signals, blocks, and threat intel.',
       'Writes validated fixtures into the auto-corpus manifest and adversarial fixture set when confidence and replay criteria pass.',
@@ -78,7 +78,7 @@ export const HELP_TOPICS: HelpTopic[] = [
       'Keeps safety high by separating discovery automation from policy enforcement.',
       'Improves future threat-lab and replay quality by preserving validated attack patterns.',
     ],
-    trigger: ['Threats → Auto Research → Run', 'Env: GUARDIAN_THREAT_RESEARCH_AUTO=true'],
+    trigger: ['Threats → Auto Research → Run', 'Env: MASTYFF_AI_THREAT_RESEARCH_AUTO=true'],
     dataSources: ['Same authentic inputs as Threat Lab'],
     outputs: ['auto-corpus-manifest.json', 'adv-*.json fixtures'],
     apis: ['POST /api/threat-discovery/auto-research/run', 'GET /api/security-swarm/auto-corpus'],
@@ -140,7 +140,7 @@ export const HELP_TOPICS: HelpTopic[] = [
     ],
     trigger: ['Home → Download health report', 'Optional Ollama narrative'],
     dataSources: ['history.db', 'policy snapshot', 'swarm artifacts'],
-    outputs: ['guardian-mcp-health-YYYY-MM-DD.md'],
+    outputs: ['mastyff-ai-mcp-health-YYYY-MM-DD.md'],
     apis: ['GET /api/reports/mcp-health', 'GET /api/reports/mcp-health/download'],
   },
   {
@@ -166,7 +166,7 @@ export const HELP_TOPICS: HelpTopic[] = [
   },
   {
     id: 'live-analytics',
-    title: 'MCP Guardian Analytics',
+    title: 'MCP Mastyff AI Analytics',
     category: 'Operations',
     what: 'Live traffic, cost, model usage, and provider spend in one dashboard with WebSocket refresh.',
     how: [
@@ -220,7 +220,7 @@ export const HELP_TOPICS: HelpTopic[] = [
       'Improves policy confidence with direct context from triggering evidence.',
     ],
     trigger: ['Security → AI copilot', 'Security → Quarantined'],
-    dataSources: ['~/.mcp-guardian/.threat-state.json', '~/.mcp-guardian/threat-intel-actions.jsonl'],
+    dataSources: ['~/.mastyff-ai/.threat-state.json', '~/.mastyff-ai/threat-intel-actions.jsonl'],
     outputs: ['Policy rule applied', 'quarantine archive (30 days)', 'restore to catalog'],
     apis: [
       'GET /api/ai/threats',
@@ -254,12 +254,12 @@ export const HELP_TOPICS: HelpTopic[] = [
     ],
     dataSources: [
       'semantic-audit-outcomes store',
-      'uncertainty-ranked queue (confidence near GUARDIAN_SEMANTIC_MIN_CONFIDENCE)',
+      'uncertainty-ranked queue (confidence near MASTYFF_AI_SEMANTIC_MIN_CONFIDENCE)',
     ],
     outputs: [
       'debate verdicts',
       'eligibleTotal and remainingEligible counts',
-      'optional auto-label when GUARDIAN_TRIBUNAL_AUTO_LABEL=true',
+      'optional auto-label when MASTYFF_AI_TRIBUNAL_AUTO_LABEL=true',
     ],
     apis: ['GET /api/learning/semantic/tribunal'],
     rbac: 'ai feature tier',
@@ -268,7 +268,7 @@ export const HELP_TOPICS: HelpTopic[] = [
     id: 'guided-setup',
     title: 'Guided setup & cloud control plane',
     category: 'Settings',
-    what: 'Checklist for Guardian config, database health, proxy traffic, and optional cloud control plane link.',
+    what: 'Checklist for Mastyff AI config, database health, proxy traffic, and optional cloud control plane link.',
     how: [
       'Evaluates setup progress across proxy config, data path health, traffic visibility, and cloud connectivity.',
       'Supports guided write actions for core config fields and control-plane onboarding.',
@@ -280,11 +280,11 @@ export const HELP_TOPICS: HelpTopic[] = [
       'Improves adoption by giving teams a clear path from install to protected traffic.',
     ],
     trigger: ['Settings → Setup → Connect to Cloud'],
-    dataSources: ['~/.mcp-guardian/setup.json', 'onboarding status', 'DATABASE_URL / history.db'],
+    dataSources: ['~/.mastyff-ai/setup.json', 'onboarding status', 'DATABASE_URL / history.db'],
     outputs: ['Saved proxy settings', 'cloud launch URL'],
     apis: [
       'GET /api/setup/status',
-      'POST /api/setup/guardian-config',
+      'POST /api/setup/mastyff-ai-config',
       'GET /api/setup/cloud-status',
       'POST /api/setup/cloud/connect',
     ],

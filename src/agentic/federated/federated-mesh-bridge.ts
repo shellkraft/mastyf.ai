@@ -7,14 +7,14 @@ import type { FederatedModelDelta } from './federated-learning.js';
 import { Logger } from '../../utils/logger.js';
 
 export async function pullFederatedDeltasFromMesh(limit = 200): Promise<FederatedModelDelta[]> {
-  const relayUrl = process.env.GUARDIAN_THREAT_MESH_RELAY_URL?.trim()
-    ?? process.env.GUARDIAN_FEDERATED_RELAY_URL?.trim();
+  const relayUrl = process.env.MASTYFF_AI_THREAT_MESH_RELAY_URL?.trim()
+    ?? process.env.MASTYFF_AI_FEDERATED_RELAY_URL?.trim();
   if (!relayUrl) return [];
 
   const client = new MeshRelayClient({
     relayUrl,
-    apiKey: process.env.GUARDIAN_THREAT_MESH_RELAY_API_KEY,
-    tenantId: process.env.GUARDIAN_TENANT_ID,
+    apiKey: process.env.MASTYFF_AI_THREAT_MESH_RELAY_API_KEY,
+    tenantId: process.env.MASTYFF_AI_TENANT_ID,
   });
 
   const catalog = await client.pullCatalog(limit);
@@ -48,16 +48,16 @@ export async function pullFederatedDeltasFromMesh(limit = 200): Promise<Federate
 }
 
 export async function publishFederatedDeltaViaMesh(delta: FederatedModelDelta): Promise<{ ok: boolean; error?: string }> {
-  const relayUrl = process.env.GUARDIAN_THREAT_MESH_RELAY_URL?.trim()
-    ?? process.env.GUARDIAN_FEDERATED_RELAY_URL?.trim();
+  const relayUrl = process.env.MASTYFF_AI_THREAT_MESH_RELAY_URL?.trim()
+    ?? process.env.MASTYFF_AI_FEDERATED_RELAY_URL?.trim();
   if (!relayUrl) return { ok: false, error: 'relay_not_configured' };
 
   const payload = JSON.stringify(delta);
   const signatureHash = createHash('sha256').update(payload).digest('hex');
   const client = new MeshRelayClient({
     relayUrl,
-    apiKey: process.env.GUARDIAN_THREAT_MESH_RELAY_API_KEY,
-    tenantId: process.env.GUARDIAN_TENANT_ID,
+    apiKey: process.env.MASTYFF_AI_THREAT_MESH_RELAY_API_KEY,
+    tenantId: process.env.MASTYFF_AI_TENANT_ID,
   });
 
   const result = await client.publish([{

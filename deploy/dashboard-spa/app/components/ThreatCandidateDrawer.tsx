@@ -1,7 +1,7 @@
 'use client';
 
-import type { ThreatLabCandidate } from '@/lib/guardian-api';
-import type { AutoCorpusEntry } from '@/lib/guardian-api';
+import type { ThreatLabCandidate } from '@/lib/mastyff-ai-api';
+import type { AutoCorpusEntry } from '@/lib/mastyff-ai-api';
 import { SOURCE_LABELS } from '@/lib/threat-discovery-copy';
 
 type Props = {

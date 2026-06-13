@@ -1,5 +1,5 @@
 /** Auto-generated from seeds/default-policy.yaml — run: pnpm sync:default-policy */
-export const DEFAULT_POLICY_YAML = `# Optional merges: policy-templates/http-tools-policy.yaml (GUARDIAN_HTTP_TOOLS_POLICY=true),
+export const DEFAULT_POLICY_YAML = `# Optional merges: policy-templates/http-tools-policy.yaml (MASTYFF_AI_HTTP_TOOLS_POLICY=true),
 # policy-templates/enterprise-cost-governance.yaml (rate limits + token budgets). See policy-templates/README.md.
 version: '1.0'
 policy:

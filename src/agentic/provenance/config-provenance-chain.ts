@@ -38,7 +38,7 @@ export interface ProvenanceVerifyResult {
 
 const CHECKPOINT_INTERVAL = 16;
 
-const GENESIS = createHash('sha256').update('mcp-guardian-config-provenance-genesis').digest('hex');
+const GENESIS = createHash('sha256').update('mastyff-ai-config-provenance-genesis').digest('hex');
 
 function hashEntry(prevHash: string, payload: string): string {
   return createHash('sha256').update(`${prevHash}\n${payload}`).digest('hex');

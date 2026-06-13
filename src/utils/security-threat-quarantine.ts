@@ -3,7 +3,7 @@
  */
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
 import { dirname } from 'path';
-import { guardianHomeDir } from '../audit/tenant-audit-paths.js';
+import { mastyffAiHomeDir } from '../audit/tenant-audit-paths.js';
 import { DEFAULT_TENANT_ID, resolveTenantId } from '../tenant/resolve-tenant.js';
 import type { SecurityThreatRow } from './security-dashboard.js';
 
@@ -27,7 +27,7 @@ const RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
 
 function statePath(tenantId?: string): string {
   const tid = tenantId || resolveTenantId();
-  const base = guardianHomeDir();
+  const base = mastyffAiHomeDir();
   if (tid === DEFAULT_TENANT_ID) {
     return `${base}/security-threat-quarantine.json`;
   }

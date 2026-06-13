@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 
-function isValidGuardianUrl(url: string): boolean {
+function isValidMastyffAiUrl(url: string): boolean {
   const trimmed = url.trim();
   if (!trimmed || trimmed === 'null') return false;
   try {
@@ -15,9 +15,9 @@ function isValidGuardianUrl(url: string): boolean {
 
 export function LaunchDashboard() {
   const [advancedOpen, setAdvancedOpen] = useState(false);
-  const [guardianUrl, setGuardianUrl] = useState(
+  const [mastyffAiUrl, setMastyffAiUrl] = useState(
     typeof window !== 'undefined'
-      ? localStorage.getItem('mcp-guardian-url') ?? 'http://localhost:4000'
+      ? localStorage.getItem('mastyff-ai-url') ?? 'http://localhost:4000'
       : 'http://localhost:4000',
   );
   const [loading, setLoading] = useState(false);
@@ -25,22 +25,22 @@ export function LaunchDashboard() {
 
   const onLaunch = async () => {
     setError('');
-    if (!isValidGuardianUrl(guardianUrl)) {
-      setError('Enter a valid http:// or https:// Guardian URL.');
+    if (!isValidMastyffAiUrl(mastyffAiUrl)) {
+      setError('Enter a valid http:// or https:// Mastyff AI URL.');
       return;
     }
     setLoading(true);
     try {
-      const normalized = guardianUrl.trim();
-      localStorage.setItem('mcp-guardian-url', normalized);
+      const normalized = mastyffAiUrl.trim();
+      localStorage.setItem('mastyff-ai-url', normalized);
       const res = await fetch('/api/dashboard/launch', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ guardianUrl: normalized }),
+        body: JSON.stringify({ mastyffAiUrl: normalized }),
       });
       const data = (await res.json()) as { redirectUrl?: string; error?: string };
       const redirectUrl = data.redirectUrl?.trim();
-      if (!res.ok || !redirectUrl || !isValidGuardianUrl(redirectUrl)) {
+      if (!res.ok || !redirectUrl || !isValidMastyffAiUrl(redirectUrl)) {
         throw new Error(data.error ?? 'Launch failed');
       }
       window.location.href = redirectUrl;
@@ -54,15 +54,15 @@ export function LaunchDashboard() {
     <div className="card">
       <h2>Open live dashboard (SSO)</h2>
       <p className="muted">
-        One-time redirect to your Guardian ops UI. Requires the env block above on that host (
-        <code>GUARDIAN_CLOUD_JWT_SECRET</code> must match cloud <code>AUTH_SECRET</code>).
+        One-time redirect to your Mastyff AI ops UI. Requires the env block above on that host (
+        <code>MASTYFF_AI_CLOUD_JWT_SECRET</code> must match cloud <code>AUTH_SECRET</code>).
       </p>
       <label style={{ display: 'block', marginTop: '1rem' }}>
-        Guardian base URL
+        Mastyff AI base URL
         <input
           type="url"
-          value={guardianUrl}
-          onChange={(e) => setGuardianUrl(e.target.value)}
+          value={mastyffAiUrl}
+          onChange={(e) => setMastyffAiUrl(e.target.value)}
           placeholder="http://localhost:4000"
           style={{
             display: 'block',

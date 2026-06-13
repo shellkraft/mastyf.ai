@@ -4,17 +4,17 @@ export const THREAT_DISCOVERY_EXPLAINERS: Record<string, string> = {
   autoFixtures:
     'Harness fixtures written by Auto Threat Research (runtime, scheduler, or Threat Lab batch when both auto flags are on). Policy rules are never auto-applied — use Threat Lab accept for policy only.',
   llmStatus:
-    'Threat Lab and Auto Research require a healthy local Ollama instance (GUARDIAN_LLM_ENABLED=true). No synthetic fallback candidates are emitted when LLM is offline.',
+    'Threat Lab and Auto Research require a healthy local Ollama instance (MASTYFF_AI_LLM_ENABLED=true). No synthetic fallback candidates are emitted when LLM is offline.',
   queueDepth:
     'Runtime detections (semantic flags, repeat blocks, new CVEs) are debounced and queued before LLM research runs on live proxy traffic.',
   writesThisHour:
-    'Auto corpus writes are capped per hour (GUARDIAN_THREAT_RESEARCH_MAX_PER_HOUR) to prevent runaway fixture generation.',
+    'Auto corpus writes are capped per hour (MASTYFF_AI_THREAT_RESEARCH_MAX_PER_HOUR) to prevent runaway fixture generation.',
   processedFingerprints:
     'SHA-256 fingerprints of already-processed inputs — dedupe store prevents duplicate adv-*.json writes across runs.',
   threatLabEnabled:
     'When SWARM_THREAT_LAB=true, batch discovery runs during security analysis or via the Run Threat Lab button.',
   autoResearchEnabled:
-    'When GUARDIAN_THREAT_RESEARCH_AUTO=true and SWARM_THREAT_RESEARCH_AUTO=true, validated discoveries auto-write adv fixtures.',
+    'When MASTYFF_AI_THREAT_RESEARCH_AUTO=true and SWARM_THREAT_RESEARCH_AUTO=true, validated discoveries auto-write adv fixtures.',
 };
 
 export type PipelineStage = {
@@ -41,7 +41,7 @@ export const THREAT_LAB_STAGES: PipelineStage[] = [
     short: 'Discover',
     explanation:
       'Local LLM proposes attack class, hypothesis, corpus fixture, and optional YAML policy rule. Requires Ollama — no deterministic fallback.',
-    envVars: ['GUARDIAN_LLM_ENABLED', 'OLLAMA_BASE_URL', 'GUARDIAN_LLM_MODEL'],
+    envVars: ['MASTYFF_AI_LLM_ENABLED', 'OLLAMA_BASE_URL', 'MASTYFF_AI_LLM_MODEL'],
   },
   {
     id: 'validate',
@@ -75,9 +75,9 @@ export const AUTO_RESEARCH_STAGES: PipelineStage[] = [
     explanation:
       'Semantic flags, repeat policy blocks, new ThreatIntel entries, swarm bypasses, and corpus proactive seeds enqueue research events.',
     envVars: [
-      'GUARDIAN_THREAT_RESEARCH_SEMANTIC',
-      'GUARDIAN_THREAT_RESEARCH_BLOCKS',
-      'GUARDIAN_THREAT_RESEARCH_THREAT_INTEL',
+      'MASTYFF_AI_THREAT_RESEARCH_SEMANTIC',
+      'MASTYFF_AI_THREAT_RESEARCH_BLOCKS',
+      'MASTYFF_AI_THREAT_RESEARCH_THREAT_INTEL',
     ],
   },
   {
@@ -85,8 +85,8 @@ export const AUTO_RESEARCH_STAGES: PipelineStage[] = [
     label: 'Debounced queue',
     short: 'Queue',
     explanation:
-      'Events debounce (GUARDIAN_THREAT_RESEARCH_DEBOUNCE_MS) and respect hourly rate cap. Duplicate fingerprints are skipped.',
-    envVars: ['GUARDIAN_THREAT_RESEARCH_DEBOUNCE_MS', 'GUARDIAN_THREAT_RESEARCH_MAX_PER_HOUR'],
+      'Events debounce (MASTYFF_AI_THREAT_RESEARCH_DEBOUNCE_MS) and respect hourly rate cap. Duplicate fingerprints are skipped.',
+    envVars: ['MASTYFF_AI_THREAT_RESEARCH_DEBOUNCE_MS', 'MASTYFF_AI_THREAT_RESEARCH_MAX_PER_HOUR'],
   },
   {
     id: 'llm',
@@ -94,7 +94,7 @@ export const AUTO_RESEARCH_STAGES: PipelineStage[] = [
     short: 'Research',
     explanation:
       'Same Threat Lab LLM path discovers attack class and corpus fixture. Minimum confidence gate (default 0.85) filters low-quality output.',
-    envVars: ['GUARDIAN_THREAT_RESEARCH_MIN_CONFIDENCE'],
+    envVars: ['MASTYFF_AI_THREAT_RESEARCH_MIN_CONFIDENCE'],
   },
   {
     id: 'taxonomy',

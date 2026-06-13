@@ -138,7 +138,7 @@ export async function buildThreatAutomationSummary(tenantId: string): Promise<Th
       lastPromotionAt: stats.lastPromotionAt,
     };
   } catch {
-    promotion.enabled = process.env.GUARDIAN_AUTO_CORPUS_PROMOTE === 'true';
+    promotion.enabled = process.env.MASTYFF_AI_AUTO_CORPUS_PROMOTE === 'true';
   }
 
   const autoEntries = autoCorpusManifest?.entries || [];
@@ -155,7 +155,7 @@ export async function buildThreatAutomationSummary(tenantId: string): Promise<Th
     llm: {
       ok: llmReady.ok,
       reason: llmReady.reason,
-      model: process.env.GUARDIAN_LLM_MODEL || process.env.OLLAMA_MODEL || undefined,
+      model: process.env.MASTYFF_AI_LLM_MODEL || process.env.OLLAMA_MODEL || undefined,
     },
     pipeline: { ...getThreatResearchQueueStatus(), ephemeral: true },
     processedFingerprints: countProcessedFingerprints(),

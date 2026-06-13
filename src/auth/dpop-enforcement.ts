@@ -17,20 +17,20 @@ export function resetDpopEnforcementForTests(): void {
 
 /** Legacy bypass for deployments that cannot send DPoP yet. */
 export function isDpopLegacyBypass(): boolean {
-  return process.env['GUARDIAN_LEGACY_NO_DPOP'] === 'true';
+  return process.env['MASTYFF_AI_LEGACY_NO_DPOP'] === 'true';
 }
 
 /** When true, proxy rejects requests without a valid DPoP proof (RFC 9449). */
 export function isDpopRequired(policyMode?: 'audit' | 'warn' | 'block'): boolean {
   if (isDpopLegacyBypass()) return false;
-  if (process.env['GUARDIAN_REQUIRE_DPOP'] === 'true') return true;
-  if (process.env['GUARDIAN_BLOCKING_MODE'] === 'true') return true;
+  if (process.env['MASTYFF_AI_REQUIRE_DPOP'] === 'true') return true;
+  if (process.env['MASTYFF_AI_BLOCKING_MODE'] === 'true') return true;
   if (policyMode === 'block') return true;
   return false;
 }
 
 /**
- * Validate DPoP when GUARDIAN_REQUIRE_DPOP=true.
+ * Validate DPoP when MASTYFF_AI_REQUIRE_DPOP=true.
  * Proof JWT must include `jwk` in the protected header (RFC 9449).
  */
 export async function validateRequiredDpop(
@@ -48,7 +48,7 @@ export async function validateRequiredDpop(
   if (!proofToken) {
     return {
       valid: false,
-      error: 'DPoP proof required (set GUARDIAN_REQUIRE_DPOP=true). Send DPoP header with proof JWT.',
+      error: 'DPoP proof required (set MASTYFF_AI_REQUIRE_DPOP=true). Send DPoP header with proof JWT.',
     };
   }
 

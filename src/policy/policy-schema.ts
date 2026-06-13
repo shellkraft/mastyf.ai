@@ -25,6 +25,7 @@ export const PolicyRuleSchema = z.object({
   tools: z.object({
     allow: z.array(z.string()).optional(),
     deny: z.array(z.string()).optional(),
+    enforceAllowlist: z.boolean().optional(),
   }).optional(),
   patterns: z.array(z.string()).optional(),
   argPatterns: z.array(ArgPatternSchema).optional(),

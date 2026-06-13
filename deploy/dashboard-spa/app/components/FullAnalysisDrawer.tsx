@@ -4,8 +4,8 @@ import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import {
   downloadFullAnalysis,
   fetchFullAnalysis,
-  type GuardianFullAnalysisResponse,
-} from '@/lib/guardian-api';
+  type MastyffAiFullAnalysisResponse,
+} from '@/lib/mastyff-ai-api';
 import { useCurrentWindowDays } from './dashboard/DashboardWindowContext';
 import { Button } from './ui/Button';
 import { Badge } from './ui/Badge';
@@ -64,7 +64,7 @@ function renderMarkdownSimple(md: string): ReactNode {
 
 export function FullAnalysisDrawer({ open, onClose, proxyOnline }: Props) {
   const { windowDays } = useCurrentWindowDays();
-  const [analysis, setAnalysis] = useState<GuardianFullAnalysisResponse | null>(null);
+  const [analysis, setAnalysis] = useState<MastyffAiFullAnalysisResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [useLlm, setUseLlm] = useState(true);

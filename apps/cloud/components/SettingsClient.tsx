@@ -33,7 +33,7 @@ export function SettingsClient({ orgName }: { orgName: string }) {
 
       <h2 style={{ marginTop: '1.5rem' }}>API keys</h2>
       <p className="muted">
-        Use this key as <code>DASHBOARD_API_KEY</code> on your self-hosted Guardian and for{' '}
+        Use this key as <code>DASHBOARD_API_KEY</code> on your self-hosted Mastyff AI and for{' '}
         <code>/api/v1/*</code> automation. Keys are shown only once when created or rotated.
       </p>
       <button type="button" className="btn btn-primary" onClick={onRotate} disabled={rotating}>

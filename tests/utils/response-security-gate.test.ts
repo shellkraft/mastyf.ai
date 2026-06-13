@@ -6,9 +6,9 @@ describe('response security gate', () => {
   const prev: Record<string, string | undefined> = {};
 
   beforeEach(() => {
-    prev['GUARDIAN_RESPONSE_DLP_MODE'] = process.env['GUARDIAN_RESPONSE_DLP_MODE'];
-    prev['GUARDIAN_SEMANTIC_SYNC_RESPONSE'] = process.env['GUARDIAN_SEMANTIC_SYNC_RESPONSE'];
-    delete process.env['GUARDIAN_SEMANTIC_SYNC_RESPONSE'];
+    prev['MASTYFF_AI_RESPONSE_DLP_MODE'] = process.env['MASTYFF_AI_RESPONSE_DLP_MODE'];
+    prev['MASTYFF_AI_SEMANTIC_SYNC_RESPONSE'] = process.env['MASTYFF_AI_SEMANTIC_SYNC_RESPONSE'];
+    delete process.env['MASTYFF_AI_SEMANTIC_SYNC_RESPONSE'];
   });
 
   afterEach(() => {
@@ -19,7 +19,7 @@ describe('response security gate', () => {
   });
 
   it('blocks DLP violations in block mode', async () => {
-    process.env['GUARDIAN_RESPONSE_DLP_MODE'] = 'block';
+    process.env['MASTYFF_AI_RESPONSE_DLP_MODE'] = 'block';
     const policy = new PolicyEngine({
       version: '1.0',
       policy: { mode: 'block', default_action: 'block', rules: [] },
@@ -37,7 +37,7 @@ describe('response security gate', () => {
   });
 
   it('redacts secrets in redact mode', async () => {
-    process.env['GUARDIAN_RESPONSE_DLP_MODE'] = 'redact';
+    process.env['MASTYFF_AI_RESPONSE_DLP_MODE'] = 'redact';
     const policy = new PolicyEngine({
       version: '1.0',
       policy: { mode: 'block', default_action: 'block', rules: [] },

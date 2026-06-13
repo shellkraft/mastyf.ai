@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { fetchSwarmLatest } from '@/lib/guardian-api';
+import { fetchSwarmLatest } from '@/lib/mastyff-ai-api';
 
 type BenchRow = { name: string; p50?: number; p95?: number; sloMs?: number; sloPass?: boolean };
 

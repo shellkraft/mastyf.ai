@@ -15,7 +15,7 @@ describe('dashboard-rbac', () => {
     expect(normalizeDashboardRole('VIEWER')).toBe('viewer');
   });
 
-  it('parses GUARDIAN_DASHBOARD_ROLES comma map', () => {
+  it('parses MASTYFF_AI_DASHBOARD_ROLES comma map', () => {
     const map = parseDashboardRolesEnv('dev-key:operator,readonly:viewer');
     expect(map.get('dev-key')).toBe('operator');
     expect(map.get('readonly')).toBe('viewer');
@@ -58,18 +58,18 @@ describe('dashboard-rbac', () => {
 
   describe('DashboardAuth roles', () => {
     const prevKey = process.env.DASHBOARD_API_KEY;
-    const prevRoles = process.env.GUARDIAN_DASHBOARD_ROLES;
+    const prevRoles = process.env.MASTYFF_AI_DASHBOARD_ROLES;
 
     beforeEach(() => {
       process.env.DASHBOARD_API_KEY = 'test-admin-key';
-      process.env.GUARDIAN_DASHBOARD_ROLES = 'test-admin-key:admin,read-only:viewer';
+      process.env.MASTYFF_AI_DASHBOARD_ROLES = 'test-admin-key:admin,read-only:viewer';
     });
 
     afterEach(() => {
       if (prevKey === undefined) delete process.env.DASHBOARD_API_KEY;
       else process.env.DASHBOARD_API_KEY = prevKey;
-      if (prevRoles === undefined) delete process.env.GUARDIAN_DASHBOARD_ROLES;
-      else process.env.GUARDIAN_DASHBOARD_ROLES = prevRoles;
+      if (prevRoles === undefined) delete process.env.MASTYFF_AI_DASHBOARD_ROLES;
+      else process.env.MASTYFF_AI_DASHBOARD_ROLES = prevRoles;
     });
 
     it('maps API key to role from env', () => {

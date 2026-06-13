@@ -9,21 +9,21 @@ describe('learning anti-poisoning quorum', () => {
   let statePath: string;
 
   beforeEach(() => {
-    tempDir = mkdtempSync(join(tmpdir(), 'guardian-quorum-'));
+    tempDir = mkdtempSync(join(tmpdir(), 'mastyff-ai-quorum-'));
     statePath = join(tempDir, '.ai-learning.json');
-    process.env.GUARDIAN_AI_STATE_PATH = statePath;
-    process.env.GUARDIAN_AI_SNAPSHOT_DIR = join(tempDir, 'learning-snapshots');
-    process.env.GUARDIAN_AI_MIN_DISTINCT_LABELERS = '2';
-    process.env.GUARDIAN_AI_MIN_TOTAL_LABELS = '10';
-    process.env.GUARDIAN_AI_LABEL_WEIGHT = '1';
-    delete process.env.GUARDIAN_AI_ADMIN_USERS;
+    process.env.MASTYFF_AI_AI_STATE_PATH = statePath;
+    process.env.MASTYFF_AI_AI_SNAPSHOT_DIR = join(tempDir, 'learning-snapshots');
+    process.env.MASTYFF_AI_AI_MIN_DISTINCT_LABELERS = '2';
+    process.env.MASTYFF_AI_AI_MIN_TOTAL_LABELS = '10';
+    process.env.MASTYFF_AI_AI_LABEL_WEIGHT = '1';
+    delete process.env.MASTYFF_AI_AI_ADMIN_USERS;
   });
 
   afterEach(() => {
-    delete process.env.GUARDIAN_AI_STATE_PATH;
-    delete process.env.GUARDIAN_AI_SNAPSHOT_DIR;
-    delete process.env.GUARDIAN_AI_MIN_DISTINCT_LABELERS;
-    delete process.env.GUARDIAN_AI_MIN_TOTAL_LABELS;
+    delete process.env.MASTYFF_AI_AI_STATE_PATH;
+    delete process.env.MASTYFF_AI_AI_SNAPSHOT_DIR;
+    delete process.env.MASTYFF_AI_AI_MIN_DISTINCT_LABELERS;
+    delete process.env.MASTYFF_AI_AI_MIN_TOTAL_LABELS;
     rmSync(tempDir, { recursive: true, force: true });
   });
 

@@ -99,8 +99,8 @@ function run(cmd, args, opts = {}) {
     timeoutMs: opts.timeoutMs ?? STEP_TIMEOUT_MS[label],
     live: LIVE,
     env: {
-      GUARDIAN_DISABLE_SEMANTIC: opts.semanticOff ? 'true' : process.env.GUARDIAN_DISABLE_SEMANTIC || '',
-      GUARDIAN_POLICY_TIMING_ENVELOPE: process.env.GUARDIAN_POLICY_TIMING_ENVELOPE ?? 'false',
+      MASTYFF_AI_DISABLE_SEMANTIC: opts.semanticOff ? 'true' : process.env.MASTYFF_AI_DISABLE_SEMANTIC || '',
+      MASTYFF_AI_POLICY_TIMING_ENVELOPE: process.env.MASTYFF_AI_POLICY_TIMING_ENVELOPE ?? 'false',
       // tsx can fail to create its IPC pipe in some locked-down/macOS temp contexts.
       // Disable IPC for swarm child processes to avoid EPERM flakes.
       TSX_DISABLE_IPC: process.env.TSX_DISABLE_IPC ?? '1',
@@ -206,7 +206,7 @@ const stepPlan = FAST
 const totalSteps = stepPlan.length;
 
 banner(
-  'MCP Guardian — Security Swarm',
+  'MCP Mastyff AI — Security Swarm',
   `${FAST ? 'FAST (PR gate)' : 'FULL (nightly)'} · ${LIVE ? 'LIVE streaming' : 'quiet/CI capture'} · ${totalSteps} steps`,
 );
 
@@ -216,7 +216,7 @@ run('node', ['security-swarm/agents/scout.mjs'], {
   totalSteps,
 });
 
-run('pnpm', ['build:guardian'], { label: 'pnpm-build', totalSteps });
+run('pnpm', ['build:mastyff-ai'], { label: 'pnpm-build', totalSteps });
 
 const vitestArgs = LIVE
   ? ['vitest', 'run', 'tests/policy/', 'tests/proxy/', 'tests/utils/', '--reporter=verbose']
@@ -230,7 +230,7 @@ if (FAST && process.env.SWARM_PARALLEL_STEPS !== 'false') {
         cmd: 'node',
         args: ['--import', 'tsx', 'corpus/run-eval.ts'],
         label: 'corpus-eval',
-        env: { GUARDIAN_DISABLE_SEMANTIC: 'true' },
+        env: { MASTYFF_AI_DISABLE_SEMANTIC: 'true' },
       },
     ],
     { cwd: REPO, live: LIVE, env: { TSX_DISABLE_IPC: process.env.TSX_DISABLE_IPC ?? '1' } },
@@ -251,7 +251,7 @@ if (FAST && process.env.SWARM_PARALLEL_STEPS !== 'false') {
   run('node', ['--import', 'tsx', 'corpus/run-eval.ts'], {
     label: 'corpus-eval',
     totalSteps,
-    env: { GUARDIAN_DISABLE_SEMANTIC: 'true' },
+    env: { MASTYFF_AI_DISABLE_SEMANTIC: 'true' },
   });
 }
 
@@ -281,7 +281,7 @@ if (!FAST) {
     label: 'harness-parity',
     totalSteps,
     env: {
-      GUARDIAN_DISABLE_SEMANTIC: 'true',
+      MASTYFF_AI_DISABLE_SEMANTIC: 'true',
       PYTHONPATH: join(REPO, 'adversarial-harness', 'python'),
       HARNESS_PYTHON: venvPython,
     },

@@ -61,9 +61,9 @@ function toSecretFinding(f: DetectorFinding, ctx: DetectorScanContext): SecretFi
   };
 }
 
-/** Plugins on by default in v2.7; set GUARDIAN_PLUGINS_ENABLED=false to disable. */
+/** Plugins on by default in v2.7; set MASTYFF_AI_PLUGINS_ENABLED=false to disable. */
 export function areDetectorPluginsEnabled(): boolean {
-  return process.env['GUARDIAN_PLUGINS_ENABLED'] !== 'false';
+  return process.env['MASTYFF_AI_PLUGINS_ENABLED'] !== 'false';
 }
 
 /** Run registered plugins when enabled. */
@@ -81,23 +81,25 @@ export function runDetectorPlugins(text: string, ctx: DetectorScanContext): Secr
       for (const f of list) {
         findings.push(toSecretFinding(f, ctx));
       }
-    } catch (err: any) {
-      Logger.warn(`[plugins] detector '${plugin.name}' failed: ${err?.message}`);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      Logger.warn(`[plugins] detector '${plugin.name}' failed: ${message}`);
     }
   }
   return findings;
 }
 
-/** Load *.js plugins from GUARDIAN_PLUGIN_PATH (optional). */
+/** Load *.js plugins from MASTYFF_AI_PLUGIN_PATH (optional). */
 export async function loadDetectorPluginsFromPath(): Promise<void> {
-  const dir = process.env['GUARDIAN_PLUGIN_PATH'];
+  const dir = process.env['MASTYFF_AI_PLUGIN_PATH'];
   if (!dir || !areDetectorPluginsEnabled()) return;
 
   let entries: string[];
   try {
     entries = readdirSync(dir).filter((f) => extname(f) === '.js' && !f.startsWith('_'));
-  } catch (err: any) {
-    Logger.warn(`[plugins] cannot read GUARDIAN_PLUGIN_PATH=${dir}: ${err?.message}`);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    Logger.warn(`[plugins] cannot read MASTYFF_AI_PLUGIN_PATH=${dir}: ${message}`);
     return;
   }
 
@@ -110,8 +112,9 @@ export async function loadDetectorPluginsFromPath(): Promise<void> {
       } else {
         Logger.warn(`[plugins] ${file} does not export a valid DetectorPlugin`);
       }
-    } catch (err: any) {
-      Logger.warn(`[plugins] failed to load ${file}: ${err?.message}`);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      Logger.warn(`[plugins] failed to load ${file}: ${message}`);
     }
   }
 }

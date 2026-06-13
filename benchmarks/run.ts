@@ -1,6 +1,6 @@
 #!/usr/bin/env npx tsx
 /**
- * MCP Guardian Performance Benchmarks
+ * MCP Mastyff AI Performance Benchmarks
  *
  * Measures proxy overhead across three scenarios:
  * 1. Baseline — direct MCP server RTT (no proxy)
@@ -186,7 +186,7 @@ async function benchmarkProxy(policyConfig?: PolicyConfig): Promise<number[]> {
 
 // ── Main ────────────────────────────────────────────────────────────
 async function main() {
-  console.log('MCP Guardian Performance Benchmarks');
+  console.log('MCP Mastyff AI Performance Benchmarks');
   console.log('====================================');
   console.log(`Iterations per scenario: ${ITERATIONS} (warmup: ${WARMUP})`);
   console.log(`Echo server: ${SERVER_PATH}\n`);

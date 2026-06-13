@@ -14,12 +14,12 @@ const ctx: CallContext = {
 
 describe('OPA response cache', () => {
   const prevUrl = process.env['OPA_URL'];
-  const prevTtl = process.env['GUARDIAN_OPA_CACHE_TTL_MS'];
+  const prevTtl = process.env['MASTYFF_AI_OPA_CACHE_TTL_MS'];
 
   beforeEach(() => {
     resetOpaCacheForTests();
     process.env['OPA_URL'] = 'http://opa.test/v1/data/mcp';
-    process.env['GUARDIAN_OPA_CACHE_TTL_MS'] = '60000';
+    process.env['MASTYFF_AI_OPA_CACHE_TTL_MS'] = '60000';
   });
 
   afterEach(() => {
@@ -27,8 +27,8 @@ describe('OPA response cache', () => {
     vi.restoreAllMocks();
     if (prevUrl === undefined) delete process.env['OPA_URL'];
     else process.env['OPA_URL'] = prevUrl;
-    if (prevTtl === undefined) delete process.env['GUARDIAN_OPA_CACHE_TTL_MS'];
-    else process.env['GUARDIAN_OPA_CACHE_TTL_MS'] = prevTtl;
+    if (prevTtl === undefined) delete process.env['MASTYFF_AI_OPA_CACHE_TTL_MS'];
+    else process.env['MASTYFF_AI_OPA_CACHE_TTL_MS'] = prevTtl;
   });
 
   it('caches OPA block decisions by tenant/server/tool/args hash', async () => {

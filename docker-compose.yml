@@ -9,7 +9,7 @@ services:
       timeout: 3s
       retries: 5
 
-  mcp-guardian:
+  mastyff-ai:
     build: .
     depends_on:
       redis:
@@ -24,21 +24,21 @@ services:
       METRICS_PORT: "9090"
       DASHBOARD_ENABLED: "true"
       DASHBOARD_PORT: "4000"
-      GUARDIAN_STRICT_MODE: "true"
+      MASTYFF_AI_STRICT_MODE: "true"
       POLICY_AUDIT_ENABLED: "true"
-      MCP_GUARDIAN_DB_PATH: /data/history.db
+      MASTYFF_AI_DB_PATH: /data/history.db
     volumes:
-      - ./mcp.json:/etc/mcp-guardian/mcp.json:ro
-      - ./default-policy.yaml:/etc/mcp-guardian/policy.yaml:ro
-      - guardian-data:/data
+      - ./mcp.json:/etc/mastyff-ai/mcp.json:ro
+      - ./default-policy.yaml:/etc/mastyff-ai/policy.yaml:ro
+      - mastyff-ai-data:/data
     command:
       - node
       - dist/cli.js
       - proxy
       - --config
-      - /etc/mcp-guardian/mcp.json
+      - /etc/mastyff-ai/mcp.json
       - --policy
-      - /etc/mcp-guardian/policy.yaml
+      - /etc/mastyff-ai/policy.yaml
 
   control-plane:
     profiles: ["split-plane"]
@@ -48,9 +48,9 @@ services:
     environment:
       NODE_ENV: production
       CONTROL_PLANE_PORT: "3000"
-      CONTROL_PLANE_POLICY_PATH: /etc/mcp-guardian/policy.yaml
+      CONTROL_PLANE_POLICY_PATH: /etc/mastyff-ai/policy.yaml
     volumes:
-      - ./default-policy.yaml:/etc/mcp-guardian/policy.yaml:ro
+      - ./default-policy.yaml:/etc/mastyff-ai/policy.yaml:ro
     command:
       - node
       - dist/cli.js
@@ -58,7 +58,7 @@ services:
       - --port
       - "3000"
       - --policy
-      - /etc/mcp-guardian/policy.yaml
+      - /etc/mastyff-ai/policy.yaml
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:3000/healthz"]
       interval: 5s
@@ -77,7 +77,7 @@ services:
         condition: service_healthy
     environment:
       CONTROL_PLANE_URL: http://control-plane:3000
-      UPSTREAM_URL: http://mcp-guardian:4000
+      UPSTREAM_URL: http://mastyff-ai:4000
       DATA_PLANE_PORT: "9090"
       DATA_PLANE_SHADOW_MODE: "true"
       DATA_PLANE_FAIL_OPEN: "true"
@@ -89,4 +89,4 @@ services:
       retries: 10
 
 volumes:
-  guardian-data:
+  mastyff-ai-data:

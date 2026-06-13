@@ -10,14 +10,14 @@ export async function pullReputationEntriesFromMesh(
   network: ReputationNetwork,
   limit = 200,
 ): Promise<number> {
-  const relayUrl = process.env.GUARDIAN_THREAT_MESH_RELAY_URL?.trim()
-    ?? process.env.GUARDIAN_REPUTATION_RELAY_URL?.trim();
+  const relayUrl = process.env.MASTYFF_AI_THREAT_MESH_RELAY_URL?.trim()
+    ?? process.env.MASTYFF_AI_REPUTATION_RELAY_URL?.trim();
   if (!relayUrl) return 0;
 
   const client = new MeshRelayClient({
     relayUrl,
-    apiKey: process.env.GUARDIAN_THREAT_MESH_RELAY_API_KEY,
-    tenantId: process.env.GUARDIAN_TENANT_ID,
+    apiKey: process.env.MASTYFF_AI_THREAT_MESH_RELAY_API_KEY,
+    tenantId: process.env.MASTYFF_AI_TENANT_ID,
   });
 
   const catalog = await client.pullCatalog(limit);

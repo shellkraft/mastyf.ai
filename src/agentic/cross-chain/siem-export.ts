@@ -16,7 +16,7 @@ export interface SiemCefEvent {
 export function fleetAlertToCef(alert: FleetChainAlert): SiemCefEvent {
   return {
     version: '0',
-    deviceVendor: 'MCP Guardian',
+    deviceVendor: 'Mastyff AI',
     deviceProduct: 'FleetChainDetector',
     signatureId: alert.pattern,
     name: `Cross-MCP attack chain: ${alert.pattern}`,

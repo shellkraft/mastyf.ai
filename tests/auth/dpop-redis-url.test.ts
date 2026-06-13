@@ -1,12 +1,12 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { resolveDpopRedisUrl, isDpopRedisConfigured } from '../../src/auth/dpop-nonce-store.js';
 
-describe('GUARDIAN_DPOP_REDIS_URL', () => {
+describe('MASTYFF_AI_DPOP_REDIS_URL', () => {
   const env = { ...process.env };
 
   beforeEach(() => {
     process.env = { ...env };
-    delete process.env.GUARDIAN_DPOP_REDIS_URL;
+    delete process.env.MASTYFF_AI_DPOP_REDIS_URL;
     delete process.env.REDIS_URL;
     delete process.env.REDIS_SENTINELS;
     delete process.env.REDIS_CLUSTER_NODES;
@@ -16,8 +16,8 @@ describe('GUARDIAN_DPOP_REDIS_URL', () => {
     process.env = env;
   });
 
-  it('prefers GUARDIAN_DPOP_REDIS_URL over REDIS_URL', () => {
-    process.env.GUARDIAN_DPOP_REDIS_URL = 'redis://global:6379';
+  it('prefers MASTYFF_AI_DPOP_REDIS_URL over REDIS_URL', () => {
+    process.env.MASTYFF_AI_DPOP_REDIS_URL = 'redis://global:6379';
     process.env.REDIS_URL = 'redis://local:6379';
     expect(resolveDpopRedisUrl()).toBe('redis://global:6379');
     expect(isDpopRedisConfigured()).toBe(true);

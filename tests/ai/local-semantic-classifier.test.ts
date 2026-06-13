@@ -27,12 +27,12 @@ describe('local-semantic-classifier', () => {
   });
 
   it('is enabled by default unless explicitly disabled', () => {
-    const prev = process.env.GUARDIAN_LOCAL_SEMANTIC;
-    delete process.env.GUARDIAN_LOCAL_SEMANTIC;
+    const prev = process.env.MASTYFF_AI_LOCAL_SEMANTIC;
+    delete process.env.MASTYFF_AI_LOCAL_SEMANTIC;
     expect(isLocalSemanticEnabled()).toBe(true);
-    process.env.GUARDIAN_LOCAL_SEMANTIC = 'false';
+    process.env.MASTYFF_AI_LOCAL_SEMANTIC = 'false';
     expect(isLocalSemanticEnabled()).toBe(false);
-    if (prev === undefined) delete process.env.GUARDIAN_LOCAL_SEMANTIC;
-    else process.env.GUARDIAN_LOCAL_SEMANTIC = prev;
+    if (prev === undefined) delete process.env.MASTYFF_AI_LOCAL_SEMANTIC;
+    else process.env.MASTYFF_AI_LOCAL_SEMANTIC = prev;
   });
 });

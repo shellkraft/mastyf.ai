@@ -20,7 +20,7 @@ const corpus = loadJson(CORPUS_REPORT);
 const bench = loadJson(BENCH_REPORT);
 const date = new Date().toISOString().slice(0, 10);
 
-let body = `# MCP Guardian Penetration Test Report
+let body = `# MCP Mastyff AI Penetration Test Report
 
 **Version:** 2.7.5  
 **Report date:** ${date}  
@@ -98,7 +98,7 @@ See [security/ATTACK_MATRIX.md](../security/ATTACK_MATRIX.md) for OWASP MCP / LL
 ## Methodology
 
 1. **Corpus eval** — each JSON fixture evaluated synchronously via \`PolicyEngine.evaluate()\`.
-2. **E2E proxy** — child process \`mcp-guardian proxy\` with real \`default-policy.yaml\`; blocked calls return JSON-RPC \`-32001\`.
+2. **E2E proxy** — child process \`mastyff-ai proxy\` with real \`default-policy.yaml\`; blocked calls return JSON-RPC \`-32001\`.
 3. **Benchmarks** — 1000 (CI: 100) round-trips; p95 gate on blocking-policy scenario.
 
 ---

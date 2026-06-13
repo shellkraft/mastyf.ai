@@ -53,7 +53,7 @@ const manifest = {
   copied,
   missing,
   regenerate: {
-    corpus: 'GUARDIAN_DISABLE_SEMANTIC=true pnpm eval',
+    corpus: 'MASTYFF_AI_DISABLE_SEMANTIC=true pnpm eval',
     adversarial: './adversarial-harness/run-all.sh',
     tests: 'pnpm test',
     integration: 'pnpm test:integration',
@@ -63,7 +63,7 @@ const manifest = {
 writeFileSync(join(OUT, 'manifest.json'), JSON.stringify(manifest, null, 2));
 writeFileSync(
   join(OUT, 'README.txt'),
-  `MCP Guardian enterprise evidence pack\nGenerated: ${manifest.generatedAt}\nCommit: ${gitHead}\n\nSee docs/ENTERPRISE_EVIDENCE_PACK.md for interpretation.\n`,
+  `MCP Mastyff AI enterprise evidence pack\nGenerated: ${manifest.generatedAt}\nCommit: ${gitHead}\n\nSee docs/ENTERPRISE_EVIDENCE_PACK.md for interpretation.\n`,
 );
 
 console.log(JSON.stringify({ ok: true, outDir: OUT, copied: copied.length, missing }, null, 2));

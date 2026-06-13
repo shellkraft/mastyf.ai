@@ -8,7 +8,7 @@ describe('sanitizeConfigPath', () => {
   let tmpDir: string;
 
   beforeEach(() => {
-    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'guardian-sanitize-'));
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mastyff-ai-sanitize-'));
   });
 
   afterEach(() => {

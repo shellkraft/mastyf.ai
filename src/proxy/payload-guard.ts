@@ -7,8 +7,8 @@ const DEFAULT_MAX_EXPANDED = 52_428_800; // 50 MB
 
 export function getMaxPayloadBytes(): number {
   const raw =
-    process.env['MCP_GUARDIAN_MAX_PAYLOAD_BYTES'] ??
-    process.env['GUARDIAN_HTTP_MAX_BODY_BYTES'];
+    process.env['MASTYFF_AI_MAX_PAYLOAD_BYTES'] ??
+    process.env['MASTYFF_AI_HTTP_MAX_BODY_BYTES'];
   if (raw !== undefined && raw !== '') {
     const n = parseInt(raw, 10);
     if (Number.isFinite(n) && n > 0) return n;
@@ -17,7 +17,7 @@ export function getMaxPayloadBytes(): number {
 }
 
 export function getMaxExpandedPayloadBytes(): number {
-  const raw = process.env['GUARDIAN_MAX_EXPANDED_PAYLOAD_BYTES'];
+  const raw = process.env['MASTYFF_AI_MAX_EXPANDED_PAYLOAD_BYTES'];
   if (raw === undefined || raw === '') return DEFAULT_MAX_EXPANDED;
   const n = parseInt(raw, 10);
   return Number.isFinite(n) && n > 0 ? n : DEFAULT_MAX_EXPANDED;

@@ -103,15 +103,15 @@ export class McpProtocolFuzzer {
     return this.results;
   }
 
-  /** Live transport fuzz against GUARDIAN_FUZZ_TARGET URL. */
+  /** Live transport fuzz against MASTYFF_AI_FUZZ_TARGET URL. */
   async runLiveTransportFuzz(
     blockFn: (method: string, params: Record<string, unknown>) => { blocked: boolean; reason?: string },
     serverName = 'live',
     reinforce?: ReinforceFuzzerSelector,
   ): Promise<FuzzResult[]> {
-    const target = process.env.GUARDIAN_FUZZ_TARGET;
+    const target = process.env.MASTYFF_AI_FUZZ_TARGET;
     if (!target) {
-      Logger.warn('[McpFuzzer] GUARDIAN_FUZZ_TARGET not set — skipping live transport fuzz');
+      Logger.warn('[McpFuzzer] MASTYFF_AI_FUZZ_TARGET not set — skipping live transport fuzz');
       return this.runFuzzer(blockFn, serverName, reinforce);
     }
 
@@ -137,7 +137,7 @@ export class McpProtocolFuzzer {
         if (!blocked) {
           try {
             const parsed = JSON.parse(text) as { error?: { message?: string } };
-            blocked = Boolean(parsed.error?.message?.includes('Blocked by MCP Guardian'));
+            blocked = Boolean(parsed.error?.message?.includes('Blocked by Mastyff AI'));
           } catch {
             /* non-json */
           }

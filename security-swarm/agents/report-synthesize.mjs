@@ -50,7 +50,7 @@ function buildTextReport(latest, gates, bypasses, live) {
   const sub = '-'.repeat(72);
 
   lines.push(hr);
-  lines.push('MCP Guardian — Security Swarm Report');
+  lines.push('MCP Mastyff AI — Security Swarm Report');
   lines.push(hr);
   lines.push('');
   lines.push(`Generated:  ${latest.timestamp}`);

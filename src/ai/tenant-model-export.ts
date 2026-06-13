@@ -73,7 +73,7 @@ export function writeTenantModelfile(
   tenantId: string,
   modelName: string,
   rows: TrainingRow[],
-  baseModel = process.env.GUARDIAN_LORA_BASE_MODEL || 'qwen3:8b',
+  baseModel = process.env.MASTYFF_AI_LORA_BASE_MODEL || 'qwen3:8b',
 ): string {
   const modelfilePath = join(process.cwd(), 'exports', `Modelfile.${tenantId}`);
   mkdirSync(dirname(modelfilePath), { recursive: true });

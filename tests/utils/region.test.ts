@@ -1,21 +1,21 @@
 import { describe, it, expect, afterEach } from 'vitest';
-import { getGuardianRegion, getGuardianRegionLabels } from '../../src/utils/region.js';
+import { getMastyffAiRegion, getMastyffAiRegionLabels } from '../../src/utils/region.js';
 
 describe('region', () => {
-  const prev = process.env.GUARDIAN_REGION;
+  const prev = process.env.MASTYFF_AI_REGION;
 
   afterEach(() => {
-    if (prev === undefined) delete process.env.GUARDIAN_REGION;
-    else process.env.GUARDIAN_REGION = prev;
+    if (prev === undefined) delete process.env.MASTYFF_AI_REGION;
+    else process.env.MASTYFF_AI_REGION = prev;
   });
 
   it('defaults to default when unset', () => {
-    delete process.env.GUARDIAN_REGION;
-    expect(getGuardianRegion()).toBe('default');
+    delete process.env.MASTYFF_AI_REGION;
+    expect(getMastyffAiRegion()).toBe('default');
   });
 
-  it('reads GUARDIAN_REGION', () => {
-    process.env.GUARDIAN_REGION = 'eu-west-1';
-    expect(getGuardianRegionLabels()).toEqual({ region: 'eu-west-1' });
+  it('reads MASTYFF_AI_REGION', () => {
+    process.env.MASTYFF_AI_REGION = 'eu-west-1';
+    expect(getMastyffAiRegionLabels()).toEqual({ region: 'eu-west-1' });
   });
 });

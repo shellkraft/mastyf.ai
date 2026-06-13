@@ -1,9 +1,0 @@
-{
-  "fingerprints": [
-    "af6602cc8643e165",
-    "threat-intel:gh-GHSA-j3vx-cx2r-pvg8",
-    "646587a5e71492a2",
-    "corpus-seed:corpus/attacks/credential-exfil/cred-001.json"
-  ],
-  "updatedAt": "2026-05-23T13:10:52.195Z"
-}

@@ -22,7 +22,7 @@ Faithful port of `PolicyEngine.evaluate()` **sync pipeline** (`SYNC_POLICY_STRAT
 
 ## Semantic guards
 
-Honors `GUARDIAN_DISABLE_SEMANTIC=true` for deterministic corpus parity with TS eval when semantic layer is disabled in Node.
+Honors `MASTYFF_AI_DISABLE_SEMANTIC=true` for deterministic corpus parity with TS eval when semantic layer is disabled in Node.
 
 ## YAML rules
 

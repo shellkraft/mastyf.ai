@@ -6,10 +6,10 @@ import { Logger } from './logger.js';
 import { setMtxPatternProvider, loadMtxPatternsFromStore } from './mtx-threat-intel-bridge.js';
 import { resetThreatIntelGuardCache } from '../policy/threat-intel-guard.js';
 import { writeComplianceEvidencePdf } from '../agentic/compliance/compliance-pdf-export.js';
-import { runGuardianBenchScorecard } from './guardian-bench.js';
+import { runMastyffAiBenchScorecard } from './mastyff-ai-bench.js';
 import {
   ingestFleetHeartbeatIntoObservatory,
-  ingestGuardianBenchIntoObservatory,
+  ingestMastyffAiBenchIntoObservatory,
   ingestMtxCatalogIntoObservatory,
   ingestCloudObservatoryRelay,
 } from '../agentic/observatory/observatory-ingest.js';
@@ -24,8 +24,8 @@ export function registerIndustryStandardTasks(container: Container): void {
   setMtxPatternProvider(() => loadMtxPatternsFromStore(industryStore));
   resetThreatIntelGuardCache();
 
-  if (process.env.GUARDIAN_THREAT_MESH_ENABLED === 'true') {
-    const interval = process.env.GUARDIAN_THREAT_MESH_SYNC_INTERVAL || '15m';
+  if (process.env.MASTYFF_AI_THREAT_MESH_ENABLED === 'true') {
+    const interval = process.env.MASTYFF_AI_THREAT_MESH_SYNC_INTERVAL || '15m';
     agenticScheduler.register('mtx-relay-sync', 'MTX Threat Mesh Relay Sync', interval, async () => {
       const result = await threatMeshNode.syncWithRelay();
       Logger.info(
@@ -35,10 +35,10 @@ export function registerIndustryStandardTasks(container: Container): void {
     });
   }
 
-  if (process.env.GUARDIAN_COMPLIANCE_CRON !== 'false') {
-    const cron = process.env.GUARDIAN_COMPLIANCE_CRON_INTERVAL || '24h';
+  if (process.env.MASTYFF_AI_COMPLIANCE_CRON !== 'false') {
+    const cron = process.env.MASTYFF_AI_COMPLIANCE_CRON_INTERVAL || '24h';
     agenticScheduler.register('compliance-evidence', 'Compliance Evidence Collection', cron, async () => {
-      const frameworks = (process.env.GUARDIAN_COMPLIANCE_FRAMEWORKS || 'soc2,iso27001').split(',');
+      const frameworks = (process.env.MASTYFF_AI_COMPLIANCE_FRAMEWORKS || 'soc2,iso27001').split(',');
       for (const fw of frameworks) {
         const framework = fw.trim() as import('../agentic/compliance/control-mapper.js').ComplianceFramework;
         if (!['soc2', 'hipaa', 'pci-dss', 'fedramp', 'iso27001'].includes(framework)) continue;
@@ -50,7 +50,7 @@ export function registerIndustryStandardTasks(container: Container): void {
           evidenceJson: JSON.stringify(bundle),
           evaluatedAt: bundle.generatedAt,
         });
-        if (process.env.GUARDIAN_COMPLIANCE_PDF !== 'false') {
+        if (process.env.MASTYFF_AI_COMPLIANCE_PDF !== 'false') {
           const pdfPath = await writeComplianceEvidencePdf(bundle);
           Logger.info(`[IndustryStandard] Compliance PDF written: ${pdfPath}`);
         }
@@ -59,25 +59,25 @@ export function registerIndustryStandardTasks(container: Container): void {
     });
   }
 
-  if (process.env.GUARDIAN_RL_SANDBOX_SYNC !== 'false') {
+  if (process.env.MASTYFF_AI_RL_SANDBOX_SYNC !== 'false') {
     agenticScheduler.register('rl-sandbox-tiers', 'RL Sandbox Tier Adjustment', '30m', async () => {
       container.sandboxEnforcer.syncFromReputationAndRl(container);
     });
   }
 
-  const observatoryInterval = process.env.GUARDIAN_OBSERVATORY_INGEST_INTERVAL || '1h';
+  const observatoryInterval = process.env.MASTYFF_AI_OBSERVATORY_INGEST_INTERVAL || '1h';
   agenticScheduler.register('observatory-ingest', 'Ecosystem Observatory Telemetry Ingest', observatoryInterval, async () => {
-    const scorecard = runGuardianBenchScorecard();
-    ingestGuardianBenchIntoObservatory(ecosystemObservatory, {
+    const scorecard = runMastyffAiBenchScorecard();
+    ingestMastyffAiBenchIntoObservatory(ecosystemObservatory, {
       blockRate: scorecard.blockRate,
       falsePositiveRate: scorecard.falsePositiveRate,
-      serverCount: Number(process.env.GUARDIAN_FLEET_SERVER_COUNT ?? 1),
-      guardianVersion: process.env.npm_package_version,
+      serverCount: Number(process.env.MASTYFF_AI_FLEET_SERVER_COUNT ?? 1),
+      mastyffAiVersion: process.env.npm_package_version,
       threatClasses: { benchmark: 1 },
     });
     ingestFleetHeartbeatIntoObservatory(ecosystemObservatory, {
-      instanceCount: Number(process.env.GUARDIAN_FLEET_INSTANCE_COUNT ?? 1),
-      serverCount: Number(process.env.GUARDIAN_FLEET_SERVER_COUNT ?? 1),
+      instanceCount: Number(process.env.MASTYFF_AI_FLEET_INSTANCE_COUNT ?? 1),
+      serverCount: Number(process.env.MASTYFF_AI_FLEET_SERVER_COUNT ?? 1),
       blockRate: scorecard.blockRate,
     });
     const mtxHashes = loadMtxPatternsFromStore(industryStore);
@@ -88,18 +88,18 @@ export function registerIndustryStandardTasks(container: Container): void {
     await ingestCloudObservatoryRelay(ecosystemObservatory);
     await pullObservatorySnapshotsFromMesh(ecosystemObservatory);
     await publishObservatorySnapshotToMesh(ecosystemObservatory);
-    if (process.env.GUARDIAN_REPUTATION_MESH_SYNC !== 'false') {
+    if (process.env.MASTYFF_AI_REPUTATION_MESH_SYNC !== 'false') {
       const { pullReputationEntriesFromMesh } = await import('../agentic/reputation/reputation-mesh-pull.js');
       await pullReputationEntriesFromMesh(container.reputationNetwork);
     }
     Logger.debug(`[IndustryStandard] Observatory ingest: blockRate=${scorecard.blockRate.toFixed(3)} mtx=${mtxHashes.length}`);
   });
 
-  if (process.env.GUARDIAN_FEDERATED_LEARNING === 'true') {
-    const flInterval = process.env.GUARDIAN_FEDERATED_SYNC_INTERVAL || '30m';
+  if (process.env.MASTYFF_AI_FEDERATED_LEARNING === 'true') {
+    const flInterval = process.env.MASTYFF_AI_FEDERATED_SYNC_INTERVAL || '30m';
     agenticScheduler.register('federated-learning-sync', 'Federated Learning Mesh Sync + Aggregate', flInterval, async () => {
       await container.federatedLearning.syncRemoteDeltas();
-      const min = Number(process.env.GUARDIAN_FEDERATED_LEARNING_MIN_REPORTS ?? 3);
+      const min = Number(process.env.MASTYFF_AI_FEDERATED_LEARNING_MIN_REPORTS ?? 3);
       const result = container.federatedLearning.aggregateDeltas(min);
       if (result.aggregated) {
         Logger.info(`[IndustryStandard] Federated aggregate: ${result.newVersion} contributors=${result.contributorCount}`);

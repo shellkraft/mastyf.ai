@@ -21,7 +21,7 @@ describe('OAuthValidator', () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('network down')));
     const validator = new OAuthValidator({
       issuer: 'https://invalid.example.test',
-      audience: 'mcp-guardian',
+      audience: 'mastyff-ai',
     });
     const result = await validator.validate('not-a-real-jwt');
     expect(result.valid).toBe(false);

@@ -8,13 +8,13 @@ import { cloudPayloadToLocalMetrics, type CloudObservatoryPayload } from './obse
 import { Logger } from '../../utils/logger.js';
 
 function relayClient(): MeshRelayClient | null {
-  const relayUrl = process.env.GUARDIAN_THREAT_MESH_RELAY_URL?.trim()
-    ?? process.env.GUARDIAN_OBSERVATORY_RELAY_URL?.trim();
+  const relayUrl = process.env.MASTYFF_AI_THREAT_MESH_RELAY_URL?.trim()
+    ?? process.env.MASTYFF_AI_OBSERVATORY_RELAY_URL?.trim();
   if (!relayUrl) return null;
   return new MeshRelayClient({
     relayUrl,
-    apiKey: process.env.GUARDIAN_THREAT_MESH_RELAY_API_KEY,
-    tenantId: process.env.GUARDIAN_TENANT_ID,
+    apiKey: process.env.MASTYFF_AI_THREAT_MESH_RELAY_API_KEY,
+    tenantId: process.env.MASTYFF_AI_TENANT_ID,
   });
 }
 

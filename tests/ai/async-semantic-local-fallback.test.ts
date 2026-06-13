@@ -9,18 +9,18 @@ import { resetLlmConfigForTests } from '../../src/config/llm-config.js';
 describe('async-semantic local fallback', () => {
   const prevAnthropic = process.env.ANTHROPIC_API_KEY;
   const prevOpenai = process.env.OPENAI_API_KEY;
-  const prevLocal = process.env.GUARDIAN_LOCAL_SEMANTIC;
-  const prevAsync = process.env.GUARDIAN_SEMANTIC_ASYNC;
-  const prevLlm = process.env.GUARDIAN_LLM_ENABLED;
+  const prevLocal = process.env.MASTYFF_AI_LOCAL_SEMANTIC;
+  const prevAsync = process.env.MASTYFF_AI_SEMANTIC_ASYNC;
+  const prevLlm = process.env.MASTYFF_AI_LLM_ENABLED;
 
   beforeEach(() => {
     resetLlmConfigForTests();
     resetSemanticAuditStateForTests();
     delete process.env.ANTHROPIC_API_KEY;
     delete process.env.OPENAI_API_KEY;
-    process.env.GUARDIAN_LLM_ENABLED = 'false';
-    process.env.GUARDIAN_LOCAL_SEMANTIC = 'true';
-    process.env.GUARDIAN_SEMANTIC_ASYNC = 'true';
+    process.env.MASTYFF_AI_LLM_ENABLED = 'false';
+    process.env.MASTYFF_AI_LOCAL_SEMANTIC = 'true';
+    process.env.MASTYFF_AI_SEMANTIC_ASYNC = 'true';
     vi.useFakeTimers();
   });
 
@@ -32,12 +32,12 @@ describe('async-semantic local fallback', () => {
     else process.env.ANTHROPIC_API_KEY = prevAnthropic;
     if (prevOpenai === undefined) delete process.env.OPENAI_API_KEY;
     else process.env.OPENAI_API_KEY = prevOpenai;
-    if (prevLocal === undefined) delete process.env.GUARDIAN_LOCAL_SEMANTIC;
-    else process.env.GUARDIAN_LOCAL_SEMANTIC = prevLocal;
-    if (prevAsync === undefined) delete process.env.GUARDIAN_SEMANTIC_ASYNC;
-    else process.env.GUARDIAN_SEMANTIC_ASYNC = prevAsync;
-    if (prevLlm === undefined) delete process.env.GUARDIAN_LLM_ENABLED;
-    else process.env.GUARDIAN_LLM_ENABLED = prevLlm;
+    if (prevLocal === undefined) delete process.env.MASTYFF_AI_LOCAL_SEMANTIC;
+    else process.env.MASTYFF_AI_LOCAL_SEMANTIC = prevLocal;
+    if (prevAsync === undefined) delete process.env.MASTYFF_AI_SEMANTIC_ASYNC;
+    else process.env.MASTYFF_AI_SEMANTIC_ASYNC = prevAsync;
+    if (prevLlm === undefined) delete process.env.MASTYFF_AI_LLM_ENABLED;
+    else process.env.MASTYFF_AI_LLM_ENABLED = prevLlm;
   });
 
   it('processes local heuristic when LLM unavailable', async () => {

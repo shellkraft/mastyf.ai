@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { isDpopRequired, isDpopLegacyBypass } from '../../src/auth/dpop-enforcement.js';
 
 describe('dpop-enforcement block mode', () => {
-  const envKeys = ['GUARDIAN_REQUIRE_DPOP', 'GUARDIAN_BLOCKING_MODE', 'GUARDIAN_LEGACY_NO_DPOP'] as const;
+  const envKeys = ['MASTYFF_AI_REQUIRE_DPOP', 'MASTYFF_AI_BLOCKING_MODE', 'MASTYFF_AI_LEGACY_NO_DPOP'] as const;
   const prev: Record<string, string | undefined> = {};
 
   afterEach(() => {
@@ -24,14 +24,14 @@ describe('dpop-enforcement block mode', () => {
     expect(isDpopRequired('audit')).toBe(false);
   });
 
-  it('requires DPoP when GUARDIAN_BLOCKING_MODE=true', () => {
-    process.env['GUARDIAN_BLOCKING_MODE'] = 'true';
+  it('requires DPoP when MASTYFF_AI_BLOCKING_MODE=true', () => {
+    process.env['MASTYFF_AI_BLOCKING_MODE'] = 'true';
     expect(isDpopRequired('audit')).toBe(true);
   });
 
-  it('honors GUARDIAN_LEGACY_NO_DPOP bypass', () => {
-    process.env['GUARDIAN_BLOCKING_MODE'] = 'true';
-    process.env['GUARDIAN_LEGACY_NO_DPOP'] = 'true';
+  it('honors MASTYFF_AI_LEGACY_NO_DPOP bypass', () => {
+    process.env['MASTYFF_AI_BLOCKING_MODE'] = 'true';
+    process.env['MASTYFF_AI_LEGACY_NO_DPOP'] = 'true';
     expect(isDpopLegacyBypass()).toBe(true);
     expect(isDpopRequired('block')).toBe(false);
   });

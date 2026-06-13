@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { KpiCard } from '../dashboard/KpiCard';
-import { fetchAgenticTasksDetail, guardianFetch } from '@/lib/guardian-api';
+import { fetchAgenticTasksDetail, mastyffAiFetch } from '@/lib/mastyff-ai-api';
 import { useAgenticDashboard } from './useAgenticDashboard';
 import { useAgenticActions, AgenticInlineResult } from './AgenticActionContext';
 import { AgenticIndustryPanel } from './AgenticIndustryPanel';
@@ -22,7 +22,7 @@ export function AgenticOperationsPanel({ refreshKey = 0 }: Props) {
 
   useEffect(() => {
     void fetchAgenticTasksDetail().then(setTasks);
-    void guardianFetch('/api/agentic/scheduler/status').then(async (r) => {
+    void mastyffAiFetch('/api/agentic/scheduler/status').then(async (r) => {
       if (!r.ok) return;
       const body = (await r.json()) as { tasks?: typeof scheduler };
       setScheduler(body.tasks ?? []);

@@ -1,6 +1,6 @@
 {
   "timestamp": "2026-05-24T18:03:38.308079+00:00",
-  "policySource": "/Users/rudraneeldas/Desktop/mcp-guardian/default-policy.yaml",
+  "policySource": "/Users/rudraneeldas/Desktop/mastyff-ai/default-policy.yaml",
   "fixtureCounts": {
     "corpusAttacks": 223,
     "corpusBenign": 55,
@@ -120,7 +120,7 @@
     }
   },
   "enterpriseCsv": {
-    "path": "/Users/rudraneeldas/Desktop/mcp-guardian/adversarial-harness/reports/enterprise_results.csv",
+    "path": "/Users/rudraneeldas/Desktop/mastyff-ai/adversarial-harness/reports/enterprise_results.csv",
     "total": 808,
     "passed": 808,
     "passRatePercent": 100.0,

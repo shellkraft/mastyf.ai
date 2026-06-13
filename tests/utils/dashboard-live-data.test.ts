@@ -8,13 +8,13 @@ describe('dashboard-live-data', () => {
   });
 
   it('parses cost budget from env', () => {
-    const prev = process.env.GUARDIAN_COST_BUDGET_USD;
-    process.env.GUARDIAN_COST_BUDGET_USD = '99.5';
+    const prev = process.env.MASTYFF_AI_COST_BUDGET_USD;
+    process.env.MASTYFF_AI_COST_BUDGET_USD = '99.5';
     expect(parseCostBudgetUsd()).toBe(99.5);
     if (prev === undefined) {
-      delete process.env.GUARDIAN_COST_BUDGET_USD;
+      delete process.env.MASTYFF_AI_COST_BUDGET_USD;
     } else {
-      process.env.GUARDIAN_COST_BUDGET_USD = prev;
+      process.env.MASTYFF_AI_COST_BUDGET_USD = prev;
     }
     expect(parseCostBudgetUsd()).toBe(prev ? parseFloat(prev) : null);
   });

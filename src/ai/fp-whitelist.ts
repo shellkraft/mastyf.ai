@@ -27,15 +27,15 @@ export interface FpWhitelistFile {
   entries: FpWhitelistEntry[];
 }
 
-const DEFAULT_THRESHOLD = parseInt(process.env.GUARDIAN_FP_WHITELIST_THRESHOLD || '3', 10);
+const DEFAULT_THRESHOLD = parseInt(process.env.MASTYFF_AI_FP_WHITELIST_THRESHOLD || '3', 10);
 const COORDINATED_WINDOW_MS = 60 * 60 * 1000;
 const COORDINATED_MIN_COUNT = 5;
 
 function resolveWhitelistPath(): string {
-  if (process.env.GUARDIAN_FP_WHITELIST_PATH) {
-    return process.env.GUARDIAN_FP_WHITELIST_PATH;
+  if (process.env.MASTYFF_AI_FP_WHITELIST_PATH) {
+    return process.env.MASTYFF_AI_FP_WHITELIST_PATH;
   }
-  return join(homedir(), '.mcp-guardian', '.fp-whitelist.json');
+  return join(homedir(), '.mastyff-ai', '.fp-whitelist.json');
 }
 
 export function fpFingerprint(rule: string, pattern: string): string {

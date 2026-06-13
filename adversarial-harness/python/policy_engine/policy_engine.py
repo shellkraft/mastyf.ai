@@ -177,7 +177,7 @@ class PolicyEngine:
                 )
         tenants = rbac.get("tenants") or []
         if tenants:
-            tenant = ctx.tenant_id or os.environ.get("GUARDIAN_TENANT_ID", "default")
+            tenant = ctx.tenant_id or os.environ.get("MASTYFF_AI_TENANT_ID", "default")
             if tenant not in tenants:
                 return PolicyDecision(
                     action,
@@ -290,7 +290,7 @@ class PolicyEngine:
                 )
 
         if not skip_rate:
-            tenant = ctx.tenant_id or os.environ.get("GUARDIAN_TENANT_ID", "default")
+            tenant = ctx.tenant_id or os.environ.get("MASTYFF_AI_TENANT_ID", "default")
             client_id = (ctx.agent_identity.client_id if ctx.agent_identity else None) or (
                 ctx.agent_identity.sub if ctx.agent_identity else None
             )

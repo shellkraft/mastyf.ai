@@ -83,7 +83,7 @@ export async function POST(request: Request) {
       security_posture: score,
       publisher_trust: score,
       policy_compliance: score,
-      guardian_protected: 100,
+      mastyff_ai_protected: 100,
     });
     return NextResponse.json({ ok: true, id: result.id }, { status: 201 });
   } catch (err: unknown) {

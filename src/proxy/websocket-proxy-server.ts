@@ -18,7 +18,7 @@ import type { CallContext } from '../policy/policy-types.js';
 import { applyGeoToCallContext } from '../utils/request-geo-context.js';
 import type { IDatabase } from '../database/database-interface.js';
 import { OAuthValidator } from '../auth/oauth.js';
-import { createSessionCache, validateSessionToken, type GuardianSessionCache } from '../auth/session-factory.js';
+import { createSessionCache, validateSessionToken, type MastyffAiSessionCache } from '../auth/session-factory.js';
 import { extractDpopProof, validateRequiredDpop } from '../auth/dpop-enforcement.js';
 import { getCircuitBreaker } from '../utils/circuit-breaker-registry.js';
 import { scanForSecrets } from '../scanners/secret-scanner.js';
@@ -61,7 +61,7 @@ export class WebSocketProxyServer {
   private pendingMcpSessions = new Map<string | number, string>();
   private pendingToolTenants = new Map<string | number, string>();
   private pendingSessionTokens = new Map<string | number, string>();
-  private sessionCache: GuardianSessionCache | null;
+  private sessionCache: MastyffAiSessionCache | null;
   private tokenCounter = new TokenCounter();
 
   constructor(opts: WebSocketProxyOptions) {
@@ -351,7 +351,7 @@ export class WebSocketProxyServer {
               id: msg.id,
               error: {
                 code: -32005,
-                message: `MCP Guardian: proxy overloaded (${this.pendingToolCalls.size}/${max} in flight)`,
+                message: `Mastyff AI: proxy overloaded (${this.pendingToolCalls.size}/${max} in flight)`,
               },
             }),
           );
@@ -554,7 +554,7 @@ export class WebSocketProxyServer {
       return {
         jsonrpc: '2.0',
         id: msg.id,
-        error: { code: -32001, message: `Blocked by MCP Guardian policy: ${decision.reason}` },
+        error: { code: -32001, message: `Blocked by MCP Mastyff AI policy: ${decision.reason}` },
       };
     }
 
@@ -572,7 +572,7 @@ export class WebSocketProxyServer {
       return {
         jsonrpc: '2.0',
         id: msg.id,
-        error: { code: -32001, message: `Blocked by MCP Guardian semantic gate: ${semGate.reason}` },
+        error: { code: -32001, message: `Blocked by MCP Mastyff AI semantic gate: ${semGate.reason}` },
       };
     }
 
@@ -596,7 +596,7 @@ export class WebSocketProxyServer {
           `[ws-proxy:${this.opts.serverName}] Anomaly detected: ${context.toolName} ` +
           `score=${anomaly.confidence.toFixed(3)} layer=${anomaly.primaryLayer}`,
         );
-        if (process.env['GUARDIAN_ANOMALY_BLOCK'] === 'true') {
+        if (process.env['MASTYFF_AI_ANOMALY_BLOCK'] === 'true') {
           breaker.recordFailure();
           return {
             jsonrpc: '2.0',

@@ -31,7 +31,7 @@ export function AgenticTrustPanel({ refreshKey = 0 }: Props) {
   return (
     <div className="agentic-panel space-y-4">
       <h2 className="text-xl font-bold">Trust &amp; Servers</h2>
-      <p className="text-sm text-gray-500">Per-server Guardian trust scores computed from registry and live block metrics.</p>
+      <p className="text-sm text-gray-500">Per-server Mastyff AI trust scores computed from registry and live block metrics.</p>
 
       <Card className="overflow-hidden">
         <table className="data-table w-full text-sm">
@@ -48,7 +48,7 @@ export function AgenticTrustPanel({ refreshKey = 0 }: Props) {
             {servers.length === 0 ? (
               <tr>
                 <td colSpan={5} className="text-center text-gray-400 py-8">
-                  No servers in registry — add guardian-configs/*.json
+                  No servers in registry — add mastyff-ai-configs/*.json
                 </td>
               </tr>
             ) : (

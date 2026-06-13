@@ -10,14 +10,14 @@ export function retryDelayWithJitter(attempt: number, baseMs: number): number {
 }
 
 export function parseQuorumRedisUrls(): string[] {
-  const raw = process.env['GUARDIAN_DPOP_QUORUM_REDIS']?.trim();
+  const raw = process.env['MASTYFF_AI_DPOP_QUORUM_REDIS']?.trim();
   if (!raw) return [];
   return raw.split(',').map((u) => u.trim()).filter(Boolean);
 }
 
 /**
  * Multi-Redis quorum jti claim (Redlock-style majority) for active-active regions.
- * Requires GUARDIAN_DPOP_QUORUM_REDIS=redis://a,redis://b,redis://c
+ * Requires MASTYFF_AI_DPOP_QUORUM_REDIS=redis://a,redis://b,redis://c
  */
 export async function claimDpopJtiQuorum(
   clients: Array<Pick<Redis, 'set' | 'get' | 'del'>>,

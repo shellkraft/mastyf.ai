@@ -5,8 +5,8 @@ COPY main.go ./
 RUN go build -o /out/proxy-core .
 
 FROM alpine:3.20
-RUN adduser -D -H guardian
-USER guardian
+RUN adduser -D -H mastyff-ai
+USER mastyff-ai
 WORKDIR /app
 COPY --from=build /out/proxy-core /usr/local/bin/proxy-core
 EXPOSE 9090

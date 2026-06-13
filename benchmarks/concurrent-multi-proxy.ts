@@ -170,7 +170,7 @@ async function main(): Promise<void> {
   const callsPerReplica = TOTAL_CALLS / REPLICAS;
 
   console.error(`[multi-proxy] ${REPLICAS} replicas × ${callsPerReplica} calls = ${TOTAL_CALLS} total`);
-  const resultDir = mkdtempSync(resolve(tmpdir(), 'mcp-guardian-multi-proxy-'));
+  const resultDir = mkdtempSync(resolve(tmpdir(), 'mastyff-ai-multi-proxy-'));
   const wallStart = Date.now();
   let perReplica: WorkerPayload[];
   try {

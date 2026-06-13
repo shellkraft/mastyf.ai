@@ -1,20 +1,20 @@
 #!/usr/bin/env bash
-# Configure mcp-guardian-cloud on Vercel and trigger production redeploy.
-# Requires: VERCEL_TOKEN from https://vercel.com/account/tokens (rudraneel93-gmailcom account)
+# Configure mastyff-ai-cloud on Vercel and trigger production redeploy.
+# Requires: VERCEL_TOKEN from https://vercel.com/account/tokens (mastyff-ai-gmailcom account)
 # Optional: DATABASE_URL, LEMONSQUEEZY_WEBHOOK_SECRET, AUTH_SECRET (generated if unset)
 
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 CLOUD="$ROOT/apps/cloud"
-SCOPE="rudraneel93-gmailcoms-projects"
-PROJECT="mcp-guardian-cloud"
-APP_URL="https://mcp-guardian-cloud.vercel.app"
-CHECKOUT_URL="https://mcp-guardian.lemonsqueezy.com/checkout/buy/f725abfe-93c0-4bd7-8add-d15af13958fb"
+SCOPE="mastyff-ai-gmailcoms-projects"
+PROJECT="mastyff-ai-cloud"
+APP_URL="https://mastyff-ai-cloud.vercel.app"
+CHECKOUT_URL="https://mastyff-ai.lemonsqueezy.com/checkout/buy/f725abfe-93c0-4bd7-8add-d15af13958fb"
 VERCEL_CLI="${VERCEL_CLI:-npx vercel@48}"
 
 if [[ -z "${VERCEL_TOKEN:-}" ]]; then
-  echo "ERROR: Set VERCEL_TOKEN (create at https://vercel.com/account/tokens while logged in as rudraneel93-gmailcom)"
+  echo "ERROR: Set VERCEL_TOKEN (create at https://vercel.com/account/tokens while logged in as mastyff-ai-gmailcom)"
   exit 1
 fi
 

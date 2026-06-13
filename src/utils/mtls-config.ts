@@ -28,7 +28,7 @@ let spiffeLoaded = false;
 
 /** Active SPIFFE ID from env or client cert subject (spiffe://…). */
 export function getActiveSpiffeId(): string | undefined {
-  const fromEnv = process.env['GUARDIAN_SPIFFE_ID']?.trim();
+  const fromEnv = process.env['MASTYFF_AI_SPIFFE_ID']?.trim();
   if (fromEnv?.startsWith('spiffe://')) return fromEnv;
   const certPath = process.env['MCP_TLS_CERT'];
   if (!certPath) return undefined;
@@ -53,7 +53,7 @@ export function resetSpiffeSvidCacheForTests(): void {
  * Sets MCP_TLS_CA, MCP_TLS_CERT, MCP_TLS_KEY when successful.
  */
 export async function fetchSpiffeSvidFromWorkloadApi(): Promise<boolean> {
-  const socketPath = process.env['GUARDIAN_SPIFFE_SOCKET_PATH']?.trim();
+  const socketPath = process.env['MASTYFF_AI_SPIFFE_SOCKET_PATH']?.trim();
   if (!socketPath || spiffeLoaded) return spiffeLoaded;
 
   return new Promise((resolve) => {
@@ -106,7 +106,7 @@ export async function fetchSpiffeSvidFromWorkloadApi(): Promise<boolean> {
 }
 
 function writeTempPem(kind: string, pemBody: string): string {
-  const dir = mkdtempSync(join(tmpdir(), `guardian-spiffe-${kind}-`));
+  const dir = mkdtempSync(join(tmpdir(), `mastyff-ai-spiffe-${kind}-`));
   const filePath = join(dir, `${kind}.pem`);
   let normalized = pemBody;
   if (!pemBody.includes('BEGIN')) {
@@ -133,8 +133,8 @@ export interface MtlsConfig {
  */
 export function loadMtlsConfig(): MtlsConfig {
   resolveMtlsEnvFromMounts();
-  if (process.env['GUARDIAN_SPIFFE_SOCKET_PATH'] && !spiffeLoaded) {
-    Logger.info('[spiffe] GUARDIAN_SPIFFE_SOCKET_PATH set — call fetchSpiffeSvidFromWorkloadApi() before loadMtlsConfig in async bootstrap');
+  if (process.env['MASTYFF_AI_SPIFFE_SOCKET_PATH'] && !spiffeLoaded) {
+    Logger.info('[spiffe] MASTYFF_AI_SPIFFE_SOCKET_PATH set — call fetchSpiffeSvidFromWorkloadApi() before loadMtlsConfig in async bootstrap');
   }
   const enabled = process.env['MCP_TLS_ENABLED'] === 'true';
 
@@ -165,8 +165,8 @@ export function loadMtlsConfig(): MtlsConfig {
     ca = readFileSync(caPath!);
     cert = readFileSync(certPath!);
     key = readFileSync(keyPath!);
-  } catch (err: any) {
-    Logger.error(`[mtls] Failed to read TLS files: ${err?.message}`);
+  } catch (err: unknown) {
+    Logger.error(`[mtls] Failed to read TLS files: ${err instanceof Error ? err.message : String(err)}`);
     throw err;
   }
 
@@ -180,7 +180,7 @@ export function loadMtlsConfig(): MtlsConfig {
  */
 export function createMtlsAgent(config: MtlsConfig): HttpsAgent | undefined {
   if (!config.enabled) {
-    const pinOnly = process.env['GUARDIAN_UPSTREAM_CERT_PIN_SHA256']?.trim();
+    const pinOnly = process.env['MASTYFF_AI_UPSTREAM_CERT_PIN_SHA256']?.trim();
     if (!pinOnly) return undefined;
     const opts = applyCertPinToAgentOptions({
       rejectUnauthorized: true,
@@ -206,9 +206,9 @@ export function createMtlsAgent(config: MtlsConfig): HttpsAgent | undefined {
  */
 /** Default mount paths when using Helm mtls.existingSecret volume. */
 export const MTLS_HELM_MOUNT_PATHS = {
-  ca: '/etc/mcp-guardian/tls/ca.pem',
-  cert: '/etc/mcp-guardian/tls/tls.crt',
-  key: '/etc/mcp-guardian/tls/tls.key',
+  ca: '/etc/mastyff-ai/tls/ca.pem',
+  cert: '/etc/mastyff-ai/tls/tls.crt',
+  key: '/etc/mastyff-ai/tls/tls.key',
 } as const;
 
 /**

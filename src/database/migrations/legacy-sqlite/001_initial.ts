@@ -1,5 +1,5 @@
 /**
- * Migration 001: Initial schema for MCP Guardian.
+ * Migration 001: Initial schema for Mastyff AI.
  * Creates all four core tables and sets WAL journaling.
  */
 export function migrate(db: any) {

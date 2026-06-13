@@ -1,9 +1,9 @@
 {
-  "name": "rudraneel93/mcp-guardian",
+  "name": "mastyff-ai/mastyff-ai",
   "description": "Security, cost, and health governance proxy for MCP infrastructure. Three-layer detection engine (regex → schema → LLM), YAML policy engine with hot-reload, real tiktoken cost enforcement, self-auditing MCP server.",
   "version": "2.3.21",
-  "repository": "https://github.com/rudraneel93/mcp-guardian",
-  "homepage": "https://www.npmjs.com/package/@mcp-guardian/server",
+  "repository": "https://github.com/mastyff-ai/mastyff-ai",
+  "homepage": "https://www.npmjs.com/package/@mastyff-ai/server",
   "license": "MIT",
   "runtime": "node",
   "entrypoint": "dist/index.js",
@@ -73,5 +73,5 @@
       }
     }
   ],
-  "install": "npx -y @mcp-guardian/server"
+  "install": "npx -y @mastyff-ai/server"
 }

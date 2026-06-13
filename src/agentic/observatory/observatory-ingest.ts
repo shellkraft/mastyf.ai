@@ -1,5 +1,5 @@
 /**
- * B2 — Wire guardian-bench, fleet heartbeat, MTX catalog, and cloud relay into ecosystem observatory.
+ * B2 — Wire mastyff-ai-cloud relay into ecosystem observatory.
  */
 import type { EcosystemObservatory } from './ecosystem-observatory.js';
 import { Logger } from '../../utils/logger.js';
@@ -8,19 +8,19 @@ import {
   cloudPayloadToLocalMetrics,
 } from './observatory-cloud-relay.js';
 
-export function ingestGuardianBenchIntoObservatory(
+export function ingestMastyffAiBenchIntoObservatory(
   observatory: EcosystemObservatory,
   submission: {
     blockRate: number;
     falsePositiveRate: number;
     serverCount: number;
     threatClasses?: Record<string, number>;
-    guardianVersion?: string;
+    mastyffAiVersion?: string;
   },
 ): void {
   observatory.ingestBenchmarkSubmission(submission);
-  if (submission.guardianVersion) {
-    observatory.recordMetric('guardian_version', 1, { version: submission.guardianVersion });
+  if (submission.mastyffAiVersion) {
+    observatory.recordMetric('mastyff-ai_version', 1, { version: submission.mastyffAiVersion });
   }
   Logger.debug('[ObservatoryIngest] Benchmark submission recorded');
 }
@@ -58,7 +58,7 @@ export function ingestMtxCatalogIntoObservatory(
   observatory.recordMetric('mtx_signatures', signatures.length);
 }
 
-/** Pull and ingest live ecosystem telemetry from Guardian Cloud (B2). */
+/** Pull and ingest live ecosystem telemetry from Mastyff AI Cloud (B2). */
 export async function ingestCloudObservatoryRelay(
   observatory: EcosystemObservatory,
 ): Promise<{ ingested: number; cloudAvailable: boolean }> {

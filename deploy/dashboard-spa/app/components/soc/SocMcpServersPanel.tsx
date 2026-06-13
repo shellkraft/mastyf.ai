@@ -2,10 +2,10 @@
 
 import { useState } from 'react';
 import { Activity, Server, Terminal } from 'lucide-react';
-import { GUARDIAN_CONFIGS } from '@/lib/repo-data';
+import { MASTYFF_AI_CONFIGS } from '@/lib/repo-data';
 import { SocCard, SocSectionHeader } from './primitives';
 
-const MCP_CONFIGS = GUARDIAN_CONFIGS;
+const MCP_CONFIGS = MASTYFF_AI_CONFIGS;
 
 export function SocMcpServersPanel() {
   const [selected, setSelected] = useState(MCP_CONFIGS[0]);
@@ -16,7 +16,7 @@ export function SocMcpServersPanel() {
         <Server size={20} color="var(--cyan)"/>
         <div>
           <div className="section-title">MCP Servers</div>
-          <div className="section-sub">Guardian proxy configurations · 4 server profiles · JSON configuration viewer</div>
+          <div className="section-sub">Mastyff AI proxy configurations · 4 server profiles · JSON configuration viewer</div>
         </div>
       </div>
 

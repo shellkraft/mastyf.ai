@@ -16,7 +16,7 @@ check_spa_data() {
   for f in \
     attacks.json ai-learning-metrics.json benchmark-slo.json traffic-summary.json \
     swarm-report.json swarm-latest.json calibration.json bypasses.json gates.json \
-    guardian-configs.json threat-lab-job.json auto-research-job.json benchmark-report.json
+    mastyff-ai-configs.json threat-lab-job.json auto-research-job.json benchmark-report.json
   do
     if [ ! -f "$SPA/app/data/$f" ]; then
       missing="$missing $f"
@@ -43,9 +43,9 @@ has_next() {
 if in_workspace; then
   if ! has_next; then
     echo "[dashboard:build] Installing dashboard-spa workspace deps…" >&2
-    (cd "$ROOT" && pnpm install --filter @mcp-guardian/dashboard-spa...)
+    (cd "$ROOT" && pnpm install --filter @mastyff-ai/dashboard-spa...)
   fi
-  exec pnpm --dir "$ROOT" --filter @mcp-guardian/dashboard-spa run build
+  exec pnpm --dir "$ROOT" --filter @mastyff-ai/dashboard-spa run build
 fi
 
 echo "[dashboard:build] dashboard-spa not in pnpm-workspace — using npm in $SPA" >&2

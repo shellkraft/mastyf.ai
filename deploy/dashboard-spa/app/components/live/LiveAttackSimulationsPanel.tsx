@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { fetchSwarmLiveSession, type LiveFilesystemSession } from '@/lib/guardian-api';
+import { fetchSwarmLiveSession, type LiveFilesystemSession } from '@/lib/mastyff-ai-api';
 
 export function LiveAttackSimulationsPanel() {
   const [session, setSession] = useState<LiveFilesystemSession | null>(null);

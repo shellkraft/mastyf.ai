@@ -17,7 +17,7 @@ import {
   loadPolicySnapshot,
 } from '../utils/tui-sources.js';
 import { readFileSync, existsSync } from 'fs';
-import { resolveGuardianDbPath } from '../utils/guardian-db-path.js';
+import { resolveMastyffAiDbPath } from '../utils/mastyff-ai-db-path.js';
 import { ensureProFeature } from '../license/enforce-pro.js';
 import { getLicenseClient } from '../license/license-client.js';
 import { isCiLicenseBypass } from '../license/feature-tiers.js';
@@ -37,7 +37,7 @@ import type { BaselineProfile } from '../ai/baseline-learner.js';
 import { homedir } from 'os';
 import { join, resolve } from 'path';
 
-const GUARDIAN_DIR = join(homedir(), '.mcp-guardian');
+const MASTYFF_AI_DIR = join(homedir(), '.mastyff-ai');
 
 export interface TuiMeta {
   dbPath: string;
@@ -139,11 +139,11 @@ export class DataFetcher {
   private dbReadOnly = false;
 
   constructor(dashboardUrl?: string) {
-    const requestedPath = resolveGuardianDbPath();
+    const requestedPath = resolveMastyffAiDbPath();
     this.db = new HistoryDatabase(requestedPath, { readOnly: true });
     this.dbPath = this.db.getDbPath();
     this.dbReadOnly = this.db.isReadOnly();
-    this.dashboardUrl = dashboardUrl || process.env.GUARDIAN_DASHBOARD_URL;
+    this.dashboardUrl = dashboardUrl || process.env.MASTYFF_AI_DASHBOARD_URL;
   }
 
   getData(): TuiData | null { return this.cache; }
@@ -153,7 +153,7 @@ export class DataFetcher {
   private notify() { for (const l of this.listeners) { try { l(); } catch {} } }
 
   connectWebSocket(): void {
-    const base = this.dashboardUrl || process.env.GUARDIAN_DASHBOARD_URL || 'http://127.0.0.1:4000';
+    const base = this.dashboardUrl || process.env.MASTYFF_AI_DASHBOARD_URL || 'http://127.0.0.1:4000';
     let wsUrl: string;
     try {
       const u = new URL(base);
@@ -191,7 +191,7 @@ export class DataFetcher {
   /** Re-open read-only handle so WAL commits from proxy/demo are visible while polling. */
   private refreshReadOnlyConnection(): void {
     if (!this.dbReadOnly) return;
-    const path = resolveGuardianDbPath();
+    const path = resolveMastyffAiDbPath();
     try {
       this.db.close();
     } catch {}
@@ -248,7 +248,7 @@ export class DataFetcher {
         ? `${activePricing.displayName} — $${activePricing.inputPerM}/M in, $${activePricing.outputPerM}/M out (${activePricing.source}${activePricing.isLive ? ', live' : ''})`
         : sum.pricedCalls > 0
           ? `per-call rates (${sum.models.join(', ') || 'mixed'})`
-          : 'unpriced — open Cline/Cursor or set GUARDIAN_MODEL';
+          : 'unpriced — open Cline/Cursor or set MASTYFF_AI_MODEL';
 
       const costReports: any[] = [];
       for (const srv of servers) {
@@ -327,7 +327,7 @@ export class DataFetcher {
       let analysis = '';
 
       // Always derive analysis from the current DB snapshot when we have traffic.
-      // Saved ~/.mcp-guardian/.ai-report.json is often stale (e.g. single echo-test run).
+      // Saved ~/.mastyff-ai/.ai-report.json is often stale (e.g. single echo-test run).
       if (totalRequests > 0) {
         analysis = this.buildDeterministicAnalysis({
           totalRequests,
@@ -368,8 +368,8 @@ export class DataFetcher {
       }
 
       const llmEnabled =
-        process.env.GUARDIAN_TUI_LLM !== 'false'
-        && process.env.GUARDIAN_LLM_ENABLED !== 'false'
+        process.env.MASTYFF_AI_TUI_LLM !== 'false'
+        && process.env.MASTYFF_AI_LLM_ENABLED !== 'false'
         && this.tuiAiLearningAllowed();
       if (llmEnabled && totalRequests > 0) {
         const topTools = this.getTopTools(allRecords);
@@ -493,7 +493,7 @@ export class DataFetcher {
       confidence: suggestion.confidence ?? 0.5,
       rule: suggestion.rule,
       policyPath: resolvePolicyPath(),
-      userId: process.env.GUARDIAN_TUI_USER || process.env.USER || 'tui',
+      userId: process.env.MASTYFF_AI_TUI_USER || process.env.USER || 'tui',
     });
     await this.fetchAll();
   }
@@ -586,10 +586,10 @@ export class DataFetcher {
   private async ensureLearningCycle(recordCount: number): Promise<void> {
     if (this.dbReadOnly || !isAiLearningEnabled() || recordCount === 0) return;
     if (!this.tuiAiLearningAllowed()) return;
-    if (process.env.GUARDIAN_TUI_SKIP_LEARNING === 'true') return;
+    if (process.env.MASTYFF_AI_TUI_SKIP_LEARNING === 'true') return;
     if (this.learningInFlight) return;
     const state = this.loadLearningDisplay();
-    const staleMs = parseInt(process.env.GUARDIAN_TUI_LEARNING_INTERVAL_MS || '60000', 10);
+    const staleMs = parseInt(process.env.MASTYFF_AI_TUI_LEARNING_INTERVAL_MS || '60000', 10);
     if (this.learningRan && state.lastCycleAt) {
       const age = Date.now() - new Date(state.lastCycleAt).getTime();
       if (age < staleMs) return;
@@ -641,7 +641,7 @@ export class DataFetcher {
     topTools: { name: string; count: number; totalTokens: number }[];
   }): string {
     const lines: string[] = [];
-    lines.push('MCP Guardian — Live Deployment Analysis');
+    lines.push('MCP Mastyff AI — Live Deployment Analysis');
     lines.push(`Generated: ${new Date().toISOString()}`);
     lines.push('');
     lines.push('TRAFFIC & POLICY');
@@ -728,7 +728,7 @@ export class DataFetcher {
     const toolLines = topTools.map(t => `  - ${t.name}: ${t.count} calls`).join('\n');
     const secLines = securityIssues.length > 0 ? `Security concerns: ${securityIssues.join(', ')}` : 'No critical security issues';
     const threatList = threats.slice(0, 3).map(t => t.id).join(', ');
-    return `MCP Guardian deployment summary:
+    return `MCP Mastyff AI deployment summary:
 - ${totalRequests} total tool calls across ${serverCount} server(s)
 - Total cost: $${costUsd.toFixed(4)}
 - Average latency: ${avgLatency}ms

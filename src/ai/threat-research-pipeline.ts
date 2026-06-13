@@ -81,7 +81,7 @@ export function threatLabSourceToAutoCorpusSource(source: ThreatLabSource): Auto
 
 function replayRequiredForCorpusWrite(override?: boolean): boolean {
   if (override !== undefined) return override;
-  return process.env.GUARDIAN_AUTOPILOT_CORPUS_GATE === 'true' || requireReplay();
+  return process.env.MASTYFF_AI_AUTOPILOT_CORPUS_GATE === 'true' || requireReplay();
 }
 
 /** Shared normalize → validate → write → promote path for runtime and Threat Lab batch. */
@@ -143,7 +143,7 @@ async function persistValidatedDiscoveryToAutoCorpus(
     /* non-fatal */
   }
 
-  if (process.env.GUARDIAN_AUTO_CORPUS_PROMOTE === 'true') {
+  if (process.env.MASTYFF_AI_AUTO_CORPUS_PROMOTE === 'true') {
     try {
       const provenance: CorpusPromotionProvenance = {
         source,
@@ -200,31 +200,31 @@ let drainTimer: ReturnType<typeof setTimeout> | null = null;
 const hourTimestamps: number[] = [];
 
 function debounceMs(): number {
-  const n = parseInt(process.env.GUARDIAN_THREAT_RESEARCH_DEBOUNCE_MS || '5000', 10);
+  const n = parseInt(process.env.MASTYFF_AI_THREAT_RESEARCH_DEBOUNCE_MS || '5000', 10);
   return Number.isFinite(n) && n >= 0 ? n : 5000;
 }
 
 function maxPerHour(): number {
-  const n = parseInt(process.env.GUARDIAN_THREAT_RESEARCH_MAX_PER_HOUR || '20', 10);
+  const n = parseInt(process.env.MASTYFF_AI_THREAT_RESEARCH_MAX_PER_HOUR || '20', 10);
   return Number.isFinite(n) && n > 0 ? n : 20;
 }
 
 function minConfidence(): number {
-  if (process.env.GUARDIAN_THREAT_RESEARCH_MIN_CONFIDENCE !== undefined) {
-    const n = parseFloat(process.env.GUARDIAN_THREAT_RESEARCH_MIN_CONFIDENCE);
+  if (process.env.MASTYFF_AI_THREAT_RESEARCH_MIN_CONFIDENCE !== undefined) {
+    const n = parseFloat(process.env.MASTYFF_AI_THREAT_RESEARCH_MIN_CONFIDENCE);
     if (Number.isFinite(n)) return n;
   }
-  if (process.env.GUARDIAN_CI_BYPASS_LICENSE === 'true') return 0.75;
-  const n = parseFloat(process.env.GUARDIAN_THREAT_RESEARCH_MIN_CONFIDENCE || '0.85');
+  if (process.env.MASTYFF_AI_CI_BYPASS_LICENSE === 'true') return 0.75;
+  const n = parseFloat(process.env.MASTYFF_AI_THREAT_RESEARCH_MIN_CONFIDENCE || '0.85');
   return Number.isFinite(n) ? n : 0.85;
 }
 
 function requireReplay(): boolean {
-  return process.env.GUARDIAN_THREAT_RESEARCH_REQUIRE_REPLAY === 'true';
+  return process.env.MASTYFF_AI_THREAT_RESEARCH_REQUIRE_REPLAY === 'true';
 }
 
 export function threatResearchAutoEnabled(): boolean {
-  if (process.env.GUARDIAN_THREAT_RESEARCH_AUTO !== 'true') return false;
+  if (process.env.MASTYFF_AI_THREAT_RESEARCH_AUTO !== 'true') return false;
   if (process.env.SWARM_THREAT_RESEARCH_AUTO === 'true') return true;
   if (isCiLicenseBypass() || isCiTokenCached()) return true;
   return getLicenseClient().hasFeature('swarm');
@@ -233,21 +233,21 @@ export function threatResearchAutoEnabled(): boolean {
 /** When true, Threat Lab writes adv fixtures via the auto-corpus path (not legacy direct writes). */
 export function autoThreatResearchOwnsAdvWrites(): boolean {
   return (
-    process.env.GUARDIAN_THREAT_RESEARCH_AUTO === 'true'
+    process.env.MASTYFF_AI_THREAT_RESEARCH_AUTO === 'true'
     && process.env.SWARM_THREAT_RESEARCH_AUTO === 'true'
   );
 }
 
 function semanticEnabled(): boolean {
-  return process.env.GUARDIAN_THREAT_RESEARCH_SEMANTIC !== 'false';
+  return process.env.MASTYFF_AI_THREAT_RESEARCH_SEMANTIC !== 'false';
 }
 
 function blocksEnabled(): boolean {
-  return process.env.GUARDIAN_THREAT_RESEARCH_BLOCKS !== 'false';
+  return process.env.MASTYFF_AI_THREAT_RESEARCH_BLOCKS !== 'false';
 }
 
 function threatIntelEnabled(): boolean {
-  return process.env.GUARDIAN_THREAT_RESEARCH_THREAT_INTEL !== 'false';
+  return process.env.MASTYFF_AI_THREAT_RESEARCH_THREAT_INTEL !== 'false';
 }
 
 function pruneHourly(): void {
@@ -295,11 +295,11 @@ export interface ThreatResearchConfig {
 
 export function getThreatResearchConfig(): ThreatResearchConfig {
   const semanticMin = parseFloat(
-    process.env.GUARDIAN_THREAT_RESEARCH_SEMANTIC_MIN_CONFIDENCE || '0.85',
+    process.env.MASTYFF_AI_THREAT_RESEARCH_SEMANTIC_MIN_CONFIDENCE || '0.85',
   );
   const batchMax = parseInt(process.env.SWARM_THREAT_RESEARCH_MAX || '10', 10);
   return {
-    autoEnabled: process.env.GUARDIAN_THREAT_RESEARCH_AUTO === 'true',
+    autoEnabled: process.env.MASTYFF_AI_THREAT_RESEARCH_AUTO === 'true',
     swarmAutoEnabled: process.env.SWARM_THREAT_RESEARCH_AUTO === 'true',
     ownsAdvWrites: autoThreatResearchOwnsAdvWrites(),
     minConfidence: minConfidence(),

@@ -1,6 +1,6 @@
 /**
  * JWS-like HMAC attestation for MCP server certifications.
- * Uses GUARDIAN_CERT_SIGNING_KEY (falls back to dev key when unset).
+ * Uses MASTYFF_AI_CERT_SIGNING_KEY (falls back to dev key when unset).
  */
 import { createHmac, timingSafeEqual } from 'crypto';
 
@@ -23,11 +23,18 @@ function fromB64url(input: string): string {
 }
 
 export function getCertSigningKey(): string {
-  return process.env['GUARDIAN_CERT_SIGNING_KEY'] || 'guardian-dev-cert-key';
+  const key = process.env['MASTYFF_AI_CERT_SIGNING_KEY'];
+  if (!key) {
+    throw new Error(
+      'MASTYFF_AI_CERT_SIGNING_KEY environment variable is required for certification signing. ' +
+      'Set a cryptographically random secret (e.g., openssl rand -hex 32).',
+    );
+  }
+  return key;
 }
 
 export function signCertAttestation(payload: CertAttestationPayload): string {
-  const header = b64url(JSON.stringify({ alg: 'HS256', typ: 'GUARDIAN-CERT+JWS' }));
+  const header = b64url(JSON.stringify({ alg: 'HS256', typ: 'MASTYFF_AI-CERT+JWS' }));
   const body = b64url(JSON.stringify(payload));
   const signingInput = `${header}.${body}`;
   const signature = createHmac('sha256', getCertSigningKey()).update(signingInput).digest('base64url');

@@ -94,13 +94,13 @@ export async function runPlanComplianceAudit(): Promise<PlanComplianceReport> {
     for (let i = 0; i < 5; i++) {
       engine.observe({ agentId: 'audit-agent', toolName: 'read', argBytes: 64, timestamp: Date.now() + i * 500 });
     }
-    process.env.GUARDIAN_BIOMETRICS_MIN_SAMPLES = '3';
+    process.env.MASTYFF_AI_BIOMETRICS_MIN_SAMPLES = '3';
     const anomaly = engine.scoreAnomaly('audit-agent', { agentId: 'audit-agent', toolName: 'read', argBytes: 64, timestamp: Date.now() + 5000 });
-    delete process.env.GUARDIAN_BIOMETRICS_MIN_SAMPLES;
+    delete process.env.MASTYFF_AI_BIOMETRICS_MIN_SAMPLES;
     const checks: ComplianceCheck[] = [
       { id: 'fingerprint', passed: engine.getFingerprint('audit-agent') != null, detail: 'Behavior fingerprint baseline', weight: 40 },
       { id: 'anomaly', passed: anomaly.score >= 0, detail: 'Anomaly scoring active', weight: 30 },
-      { id: 'env-warmup', passed: true, detail: 'GUARDIAN_BIOMETRICS_MIN_SAMPLES configurable', weight: 15 },
+      { id: 'env-warmup', passed: true, detail: 'MASTYFF_AI_BIOMETRICS_MIN_SAMPLES configurable', weight: 15 },
       { id: 'strategy', passed: existsSync(join(__dirname, '../policy/strategies/behavioral-biometrics-strategy.ts')), detail: 'Policy strategy wired', weight: 15 },
     ];
     modules.push({ id: 'A3', name: 'Agent Behavioral Biometrics', score: scoreModule(checks), checks });
@@ -150,15 +150,15 @@ export async function runPlanComplianceAudit(): Promise<PlanComplianceReport> {
   {
     const { FederatedLearningCoordinator } = await import('./federated/federated-learning.js');
     const { maskGradientForUpload, sumMaskedGradients } = await import('./federated/federated-masked-aggregation.js');
-    process.env.GUARDIAN_FEDERATED_LEARNING = 'true';
-    process.env.GUARDIAN_FEDERATED_LEARNING_MIN_REPORTS = '1';
+    process.env.MASTYFF_AI_FEDERATED_LEARNING = 'true';
+    process.env.MASTYFF_AI_FEDERATED_LEARNING_MIN_REPORTS = '1';
     const fl = new FederatedLearningCoordinator();
     fl.recordBlockedSignature('audit:sig', [0.5, 0.8, 0.2]);
     const infer = await fl.runOnnxInference([0.5, 0.8, 0.2]);
     const m1 = maskGradientForUpload([0.1, 0.2], 'p1', ['p1', 'p2'], 'r1');
     const m2 = maskGradientForUpload([0.3, 0.1], 'p2', ['p1', 'p2'], 'r1');
-    delete process.env.GUARDIAN_FEDERATED_LEARNING;
-    delete process.env.GUARDIAN_FEDERATED_LEARNING_MIN_REPORTS;
+    delete process.env.MASTYFF_AI_FEDERATED_LEARNING;
+    delete process.env.MASTYFF_AI_FEDERATED_LEARNING_MIN_REPORTS;
     const checks: ComplianceCheck[] = [
       { id: 'coordinator', passed: fl.isEnabled() || infer != null, detail: 'Federated coordinator + inference', weight: 30 },
       { id: 'mpc', passed: sumMaskedGradients([m1, m2]).length === 2, detail: 'MPC-lite masked aggregation', weight: 25 },

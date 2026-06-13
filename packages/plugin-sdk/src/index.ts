@@ -1,5 +1,5 @@
 /**
- * MCP Guardian Plugin SDK v4.0 — detector plugins + industry-standard hooks.
+ * MCP Mastyff AI Plugin SDK v4.0 — detector plugins + industry-standard hooks.
  * @see docs/PLUGIN_SDK.md
  */
 
@@ -77,10 +77,10 @@ export interface CertSubmitPayload {
   attestationJws: string;
 }
 
-/** POST certification attestation to Guardian cloud registry (or custom URL). */
+/** POST certification attestation to Mastyff AI cloud registry (or custom URL). */
 export async function submitCertificationAttestation(
   payload: CertSubmitPayload,
-  registryUrl = process.env.GUARDIAN_CERT_REGISTRY_URL ?? 'https://guardian.mcp-guardian.cloud/api/v1/certifications',
+  registryUrl = process.env.MASTYFF_AI_CERT_REGISTRY_URL ?? 'https://mastyff-ai-cloud/api/v1/certifications',
   apiKey?: string,
 ): Promise<{ ok: boolean; status: number; body?: unknown }> {
   const res = await fetch(registryUrl, {

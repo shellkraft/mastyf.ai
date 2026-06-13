@@ -15,7 +15,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import type { AggregateMetrics } from '@/lib/guardian-api';
+import type { AggregateMetrics } from '@/lib/mastyff-ai-api';
 import {
   CHART_AXIS,
   CHART_COLORS,
@@ -23,6 +23,10 @@ import {
   CHART_SERIES,
   formatAxisTime,
   topNBuckets,
+  classifyRule,
+  ruleCategoryColor,
+  RULE_CATEGORY_LABELS,
+  type RuleCategory,
 } from '@/lib/chartTheme';
 import { DashboardSection } from './DashboardSection';
 import { KpiCard } from './KpiCard';
@@ -60,17 +64,27 @@ export function ExecutiveOverviewPanel({ refreshKey = 0, metrics: metricsProp, s
   );
 
   const ruleData = useMemo(() => {
-    const raw = (visuals?.traffic?.topBlockRules ?? []).slice(0, 8).map((r) => ({
-      name: r.rule.slice(0, 20),
+    const raw = (visuals?.traffic?.topBlockRules ?? []).slice(0, 12).map((r) => ({
+      name: r.rule.slice(0, 24),
       value: r.count,
+      category: classifyRule(r.rule),
     }));
     return topNBuckets(raw, 6);
   }, [visuals?.traffic?.topBlockRules]);
 
+  const securityRuleCount = useMemo(
+    () => ruleData.filter((r) => r.category === 'security').reduce((s, r) => s + r.value, 0),
+    [ruleData],
+  );
+  const policyRuleCount = useMemo(
+    () => ruleData.filter((r) => r.category === 'policy').reduce((s, r) => s + r.value, 0),
+    [ruleData],
+  );
+
   const ruleLegend = ruleData.map((r, i) => ({
     key: r.name,
     label: r.name,
-    color: CHART_COLORS[i % CHART_COLORS.length],
+    color: ruleCategoryColor(r.category),
   }));
 
   const totalInWindow = summary?.totalRequests ?? metricsProp?.totalRequests ?? 0;
@@ -127,7 +141,7 @@ export function ExecutiveOverviewPanel({ refreshKey = 0, metrics: metricsProp, s
             variant={summary?.blockRatePct != null && summary.blockRatePct > 15 ? 'warn' : 'default'}
             comparison={cmp?.blockedRequests ? { ...cmp.blockedRequests, label: 'vs prior window' } : undefined}
             sparkline={spark?.blocked?.length ? <KpiSparkline data={spark.blocked} color={CHART_SERIES.block} ariaLabel="Block trend" /> : undefined}
-            explanation="Policy/DLP blocks — high rates may indicate attack traffic or tight rules."
+            explanation="Combines security blocks (injections, path traversal, secrets) and policy enforcement (certification). Security blocks␣→␣attacks; policy blocks␣→␣server restrictions."
           />
           <KpiCard
             label="Avg latency"
@@ -177,7 +191,7 @@ export function ExecutiveOverviewPanel({ refreshKey = 0, metrics: metricsProp, s
           <div className="dash-grid-span-4">
             <ChartCard
               title="Block rules"
-              subtitle="Which policy rules fire most often"
+              subtitle={ruleData.length > 0 ? `Security: ${securityRuleCount} · Policy: ${policyRuleCount}` : 'Which policy rules fire most often'}
               loading={loading}
               empty={ruleData.length === 0}
               meta={trafficMeta}
@@ -185,14 +199,20 @@ export function ExecutiveOverviewPanel({ refreshKey = 0, metrics: metricsProp, s
               <ResponsiveContainer width="100%" height={220}>
                 <PieChart>
                   <Pie data={ruleData} dataKey="value" nameKey="name" cx="50%" cy="45%" outerRadius={80} label={false}>
-                    {ruleData.map((_, i) => (
-                      <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
+                    {ruleData.map((r, i) => (
+                      <Cell key={i} fill={ruleCategoryColor(r.category)} />
                     ))}
                   </Pie>
                   <Tooltip content={<ChartTooltip />} />
                 </PieChart>
               </ResponsiveContainer>
               <ChartLegend items={ruleLegend} />
+              {securityRuleCount > 0 && policyRuleCount > 0 ? (
+                <p className="hint" style={{ marginTop: 8, textAlign: 'center' }}>
+                  <span style={{ color: CHART_SERIES.block }}>■</span> Security threat{' '}
+                  <span style={{ color: CHART_SERIES.neutral, marginLeft: 12 }}>■</span> Policy enforcement
+                </p>
+              ) : null}
             </ChartCard>
           </div>
           <div className="dash-grid-span-12">

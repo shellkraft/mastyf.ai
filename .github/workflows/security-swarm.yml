@@ -30,9 +30,9 @@ jobs:
       - name: Run security swarm (fast)
         run: node security-swarm/run.mjs --fast
         env:
-          GUARDIAN_CI_BYPASS_LICENSE: 'true'
-          GUARDIAN_DISABLE_SEMANTIC: 'true'
-          GUARDIAN_POLICY_TIMING_ENVELOPE: 'false'
+          MASTYFF_AI_CI_BYPASS_LICENSE: 'true'
+          MASTYFF_AI_DISABLE_SEMANTIC: 'true'
+          MASTYFF_AI_POLICY_TIMING_ENVELOPE: 'false'
 
       - uses: actions/upload-artifact@v4
         if: always()
@@ -67,9 +67,9 @@ jobs:
       - name: Run security swarm (full)
         run: node security-swarm/run.mjs
         env:
-          GUARDIAN_CI_BYPASS_LICENSE: 'true'
-          GUARDIAN_DISABLE_SEMANTIC: 'true'
-          GUARDIAN_POLICY_TIMING_ENVELOPE: 'false'
+          MASTYFF_AI_CI_BYPASS_LICENSE: 'true'
+          MASTYFF_AI_DISABLE_SEMANTIC: 'true'
+          MASTYFF_AI_POLICY_TIMING_ENVELOPE: 'false'
 
       - name: Install Ollama (Threat Lab)
         run: curl -fsSL https://ollama.com/install.sh | sh
@@ -86,12 +86,12 @@ jobs:
       - name: Threat Lab (nightly, requires Ollama)
         run: node security-swarm/agents/threat-lab.mjs
         env:
-          GUARDIAN_CI_BYPASS_LICENSE: 'true'
+          MASTYFF_AI_CI_BYPASS_LICENSE: 'true'
           SWARM_THREAT_LAB: 'true'
           SWARM_THREAT_LAB_MODE: reactive
           SWARM_THREAT_LAB_REQUIRE_LLM: 'true'
-          GUARDIAN_LLM_ENABLED: 'true'
-          GUARDIAN_LLM_MODEL: qwen3:4b
+          MASTYFF_AI_LLM_ENABLED: 'true'
+          MASTYFF_AI_LLM_MODEL: qwen3:4b
           OLLAMA_BASE_URL: http://127.0.0.1:11434
         continue-on-error: true
 

@@ -1,4 +1,4 @@
-{"level":30,"time":1778925191967,"pid":10588,"hostname":"Rudraneels-Mac-mini.local","msg":"[HistoryDb] Opened: /Users/rudraneeldas/.mcp-guardian/history.db (WAL mode, PID 10588)"}
+{"level":30,"time":1778925191967,"pid":10588,"hostname":"Rudraneels-Mac-mini.local","msg":"[HistoryDb] Opened: /Users/rudraneeldas/.mastyff-ai/history.db (WAL mode, PID 10588)"}
 {"level":40,"time":1778925191967,"pid":10588,"hostname":"Rudraneels-Mac-mini.local","msg":"[Container] Redis not configured: using in-memory rate limiting and session store. This is NOT suitable for multi-replica deployment."}
 {"level":30,"time":1778925197861,"pid":10588,"hostname":"Rudraneels-Mac-mini.local","msg":"[HistoryDb] Closed and WAL checkpointed"}
 

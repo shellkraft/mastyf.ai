@@ -6,7 +6,7 @@ describe('RuntimeModelPricing', () => {
 
   beforeEach(() => {
     vi.restoreAllMocks();
-    delete process.env.GUARDIAN_MODEL;
+    delete process.env.MASTYFF_AI_MODEL;
     delete process.env.ANTHROPIC_MODEL;
     delete process.env.OPENAI_MODEL;
     delete process.env.MCP_PRICING_MODEL;
@@ -17,7 +17,7 @@ describe('RuntimeModelPricing', () => {
   });
 
   it('resolveModelId does not recurse through detectActivePricing', async () => {
-    process.env.GUARDIAN_MODEL = 'gpt-4o';
+    process.env.MASTYFF_AI_MODEL = 'gpt-4o';
     const pricing = new RuntimeModelPricing();
     vi.spyOn(pricing as any, 'readClinePricing').mockReturnValue(null);
     vi.spyOn(pricing as any, 'readClineModelIdOnly').mockReturnValue(null);
@@ -34,7 +34,7 @@ describe('RuntimeModelPricing', () => {
   });
 
   it('getActivePricing resolves env model without stack overflow', async () => {
-    process.env.GUARDIAN_MODEL = 'claude-3-5-sonnet';
+    process.env.MASTYFF_AI_MODEL = 'claude-3-5-sonnet';
     const pricing = new RuntimeModelPricing();
     vi.spyOn(pricing as any, 'readClinePricing').mockReturnValue(null);
     vi.spyOn(pricing as any, 'readClineModelIdOnly').mockReturnValue(null);

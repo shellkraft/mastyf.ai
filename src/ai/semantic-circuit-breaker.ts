@@ -5,14 +5,14 @@ import { Gauge } from 'prom-client';
 import { registry } from '../utils/metrics.js';
 import { Logger } from '../utils/logger.js';
 
-const THRESHOLD = parseInt(process.env.GUARDIAN_SEMANTIC_CIRCUIT_THRESHOLD || '5', 10);
-const RESET_MS = parseInt(process.env.GUARDIAN_SEMANTIC_CIRCUIT_RESET_MS || '60000', 10);
+const THRESHOLD = parseInt(process.env.MASTYFF_AI_SEMANTIC_CIRCUIT_THRESHOLD || '5', 10);
+const RESET_MS = parseInt(process.env.MASTYFF_AI_SEMANTIC_CIRCUIT_RESET_MS || '60000', 10);
 
 let consecutiveFailures = 0;
 let openUntil = 0;
 
 const circuitOpenGauge = new Gauge({
-  name: 'mcp_guardian_semantic_circuit_open',
+  name: 'mastyff_ai_semantic_circuit_open',
   help: '1 when semantic LLM circuit breaker is open',
   registers: [registry],
 });

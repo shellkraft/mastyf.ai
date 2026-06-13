@@ -26,7 +26,7 @@ export type NaturalLanguageToPolicyResult = PolicyCopilotSuggestion & {
 };
 
 function defaultPolicyPath(): string {
-  return process.env.GUARDIAN_POLICY_PATH || process.env.MCP_GUARDIAN_POLICY_PATH || 'default-policy.yaml';
+  return process.env.MASTYFF_AI_POLICY_PATH || process.env.MASTYFF_AI_POLICY_PATH || 'default-policy.yaml';
 }
 
 export function loadPolicyConfig(path?: string): PolicyConfig | null {
@@ -128,7 +128,7 @@ Summarize the policy for non-technical stakeholders. Output ONLY JSON:
 Cover: default mode, denied tools, sensitive patterns, rate limits, certification, and RBAC if present.
 Never use markdown code blocks.`;
 
-  const result = await llm.generate(systemPrompt, `Explain this MCP Guardian policy:\n\n${yamlText.slice(0, 12000)}`);
+  const result = await llm.generate(systemPrompt, `Explain this MCP Mastyff AI policy:\n\n${yamlText.slice(0, 12000)}`);
   if (!result?.text) return heuristic;
 
   try {

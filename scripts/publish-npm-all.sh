@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Publish all @mcp-guardian packages in dependency order.
+# Publish all @mastyff-ai packages in dependency order.
 # Server/CLI publish from .tgz; postpack restore runs ONLY after publish so npm
 # registry manifest keeps semver deps (not workspace:).
 # Requires: npm login (npm whoami). Auth options:
@@ -54,8 +54,8 @@ else
 fi
 
 SERVER_VERSION=$(node -p "require('./package.json').version")
-if ! npm view "@mcp-guardian/server@${SERVER_VERSION}" version &>/dev/null; then
-  echo "Building @mcp-guardian/server (full monorepo build)..."
+if ! npm view "@mastyff-ai/server@${SERVER_VERSION}" version &>/dev/null; then
+  echo "Building @mastyff-ai/server (full monorepo build)..."
   pnpm install --no-frozen-lockfile
   pnpm run build
   echo "Building dashboard SPA for npm tarball..."
@@ -86,45 +86,45 @@ publish_pkg packages/core
 
 # After publishing deps, wait for registry replication then confirm chain
 for dep in core plugin-sdk; do
-  if npm view "@mcp-guardian/server@${SERVER_VERSION}" version &>/dev/null; then
-    node "$ROOT/scripts/wait-npm-registry.mjs" "@mcp-guardian/${dep}" "$SERVER_VERSION" || true
+  if npm view "@mastyff-ai/server@${SERVER_VERSION}" version &>/dev/null; then
+    node "$ROOT/scripts/wait-npm-registry.mjs" "@mastyff-ai/${dep}" "$SERVER_VERSION" || true
   fi
-  if npm view "@mcp-guardian/server@${SERVER_VERSION}" version &>/dev/null \
-    && ! npm view "@mcp-guardian/${dep}@${SERVER_VERSION}" version &>/dev/null; then
+  if npm view "@mastyff-ai/server@${SERVER_VERSION}" version &>/dev/null \
+    && ! npm view "@mastyff-ai/${dep}@${SERVER_VERSION}" version &>/dev/null; then
     echo ""
-    echo "WARN: @mcp-guardian/${dep}@${SERVER_VERSION} not visible yet — npm replication can take ~1 min." >&2
-    echo "      Check: npm view @mcp-guardian/${dep}@${SERVER_VERSION} version" >&2
+    echo "WARN: @mastyff-ai/${dep}@${SERVER_VERSION} not visible yet — npm replication can take ~1 min." >&2
+    echo "      Check: npm view @mastyff-ai/${dep}@${SERVER_VERSION} version" >&2
   fi
 done
 
-if npm view "@mcp-guardian/server@${SERVER_VERSION}" version &>/dev/null; then
+if npm view "@mastyff-ai/server@${SERVER_VERSION}" version &>/dev/null; then
   echo ""
-  echo "=== Skip @mcp-guardian/server@${SERVER_VERSION} (already on npm) ==="
+  echo "=== Skip @mastyff-ai/server@${SERVER_VERSION} (already on npm) ==="
 else
   echo ""
-  echo "=== Publishing @mcp-guardian/server@${SERVER_VERSION} from tarball ==="
+  echo "=== Publishing @mastyff-ai/server@${SERVER_VERSION} from tarball ==="
   node scripts/validate-npm-pack.mjs
   SERVER_TGZ=$(pack_tgz)
-  publish_from_tgz "@mcp-guardian/server" "$SERVER_VERSION" "$SERVER_TGZ"
+  publish_from_tgz "@mastyff-ai/server" "$SERVER_VERSION" "$SERVER_TGZ"
   node scripts/postpack-npm-deps.mjs
   rm -f "$SERVER_TGZ"
 fi
 
 CLI_VERSION=$(node -p "require('./packages/cli/package.json').version")
-if npm view "@mcp-guardian/cli@${CLI_VERSION}" version &>/dev/null; then
+if npm view "@mastyff-ai/cli@${CLI_VERSION}" version &>/dev/null; then
   echo ""
-  echo "=== Skip @mcp-guardian/cli@${CLI_VERSION} (already on npm) ==="
+  echo "=== Skip @mastyff-ai/cli@${CLI_VERSION} (already on npm) ==="
 else
   echo ""
-  echo "=== Publishing @mcp-guardian/cli@${CLI_VERSION} from tarball ==="
+  echo "=== Publishing @mastyff-ai/cli@${CLI_VERSION} from tarball ==="
   (cd packages/cli && node ../../scripts/validate-npm-pack.mjs)
   CLI_TGZ=$(cd packages/cli && pack_tgz)
-  (cd packages/cli && publish_from_tgz "@mcp-guardian/cli" "$CLI_VERSION" "$CLI_TGZ")
+  (cd packages/cli && publish_from_tgz "@mastyff-ai/cli" "$CLI_VERSION" "$CLI_TGZ")
   (cd packages/cli && PREPACK_PKG=package.json node ../../scripts/postpack-npm-deps.mjs)
   rm -f "packages/cli/$CLI_TGZ"
 fi
 
 echo ""
 echo "Done. Verify install:"
-echo "  npm install -g @mcp-guardian/server@${SERVER_VERSION}"
-echo "  npm view @mcp-guardian/server@${SERVER_VERSION} dependencies"
+echo "  npm install -g @mastyff-ai/server@${SERVER_VERSION}"
+echo "  npm view @mastyff-ai/server@${SERVER_VERSION} dependencies"

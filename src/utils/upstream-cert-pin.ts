@@ -1,6 +1,6 @@
 /**
  * Upstream TLS certificate pinning (SPKI SHA-256).
- * GUARDIAN_UPSTREAM_CERT_PIN_SHA256 — comma-separated base64 or hex SPKI hashes.
+ * MASTYFF_AI_UPSTREAM_CERT_PIN_SHA256 — comma-separated base64 or hex SPKI hashes.
  */
 import { createHash } from 'crypto';
 import type { TLSSocket } from 'tls';
@@ -14,7 +14,7 @@ export function resetUpstreamCertPinsForTests(): void {
 
 export function loadUpstreamCertPins(): Set<string> {
   if (cachedPins) return cachedPins;
-  const raw = process.env['GUARDIAN_UPSTREAM_CERT_PIN_SHA256'] || '';
+  const raw = process.env['MASTYFF_AI_UPSTREAM_CERT_PIN_SHA256'] || '';
   cachedPins = new Set(
     raw
       .split(',')

@@ -6,7 +6,7 @@ import { Logger } from '../utils/logger.js';
 import { getSharedRedisClient, isRedisConfigured } from '../utils/redis-client.js';
 
 function localTtlMs(): number {
-  const sec = parseInt(process.env['GUARDIAN_RUGPULL_LOCAL_TTL_SEC'] || '3600', 10);
+  const sec = parseInt(process.env['MASTYFF_AI_RUGPULL_LOCAL_TTL_SEC'] || '3600', 10);
   return (Number.isFinite(sec) && sec > 0 ? sec : 3600) * 1000;
 }
 
@@ -26,9 +26,9 @@ export function clearLocalRugPullAlertsForTests(): void {
 
 /** Ops: clear in-process rug-pull flags on proxy start when env set. */
 export function maybeClearRugPullOnStart(): void {
-  if (process.env['GUARDIAN_RUGPULL_CLEAR_ON_START'] === 'true') {
+  if (process.env['MASTYFF_AI_RUGPULL_CLEAR_ON_START'] === 'true') {
     localAlerts.clear();
-    Logger.info('[rug-pull] Cleared local rug-pull alerts (GUARDIAN_RUGPULL_CLEAR_ON_START)');
+    Logger.info('[rug-pull] Cleared local rug-pull alerts (MASTYFF_AI_RUGPULL_CLEAR_ON_START)');
   }
 }
 
@@ -45,7 +45,7 @@ export async function publishRugPullAlert(
     const ttlSec = Math.max(60, Math.floor(localTtlMs() / 1000));
     await client.set(key, fingerprint, 'EX', ttlSec);
     await client.publish(
-      `guardian:rugpull:${tenantId}`,
+      `mastyff-ai:rugpull:${tenantId}`,
       JSON.stringify({ serverName, fingerprint }),
     );
   } catch (err: unknown) {

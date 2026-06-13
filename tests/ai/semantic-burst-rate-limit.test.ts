@@ -33,25 +33,25 @@ vi.mock('../../src/ai/llm-cache.js', () => ({
 
 describe('semantic 1000-request burst regression', () => {
   const envKeys = [
-    'GUARDIAN_SEMANTIC_ASYNC',
-    'GUARDIAN_SEMANTIC_LLM_MAX_PER_MIN',
-    'GUARDIAN_SEMANTIC_ASYNC_MAX_QUEUE',
-    'GUARDIAN_LOCAL_SEMANTIC',
+    'MASTYFF_AI_SEMANTIC_ASYNC',
+    'MASTYFF_AI_SEMANTIC_LLM_MAX_PER_MIN',
+    'MASTYFF_AI_SEMANTIC_ASYNC_MAX_QUEUE',
+    'MASTYFF_AI_LOCAL_SEMANTIC',
     'ANTHROPIC_API_KEY',
     'OPENAI_API_KEY',
-    'GUARDIAN_LLM_ENABLED',
+    'MASTYFF_AI_LLM_ENABLED',
   ] as const;
   const prev: Record<string, string | undefined> = {};
 
   beforeEach(async () => {
     for (const k of envKeys) prev[k] = process.env[k];
     generateMock.mockClear();
-    process.env.GUARDIAN_SEMANTIC_ASYNC = 'true';
-    process.env.GUARDIAN_SEMANTIC_LLM_MAX_PER_MIN = '10';
-    process.env.GUARDIAN_SEMANTIC_ASYNC_MAX_QUEUE = '2000';
-    process.env.GUARDIAN_LOCAL_SEMANTIC = 'true';
+    process.env.MASTYFF_AI_SEMANTIC_ASYNC = 'true';
+    process.env.MASTYFF_AI_SEMANTIC_LLM_MAX_PER_MIN = '10';
+    process.env.MASTYFF_AI_SEMANTIC_ASYNC_MAX_QUEUE = '2000';
+    process.env.MASTYFF_AI_LOCAL_SEMANTIC = 'true';
     process.env.ANTHROPIC_API_KEY = 'test-key';
-    process.env.GUARDIAN_LLM_ENABLED = 'true';
+    process.env.MASTYFF_AI_LLM_ENABLED = 'true';
     vi.resetModules();
     vi.useFakeTimers();
   });

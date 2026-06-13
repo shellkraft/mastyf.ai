@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Probe each guardian-configs/*.json upstream (tools/list + optional benign call).
+ * Probe each mastyff-ai-configs/*.json upstream (tools/list + optional benign call).
  * Writes reports/security-swarm/user-servers-session.json — soft-fail per server.
  */
 import { readdirSync, readFileSync, existsSync, writeFileSync, mkdirSync } from 'node:fs';
@@ -10,7 +10,7 @@ import { resolveSwarmDir } from '../../security-swarm/lib/swarm-dir.mjs';
 
 const __dir = dirname(fileURLToPath(import.meta.url));
 const REPO = join(__dir, '..', '..');
-const CONFIGS_DIR = join(REPO, 'guardian-configs');
+const CONFIGS_DIR = join(REPO, 'mastyff-ai-configs');
 const OUT_PATH = join(resolveSwarmDir(), 'user-servers-session.json');
 
 async function probeOne(server, configPath) {

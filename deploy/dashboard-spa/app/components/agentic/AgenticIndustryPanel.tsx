@@ -9,7 +9,7 @@ import {
   fetchIndustrySandboxTiers,
   fetchCertificationRegistry,
   approvePlaybookAction,
-} from '@/lib/guardian-api';
+} from '@/lib/mastyff-ai-api';
 
 type Props = { refreshKey?: number };
 

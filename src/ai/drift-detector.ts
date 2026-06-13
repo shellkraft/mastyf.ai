@@ -183,7 +183,7 @@ export function detectDrift(
 }
 
 export function isDriftOverrideEnabled(): boolean {
-  return process.env.GUARDIAN_AI_DRIFT_OVERRIDE === 'true';
+  return process.env.MASTYFF_AI_AI_DRIFT_OVERRIDE === 'true';
 }
 
 export function shouldFreezeThresholdAdjustments(drift: DriftState | undefined): boolean {

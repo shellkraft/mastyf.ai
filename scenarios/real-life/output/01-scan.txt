@@ -1,5 +1,5 @@
 Using config: scenarios/real-life/mcp-config.json
-{"level":30,"time":1778925189565,"pid":10492,"hostname":"Rudraneels-Mac-mini.local","msg":"[HistoryDb] Opened: /Users/rudraneeldas/.mcp-guardian/history.db (WAL mode, PID 10492)"}
+{"level":30,"time":1778925189565,"pid":10492,"hostname":"Rudraneels-Mac-mini.local","msg":"[HistoryDb] Opened: /Users/rudraneeldas/.mastyff-ai/history.db (WAL mode, PID 10492)"}
 {"level":40,"time":1778925189565,"pid":10492,"hostname":"Rudraneels-Mac-mini.local","msg":"[Container] Redis not configured: using in-memory rate limiting and session store. This is NOT suitable for multi-replica deployment."}
 {"level":40,"time":1778925189586,"pid":10492,"hostname":"Rudraneels-Mac-mini.local","msg":"OSV lookup failed for production-filesystem: Request failed with status code 403"}
 {"level":40,"time":1778925189586,"pid":10492,"hostname":"Rudraneels-Mac-mini.local","msg":"OSV lookup failed for legacy-shell-runner: Request failed with status code 403"}

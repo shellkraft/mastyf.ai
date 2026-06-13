@@ -26,7 +26,7 @@ export function wslUncToLinux(path: string): string | null {
 }
 
 export function isWslPathMappingEnabled(): boolean {
-  return process.env.GUARDIAN_WSL_PATH_MAP !== 'false';
+  return process.env.MASTYFF_AI_WSL_PATH_MAP !== 'false';
 }
 
 /**

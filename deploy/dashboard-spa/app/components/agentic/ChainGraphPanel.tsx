@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Card } from '../ui/Card';
-import { fetchFleetChainGraph, type ChainGraph } from '@/lib/guardian-api';
+import { fetchFleetChainGraph, type ChainGraph } from '@/lib/mastyff-ai-api';
 
 const NODE_COLORS: Record<string, string> = {
   agent: '#6366f1',

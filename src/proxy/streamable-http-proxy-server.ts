@@ -14,7 +14,7 @@ import { resolveTenantContext, InvalidTenantIdError } from '../tenant/resolve-te
 import { resolveProxyTenantId, JwtTenantRequiredError } from '../tenant/jwt-tenant-binding.js';
 import { OAuthValidator } from '../auth/oauth.js';
 import { extractDpopProof, validateRequiredDpop } from '../auth/dpop-enforcement.js';
-import { createSessionCache, validateSessionToken, type GuardianSessionCache } from '../auth/session-factory.js';
+import { createSessionCache, validateSessionToken, type MastyffAiSessionCache } from '../auth/session-factory.js';
 import type { CallContext } from '../policy/policy-types.js';
 import { applyGeoToCallContext } from '../utils/request-geo-context.js';
 import type { IDatabase } from '../database/database-interface.js';
@@ -45,14 +45,14 @@ export interface StreamableHttpProxyOptions {
 }
 
 function isUpstreamRelayEnabled(): boolean {
-  return process.env['GUARDIAN_STREAMABLE_HTTP_UPSTREAM_RELAY'] === 'true';
+  return process.env['MASTYFF_AI_STREAMABLE_HTTP_UPSTREAM_RELAY'] === 'true';
 }
 
 export class StreamableHttpProxyServer {
   private opts: StreamableHttpProxyOptions;
   private httpServer: ReturnType<typeof createServer> | null = null;
   private boundPort = 0;
-  private sessionCache: GuardianSessionCache | null;
+  private sessionCache: MastyffAiSessionCache | null;
   private tokenCounter = new TokenCounter();
   private readonly rugPullState: ToolFingerprintState = { fingerprint: null, blocked: false };
 
@@ -156,7 +156,7 @@ export class StreamableHttpProxyServer {
       return {
         jsonrpc: '2.0',
         id: msg.id,
-        result: { forwarded: true, note: 'upstream relay disabled — set GUARDIAN_STREAMABLE_HTTP_UPSTREAM_RELAY=true' },
+        result: { forwarded: true, note: 'upstream relay disabled — set MASTYFF_AI_STREAMABLE_HTTP_UPSTREAM_RELAY=true' },
       };
     }
 
@@ -342,7 +342,7 @@ export class StreamableHttpProxyServer {
         error: {
           code: -32001,
           message:
-            'Blocked by MCP Guardian policy: tool definitions changed mid-session (rug-pull)',
+            'Blocked by MCP Mastyff AI policy: tool definitions changed mid-session (rug-pull)',
         },
       };
     }
@@ -438,7 +438,7 @@ export class StreamableHttpProxyServer {
         id: msg.id,
         error: {
           code: -32005,
-          message: `MCP Guardian: proxy overloaded (${inflight.current}/${inflight.max} in flight)`,
+          message: `Mastyff AI: proxy overloaded (${inflight.current}/${inflight.max} in flight)`,
         },
       };
     }
@@ -459,7 +459,7 @@ export class StreamableHttpProxyServer {
         id: msg.id,
         error: {
           code: -32001,
-          message: `Blocked by MCP Guardian policy: ${decision.reason}`,
+          message: `Blocked by MCP Mastyff AI policy: ${decision.reason}`,
         },
       };
     }
@@ -480,7 +480,7 @@ export class StreamableHttpProxyServer {
         id: msg.id,
         error: {
           code: -32001,
-          message: `Blocked by MCP Guardian semantic gate: ${semGate.reason}`,
+          message: `Blocked by MCP Mastyff AI semantic gate: ${semGate.reason}`,
         },
       };
     }

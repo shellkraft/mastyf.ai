@@ -67,7 +67,7 @@ export function EnterpriseLayout({
       />
       <aside className={mobileOpen ? 'enterprise-sidebar open' : 'enterprise-sidebar'}>
         <div className="enterprise-brand">
-          <div className="enterprise-brand-title">MCP Guardian</div>
+          <div className="enterprise-brand-title">MCP MastyffAi</div>
           <div className="enterprise-brand-sub">Agentic infrastructure</div>
         </div>
         <nav className="enterprise-nav" aria-label="Workspaces">

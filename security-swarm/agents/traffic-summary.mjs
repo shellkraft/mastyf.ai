@@ -21,7 +21,7 @@ const RULE_GLOSSARY = {
 };
 
 function resolveDbPath() {
-  return process.env.MCP_GUARDIAN_DB_PATH || join(homedir(), '.mcp-guardian', 'history.db');
+  return process.env.MASTYFF_AI_DB_PATH || join(homedir(), '.mastyff-ai', 'history.db');
 }
 
 function daysAgoMs(days) {
@@ -45,7 +45,7 @@ export async function writeTrafficSummary(opts = {}) {
       totalBlocked: 0,
       servers: [],
       topBlockRules: [],
-      note: 'No history.db yet — use IDE MCP tools through Guardian proxy first.',
+      note: 'No history.db yet — use IDE MCP tools through Mastyff AI proxy first.',
     };
     writeFileSync(OUT_PATH, JSON.stringify(empty, null, 2));
     return empty;

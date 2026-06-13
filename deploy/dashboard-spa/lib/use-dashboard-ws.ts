@@ -10,7 +10,7 @@ import {
   type AuditResponse,
   type SwarmJobStatus,
   type WsDashboardMessage,
-} from '@/lib/guardian-api';
+} from '@/lib/mastyff-ai-api';
 import {
   pipelineFromSwarmJob,
   type FlowTimelineEntry,

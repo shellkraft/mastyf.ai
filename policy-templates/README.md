@@ -4,7 +4,7 @@ Optional YAML fragments to merge with `default-policy.yaml` (or your own base po
 
 | Template | Purpose | Enable |
 |----------|---------|--------|
-| [http-tools-policy.yaml](./http-tools-policy.yaml) | SSRF guards for outbound HTTP MCP tools | `GUARDIAN_HTTP_TOOLS_POLICY=true` |
+| [http-tools-policy.yaml](./http-tools-policy.yaml) | SSRF guards for outbound HTTP MCP tools | `MASTYFF_AI_HTTP_TOOLS_POLICY=true` |
 | [enterprise-cost-governance.yaml](./enterprise-cost-governance.yaml) | Per-tool rate limits + token budgets | Merge via second `--policy` flag |
 | [hipaa-compliance.yaml](./hipaa-compliance.yaml) | PHI pattern blocks + audit metadata | Regulated workloads |
 | [pci-dss-masking.yaml](./pci-dss-masking.yaml) | Cardholder data block/redact rules | Payment-adjacent MCP tools |
@@ -19,7 +19,7 @@ Optional YAML fragments to merge with `default-policy.yaml` (or your own base po
 
 `enterprise-cost-governance.yaml` adds:
 
-- **Rate limits** (`maxCallsPerMinute`) — global, per expensive tool, and per-server examples. With `REDIS_URL` / Sentinel / Cluster, limits are enforced across all Guardian replicas.
+- **Rate limits** (`maxCallsPerMinute`) — global, per expensive tool, and per-server examples. With `REDIS_URL` / Sentinel / Cluster, limits are enforced across all Mastyff AI replicas.
 - **Token budgets** (`maxTokens`) — default 32K cap plus tighter caps for batch/embedding tools.
 
 ### Daily USD budget (environment)
@@ -27,15 +27,15 @@ Optional YAML fragments to merge with `default-policy.yaml` (or your own base po
 Policy YAML cannot express a rolling dollar cap. Set on the proxy:
 
 ```bash
-export GUARDIAN_DAILY_BUDGET_USD=50
+export MASTYFF_AI_DAILY_BUDGET_USD=50
 ```
 
-`CostAuditor.getDailySpendUsd()` and `isDailyBudgetExceeded()` read `call_records` since UTC midnight. Legacy alias: `MCP_GUARDIAN_COST_BUDGET`.
+`CostAuditor.getDailySpendUsd()` and `isDailyBudgetExceeded()` read `call_records` since UTC midnight. Legacy alias: `MASTYFF_AI_COST_BUDGET`.
 
 ### Merge example
 
 ```bash
-mcp-guardian proxy \
+mastyff-ai proxy \
   --config mcp.json \
   --policy default-policy.yaml \
   --policy policy-templates/enterprise-cost-governance.yaml \

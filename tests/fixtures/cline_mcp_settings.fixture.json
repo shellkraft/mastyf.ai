@@ -7,7 +7,7 @@
       ],
       "transport": "stdio"
     },
-    "mcp-guardian": {
+    "mastyff-ai": {
       "command": "node",
       "args": [
         "dist/index.js"

@@ -30,7 +30,7 @@ export class PolicyAuditor {
     this.auditPath =
       auditPath
       || process.env['POLICY_AUDIT_LOG']
-      || (process.env['GUARDIAN_TENANT_AUDIT_PATHS'] !== 'false'
+      || (process.env['MASTYFF_AI_TENANT_AUDIT_PATHS'] !== 'false'
         ? resolveTenantPolicyAuditJsonl(tenantId)
         : './policy-audit.jsonl');
   }
@@ -38,8 +38,8 @@ export class PolicyAuditor {
   record(change: PolicyChangeRecord): void {
     if (!this.enabled) return;
     try {
-      const residencyRegion = process.env.GUARDIAN_REGION || 'default';
-      const payload = { ...change, source: 'mcp-guardian-policy-auditor', residency_region: residencyRegion };
+      const residencyRegion = process.env.MASTYFF_AI_REGION || 'default';
+      const payload = { ...change, source: 'mastyff-ai-policy-auditor', residency_region: residencyRegion };
       if (isAuditHashChainEnabled()) {
         appendChainedJsonlLine(this.auditPath, payload);
       } else {
@@ -47,8 +47,8 @@ export class PolicyAuditor {
         writeFileSync(this.auditPath, line, { flag: 'a' });
       }
       Logger.debug(`[policy-auditor] Change recorded: ${change.change}`);
-    } catch (err: any) {
-      Logger.error(`[policy-auditor] Failed to write audit log: ${err?.message}`);
+    } catch (err: unknown) {
+      Logger.error(`[policy-auditor] Failed to write audit log: ${err instanceof Error ? err.message : String(err)}`);
     }
   }
 

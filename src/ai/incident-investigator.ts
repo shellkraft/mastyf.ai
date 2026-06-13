@@ -173,7 +173,7 @@ function buildRecommendations(
 }
 
 function incidentLookupWindowMs(): number {
-  const raw = parseInt(process.env.GUARDIAN_INCIDENT_LOOKUP_WINDOW_MS || '', 10);
+  const raw = parseInt(process.env.MASTYFF_AI_INCIDENT_LOOKUP_WINDOW_MS || '', 10);
   if (Number.isFinite(raw) && raw > 0) return raw;
   return SEMANTIC_AUDIT_DASHBOARD_WINDOW_MS;
 }
@@ -331,7 +331,7 @@ export async function investigateIncident(opts: {
   const killChainNarrative = buildKillChainNarrative(intentGraph, anchor.toolName, citations);
 
   let narrative: string | undefined;
-  const useLlm = opts.useLlm ?? process.env.GUARDIAN_INCIDENT_LLM !== 'false';
+  const useLlm = opts.useLlm ?? process.env.MASTYFF_AI_INCIDENT_LLM !== 'false';
   if (useLlm) {
     const llm = new LlmAssistant({ hotPath: false });
     if (llm.isAvailable()) {

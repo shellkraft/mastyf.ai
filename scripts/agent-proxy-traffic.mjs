@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Run benign MCP tool calls through Guardian proxy (stdio) so history.db
+ * Run benign MCP tool calls through Mastyff AI proxy (stdio) so history.db
  * records IDE-style traffic. Used by Cursor agent / CI personalization.
  */
 import { spawn } from 'node:child_process';
@@ -14,14 +14,14 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, '..');
 const CLI = resolve(ROOT, 'dist/cli.js');
 const POLICY = resolve(ROOT, 'default-policy.yaml');
-const CONFIG = resolve(ROOT, 'guardian-configs/filesystem.json');
+const CONFIG = resolve(ROOT, 'mastyff-ai-configs/filesystem.json');
 
 const MCP_FS_ROOT =
-  process.env.MCP_FS_ROOT || mkdtempSync(join(tmpdir(), 'mcp-guardian-agent-'));
+  process.env.MCP_FS_ROOT || mkdtempSync(join(tmpdir(), 'mastyff-ai-agent-'));
 mkdirSync(MCP_FS_ROOT, { recursive: true });
 writeFileSync(
   join(MCP_FS_ROOT, 'notes.txt'),
-  'Cursor agent traffic sample — recorded via Guardian proxy.\n',
+  'Cursor agent traffic sample — recorded via Mastyff AI proxy.\n',
   'utf-8',
 );
 mkdirSync(join(MCP_FS_ROOT, 'docs'), { recursive: true });
@@ -59,12 +59,12 @@ async function main() {
 
   const env = {
     ...process.env,
-    MCP_GUARDIAN_DB_PATH: process.env.MCP_GUARDIAN_DB_PATH || join(homedir(), '.mcp-guardian', 'history.db'),
+    MASTYFF_AI_DB_PATH: process.env.MASTYFF_AI_DB_PATH || join(homedir(), '.mastyff-ai', 'history.db'),
     DASHBOARD_ENABLED: 'false',
-    GUARDIAN_WS_ENABLED: 'false',
+    MASTYFF_AI_WS_ENABLED: 'false',
     METRICS_ENABLED: process.env.METRICS_ENABLED ?? 'false',
     METRICS_PORT: process.env.METRICS_PORT ?? '9091',
-    GUARDIAN_ALLOW_MODE_OVERRIDE: 'true',
+    MASTYFF_AI_ALLOW_MODE_OVERRIDE: 'true',
   };
 
   const responses = new Map();
@@ -163,7 +163,7 @@ async function main() {
       {
         ok: true,
         client: 'cursor-composer-agent',
-        dbPath: env.MCP_GUARDIAN_DB_PATH,
+        dbPath: env.MASTYFF_AI_DB_PATH,
         fsRoot,
         tools: toolNames.length,
         calls: results,

@@ -70,7 +70,7 @@ export async function buildAutopilotStatus(
   }
 
   if (!historyDbAttached) {
-    messages.push('No proxy history DB — route MCP traffic through Guardian.');
+    messages.push('No proxy history DB — route MCP traffic through Mastyff AI.');
   }
   if (!llmOk) {
     const endpoint = resolveOllamaBaseUrl(process.env.OLLAMA_BASE_URL);
@@ -78,7 +78,7 @@ export async function buildAutopilotStatus(
       `LLM unavailable: ${llmReason || 'install Ollama and pull qwen3:8b'} (endpoint: ${endpoint})`,
     );
   }
-  if (process.env.GUARDIAN_AI_AUTO_APPLY === 'true') {
+  if (process.env.MASTYFF_AI_AI_AUTO_APPLY === 'true') {
     messages.push('Policy auto-apply is ON — Autopilot recommends human review (false).');
   } else {
     messages.push('Protection is automatic; policy changes need your approval.');
@@ -96,7 +96,7 @@ export async function buildAutopilotStatus(
     },
     protection: {
       historyDbAttached,
-      policyAutoApply: process.env.GUARDIAN_AI_AUTO_APPLY === 'true',
+      policyAutoApply: process.env.MASTYFF_AI_AI_AUTO_APPLY === 'true',
     },
     learning: {
       aiEnabled: isAiLearningEnabled(),

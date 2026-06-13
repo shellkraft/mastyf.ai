@@ -21,7 +21,7 @@
       "expected": "block",
       "actual": "block",
       "ok": true,
-      "error": "Blocked by MCP Guardian policy: Tool 'execute_command' is explicitly denied",
+      "error": "Blocked by MCP Mastyff AI policy: Tool 'execute_command' is explicitly denied",
       "rule": "deny-dangerous-tools"
     },
     {
@@ -33,7 +33,7 @@
       "expected": "block",
       "actual": "block",
       "ok": true,
-      "error": "Blocked by MCP Guardian policy: Argument pattern matched in tool call (normalized)",
+      "error": "Blocked by MCP Mastyff AI policy: Argument pattern matched in tool call (normalized)",
       "rule": "block-shell-injection"
     },
     {
@@ -45,7 +45,7 @@
       "expected": "block",
       "actual": "block",
       "ok": true,
-      "error": "Blocked by MCP Guardian policy: Argument pattern matched in tool call (normalized)",
+      "error": "Blocked by MCP Mastyff AI policy: Argument pattern matched in tool call (normalized)",
       "rule": "block-shell-injection"
     },
     {
@@ -62,5 +62,5 @@
     }
   ],
   "allPassed": true,
-  "stderrTail": "el\":30,\"time\":1778925219326,\"pid\":11146,\"hostname\":\"Rudraneels-Mac-mini.local\",\"msg\":\"[policy-watcher] Policy loaded (mode: block, rules: 5)\"}\n--blocking-mode override requires GUARDIAN_ALLOW_MODE_OVERRIDE=true to be set. Policy mode will remain: block\nPolicy loaded: /Users/rudraneeldas/Desktop/mcp-guardian/default-policy.yaml (mode: block)\n  5 rule(s) active\n{\"level\":30,\"time\":1778925219326,\"pid\":11146,\"hostname\":\"Rudraneels-Mac-mini.local\",\"msg\":\"[policy-watcher] Watching /Users/rudraneeldas/Desktop/mcp-guardian/default-policy.yaml for changes\"}\n{\"level\":30,\"time\":1778925219329,\"pid\":11146,\"hostname\":\"Rudraneels-Mac-mini.local\",\"msg\":\"[HistoryDb] Opened: /Users/rudraneeldas/.mcp-guardian/history.db (WAL mode, PID 11146)\"}\n{\"level\":30,\"time\":1778925219331,\"pid\":11146,\"hostname\":\"Rudraneels-Mac-mini.local\",\"msg\":\"[proxy] stdio active for \\\"live-echo\\\" \u2192 node\"}\n{\"level\":30,\"time\":1778925219331,\"pid\":11146,\"hostname\":\"Rudraneels-Mac-mini.local\",\"msg\":\"\u2554\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2557\\n\u2551  MCP Guardian Proxy \u2014 Protection Active  \u2551\\n\u2560\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2563\\n\u2551  Stdio:    1 servers              \u2551\\n\u2551  SSE:      0 servers              \u2551\\n\u2551  Total:    1 servers protected        \u2551\"}\n{\"level\":30,\"time\":1778925219331,\"pid\":11146,\"hostname\":\"Rudraneels-Mac-mini.local\",\"msg\":\"\u2551                                          \u2551\\n\u2551  Policy: block                       \u2551\\n\u255a\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u255d\"}\nMCP Guardian proxy running. Press Ctrl+C to stop.\n"
+  "stderrTail": "el\":30,\"time\":1778925219326,\"pid\":11146,\"hostname\":\"Rudraneels-Mac-mini.local\",\"msg\":\"[policy-watcher] Policy loaded (mode: block, rules: 5)\"}\n--blocking-mode override requires MASTYFF_AI_ALLOW_MODE_OVERRIDE=true to be set. Policy mode will remain: block\nPolicy loaded: /Users/rudraneeldas/Desktop/mastyff-ai/default-policy.yaml (mode: block)\n  5 rule(s) active\n{\"level\":30,\"time\":1778925219326,\"pid\":11146,\"hostname\":\"Rudraneels-Mac-mini.local\",\"msg\":\"[policy-watcher] Watching /Users/rudraneeldas/Desktop/mastyff-ai/default-policy.yaml for changes\"}\n{\"level\":30,\"time\":1778925219329,\"pid\":11146,\"hostname\":\"Rudraneels-Mac-mini.local\",\"msg\":\"[HistoryDb] Opened: /Users/rudraneeldas/.mastyff-ai/history.db (WAL mode, PID 11146)\"}\n{\"level\":30,\"time\":1778925219331,\"pid\":11146,\"hostname\":\"Rudraneels-Mac-mini.local\",\"msg\":\"[proxy] stdio active for \\\"live-echo\\\" \u2192 node\"}\n{\"level\":30,\"time\":1778925219331,\"pid\":11146,\"hostname\":\"Rudraneels-Mac-mini.local\",\"msg\":\"\u2554\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2557\\n\u2551  MCP Mastyff AI Proxy \u2014 Protection Active  \u2551\\n\u2560\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2563\\n\u2551  Stdio:    1 servers              \u2551\\n\u2551  SSE:      0 servers              \u2551\\n\u2551  Total:    1 servers protected        \u2551\"}\n{\"level\":30,\"time\":1778925219331,\"pid\":11146,\"hostname\":\"Rudraneels-Mac-mini.local\",\"msg\":\"\u2551                                          \u2551\\n\u2551  Policy: block                       \u2551\\n\u255a\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u255d\"}\nMCP Mastyff AI proxy running. Press Ctrl+C to stop.\n"
 }

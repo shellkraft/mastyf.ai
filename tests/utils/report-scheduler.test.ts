@@ -13,14 +13,14 @@ describe('report-scheduler', () => {
 
   beforeEach(() => {
     mkdirSync(tenantDir, { recursive: true });
-    process.env.GUARDIAN_REPORT_SCHEDULE = 'off';
-    process.env.GUARDIAN_LAST_DIGEST_PATH = digestMetaPath;
+    process.env.MASTYFF_AI_REPORT_SCHEDULE = 'off';
+    process.env.MASTYFF_AI_LAST_DIGEST_PATH = digestMetaPath;
   });
 
   afterEach(() => {
     const root = join(process.cwd(), 'reports', 'tenants', TENANT);
     if (existsSync(root)) rmSync(root, { recursive: true, force: true });
-    delete process.env.GUARDIAN_LAST_DIGEST_PATH;
+    delete process.env.MASTYFF_AI_LAST_DIGEST_PATH;
   });
 
   it('generateDigest returns error without db', async () => {

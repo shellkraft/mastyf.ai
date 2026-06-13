@@ -5,7 +5,7 @@ import { FlowTimeline } from './FlowTimeline';
 import { SwarmResultsView } from './SwarmResultsView';
 import { SwarmRunControls } from './SwarmRunControls';
 import type { DashboardWsState } from '@/lib/use-dashboard-ws';
-import type { SwarmJobStatus } from '@/lib/guardian-api';
+import type { SwarmJobStatus } from '@/lib/mastyff-ai-api';
 
 type Props = {
   ws: DashboardWsState;

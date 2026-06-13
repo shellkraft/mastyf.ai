@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 
-const srcPath = path.join(process.cwd(), 'deploy/dashboard-spa/app/components/GuardianSOCDashboard.tsx');
+const srcPath = path.join(process.cwd(), 'deploy/dashboard-spa/app/components/MastyffAiSOCDashboard.tsx');
 const outDir = path.join(process.cwd(), 'deploy/dashboard-spa/app/components/soc');
 const src = fs.readFileSync(srcPath, 'utf8');
 
@@ -48,10 +48,10 @@ import { SocCard, SocSectionHeader } from './primitives';
 `],
   ['MCPServers', 'SocMcpServersPanel', `import { useState } from 'react';
 import { Activity, Server, Terminal } from 'lucide-react';
-import { GUARDIAN_CONFIGS } from '@/lib/repo-data';
+import { MASTYFF_AI_CONFIGS } from '@/lib/repo-data';
 import { SocCard, SocSectionHeader } from './primitives';
 
-const MCP_CONFIGS = GUARDIAN_CONFIGS;
+const MCP_CONFIGS = MASTYFF_AI_CONFIGS;
 `],
 ];
 

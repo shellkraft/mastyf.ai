@@ -32,8 +32,8 @@ async function postMcp(port: number, body: unknown): Promise<{ status: number; j
 }
 
 describe('integration: streamable HTTP upstream relay', () => {
-  const prevRelay = process.env.GUARDIAN_STREAMABLE_HTTP_UPSTREAM_RELAY;
-  const prevDlp = process.env.GUARDIAN_RESPONSE_DLP_MODE;
+  const prevRelay = process.env.MASTYFF_AI_STREAMABLE_HTTP_UPSTREAM_RELAY;
+  const prevDlp = process.env.MASTYFF_AI_RESPONSE_DLP_MODE;
 
   beforeAll(async () => {
     upstream = await startMcpHttpEchoFixture();
@@ -45,14 +45,14 @@ describe('integration: streamable HTTP upstream relay', () => {
   });
 
   beforeEach(() => {
-    process.env.GUARDIAN_STREAMABLE_HTTP_UPSTREAM_RELAY = 'true';
+    process.env.MASTYFF_AI_STREAMABLE_HTTP_UPSTREAM_RELAY = 'true';
   });
 
   afterEach(() => {
-    if (prevRelay === undefined) delete process.env.GUARDIAN_STREAMABLE_HTTP_UPSTREAM_RELAY;
-    else process.env.GUARDIAN_STREAMABLE_HTTP_UPSTREAM_RELAY = prevRelay;
-    if (prevDlp === undefined) delete process.env.GUARDIAN_RESPONSE_DLP_MODE;
-    else process.env.GUARDIAN_RESPONSE_DLP_MODE = prevDlp;
+    if (prevRelay === undefined) delete process.env.MASTYFF_AI_STREAMABLE_HTTP_UPSTREAM_RELAY;
+    else process.env.MASTYFF_AI_STREAMABLE_HTTP_UPSTREAM_RELAY = prevRelay;
+    if (prevDlp === undefined) delete process.env.MASTYFF_AI_RESPONSE_DLP_MODE;
+    else process.env.MASTYFF_AI_RESPONSE_DLP_MODE = prevDlp;
   });
 
   it('relays tools/call to upstream echo and returns echoed arguments', async () => {
@@ -82,7 +82,7 @@ describe('integration: streamable HTTP upstream relay', () => {
   });
 
   it('redacts PII echoed from upstream when DLP redact mode is on', async () => {
-    process.env.GUARDIAN_RESPONSE_DLP_MODE = 'redact';
+    process.env.MASTYFF_AI_RESPONSE_DLP_MODE = 'redact';
     const policy = new PolicyEngine({
       version: '1.0',
       policy: { mode: 'block', default_action: 'allow', rules: [] },
@@ -108,7 +108,7 @@ describe('integration: streamable HTTP upstream relay', () => {
   });
 
   it('blocks upstream echo response with sensitive content in block DLP mode', async () => {
-    process.env.GUARDIAN_RESPONSE_DLP_MODE = 'block';
+    process.env.MASTYFF_AI_RESPONSE_DLP_MODE = 'block';
     const policy = new PolicyEngine({
       version: '1.0',
       policy: { mode: 'block', default_action: 'allow', rules: [] },

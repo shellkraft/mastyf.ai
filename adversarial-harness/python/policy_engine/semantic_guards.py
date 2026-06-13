@@ -306,7 +306,7 @@ def evaluate_semantic_guards(
                 f"Suspicious GitHub repo target: {leaf.value}",
             )
 
-    allowed = os.environ.get("GUARDIAN_GITHUB_ALLOWED_REPOS", "").strip()
+    allowed = os.environ.get("MASTYFF_AI_GITHUB_ALLOWED_REPOS", "").strip()
     if allowed:
         allowed_list = [s.strip() for s in allowed.split(",") if s.strip()]
         for leaf in walk_string_leaves(args):

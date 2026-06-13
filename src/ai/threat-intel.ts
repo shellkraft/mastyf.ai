@@ -74,11 +74,11 @@ export function getSharedThreatIntel(statePath?: string): ThreatIntel {
 /** Start live NVD/OSV/GitHub polling unless explicitly disabled. */
 export function startThreatIntelPollingIfEnabled(): ThreatIntel {
   const ti = getSharedThreatIntel();
-  if (process.env.GUARDIAN_AI_DISABLE_THREAT_POLL === 'true') {
+  if (process.env.MASTYFF_AI_AI_DISABLE_THREAT_POLL === 'true') {
     return ti;
   }
   const intervalMs = parseInt(
-    process.env.GUARDIAN_AI_THREAT_POLL_MS || String(30 * 60 * 1000),
+    process.env.MASTYFF_AI_AI_THREAT_POLL_MS || String(30 * 60 * 1000),
     10,
   );
   ti.startLivePolling(intervalMs);
@@ -148,7 +148,7 @@ export class ThreatIntel {
       const newEntries = this.diffFeed(allEntries);
       Logger.info(`[ThreatIntel] Live poll: ${allEntries.length} total, ${newEntries.length} new threats`);
       const activeEntries = newEntries.filter((e) => !this.suppressed.has(e.id));
-      if (activeEntries.length > 0 && process.env.GUARDIAN_THREAT_RESEARCH_THREAT_INTEL !== 'false') {
+      if (activeEntries.length > 0 && process.env.MASTYFF_AI_THREAT_RESEARCH_THREAT_INTEL !== 'false') {
         setImmediate(() => {
           void import('./threat-research-pipeline.js').then(({ buildThreatIntelEvent, enqueueThreatResearch }) => {
             for (const entry of activeEntries) {
@@ -182,7 +182,7 @@ export class ThreatIntel {
       updated: this.lastUpdated,
       lastPollAt: this.lastPollAt,
       pollingActive: this.isPollingActive(),
-      pollingDisabled: process.env.GUARDIAN_AI_DISABLE_THREAT_POLL === 'true',
+      pollingDisabled: process.env.MASTYFF_AI_AI_DISABLE_THREAT_POLL === 'true',
       suppressed: this.suppressed.size,
     };
   }
@@ -320,8 +320,9 @@ export class ThreatIntel {
       }
 
       return entries;
-    } catch (err: any) {
-      Logger.debug(`[ThreatIntel] NVD poll error: ${err?.message}`);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      Logger.debug(`[ThreatIntel] NVD poll error: ${message}`);
       return [];
     }
   }
@@ -330,7 +331,7 @@ export class ThreatIntel {
   private async pollOsvFeed(): Promise<ThreatIntelEntry[]> {
     try {
       // Query OSV.dev for common MCP-related packages
-      const packages = ['@modelcontextprotocol/sdk', 'mcp-server', 'mcp-guardian'];
+      const packages = ['@modelcontextprotocol/sdk', 'mcp-server', 'mastyff-ai'];
       const entries: ThreatIntelEntry[] = [];
 
       for (const pkg of packages) {
@@ -383,8 +384,9 @@ export class ThreatIntel {
       }
 
       return entries;
-    } catch (err: any) {
-      Logger.debug(`[ThreatIntel] OSV poll error: ${err?.message}`);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      Logger.debug(`[ThreatIntel] OSV poll error: ${message}`);
       return [];
     }
   }
@@ -425,8 +427,9 @@ export class ThreatIntel {
       }
 
       return entries;
-    } catch (err: any) {
-      Logger.debug(`[ThreatIntel] GitHub feed poll error: ${err?.message}`);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      Logger.debug(`[ThreatIntel] GitHub feed poll error: ${message}`);
       return [];
     }
   }
@@ -523,8 +526,9 @@ export class ThreatIntel {
         suppressed: Object.fromEntries(this.suppressed.entries()),
         quarantineArchive: this.quarantineArchive,
       }, null, 2));
-    } catch (err: any) {
-      Logger.warn(`[ThreatIntel] Failed to save state: ${err?.message}`);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      Logger.warn(`[ThreatIntel] Failed to save state: ${message}`);
     }
   }
 
@@ -544,8 +548,9 @@ export class ThreatIntel {
       const data = JSON.parse(raw);
       const entries: ThreatIntelEntry[] = Array.isArray(data) ? data : (data.entries || data.threats || []);
       return entries.filter((e: any) => e?.id && e?.severity);
-    } catch (err: any) {
-      Logger.error(`[ThreatIntel] Failed to fetch feed from ${sourcePath}: ${err?.message}`);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      Logger.error(`[ThreatIntel] Failed to fetch feed from ${sourcePath}: ${message}`);
       return [];
     }
   }

@@ -111,7 +111,7 @@
       "estimatedCostUSD": 0,
       "pricingModel": "unknown",
       "toolBreakdown": [],
-      "note": "No recorded call data. Use `mcp-guardian proxy` to capture real token usage."
+      "note": "No recorded call data. Use `mastyff-ai proxy` to capture real token usage."
     },
     {
       "serverName": "suspicious-typo-package",
@@ -121,7 +121,7 @@
       "estimatedCostUSD": 0,
       "pricingModel": "unknown",
       "toolBreakdown": [],
-      "note": "No recorded call data. Use `mcp-guardian proxy` to capture real token usage."
+      "note": "No recorded call data. Use `mastyff-ai proxy` to capture real token usage."
     },
     {
       "serverName": "dev-echo-backend",
@@ -131,7 +131,7 @@
       "estimatedCostUSD": 0,
       "pricingModel": "unknown",
       "toolBreakdown": [],
-      "note": "No recorded call data. Use `mcp-guardian proxy` to capture real token usage."
+      "note": "No recorded call data. Use `mastyff-ai proxy` to capture real token usage."
     },
     {
       "serverName": "misconfigured-analytics",
@@ -141,7 +141,7 @@
       "estimatedCostUSD": 0,
       "pricingModel": "unknown",
       "toolBreakdown": [],
-      "note": "No recorded call data. Use `mcp-guardian proxy` to capture real token usage."
+      "note": "No recorded call data. Use `mastyff-ai proxy` to capture real token usage."
     },
     {
       "serverName": "legacy-shell-runner",
@@ -151,7 +151,7 @@
       "estimatedCostUSD": 0,
       "pricingModel": "unknown",
       "toolBreakdown": [],
-      "note": "No recorded call data. Use `mcp-guardian proxy` to capture real token usage."
+      "note": "No recorded call data. Use `mastyff-ai proxy` to capture real token usage."
     }
   ],
   "health": [

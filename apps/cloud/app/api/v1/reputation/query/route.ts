@@ -25,7 +25,7 @@ export async function GET(request: Request) {
       policy_compliance: 70,
       uptime: 60,
       community_rating: 55,
-      guardian_protected: 80,
+      mastyff_ai_protected: 80,
     },
     source: 'cloud-reputation-network',
   });

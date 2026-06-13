@@ -12,7 +12,7 @@ import {
   Bar,
   CartesianGrid,
 } from 'recharts';
-import type { AutoCorpusEntry, ThreatDiscoveryStatus } from '@/lib/guardian-api';
+import type { AutoCorpusEntry, ThreatDiscoveryStatus } from '@/lib/mastyff-ai-api';
 import { SOURCE_LABELS } from '@/lib/threat-discovery-copy';
 import { CHART_AXIS, CHART_GRID } from '@/lib/chartTheme';
 import { ThreatCandidateDrawer } from './ThreatCandidateDrawer';
@@ -68,7 +68,7 @@ export function AutoResearchMonitor({ entries, status }: Props) {
       {!status?.llm.ok ? (
         <p className="status status-error banner-inline">
           LLM unavailable — auto-fixtures require Ollama at{' '}
-          <code>OLLAMA_BASE_URL</code>: {status?.llm.reason || 'Configure Ollama and set GUARDIAN_LLM_ENABLED=true'}
+          <code>OLLAMA_BASE_URL</code>: {status?.llm.reason || 'Configure Ollama and set MASTYFF_AI_LLM_ENABLED=true'}
         </p>
       ) : null}
 
@@ -80,14 +80,14 @@ export function AutoResearchMonitor({ entries, status }: Props) {
             <> All batch signals were already processed — new fixtures need fresh MCP blocks or bypass findings.</>
           ) : null}
           {parsed?.skips.replayFailed ? (
-            <> Corpus replay uses <code>GUARDIAN_CORPUS_REPLAY_POLICY_PATH</code> (default: strict default-policy.yaml).</>
+            <> Corpus replay uses <code>MASTYFF_AI_CORPUS_REPLAY_POLICY_PATH</code> (default: strict default-policy.yaml).</>
           ) : null}
         </p>
       ) : null}
 
       {!status?.features.autoResearchEnabled ? (
         <p className="hint banner-inline">
-          Auto research disabled — set <code>GUARDIAN_THREAT_RESEARCH_AUTO=true</code> and{' '}
+          Auto research disabled — set <code>MASTYFF_AI_THREAT_RESEARCH_AUTO=true</code> and{' '}
           <code>SWARM_THREAT_RESEARCH_AUTO=true</code> on the proxy, or use Run Auto Research.
         </p>
       ) : null}

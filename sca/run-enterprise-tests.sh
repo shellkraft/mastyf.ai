@@ -1,14 +1,14 @@
 #!/bin/bash
 
 # ============================================================================
-# MCP Guardian - Enterprise Test Suite
+# MCP Mastyff AI - Enterprise Test Suite
 # Comprehensive real-world scenario testing
 # ============================================================================
 
 set -e
 
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-PROJECT_DIR="${SCRIPT_DIR}/tmp/mcp-guardian-master"
+PROJECT_DIR="${SCRIPT_DIR}/tmp/mastyff-ai-master"
 REPORT_FILE="${SCRIPT_DIR}/ENTERPRISE_TEST_RESULTS.txt"
 
 # Color output
@@ -339,7 +339,7 @@ generate_summary() {
 main() {
     echo ""
     echo "============================================================================"
-    echo "MCP Guardian - Comprehensive Enterprise Test Suite"
+    echo "MCP Mastyff AI - Comprehensive Enterprise Test Suite"
     echo "============================================================================"
     echo ""
     echo "Started: $(date)"

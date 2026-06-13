@@ -1,0 +1,17 @@
+{
+  "title": "MCP Mastyff AI — enterprise remediation metrics",
+  "panels": [
+    {
+      "title": "Attacks blocked by rule",
+      "targets": [{ "expr": "sum by (rule, tenant_id) (rate(mastyff_ai_attacks_blocked_total[5m]))" }]
+    },
+    {
+      "title": "Semantic audit skipped",
+      "targets": [{ "expr": "sum by (reason) (rate(mastyff_ai_semantic_audit_skipped_total[5m]))" }]
+    },
+    {
+      "title": "Cost spent USD (tenant)",
+      "targets": [{ "expr": "sum by (tenant_id) (mastyff_ai_cost_spent_usd)" }]
+    }
+  ]
+}

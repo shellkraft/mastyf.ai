@@ -10,7 +10,7 @@ import {
   writeFileSync,
 } from 'fs';
 import { join } from 'path';
-import { guardianHomeDir } from '../audit/tenant-audit-paths.js';
+import { mastyffAiHomeDir } from '../audit/tenant-audit-paths.js';
 import { resolveSwarmOutputDir } from '../tenant/swarm-tenant-paths.js';
 import type { ThreatLabDiscovery } from './threat-lab.js';
 
@@ -49,15 +49,15 @@ export function candidateFingerprint(discovery: ThreatLabDiscovery): string {
 }
 
 export function customAttacksDir(): string {
-  return process.env.GUARDIAN_AUTO_CORPUS_DIR || DEFAULT_CUSTOM;
+  return process.env.MASTYFF_AI_AUTO_CORPUS_DIR || DEFAULT_CUSTOM;
 }
 
 export function autoCorpusManifestPath(): string {
-  return process.env.GUARDIAN_AUTO_CORPUS_MANIFEST || DEFAULT_MANIFEST;
+  return process.env.MASTYFF_AI_AUTO_CORPUS_MANIFEST || DEFAULT_MANIFEST;
 }
 
 export function threatResearchProcessedPath(): string {
-  const base = process.env.GUARDIAN_THREAT_RESEARCH_STATE_PATH || guardianHomeDir();
+  const base = process.env.MASTYFF_AI_THREAT_RESEARCH_STATE_PATH || mastyffAiHomeDir();
   return join(base, 'threat-research-processed.json');
 }
 

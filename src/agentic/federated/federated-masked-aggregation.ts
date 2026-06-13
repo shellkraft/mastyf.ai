@@ -4,8 +4,19 @@
  */
 import { createHmac } from 'crypto';
 
+function getMpcSecret(): string {
+  const secret = process.env['MASTYFF_AI_FEDERATED_MPC_SECRET'];
+  if (!secret) {
+    throw new Error(
+      'MASTYFF_AI_FEDERATED_MPC_SECRET environment variable is required for federated MPC masking. ' +
+      'Set a cryptographically random secret (e.g., openssl rand -hex 32).',
+    );
+  }
+  return secret;
+}
+
 function maskVector(participantId: string, peerId: string, roundId: string, dim: number, sign: 1 | -1): number[] {
-  const hmac = createHmac('sha256', process.env.GUARDIAN_FEDERATED_MPC_SECRET ?? 'guardian-federated-mpc')
+  const hmac = createHmac('sha256', getMpcSecret())
     .update(`${roundId}:${participantId}:${peerId}`)
     .digest();
   const out = new Array(dim).fill(0);

@@ -7,7 +7,7 @@ import { MAX_POLICY_REGEX_SOURCE_LEN } from '../utils/eval-bounds.js';
 import { Logger } from '../utils/logger.js';
 
 const REGEX_EVAL_TIMEOUT_MS = parseInt(
-  process.env.GUARDIAN_REGEX_EVAL_TIMEOUT_MS || '50',
+  process.env.MASTYFF_AI_REGEX_EVAL_TIMEOUT_MS || '50',
   10,
 );
 
@@ -39,8 +39,8 @@ export function isRegexPatternSafe(pattern: string): { safe: boolean; reason?: s
 }
 
 export function shouldRejectUnsafePolicyRegex(): boolean {
-  if (process.env.GUARDIAN_POLICY_REJECT_UNSAFE_REGEX === 'false') return false;
-  if (process.env.GUARDIAN_POLICY_REJECT_UNSAFE_REGEX === 'true') return true;
+  if (process.env.MASTYFF_AI_POLICY_REJECT_UNSAFE_REGEX === 'false') return false;
+  if (process.env.MASTYFF_AI_POLICY_REJECT_UNSAFE_REGEX === 'true') return true;
   return process.env.NODE_ENV === 'production';
 }
 
@@ -69,8 +69,8 @@ export function compilePolicyRegex(pattern: string, flags = 'i'): RegExp {
 
 /** Use worker-thread eval when enabled (default on in production). */
 export function shouldUseRegexWorker(): boolean {
-  if (process.env.GUARDIAN_REGEX_USE_WORKER === 'false') return false;
-  if (process.env.GUARDIAN_REGEX_USE_WORKER === 'true') return true;
+  if (process.env.MASTYFF_AI_REGEX_USE_WORKER === 'false') return false;
+  if (process.env.MASTYFF_AI_REGEX_USE_WORKER === 'true') return true;
   return process.env.NODE_ENV === 'production';
 }
 

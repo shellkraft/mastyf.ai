@@ -8,21 +8,21 @@ const base: PolicyConfig = {
 };
 
 describe('policy-merge', () => {
-  const prev = process.env.GUARDIAN_HTTP_TOOLS_POLICY;
+  const prev = process.env.MASTYFF_AI_HTTP_TOOLS_POLICY;
 
   afterEach(() => {
-    if (prev === undefined) delete process.env.GUARDIAN_HTTP_TOOLS_POLICY;
-    else process.env.GUARDIAN_HTTP_TOOLS_POLICY = prev;
+    if (prev === undefined) delete process.env.MASTYFF_AI_HTTP_TOOLS_POLICY;
+    else process.env.MASTYFF_AI_HTTP_TOOLS_POLICY = prev;
   });
 
-  it('does not merge when GUARDIAN_HTTP_TOOLS_POLICY is unset', () => {
-    delete process.env.GUARDIAN_HTTP_TOOLS_POLICY;
+  it('does not merge when MASTYFF_AI_HTTP_TOOLS_POLICY is unset', () => {
+    delete process.env.MASTYFF_AI_HTTP_TOOLS_POLICY;
     expect(isHttpToolsPolicyMergeEnabled()).toBe(false);
     expect(mergeHttpToolsPolicy(base).policy.rules).toHaveLength(1);
   });
 
   it('merges http-tools template when enabled', () => {
-    process.env.GUARDIAN_HTTP_TOOLS_POLICY = 'true';
+    process.env.MASTYFF_AI_HTTP_TOOLS_POLICY = 'true';
     const merged = mergeHttpToolsPolicy(base);
     expect(merged.policy.rules.some((r) => r.name === 'http-tools-deny-private-urls')).toBe(true);
     expect(merged.policy.rules).toHaveLength(2);

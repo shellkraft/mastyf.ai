@@ -12,8 +12,8 @@ describe('LicenseClient', () => {
   beforeEach(() => {
     resetLicenseClientForTests();
     vi.restoreAllMocks();
-    delete process.env.GUARDIAN_CI_BYPASS_LICENSE;
-    delete process.env.GUARDIAN_DEV_UNLOCK_ALL;
+    delete process.env.MASTYFF_AI_CI_BYPASS_LICENSE;
+    delete process.env.MASTYFF_AI_DEV_UNLOCK_ALL;
   });
 
   afterEach(() => {
@@ -27,15 +27,15 @@ describe('LicenseClient', () => {
   });
 
   it('disables enforcement by default', () => {
-    delete process.env.GUARDIAN_REQUIRE_LICENSE;
+    delete process.env.MASTYFF_AI_REQUIRE_LICENSE;
     expect(isLicenseEnforcementEnabled()).toBe(false);
   });
 
-  it('does not unlock Pro when GUARDIAN_OPEN_CORE=false (v3)', () => {
-    delete process.env.GUARDIAN_LICENSE_KEY;
-    delete process.env.GUARDIAN_CONTROL_PLANE_URL;
-    delete process.env.GUARDIAN_DEV_UNLOCK_ALL;
-    process.env.GUARDIAN_OPEN_CORE = 'false';
+  it('does not unlock Pro when MASTYFF_AI_OPEN_CORE=false (v3)', () => {
+    delete process.env.MASTYFF_AI_LICENSE_KEY;
+    delete process.env.MASTYFF_AI_CONTROL_PLANE_URL;
+    delete process.env.MASTYFF_AI_DEV_UNLOCK_ALL;
+    process.env.MASTYFF_AI_OPEN_CORE = 'false';
 
     const client = new LicenseClient({
       requireLicense: false,
@@ -48,7 +48,7 @@ describe('LicenseClient', () => {
 
   it('does NOT unlock Pro features with dev unlock (removed in v3.2.3)', () => {
     process.env.NODE_ENV = 'development';
-    process.env.GUARDIAN_DEV_UNLOCK_ALL = 'true';
+    process.env.MASTYFF_AI_DEV_UNLOCK_ALL = 'true';
 
     const client = new LicenseClient({
       requireLicense: false,

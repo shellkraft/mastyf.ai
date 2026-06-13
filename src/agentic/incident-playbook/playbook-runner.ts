@@ -61,7 +61,7 @@ export class IncidentPlaybookRunner {
         approvalId = this.requestWebhook(a.action, trigger, severity, source);
         result = approvalId ? `Webhook pending approval (${approvalId})` : this.sendWebhook(trigger, severity, source);
       } else if (a.action === 'block_tool') {
-        const tenant = process.env.GUARDIAN_TENANT_ID || 'default';
+        const tenant = process.env.MASTYFF_AI_TENANT_ID || 'default';
         getCircuitBreaker(tenant, source).forceOpen(`playbook:${playbookKey}:${trigger}`);
         result = `Circuit breaker opened for ${source}`;
       } else if (a.action === 'isolate_agent') {
@@ -71,7 +71,7 @@ export class IncidentPlaybookRunner {
         } else {
           const agentId = context?.agentId ?? source;
           result = this.isolateAgent(agentId);
-          const tenant = process.env.GUARDIAN_TENANT_ID || 'default';
+          const tenant = process.env.MASTYFF_AI_TENANT_ID || 'default';
           getCircuitBreaker(tenant, source).forceOpen(`isolate:${agentId}`);
         }
       }
@@ -108,7 +108,7 @@ export class IncidentPlaybookRunner {
   }
 
   private sendWebhook(trigger: string, severity: string, source: string): string {
-    const url = process.env['GUARDIAN_INCIDENT_WEBHOOK_URL'];
+    const url = process.env['MASTYFF_AI_INCIDENT_WEBHOOK_URL'];
     if (!url) return 'Webhook URL not configured';
     void fetch(url, {
       method: 'POST',

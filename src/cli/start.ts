@@ -1,12 +1,12 @@
 /**
- * `mcp-guardian start` — proxy + dashboard with sensible local defaults.
+ * `mastyff-ai start` — proxy + dashboard with sensible local defaults.
  */
 import { spawn } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import chalk from 'chalk';
-import { resolveGuardianInstallRoot } from '../utils/guardian-package-root.js';
-import { pickGuardianConfig } from '../utils/pick-guardian-config.js';
+import { resolveMastyffAiInstallRoot } from '../utils/mastyff-ai-package-root.js';
+import { pickMastyffAiConfig } from '../utils/pick-mastyff-ai-config.js';
 import { applyStartEnv, isDashboardSpaBuilt, resolveStartPolicy } from '../utils/start-env.js';
 
 export interface StartOptions {
@@ -33,7 +33,7 @@ async function maybeBuildDashboard(installRoot: string, force: boolean): Promise
       console.error(
         chalk.yellow(
           '  Dashboard SPA not built; npm package should include deploy/dashboard-spa/out/. ' +
-            'Reinstall @mcp-guardian/server or run from a git clone with `mcp-guardian setup`.',
+            'Reinstall @mastyff-ai/server or run from a git clone with `mastyff-ai setup`.',
         ),
       );
     }
@@ -48,12 +48,12 @@ async function maybeBuildDashboard(installRoot: string, force: boolean): Promise
 }
 
 export async function runStart(opts: StartOptions = {}): Promise<void> {
-  const installRoot = resolve(opts.installRoot ?? resolveGuardianInstallRoot());
+  const installRoot = resolve(opts.installRoot ?? resolveMastyffAiInstallRoot());
   const distCli = join(installRoot, 'dist', 'cli.js');
   if (!existsSync(distCli)) {
-    console.error(chalk.red(`MCP Guardian not built: missing ${distCli}`));
-    console.error(chalk.dim('  Git clone: run `mcp-guardian setup` or `pnpm install && pnpm build`'));
-    console.error(chalk.dim('  npm: reinstall `npm install -g @mcp-guardian/server@latest`'));
+    console.error(chalk.red(`MCP Mastyff AI not built: missing ${distCli}`));
+    console.error(chalk.dim('  Git clone: run `mastyff-ai setup` or `pnpm install && pnpm build`'));
+    console.error(chalk.dim('  npm: reinstall `npm install -g @mastyff-ai/server@latest`'));
     process.exit(1);
   }
 
@@ -61,7 +61,7 @@ export async function runStart(opts: StartOptions = {}): Promise<void> {
 
   const autoBuild =
     opts.buildDashboard
-    || process.env.GUARDIAN_AUTO_BUILD_DASHBOARD === 'true'
+    || process.env.MASTYFF_AI_AUTO_BUILD_DASHBOARD === 'true'
     || (isMonorepoRoot(installRoot) && !isDashboardSpaBuilt(installRoot));
   if (autoBuild) {
     try {
@@ -78,21 +78,21 @@ export async function runStart(opts: StartOptions = {}): Promise<void> {
   const policyAbs = existsSync(policy) ? policy : join(installRoot, policy);
 
   const searchRoots = opts.searchRoots ?? [process.cwd(), installRoot];
-  const config = pickGuardianConfig({ configPath: opts.config, searchRoots });
+  const config = pickMastyffAiConfig({ configPath: opts.config, searchRoots });
   if (!config) {
-    console.error(chalk.red('\nNo single-server Guardian MCP config found.\n'));
-    console.error(chalk.dim('  1. mcp-guardian onboard --apply'));
-    console.error(chalk.dim('  2. mcp-guardian start --config guardian-configs/filesystem.json\n'));
+    console.error(chalk.red('\nNo single-server Mastyff AI MCP config found.\n'));
+    console.error(chalk.dim('  1. mastyff-ai onboard --apply'));
+    console.error(chalk.dim('  2. mastyff-ai start --config mastyff-ai-configs/filesystem.json\n'));
     process.exit(1);
   }
 
   const blockingMode =
-    opts.blockingMode || process.env.GUARDIAN_BLOCKING_MODE || 'block';
+    opts.blockingMode || process.env.MASTYFF_AI_BLOCKING_MODE || 'block';
   const port = process.env.DASHBOARD_PORT || '4000';
 
-  console.log(chalk.bold('\nMCP Guardian — starting proxy + dashboard\n'));
+  console.log(chalk.bold('\nMCP Mastyff AI — starting proxy + dashboard\n'));
   console.log(chalk.dim(`  Dashboard: http://localhost:${port}/`));
-  console.log(chalk.dim(`  DB: ${process.env.MCP_GUARDIAN_DB_PATH}`));
+  console.log(chalk.dim(`  DB: ${process.env.MASTYFF_AI_DB_PATH}`));
   console.log(chalk.dim(`  Config: ${config}`));
   console.log(chalk.dim(`  Policy: ${policyAbs}\n`));
 

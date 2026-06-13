@@ -46,7 +46,7 @@ export class ThreatMeshNode {
       this.relay = new MeshRelayClient({
         relayUrl: this.config.relayUrl,
         apiKey: this.config.relayApiKey,
-        tenantId: process.env.GUARDIAN_TENANT_ID || 'default',
+        tenantId: process.env.MASTYFF_AI_TENANT_ID || 'default',
       });
     }
     this.hydrateFromStore();
@@ -54,12 +54,12 @@ export class ThreatMeshNode {
 
   private loadConfig(): MeshConfig {
     return {
-      enabled: process.env['GUARDIAN_THREAT_MESH_ENABLED'] === 'true',
-      relayUrl: process.env['GUARDIAN_THREAT_MESH_RELAY_URL'],
-      relayApiKey: process.env['GUARDIAN_THREAT_MESH_RELAY_API_KEY'],
-      minReportThreshold: parseInt(process.env['GUARDIAN_THREAT_MESH_MIN_REPORTS'] || '3', 10),
-      privacyEpsilon: parseFloat(process.env['GUARDIAN_THREAT_MESH_EPSILON'] || '1.0'),
-      maxLocalSignatures: parseInt(process.env['GUARDIAN_THREAT_MESH_MAX_SIGNATURES'] || '10000', 10),
+      enabled: process.env['MASTYFF_AI_THREAT_MESH_ENABLED'] === 'true',
+      relayUrl: process.env['MASTYFF_AI_THREAT_MESH_RELAY_URL'],
+      relayApiKey: process.env['MASTYFF_AI_THREAT_MESH_RELAY_API_KEY'],
+      minReportThreshold: parseInt(process.env['MASTYFF_AI_THREAT_MESH_MIN_REPORTS'] || '3', 10),
+      privacyEpsilon: parseFloat(process.env['MASTYFF_AI_THREAT_MESH_EPSILON'] || '1.0'),
+      maxLocalSignatures: parseInt(process.env['MASTYFF_AI_THREAT_MESH_MAX_SIGNATURES'] || '10000', 10),
     };
   }
 

@@ -10,7 +10,7 @@ import {
   fetchTribunalReport,
   type SemanticOutcome,
   type TribunalReport,
-} from '@/lib/guardian-api';
+} from '@/lib/mastyff-ai-api';
 import { TRIBUNAL_BATCH_LIMIT } from '@/lib/tribunal-config';
 import { DashboardSection } from './dashboard/DashboardSection';
 import { TenantLoraPanel } from './TenantLoraPanel';
@@ -147,7 +147,7 @@ export function EnterpriseAiPanel({
             <p className="hint">Agent intent graph + kill-chain narrative from session flow and semantic audit records</p>
             {semantic.length === 0 ? (
               <p className="muted">
-                No semantic audit records — enable GUARDIAN_SEMANTIC_ASYNC and route MCP traffic through Guardian.
+                No semantic audit records — enable MASTYFF_AI_SEMANTIC_ASYNC and route MCP traffic through Mastyff AI.
               </p>
             ) : (
               <table className="data-table compact">

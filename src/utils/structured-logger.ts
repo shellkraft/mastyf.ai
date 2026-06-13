@@ -1,5 +1,6 @@
 import pino from 'pino';
 import { PolicyDecision, CallContext } from '../policy/policy-types.js';
+import { Logger } from './logger.js';
 
 /**
  * Structured JSON logger for enterprise SIEM ingestion.
@@ -50,15 +51,23 @@ export class StructuredLogger {
   static logPolicyDecision(entry: AuditLogEntry): void {
     logger.info(entry);
     import('./enterprise-bootstrap.js').then(({ exportSiemEvent }) => {
-      exportSiemEvent('policy_decision', entry as unknown as Record<string, unknown>).catch(() => {});
-    }).catch(() => {});
+      exportSiemEvent('policy_decision', entry as unknown as Record<string, unknown>).catch((e: unknown) => {
+        Logger.error(`[structured-logger] SIEM export failed: ${e instanceof Error ? e.message : String(e)}`);
+      });
+    }).catch((e: unknown) => {
+      Logger.error(`[structured-logger] enterprise-bootstrap import failed: ${e instanceof Error ? e.message : String(e)}`);
+    });
   }
 
   static logBlocked(entry: BlockLogEntry): void {
     logger.warn(entry);
     import('./enterprise-bootstrap.js').then(({ exportSiemEvent }) => {
-      exportSiemEvent('tool_blocked', entry as unknown as Record<string, unknown>).catch(() => {});
-    }).catch(() => {});
+      exportSiemEvent('tool_blocked', entry as unknown as Record<string, unknown>).catch((e: unknown) => {
+        Logger.error(`[structured-logger] SIEM export failed: ${e instanceof Error ? e.message : String(e)}`);
+      });
+    }).catch((e: unknown) => {
+      Logger.error(`[structured-logger] enterprise-bootstrap import failed: ${e instanceof Error ? e.message : String(e)}`);
+    });
   }
 
   static logError(entry: ErrorLogEntry): void {

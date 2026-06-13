@@ -7,7 +7,7 @@ import {
   quarantineSecurityThreat,
   type SecurityDashboardResponse,
   type SecurityDashboardThreat,
-} from '@/lib/guardian-api';
+} from '@/lib/mastyff-ai-api';
 import { hasPermission } from '@/lib/dashboard-roles';
 import type { WorkspaceId } from '@/lib/workspace-nav';
 import { DataTablePro, type Column } from '../dashboard/DataTablePro';
@@ -128,7 +128,7 @@ export function SecurityDashboardPanel({ refreshKey = 0, roles = [], onNavigate,
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'guardian-threats.csv';
+    a.download = 'mastyff-ai-threats.csv';
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -261,7 +261,7 @@ export function SecurityDashboardPanel({ refreshKey = 0, roles = [], onNavigate,
                 columns={columns}
                 rows={data?.threats ?? []}
                 rowKey={(r) => r.id}
-                exportFilename="guardian-threat-monitor.csv"
+                exportFilename="mastyff-ai-threat-monitor.csv"
               />
             )}
             <footer className="security-threat-footer">

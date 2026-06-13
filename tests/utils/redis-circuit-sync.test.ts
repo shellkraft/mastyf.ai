@@ -13,11 +13,11 @@ describe('redis-circuit-sync metrics', () => {
     );
     resetCircuitRedisSyncForTests();
     const before = await Metrics.registry.getSingleMetricAsString(
-      'mcp_guardian_circuit_breaker_sync_total',
+      'mastyff_ai_circuit_breaker_sync_total',
     );
     await loadCircuitFromRedis('tenant:server');
     const after = await Metrics.registry.getSingleMetricAsString(
-      'mcp_guardian_circuit_breaker_sync_total',
+      'mastyff_ai_circuit_breaker_sync_total',
     );
     expect(after).toBeDefined();
     expect(before ?? '').toBe(after ?? '');

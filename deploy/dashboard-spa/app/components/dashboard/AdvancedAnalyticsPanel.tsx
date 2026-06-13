@@ -11,7 +11,7 @@ import {
   fetchSecurity,
   fetchSemanticOutcomes,
   fetchThreatDiscoveryStatus,
-} from '@/lib/guardian-api';
+} from '@/lib/mastyff-ai-api';
 import {
   computeCostRiskRoiMetrics,
   computeDriftMetrics,

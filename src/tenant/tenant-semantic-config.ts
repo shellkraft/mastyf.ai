@@ -1,5 +1,5 @@
 /**
- * Per-tenant semantic layer overrides via GUARDIAN_TENANT_SEMANTIC_JSON.
+ * Per-tenant semantic layer overrides via MASTYFF_AI_TENANT_SEMANTIC_JSON.
  *
  * Example:
  * {"acme":{"syncResponse":true,"async":true},"beta":{"syncResponse":false,"strict":true}}
@@ -19,7 +19,7 @@ let cachedMap: Map<string, TenantSemanticOverrides> | null = null;
 function loadTenantSemanticMap(): Map<string, TenantSemanticOverrides> {
   if (cachedMap) return cachedMap;
   cachedMap = new Map();
-  const raw = process.env['GUARDIAN_TENANT_SEMANTIC_JSON'];
+  const raw = process.env['MASTYFF_AI_TENANT_SEMANTIC_JSON'];
   if (!raw?.trim()) return cachedMap;
   try {
     const obj = JSON.parse(raw) as Record<string, TenantSemanticOverrides>;
@@ -35,7 +35,7 @@ function loadTenantSemanticMap(): Map<string, TenantSemanticOverrides> {
 /** @internal */
 export function resetTenantSemanticConfigForTests(): void {
   cachedMap = null;
-  delete process.env.GUARDIAN_TENANT_SEMANTIC_JSON;
+  delete process.env.MASTYFF_AI_TENANT_SEMANTIC_JSON;
 }
 
 export function getTenantSemanticOverrides(tenantId?: string): TenantSemanticOverrides | undefined {
@@ -50,14 +50,14 @@ export function isLocalSemanticEnabledForTenant(tenantId?: string): boolean {
 }
 
 export function isLocalSemanticEnabledGlobal(): boolean {
-  if (process.env['GUARDIAN_LOCAL_SEMANTIC'] === 'false') return false;
-  if (process.env['GUARDIAN_LOCAL_SEMANTIC'] === 'true') return true;
-  return process.env['GUARDIAN_DISABLE_SEMANTIC'] !== 'true';
+  if (process.env['MASTYFF_AI_LOCAL_SEMANTIC'] === 'false') return false;
+  if (process.env['MASTYFF_AI_LOCAL_SEMANTIC'] === 'true') return true;
+  return process.env['MASTYFF_AI_DISABLE_SEMANTIC'] !== 'true';
 }
 
 /** Global sync-response gate — production defaults on unless explicitly disabled. */
 export function isSyncSemanticResponseEnabledGlobal(): boolean {
-  const explicit = process.env['GUARDIAN_SEMANTIC_SYNC_RESPONSE'];
+  const explicit = process.env['MASTYFF_AI_SEMANTIC_SYNC_RESPONSE'];
   if (explicit === 'true') return true;
   if (explicit === 'false') return false;
   return process.env.NODE_ENV === 'production';
@@ -74,31 +74,31 @@ export function isSyncSemanticLlmEnabledForTenant(tenantId?: string): boolean {
   if (o?.syncResponseLlm !== undefined) return o.syncResponseLlm;
   return (
     isSyncSemanticResponseEnabledForTenant(tenantId)
-    && process.env['GUARDIAN_SEMANTIC_SYNC_RESPONSE_LLM'] === 'true'
+    && process.env['MASTYFF_AI_SEMANTIC_SYNC_RESPONSE_LLM'] === 'true'
   );
 }
 
 export function isSemanticAsyncEnabledForTenant(tenantId?: string): boolean {
   const o = getTenantSemanticOverrides(tenantId);
   if (o?.asyncAudit !== undefined) return o.asyncAudit;
-  if (process.env['GUARDIAN_SEMANTIC_ASYNC'] === 'false') return false;
-  if (process.env['GUARDIAN_SEMANTIC_ASYNC'] === 'true') return true;
-  return process.env['GUARDIAN_LLM_ENABLED'] !== 'false';
+  if (process.env['MASTYFF_AI_SEMANTIC_ASYNC'] === 'false') return false;
+  if (process.env['MASTYFF_AI_SEMANTIC_ASYNC'] === 'true') return true;
+  return process.env['MASTYFF_AI_LLM_ENABLED'] !== 'false';
 }
 
 export function isSemanticStrictForTenant(tenantId?: string): boolean {
   const o = getTenantSemanticOverrides(tenantId);
   if (o?.strict !== undefined) return o.strict;
-  return process.env['GUARDIAN_SEMANTIC_STRICT'] === 'true';
+  return process.env['MASTYFF_AI_SEMANTIC_STRICT'] === 'true';
 }
 
 export function isEnterpriseMode(): boolean {
-  return process.env['GUARDIAN_ENTERPRISE_MODE'] === 'true';
+  return process.env['MASTYFF_AI_ENTERPRISE_MODE'] === 'true';
 }
 
 /** Sync request gate — ON by default in enterprise when LLM is available. */
 export function isSyncSemanticRequestEnabledGlobal(): boolean {
-  const explicit = process.env['GUARDIAN_SEMANTIC_SYNC_REQUEST'];
+  const explicit = process.env['MASTYFF_AI_SEMANTIC_SYNC_REQUEST'];
   if (explicit === 'true') return true;
   if (explicit === 'false') return false;
   return isEnterpriseMode();
@@ -113,7 +113,7 @@ export function isSyncSemanticRequestEnabledForTenant(tenantId?: string): boolea
 export function isSyncSemanticRequestLlmEnabledForTenant(tenantId?: string): boolean {
   const o = getTenantSemanticOverrides(tenantId);
   if (o?.syncRequestLlm !== undefined) return o.syncRequestLlm;
-  if (process.env['GUARDIAN_SEMANTIC_SYNC_REQUEST_LLM'] === 'false') return false;
-  if (process.env['GUARDIAN_SEMANTIC_SYNC_REQUEST_LLM'] === 'true') return true;
+  if (process.env['MASTYFF_AI_SEMANTIC_SYNC_REQUEST_LLM'] === 'false') return false;
+  if (process.env['MASTYFF_AI_SEMANTIC_SYNC_REQUEST_LLM'] === 'true') return true;
   return isSyncSemanticRequestEnabledForTenant(tenantId) && isEnterpriseMode();
 }

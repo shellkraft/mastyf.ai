@@ -138,12 +138,12 @@ export class SelfImprovement {
       if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
       this.state.lastUpdated = new Date().toISOString();
       writeFileSync(this.statePath, JSON.stringify(this.state, null, 2));
-    } catch (err: any) {
-      Logger.warn(`[SelfImprovement] Failed to save state: ${err?.message}`);
+    } catch (err: unknown) {
+      Logger.warn(`[SelfImprovement] Failed to save state: ${err instanceof Error ? err.message : String(err)}`);
     }
   }
 
-  /** Record drift report; freezes threshold tuning until GUARDIAN_AI_DRIFT_OVERRIDE=true. */
+  /** Record drift report; freezes threshold tuning until MASTYFF_AI_AI_DRIFT_OVERRIDE=true. */
   recordDriftReport(report: DriftReport): void {
     const wasFrozen = this.state.drift?.frozen;
     if (report.driftDetected) {

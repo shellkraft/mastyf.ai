@@ -1,5 +1,5 @@
 -- Optional monthly partitioning for call_records (PostgreSQL 14+).
--- Apply manually in maintenance window; Guardian migrations runner may skip if unsupported.
+-- Apply manually in maintenance window; Mastyff AI migrations runner may skip if unsupported.
 --
 -- Example (adjust dates):
 -- CREATE TABLE call_records_2026_05 PARTITION OF call_records

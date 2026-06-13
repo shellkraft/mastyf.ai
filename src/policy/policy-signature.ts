@@ -14,12 +14,12 @@ export interface PolicySignatureValidationResult {
 }
 
 function signingSecretForKeyId(keyId: string): string | undefined {
-  const envKey = `GUARDIAN_POLICY_SIGNING_KEY_${keyId}`;
-  return process.env[envKey] || process.env['GUARDIAN_POLICY_SIGNING_KEY'] || undefined;
+  const envKey = `MASTYFF_AI_POLICY_SIGNING_KEY_${keyId}`;
+  return process.env[envKey] || process.env['MASTYFF_AI_POLICY_SIGNING_KEY'] || undefined;
 }
 
 function trustedIssuers(): Set<string> {
-  const raw = process.env['GUARDIAN_POLICY_TRUSTED_ISSUERS'] || 'guardian-admin';
+  const raw = process.env['MASTYFF_AI_POLICY_TRUSTED_ISSUERS'] || 'mastyff-ai-admin';
   return new Set(raw.split(',').map((v) => v.trim()).filter(Boolean));
 }
 
@@ -51,7 +51,7 @@ export function validateSignedPolicyYaml(
   yaml: string,
   envelope: PolicySignatureEnvelope | undefined,
 ): PolicySignatureValidationResult {
-  const required = process.env['GUARDIAN_REQUIRE_SIGNED_POLICY'] === 'true';
+  const required = process.env['MASTYFF_AI_REQUIRE_SIGNED_POLICY'] === 'true';
   if (!envelope) {
     return required
       ? { ok: false, reason: 'missing signature envelope' }

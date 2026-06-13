@@ -5,15 +5,15 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
 echo "==> Building builder stage for prebuild verification..."
-docker build --target builder -t mcp-guardian-prebuild-check:local -f Dockerfile .
+docker build --target builder -t mastyff-ai-prebuild-check:local -f Dockerfile .
 
 echo "==> Running better-sqlite3 smoke inside builder image..."
-docker run --rm mcp-guardian-prebuild-check:local \
+docker run --rm mastyff-ai-prebuild-check:local \
   node -e "const Database=require('better-sqlite3'); const db=new Database(':memory:'); db.exec('SELECT 1'); console.log('OK');"
 
 echo "==> Verifying final image runs as uid 1001..."
-docker build -t mcp-guardian-nonroot-check:local -f Dockerfile .
-uid="$(docker run --rm --entrypoint id mcp-guardian-nonroot-check:local)"
+docker build -t mastyff-ai-nonroot-check:local -f Dockerfile .
+uid="$(docker run --rm --entrypoint id mastyff-ai-nonroot-check:local)"
 echo "$uid"
 echo "$uid" | grep -q 'uid=1001'
 

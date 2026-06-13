@@ -9,13 +9,13 @@ export interface AttackPatternSuggestion {
 }
 
 export function attackMinBlocks(): number {
-  const n = parseInt(process.env.GUARDIAN_AI_ATTACK_MIN_BLOCKS || '3', 10);
+  const n = parseInt(process.env.MASTYFF_AI_AI_ATTACK_MIN_BLOCKS || '3', 10);
   return Number.isFinite(n) && n > 0 ? n : 3;
 }
 
 /** Minimum confidence before a learned pattern may be auto-applied (default requires human review). */
 export function attackMinConfidence(): number {
-  const n = parseFloat(process.env.GUARDIAN_AI_ATTACK_MIN_CONFIDENCE || '0.85');
+  const n = parseFloat(process.env.MASTYFF_AI_AI_ATTACK_MIN_CONFIDENCE || '0.85');
   return Number.isFinite(n) && n >= 0 && n <= 1 ? n : 0.85;
 }
 

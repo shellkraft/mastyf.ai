@@ -9,7 +9,7 @@ import {
   logoutDashboard,
   setTenantId,
   type AuthStatus,
-} from '@/lib/guardian-api';
+} from '@/lib/mastyff-ai-api';
 
 type Props = {
   children: ReactNode;

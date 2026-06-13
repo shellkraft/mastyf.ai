@@ -7,25 +7,25 @@ import { HistoryDatabase } from '../../src/database/history-db.js';
 
 describe('fleet status', () => {
   let dir: string;
-  const prevPaths = process.env.GUARDIAN_FLEET_DB_PATHS;
-  const prevDb = process.env.MCP_GUARDIAN_DB_PATH;
+  const prevPaths = process.env.MASTYFF_AI_FLEET_DB_PATHS;
+  const prevDb = process.env.MASTYFF_AI_DB_PATH;
   const prevType = process.env.DB_TYPE;
 
   afterEach(() => {
     if (dir) rmSync(dir, { recursive: true, force: true });
-    if (prevPaths === undefined) delete process.env.GUARDIAN_FLEET_DB_PATHS;
-    else process.env.GUARDIAN_FLEET_DB_PATHS = prevPaths;
-    if (prevDb === undefined) delete process.env.MCP_GUARDIAN_DB_PATH;
-    else process.env.MCP_GUARDIAN_DB_PATH = prevDb;
+    if (prevPaths === undefined) delete process.env.MASTYFF_AI_FLEET_DB_PATHS;
+    else process.env.MASTYFF_AI_FLEET_DB_PATHS = prevPaths;
+    if (prevDb === undefined) delete process.env.MASTYFF_AI_DB_PATH;
+    else process.env.MASTYFF_AI_DB_PATH = prevDb;
     if (prevType === undefined) delete process.env.DB_TYPE;
     else process.env.DB_TYPE = prevType;
   });
 
   it('aggregates a single sqlite fleet db path', async () => {
-    dir = mkdtempSync(join(tmpdir(), 'guardian-fleet-'));
+    dir = mkdtempSync(join(tmpdir(), 'mastyff-ai-fleet-'));
     const dbPath = join(dir, 'a.db');
     delete process.env.DB_TYPE;
-    process.env.GUARDIAN_FLEET_DB_PATHS = dbPath;
+    process.env.MASTYFF_AI_FLEET_DB_PATHS = dbPath;
 
     const db = new HistoryDatabase(dbPath);
     await db.initialize();

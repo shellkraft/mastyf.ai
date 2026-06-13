@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { fetchCost, fetchPolicyCopilot, fetchPolicyCounterfactual, trackAdvancedAnalyticsEvent } from '@/lib/guardian-api';
+import { fetchCost, fetchPolicyCopilot, fetchPolicyCounterfactual, trackAdvancedAnalyticsEvent } from '@/lib/mastyff-ai-api';
 import { hasPermission } from '@/lib/dashboard-roles';
 import { computePolicyImpactMetrics, type PolicyImpactMetrics } from '@/lib/advanced-analytics';
 

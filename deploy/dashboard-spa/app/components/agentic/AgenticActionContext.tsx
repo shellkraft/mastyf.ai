@@ -1,7 +1,7 @@
 'use client';
 
 import { createContext, useCallback, useContext, useState, type ReactNode } from 'react';
-import { agenticPost } from '@/lib/guardian-api';
+import { agenticPost } from '@/lib/mastyff-ai-api';
 
 export type ActionResult = {
   id: string;

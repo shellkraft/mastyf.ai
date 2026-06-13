@@ -12,8 +12,8 @@ export interface AuditAttestationStatus {
 }
 
 export function resolveAttestationSinkPath(): string {
-  return process.env['GUARDIAN_AUDIT_ATTESTATION_PATH']
-    || join(homedir(), '.mcp-guardian', 'attestations', 'audit-checkpoints.json');
+  return process.env['MASTYFF_AI_AUDIT_ATTESTATION_PATH']
+    || join(homedir(), '.mastyff-ai', 'attestations', 'audit-checkpoints.json');
 }
 
 export function checkpointAuditChain(entryHash: string): AuditAttestationStatus {

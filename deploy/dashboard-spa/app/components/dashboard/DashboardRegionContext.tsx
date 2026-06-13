@@ -9,9 +9,9 @@ import {
   useState,
   type ReactNode,
 } from 'react';
-import { fetchDashboardRegions } from '@/lib/guardian-api';
+import { fetchDashboardRegions } from '@/lib/mastyff-ai-api';
 
-const STORAGE_KEY = 'guardian-dashboard-region';
+const STORAGE_KEY = 'mastyff-ai-dashboard-region';
 
 type ContextValue = {
   region: string;

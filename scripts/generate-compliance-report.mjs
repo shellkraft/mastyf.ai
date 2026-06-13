@@ -31,7 +31,7 @@ const evidenceDir = join(ROOT, 'reports', 'enterprise-evidence-pack');
 const evidenceFiles = existsSync(evidenceDir) ? readdirSync(evidenceDir) : [];
 
 const md = [
-  '# MCP Guardian — Compliance Evidence Summary',
+  '# MCP Mastyff AI — Compliance Evidence Summary',
   '',
   `Generated: ${new Date().toISOString()}`,
   '',
@@ -47,10 +47,10 @@ const md = [
   ]),
   section('Enterprise controls (v2.9.3+)', [
     '- Multi-tenant logical isolation: `docs/MULTI_TENANCY.md`',
-    '- Response DLP modes: `GUARDIAN_RESPONSE_DLP_MODE=block|redact|audit`',
-    '- SIEM exporter DLQ: `~/.mcp-guardian/exporter-dlq/pending.jsonl`',
-    '- Field encryption: `GUARDIAN_DB_ENCRYPTION_KEY` + optional `GUARDIAN_DB_ENCRYPTION_SALT`',
-    '- JWT max lifetime: `GUARDIAN_JWT_MAX_LIFETIME_SEC` (default 86400)',
+    '- Response DLP modes: `MASTYFF_AI_RESPONSE_DLP_MODE=block|redact|audit`',
+    '- SIEM exporter DLQ: `~/.mastyff-ai/exporter-dlq/pending.jsonl`',
+    '- Field encryption: `MASTYFF_AI_DB_ENCRYPTION_KEY` + optional `MASTYFF_AI_DB_ENCRYPTION_SALT`',
+    '- JWT max lifetime: `MASTYFF_AI_JWT_MAX_LIFETIME_SEC` (default 86400)',
     '- Token revocation API: `revokeBearerToken()` in `src/auth/token-revocation.ts`',
     '- mTLS hot-reload: `MtlsCertWatcher` + `mtls-agent-registry`',
     '- OPA result schema validation in `opa-policy.ts`',

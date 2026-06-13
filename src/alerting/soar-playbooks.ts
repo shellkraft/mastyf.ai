@@ -71,7 +71,7 @@ export function evaluatePlaybooks(event: PlaybookEvent, playbooks: Playbook[]): 
 }
 
 export function loadPlaybooksFromPath(path?: string): Playbook[] {
-  const p = path || process.env.GUARDIAN_SOAR_PLAYBOOKS_PATH || 'config/soar-playbooks.json';
+  const p = path || process.env.MASTYFF_AI_SOAR_PLAYBOOKS_PATH || 'config/soar-playbooks.json';
   if (!existsSync(p)) return DEFAULT_PLAYBOOKS;
   try {
     const raw = JSON.parse(readFileSync(p, 'utf-8')) as { playbooks?: Playbook[] };
@@ -161,7 +161,7 @@ export async function runSoarPlaybooks(event: PlaybookEvent): Promise<{
   matches: PlaybookMatch[];
   results: Array<{ playbook: string; action: string; ok: boolean }>;
 }> {
-  if (process.env.GUARDIAN_SOAR_PLAYBOOKS !== 'true') {
+  if (process.env.MASTYFF_AI_SOAR_PLAYBOOKS !== 'true') {
     return { matches: [], results: [] };
   }
   const playbooks = loadPlaybooksFromPath();

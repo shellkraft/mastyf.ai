@@ -11,7 +11,7 @@ export interface GraphOnnxResult {
 }
 
 async function tryGraphOnnxRuntime(features: number[], modelPath: string): Promise<GraphOnnxResult | null> {
-  if (process.env.GUARDIAN_FLEET_GRAPH_ONNX === 'false') return null;
+  if (process.env.MASTYFF_AI_FLEET_GRAPH_ONNX === 'false') return null;
   try {
     const moduleName = 'onnxruntime-' + 'node';
     const ort = await (Function('return import(arguments[0])') as (name: string) => Promise<{
@@ -39,7 +39,7 @@ async function tryGraphOnnxRuntime(features: number[], modelPath: string): Promi
 
 /** Run ONNX graph classifier on fleet chain events (A1 deployment path). */
 export async function scoreGraphEventsWithOnnx(events: FleetChainEvent[]): Promise<GraphOnnxResult | null> {
-  const modelPath = process.env.GUARDIAN_FLEET_GRAPH_ONNX_MODEL?.trim();
+  const modelPath = process.env.MASTYFF_AI_FLEET_GRAPH_ONNX_MODEL?.trim();
   if (!modelPath || !events.length) return null;
   const matrix = exportGraphFeatures(events);
   const pooled = new Array(8).fill(0);

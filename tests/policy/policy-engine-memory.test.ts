@@ -30,13 +30,13 @@ function makeContext(i: number): CallContext {
 
 describe('PolicyEngine memory bounds', () => {
   beforeEach(() => {
-    // Sync evaluate() spins for MCP_GUARDIAN_POLICY_MIN_EVAL_MS (default 25ms) per call.
+    // Sync evaluate() spins for MASTYFF_AI_POLICY_MIN_EVAL_MS (default 25ms) per call.
     // A 120k-client loop would take ~50 minutes and block the entire vitest worker.
-    process.env['GUARDIAN_POLICY_TIMING_ENVELOPE'] = 'false';
+    process.env['MASTYFF_AI_POLICY_TIMING_ENVELOPE'] = 'false';
   });
 
   afterEach(() => {
-    delete process.env['GUARDIAN_POLICY_TIMING_ENVELOPE'];
+    delete process.env['MASTYFF_AI_POLICY_TIMING_ENVELOPE'];
   });
 
   it('keeps rate-limit LRU at max entries after many unique clients', () => {

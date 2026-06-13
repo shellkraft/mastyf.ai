@@ -10,7 +10,7 @@ import { CallContext } from '../policy/policy-types.js';
 import { StructuredLogger } from '../utils/structured-logger.js';
 import { OAuthValidator } from '../auth/oauth.js';
 import { AuthValidationResult, AgentIdentity } from '../auth/auth-types.js';
-import { createSessionCache, validateSessionToken, type GuardianSessionCache } from '../auth/session-factory.js';
+import { createSessionCache, validateSessionToken, type MastyffAiSessionCache } from '../auth/session-factory.js';
 import { getCircuitBreaker } from '../utils/circuit-breaker-registry.js';
 import type { MtlsConfig } from '../utils/mtls-config.js';
 import { getMtlsAgent } from '../utils/mtls-agent-registry.js';
@@ -29,9 +29,8 @@ import {
   validateRequestUrlPath,
   validateResponseHeaders,
 } from './http-proxy-security.js';
-import { findingsToMessages, isResponseScanSkipped } from '../utils/streaming-inspector.js';
-import { gateToolResponseText } from '../utils/response-security-gate.js';
-import { formatRedactionHeader, injectRedactionMeta } from '../utils/redaction-meta.js';
+import { formatRedactionHeader } from '../utils/redaction-meta.js';
+import { inspectToolResponse as sharedInspectToolResponse } from './response-inspection.js';
 import { injectRotatedSessionIntoResult } from '../utils/mcp-session-meta.js';
 import { getUpstreamTimeoutMs } from '../utils/upstream-timeout.js';
 import { acquireProxyInflight, releaseProxyInflight } from './proxy-inflight.js';
@@ -55,7 +54,7 @@ export class HttpProxyServer {
   private targetUrl: string;
   private policyEngine: PolicyEngine | null;
   private authValidator: OAuthValidator | null;
-  private sessionCache: GuardianSessionCache | null;
+  private sessionCache: MastyffAiSessionCache | null;
   private defaultTenantId: string;
   private tokenCounter: TokenCounter;
   private db: HistoryDatabase;
@@ -169,7 +168,7 @@ export class HttpProxyServer {
             result = { valid: true, identity: sessionResult.identity };
             if (sessionResult.rotatedToken) {
               rotatedSessionToken = sessionResult.rotatedToken;
-              res.setHeader('x-mcp-guardian-session-token', sessionResult.rotatedToken);
+              res.setHeader('x-mastyff-ai-session-token', sessionResult.rotatedToken);
             }
           }
         }
@@ -309,7 +308,7 @@ export class HttpProxyServer {
                 error: {
                   code: -32001,
                   message:
-                    'Blocked by MCP Guardian policy: tool definitions changed mid-session (rug-pull)',
+                    'Blocked by MCP Mastyff AI policy: tool definitions changed mid-session (rug-pull)',
                 },
               }),
             );
@@ -330,7 +329,7 @@ export class HttpProxyServer {
                 id: msg.id,
                 error: {
                   code: -32005,
-                  message: `MCP Guardian: proxy overloaded (${inflight.current}/${inflight.max} in flight)`,
+                  message: `Mastyff AI: proxy overloaded (${inflight.current}/${inflight.max} in flight)`,
                 },
               }),
             );
@@ -407,7 +406,7 @@ export class HttpProxyServer {
             res.end(JSON.stringify({
               jsonrpc: '2.0',
               id: msg.id,
-              error: { code: -32001, message: `Blocked by MCP Guardian policy: ${decision.reason}` },
+              error: { code: -32001, message: `Blocked by MCP Mastyff AI policy: ${decision.reason}` },
             }));
             return;
           }
@@ -430,7 +429,7 @@ export class HttpProxyServer {
                 id: msg.id,
                 error: {
                   code: -32001,
-                  message: `Blocked by MCP Guardian semantic gate: ${semGate.reason}`,
+                  message: `Blocked by MCP Mastyff AI semantic gate: ${semGate.reason}`,
                 },
               }),
             );
@@ -471,7 +470,7 @@ export class HttpProxyServer {
           if (!res.headersSent) {
             res.writeHead(502, { 'Content-Type': 'application/json' });
             res.end(JSON.stringify({
-              error: 'MCP Guardian: Invalid response headers from upstream',
+              error: 'Mastyff AI: Invalid response headers from upstream',
             }));
           }
           upstreamRes.resume();
@@ -644,17 +643,19 @@ export class HttpProxyServer {
                   requestTenantId,
                   `[http-proxy:${this.serverName}]`,
                 );
-                const inspected = await this.inspectToolResponse(
-                  toolsCallName!,
-                  msg,
-                  toolsCallId!,
-                  requestTenantId,
-                );
-                redactionReasons = inspected.redactionReasons;
+                const inspected = await sharedInspectToolResponse({
+                  response: msg,
+                  toolName: toolsCallName!,
+                  serverName: this.serverName,
+                  requestId: toolsCallId!,
+                  tenantId: requestTenantId,
+                  policyEngine: this.policyEngine,
+                  transportLabel: 'http-proxy',
+                });
                 if (inspected.blocked) {
                   if (!res.headersSent) {
                     res.writeHead(403, { 'Content-Type': 'application/json' });
-                    res.end(JSON.stringify(inspected.blocked));
+                    res.end(JSON.stringify(inspected.blockResponse));
                   }
                   Metrics.recordProxyBlock(
                     {
@@ -676,11 +677,11 @@ export class HttpProxyServer {
                 outbound = JSON.stringify(msg);
               }
               if (rotatedSessionToken) {
-                res.setHeader('x-mcp-guardian-session-token', rotatedSessionToken);
+                res.setHeader('x-mastyff-ai-session-token', rotatedSessionToken);
               }
               const redactionHdr = formatRedactionHeader(redactionReasons);
               if (redactionHdr) {
-                safeHeaders['x-guardian-redaction-reason'] = redactionHdr;
+                safeHeaders['x-mastyff-ai-redaction-reason'] = redactionHdr;
               }
               delete safeHeaders['content-length'];
               delete safeHeaders['Content-Length'];
@@ -730,71 +731,13 @@ export class HttpProxyServer {
 
       proxyReq.write(body);
       proxyReq.end();
-    } catch (err: any) {
+    } catch (err: unknown) {
       tenantBreaker.recordFailure();
       if (!res.headersSent) {
         res.writeHead(500, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ error: `Proxy error: ${err.message}` }));
+        res.end(JSON.stringify({ error: `Proxy error: ${err instanceof Error ? err.message : String(err)}` }));
       }
     }
-  }
-
-  private async inspectToolResponse(
-    toolName: string,
-    response: Record<string, unknown>,
-    requestId: string | number,
-    tenantId?: string,
-  ): Promise<{ blocked: Record<string, unknown> | null; redactionReasons?: string[] }> {
-    const result = (response as { result?: unknown }).result;
-    if (result == null || isResponseScanSkipped()) return { blocked: null };
-
-    const responseText = JSON.stringify(result);
-    const gate = await gateToolResponseText({
-      responseText,
-      toolName,
-      serverName: this.serverName,
-      policy: this.policyEngine,
-      requestId,
-      tenantId,
-    });
-    const inspect = gate.inspect;
-    if (inspect && !inspect.clean) {
-      const allMessages = findingsToMessages(inspect.findings);
-      Logger.warn(
-        `[http-proxy:${this.serverName}] Suspicious response from '${toolName}': ${allMessages.slice(0, 5).join('; ')}`,
-      );
-      StructuredLogger.info({
-        event: 'response_flagged',
-        serverName: this.serverName,
-        toolName,
-        detections: allMessages,
-        blocked: gate.outcome.action === 'block',
-      });
-    }
-
-    if (gate.outcome.action === 'redact' && gate.outcome.body) {
-      try {
-        const parsed = JSON.parse(gate.outcome.body) as unknown;
-        (response as { result: unknown }).result = injectRedactionMeta(parsed, gate.outcome.redactionReasons);
-      } catch {
-        /* keep upstream */
-      }
-      return { blocked: null, redactionReasons: gate.outcome.redactionReasons };
-    }
-
-    if (gate.outcome.action === 'block') {
-      return {
-        blocked: {
-          jsonrpc: '2.0',
-          id: requestId,
-          error: {
-            code: -32002,
-            message: gate.outcome.message,
-          },
-        },
-      };
-    }
-    return { blocked: null };
   }
 
   getPort(): number {

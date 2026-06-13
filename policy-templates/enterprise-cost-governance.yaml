@@ -1,10 +1,10 @@
 # Enterprise cost governance — rate limits + token budgets per tool/server
 #
 # Merge with base policy:
-#   mcp-guardian proxy --policy default-policy.yaml --policy policy-templates/enterprise-cost-governance.yaml
+#   mastyff-ai proxy --policy default-policy.yaml --policy policy-templates/enterprise-cost-governance.yaml
 # Or copy rules into your policy file.
 #
-# Daily USD cap (runtime, not YAML): set GUARDIAN_DAILY_BUDGET_USD on the proxy.
+# Daily USD cap (runtime, not YAML): set MASTYFF_AI_DAILY_BUDGET_USD on the proxy.
 # CostAuditor aggregates call_records.costUsd since UTC midnight.
 #
 version: '1.0'
@@ -17,7 +17,7 @@ policy:
       maxCallsPerMinute: 200
 
     - name: cost-rate-limit-expensive-tools
-      description: Stricter limit for high-cost MCP tools (scoped with rbac — required when GUARDIAN_STRICT_ALLOWLIST_RBAC=true)
+      description: Stricter limit for high-cost MCP tools (scoped with rbac — required when MASTYFF_AI_STRICT_ALLOWLIST_RBAC=true)
       action: block
       tools:
         allow:

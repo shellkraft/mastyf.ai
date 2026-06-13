@@ -61,12 +61,15 @@ export class PolicyEngine {
   private compiledArgPatterns: Map<string, { field: string; compiled: RegExp[]; rule: PolicyConfig['policy']['rules'][number] }[]> = new Map();
   private readonly policyEvalLock = new KeyedAsyncLock();
 
+  private compiledRbacClientIds: Map<string, RegExp[]> = new Map();
+
   constructor(config: PolicyConfig) {
     this.rules = config.policy.rules;
     this.mode = config.policy.mode;
     this.config = config;
     this.normalizer = getNormalizer(config.policy.unicode_strict !== false);
     this.compilePatterns();
+    this.compileRbacClientIds();
   }
 
   private compilePatterns(): void {
@@ -102,6 +105,23 @@ export class PolicyEngine {
     }
   }
 
+  private compileRbacClientIds(): void {
+    for (const rule of this.rules) {
+      if (rule.rbac?.clientIds?.length) {
+        const compiled: RegExp[] = [];
+        for (const pattern of rule.rbac.clientIds) {
+          try {
+            compiled.push(compilePolicyRegex(pattern, ''));
+          } catch (err) {
+            if (err instanceof UnsafePolicyRegexError) throw err;
+            Logger.warn(`Policy: invalid clientId regex in rule '${rule.name}': ${pattern} — skipping`);
+          }
+        }
+        this.compiledRbacClientIds.set(rule.name, compiled);
+      }
+    }
+  }
+
   private extractLeafValues(obj: unknown): string[] {
     return walkStringLeaves(obj).map((l) => l.value);
   }
@@ -130,7 +150,7 @@ export class PolicyEngine {
   }
 
   private policyEvalLockKey(ctx: CallContext): string {
-    const tenant = ctx.tenantId || process.env['GUARDIAN_TENANT_ID'] || 'default';
+    const tenant = ctx.tenantId || process.env['MASTYFF_AI_TENANT_ID'] || 'default';
     const clientId = ctx.agentIdentity?.clientId || ctx.agentIdentity?.sub || 'anon';
     return `${tenant}:${ctx.serverName}:${ctx.toolName}:${clientId}`;
   }
@@ -155,7 +175,7 @@ export class PolicyEngine {
   isOpaEnabled(): boolean {
     if (!process.env['OPA_URL']) return false;
     if (this.config.policy.opa === false) return false;
-    return this.config.policy.opa === true || process.env['GUARDIAN_OPA_ENABLED'] === 'true';
+    return this.config.policy.opa === true || process.env['MASTYFF_AI_OPA_ENABLED'] === 'true';
   }
 
   async evaluateAsync(context: CallContext): Promise<PolicyDecision> {
@@ -385,20 +405,14 @@ export class PolicyEngine {
       }
       if (rule.rbac.clientIds && rule.rbac.clientIds.length > 0) {
         const clientId = identity.clientId || '';
-        const matches = rule.rbac.clientIds.some(pattern => {
-          try {
-            return new RegExp(pattern).test(clientId);
-          } catch {
-            Logger.warn(`Policy: invalid clientId regex pattern in rule '${rule.name}': ${pattern}`);
-            return false;
-          }
-        });
+        const compiledIds = this.compiledRbacClientIds.get(rule.name) || [];
+        const matches = compiledIds.some(regex => safeRegexTest(regex, clientId, MAX_REGEX_INPUT_CHARS));
         if (!matches) {
           return { action: this.resolveAction(rule.action), rule: rule.name, reason: `Client ID '${clientId}' not allowed. Allowed patterns: [${rule.rbac.clientIds.join(', ')}]` };
         }
       }
       if (rule.rbac.tenants && rule.rbac.tenants.length > 0) {
-        const requestTenant = ctx.tenantId || process.env['GUARDIAN_TENANT_ID'] || 'default';
+        const requestTenant = ctx.tenantId || process.env['MASTYFF_AI_TENANT_ID'] || 'default';
         if (!rule.rbac.tenants.includes(requestTenant)) {
           return {
             action: this.resolveAction(rule.action),
@@ -410,7 +424,7 @@ export class PolicyEngine {
     }
 
     if (!skipLocalRateLimit) {
-      const tenant = ctx.tenantId || process.env['GUARDIAN_TENANT_ID'] || 'default';
+      const tenant = ctx.tenantId || process.env['MASTYFF_AI_TENANT_ID'] || 'default';
       const clientId = ctx.agentIdentity?.clientId || ctx.agentIdentity?.sub;
       const key = clientId
         ? `${tenant}:${ctx.serverName}:${ctx.toolName}:${clientId}`

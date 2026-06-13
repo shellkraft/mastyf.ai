@@ -13,23 +13,23 @@ import {
 import type { PolicyConfig } from '../../src/policy/policy-types.js';
 
 describe('corpus replay policy split', () => {
-  const prevPolicy = process.env.GUARDIAN_POLICY_PATH;
-  const prevReplay = process.env.GUARDIAN_CORPUS_REPLAY_POLICY_PATH;
+  const prevPolicy = process.env.MASTYFF_AI_POLICY_PATH;
+  const prevReplay = process.env.MASTYFF_AI_CORPUS_REPLAY_POLICY_PATH;
 
   beforeEach(() => {
-    process.env.GUARDIAN_POLICY_PATH = join(process.cwd(), 'policy-demo.yaml');
-    process.env.GUARDIAN_CORPUS_REPLAY_POLICY_PATH = join(process.cwd(), 'default-policy.yaml');
+    process.env.MASTYFF_AI_POLICY_PATH = join(process.cwd(), 'policy-demo.yaml');
+    process.env.MASTYFF_AI_CORPUS_REPLAY_POLICY_PATH = join(process.cwd(), 'default-policy.yaml');
   });
 
   afterEach(() => {
-    if (prevPolicy === undefined) delete process.env.GUARDIAN_POLICY_PATH;
-    else process.env.GUARDIAN_POLICY_PATH = prevPolicy;
-    if (prevReplay === undefined) delete process.env.GUARDIAN_CORPUS_REPLAY_POLICY_PATH;
-    else process.env.GUARDIAN_CORPUS_REPLAY_POLICY_PATH = prevReplay;
+    if (prevPolicy === undefined) delete process.env.MASTYFF_AI_POLICY_PATH;
+    else process.env.MASTYFF_AI_POLICY_PATH = prevPolicy;
+    if (prevReplay === undefined) delete process.env.MASTYFF_AI_CORPUS_REPLAY_POLICY_PATH;
+    else process.env.MASTYFF_AI_CORPUS_REPLAY_POLICY_PATH = prevReplay;
   });
 
   it('defaults corpus replay path to default-policy.yaml', () => {
-    delete process.env.GUARDIAN_CORPUS_REPLAY_POLICY_PATH;
+    delete process.env.MASTYFF_AI_CORPUS_REPLAY_POLICY_PATH;
     expect(corpusReplayPolicyPath()).toBe(join(process.cwd(), 'default-policy.yaml'));
   });
 
@@ -42,7 +42,7 @@ describe('corpus replay policy split', () => {
       category: 'path-traversal',
     };
 
-    const livePolicy = load(readFileSync(process.env.GUARDIAN_POLICY_PATH!, 'utf-8')) as PolicyConfig;
+    const livePolicy = load(readFileSync(process.env.MASTYFF_AI_POLICY_PATH!, 'utf-8')) as PolicyConfig;
     const liveEngine = new PolicyEngine(livePolicy);
     const replayEngine = loadCorpusReplayPolicyEngine();
 

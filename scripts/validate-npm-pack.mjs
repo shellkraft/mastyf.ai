@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Fail if `npm pack` would ship workspace: specs or install lifecycle scripts.
- * Run from package root (monorepo root for @mcp-guardian/server, or packages/cli).
+ * Run from package root (monorepo root for @mastyff-ai/server, or packages/cli).
  */
 import { execSync, spawnSync } from 'node:child_process';
 import { readFileSync, unlinkSync, existsSync } from 'node:fs';
@@ -47,7 +47,7 @@ try {
     }
   }
 
-  if (pkg.name === '@mcp-guardian/server') {
+  if (pkg.name === '@mastyff-ai/server') {
     try {
       execSync(
         `tar -xOf ${JSON.stringify(tgzPath)} package/deploy/dashboard-spa/out/index.html`,

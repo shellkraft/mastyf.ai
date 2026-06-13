@@ -89,7 +89,7 @@ function main() {
     input: JSON.stringify(pyInput),
     encoding: 'utf-8',
     cwd: join(ROOT, 'python'),
-    env: { ...process.env, PYTHONPATH: join(ROOT, 'python'), GUARDIAN_DISABLE_SEMANTIC: 'true' },
+    env: { ...process.env, PYTHONPATH: join(ROOT, 'python'), MASTYFF_AI_DISABLE_SEMANTIC: 'true' },
   });
   if (py.status !== 0) {
     console.error(py.stderr || py.stdout);

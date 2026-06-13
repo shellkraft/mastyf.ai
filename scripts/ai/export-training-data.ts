@@ -16,7 +16,7 @@ const OUT = outArg?.slice('--out='.length) || join(process.cwd(), 'exports', 'tr
 async function main(): Promise<void> {
   mkdirSync(dirname(OUT), { recursive: true });
   const tenantArg = process.argv.find((a) => a.startsWith('--tenant='));
-  const tenantId = tenantArg?.slice('--tenant='.length) || process.env.GUARDIAN_TENANT_ID || 'default';
+  const tenantId = tenantArg?.slice('--tenant='.length) || process.env.MASTYFF_AI_TENANT_ID || 'default';
   const lines: string[] = [];
 
   const semantic = await loadSemanticAuditRecordsAsync({

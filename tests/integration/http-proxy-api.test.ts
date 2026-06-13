@@ -99,10 +99,10 @@ function rawRequest(
 }
 
 describe('integration: HttpProxyServer HTTP API', () => {
-  const prevDpop = process.env.GUARDIAN_LEGACY_NO_DPOP;
+  const prevDpop = process.env.MASTYFF_AI_LEGACY_NO_DPOP;
 
   beforeAll(async () => {
-    process.env.GUARDIAN_LEGACY_NO_DPOP = 'true';
+    process.env.MASTYFF_AI_LEGACY_NO_DPOP = 'true';
     upstream = http.createServer((req, res) => {
       const chunks: Buffer[] = [];
       req.on('data', (c) => chunks.push(c));
@@ -130,8 +130,8 @@ describe('integration: HttpProxyServer HTTP API', () => {
 
   afterAll(async () => {
     await new Promise<void>((r) => upstream.close(() => r()));
-    if (prevDpop === undefined) delete process.env.GUARDIAN_LEGACY_NO_DPOP;
-    else process.env.GUARDIAN_LEGACY_NO_DPOP = prevDpop;
+    if (prevDpop === undefined) delete process.env.MASTYFF_AI_LEGACY_NO_DPOP;
+    else process.env.MASTYFF_AI_LEGACY_NO_DPOP = prevDpop;
   });
 
   describe('method forwarding', () => {
@@ -231,19 +231,19 @@ describe('integration: HttpProxyServer HTTP API', () => {
     it('forwards User-Agent', async () => {
       await request(proxyPort, {
         method: 'GET',
-        headers: { 'User-Agent': 'guardian-test/1.0' },
+        headers: { 'User-Agent': 'mastyff-ai-test/1.0' },
       });
-      expect(echoState.headers['user-agent']).toBe('guardian-test/1.0');
+      expect(echoState.headers['user-agent']).toBe('mastyff-ai-test/1.0');
     });
   });
 
   describe('tenant header', () => {
     let proxy: HttpProxyServer;
     let proxyPort = 0;
-    const prevTenant = process.env.GUARDIAN_TENANT_ID;
+    const prevTenant = process.env.MASTYFF_AI_TENANT_ID;
 
     beforeEach(async () => {
-      process.env.GUARDIAN_TENANT_ID = 'default';
+      process.env.MASTYFF_AI_TENANT_ID = 'default';
       proxy = await startProxy(new PolicyEngine(blockPolicy));
       proxyPort = proxy.getPort();
     });
@@ -253,15 +253,15 @@ describe('integration: HttpProxyServer HTTP API', () => {
     });
 
     afterAll(() => {
-      if (prevTenant === undefined) delete process.env.GUARDIAN_TENANT_ID;
-      else process.env.GUARDIAN_TENANT_ID = prevTenant;
+      if (prevTenant === undefined) delete process.env.MASTYFF_AI_TENANT_ID;
+      else process.env.MASTYFF_AI_TENANT_ID = prevTenant;
     });
 
-    it('accepts X-Guardian-Tenant header', async () => {
+    it('accepts X-Mastyff-Ai-Tenant header', async () => {
       const res = await request(proxyPort, {
         method: 'POST',
         body: toolsCall(2, 'read_file'),
-        headers: { 'X-Guardian-Tenant': 'acme-corp' },
+        headers: { 'X-Mastyff-Ai-Tenant': 'acme-corp' },
       });
       expect(res.status).toBe(200);
     });
@@ -269,7 +269,7 @@ describe('integration: HttpProxyServer HTTP API', () => {
     it('rejects invalid tenant id', async () => {
       const res = await request(proxyPort, {
         method: 'GET',
-        headers: { 'X-Guardian-Tenant': 'bad tenant!' },
+        headers: { 'X-Mastyff-Ai-Tenant': 'bad tenant!' },
       });
       expect(res.status).toBe(400);
     });
@@ -294,7 +294,7 @@ describe('integration: HttpProxyServer HTTP API', () => {
         body: toolsCall(10, 'execute_command', { cmd: 'ls' }),
       });
       expect(res.status).toBe(403);
-      expect(res.text).toMatch(/Blocked by MCP Guardian/);
+      expect(res.text).toMatch(/Blocked by Mastyff AI/);
     });
 
     it('blocks eval tool', async () => {
@@ -511,18 +511,18 @@ describe('integration: HttpProxyServer HTTP API', () => {
   describe('HTTP security hardening', () => {
     let proxy: HttpProxyServer;
     let proxyPort = 0;
-    const prevMaxBody = process.env.GUARDIAN_HTTP_MAX_BODY_BYTES;
+    const prevMaxBody = process.env.MASTYFF_AI_HTTP_MAX_BODY_BYTES;
 
     beforeEach(async () => {
-      process.env.GUARDIAN_HTTP_MAX_BODY_BYTES = '2048';
+      process.env.MASTYFF_AI_HTTP_MAX_BODY_BYTES = '2048';
       proxy = await startProxy(new PolicyEngine(blockPolicy));
       proxyPort = proxy.getPort();
     });
 
     afterEach(async () => {
       await proxy.stop();
-      if (prevMaxBody === undefined) delete process.env.GUARDIAN_HTTP_MAX_BODY_BYTES;
-      else process.env.GUARDIAN_HTTP_MAX_BODY_BYTES = prevMaxBody;
+      if (prevMaxBody === undefined) delete process.env.MASTYFF_AI_HTTP_MAX_BODY_BYTES;
+      else process.env.MASTYFF_AI_HTTP_MAX_BODY_BYTES = prevMaxBody;
     });
 
     it('forwards query string with shell metacharacters encoded', async () => {

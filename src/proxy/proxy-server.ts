@@ -17,7 +17,7 @@ import { applyGeoToCallContext } from '../utils/request-geo-context.js';
 import { StructuredLogger } from '../utils/structured-logger.js';
 import { OAuthValidator } from '../auth/oauth.js';
 import { AuthValidationResult, AgentIdentity } from '../auth/auth-types.js';
-import { createSessionCache, validateSessionToken, type GuardianSessionCache } from '../auth/session-factory.js';
+import { createSessionCache, validateSessionToken, type MastyffAiSessionCache } from '../auth/session-factory.js';
 import { getCircuitBreaker } from '../utils/circuit-breaker-registry.js';
 import { ProxyRequestContextStore } from './proxy-request-context.js';
 import { resolveTenantContext, DEFAULT_TENANT_ID, InvalidTenantIdError } from '../tenant/resolve-tenant.js';
@@ -109,7 +109,7 @@ export class McpProxyServer {
   private policyEngine: PolicyEngine | null;
   private tenantPolicyRegistry: TenantPolicyRegistry | null;
   private authValidator: OAuthValidator | null;
-  private sessionCache: GuardianSessionCache | null;
+  private sessionCache: MastyffAiSessionCache | null;
   private readonly clientInputQueue = new RequestIdLock();
   private stopMemoryMonitor: (() => void) | null = null;
 
@@ -159,7 +159,7 @@ export class McpProxyServer {
       'PATH', 'HOME', 'USER', 'LANG', 'LC_ALL', 'TZ',
       'NODE_PATH', 'NODE_ENV',
       // Allow explicit MCP-related env vars
-      'MCP_GUARDIAN_MAX_PAYLOAD_BYTES',
+      'MASTYFF_AI_MAX_PAYLOAD_BYTES',
     ]);
     for (const [k, v] of Object.entries(process.env)) {
       if (v !== undefined && SAFE_ENV_KEYS.has(k)) {
@@ -171,7 +171,7 @@ export class McpProxyServer {
 
     Metrics.circuitBreakerState.set({ server_name: this.serverName }, 0);
     this.spawnChild();
-    if (process.env['GUARDIAN_MEMORY_MONITOR'] !== 'false') {
+    if (process.env['MASTYFF_AI_MEMORY_MONITOR'] !== 'false') {
       this.stopMemoryMonitor = startMemoryMonitor({ label: this.serverName });
     }
 
@@ -279,7 +279,7 @@ export class McpProxyServer {
               latencyMs: proxyLatencyMs,
             });
             if (rpGate.blocked) {
-              this.sendError(msg.id, -32002, rpGate.reason ?? 'Resource/prompt blocked by MCP Guardian');
+              this.sendError(msg.id, -32002, rpGate.reason ?? 'Resource/prompt blocked by Mastyff AI');
               this.requestContexts.delete(msg.id);
               return;
             }
@@ -464,7 +464,7 @@ export class McpProxyServer {
           this.sendError(
             rid,
             -32700,
-            `MCP Guardian: malformed JSON from upstream MCP server`,
+            `Mastyff AI: malformed JSON from upstream MCP server`,
           );
           this.requestContexts.delete(rid);
           this.currentRequestId = null;
@@ -532,7 +532,7 @@ export class McpProxyServer {
         blockReason: 'request_timeout',
         proxyLatencyMs: durationMs,
       });
-      this.sendError(requestId, -32006, `MCP Guardian: ${reason}`, { rule: 'request-timeout' });
+      this.sendError(requestId, -32006, `Mastyff AI: ${reason}`, { rule: 'request-timeout' });
       this.requestContexts.delete(requestId);
       this.currentRequestId = null;
     }, resolveToolTimeoutMs(toolName, this.requestTimeoutMs));
@@ -621,7 +621,7 @@ export class McpProxyServer {
       try {
         const msg = JSON.parse(raw);
         if (hasJsonRpcId(msg.id)) {
-          this.sendError(msg.id, -32001, 'Payload exceeds MCP Guardian size limit');
+          this.sendError(msg.id, -32001, 'Payload exceeds MCP Mastyff AI size limit');
         }
       } catch {
         // Non-JSON oversize — silently drop
@@ -691,7 +691,7 @@ export class McpProxyServer {
           this.sendError(
             msg.id,
             -32005,
-            `MCP Guardian: proxy overloaded (${this.requestContexts.size}/${maxInflightEarly} in flight)`,
+            `Mastyff AI: proxy overloaded (${this.requestContexts.size}/${maxInflightEarly} in flight)`,
             { rule: 'proxy-max-inflight' },
           );
           Metrics.requestsTotal.inc({
@@ -720,7 +720,7 @@ export class McpProxyServer {
             'tool-fingerprint-mismatch',
             'Tool definitions changed mid-session (rug-pull detected)',
           );
-          this.sendError(msg.id, -32001, 'Blocked by MCP Guardian policy: tool definitions changed mid-session (rug-pull)', {
+          this.sendError(msg.id, -32001, 'Blocked by MCP Mastyff AI policy: tool definitions changed mid-session (rug-pull)', {
             rule: 'tool-fingerprint-mismatch',
             policy: this.policyEngine?.getMode() ?? 'block',
           });
@@ -771,7 +771,7 @@ export class McpProxyServer {
               requestTenantId,
               msg.id,
             );
-            this.sendError(msg.id, -32001, `Blocked by MCP Guardian: ${expandedGuard.reason}`, {
+            this.sendError(msg.id, -32001, `Blocked by Mastyff AI: ${expandedGuard.reason}`, {
               rule: 'payload-expanded-limit',
             });
             return;
@@ -784,7 +784,7 @@ export class McpProxyServer {
           if (multimodalFindings.length > 0 && this.policyEngine?.getMode() === 'block') {
             const mmReason = multimodalFindings.map((f) => f.description).slice(0, 3).join('; ');
             this.recordDeniedCall(toolName, requestTokens, Date.now() - proxyStartTime, 'multimodal-injection', mmReason);
-            this.sendError(msg.id, -32001, `Blocked by MCP Guardian policy: ${mmReason}`, {
+            this.sendError(msg.id, -32001, `Blocked by MCP Mastyff AI policy: ${mmReason}`, {
               rule: 'multimodal-injection',
               policy: 'block',
             });
@@ -815,7 +815,7 @@ export class McpProxyServer {
               if (entropyFindings.length > 0) {
                 const entropyReason = `High-entropy encoded payload in '${toolName}' arguments (${entropyFindings[0].kind}, entropy=${entropyFindings[0].entropy.toFixed(2)})`;
                 this.recordDeniedCall(toolName, requestTokens, Date.now() - proxyStartTime, 'arg-entropy', entropyReason);
-                this.sendError(msg.id, -32001, `Blocked by MCP Guardian policy: ${entropyReason}`, {
+                this.sendError(msg.id, -32001, `Blocked by MCP Mastyff AI policy: ${entropyReason}`, {
                   rule: 'arg-entropy',
                   policy: 'block',
                 });
@@ -829,7 +829,7 @@ export class McpProxyServer {
               this.recordDeniedCall(toolName, requestTokens, Date.now() - proxyStartTime, 'secret-scan', dlpReason);
               this.sendError(
                 msg.id, -32001,
-                `Blocked by MCP Guardian policy: ${dlpReason}`,
+                `Blocked by MCP Mastyff AI policy: ${dlpReason}`,
                 { rule: 'secret-scan', policy: 'block' },
               );
               StructuredLogger.info({
@@ -862,7 +862,7 @@ export class McpProxyServer {
         // ── OAuth 2.1 JWT validation ────────────────────────
         if (this.authValidator) {
           const msgAuth = OAuthValidator.extractAuthFromMcpMessage(msg);
-          const stickySessionAuth = process.env['GUARDIAN_STICKY_SESSION_AUTH'] === 'true';
+          const stickySessionAuth = process.env['MASTYFF_AI_STICKY_SESSION_AUTH'] === 'true';
           const authHeader = msgAuth ?? (stickySessionAuth ? this.sessionAuthHeader : undefined);
 
           const token = OAuthValidator.extractToken(authHeader);
@@ -967,7 +967,7 @@ export class McpProxyServer {
           }
         }
 
-        // ── CVE gate (latest security_scans row; run preflight or `mcp-guardian scan`) ──
+        // ── CVE gate (latest security_scans row; run preflight or `mastyff-ai scan`) ──
         if (this.policyEngine?.getMode() === 'block') {
           const cveGate = await evaluateCveGate(this.db, this.serverName);
           if (cveGate.block) {
@@ -991,7 +991,7 @@ export class McpProxyServer {
               'cve',
             );
             Metrics.requestsTotal.inc({ server_name: this.serverName, decision: 'block', authn_success: String(authnSuccess) });
-            this.sendError(msg.id, -32001, `Blocked by MCP Guardian CVE policy: ${cveReason}`, {
+            this.sendError(msg.id, -32001, `Blocked by MCP Mastyff AI CVE policy: ${cveReason}`, {
               rule: 'cve-gate',
               policy: 'block',
             });
@@ -1109,7 +1109,7 @@ export class McpProxyServer {
             );
             Metrics.requestsTotal.inc({ server_name: this.serverName, decision: 'block', authn_success: String(authnSuccess) });
             void alertPolicyBlock(this.serverName, toolName, decision.rule, decision.reason, requestId);
-            this.sendError(msg.id, -32001, `Blocked by MCP Guardian policy: ${decision.reason}`, {
+            this.sendError(msg.id, -32001, `Blocked by MCP Mastyff AI policy: ${decision.reason}`, {
               rule: decision.rule,
               policy: policyMode,
             });
@@ -1128,7 +1128,7 @@ export class McpProxyServer {
                 requestTokens,
                 Date.now() - proxyStartTime,
                 'semantic-degraded',
-                'Semantic LLM layer unavailable (GUARDIAN_SEMANTIC_STRICT=true)',
+                'Semantic LLM layer unavailable (MASTYFF_AI_SEMANTIC_STRICT=true)',
               );
               this.sendError(msg.id, -32001, 'Blocked: semantic LLM layer unavailable', {
                 rule: 'semantic-degraded',
@@ -1150,7 +1150,7 @@ export class McpProxyServer {
                 requestArguments,
                 requestTenantId,
               );
-              this.sendError(msg.id, -32001, `Blocked by MCP Guardian semantic gate: ${semGate.reason}`, {
+              this.sendError(msg.id, -32001, `Blocked by MCP Mastyff AI semantic gate: ${semGate.reason}`, {
                 rule: semGate.rule,
                 policy: 'block',
               });
@@ -1184,7 +1184,7 @@ export class McpProxyServer {
                 requestTenantId,
                 msg.id,
               );
-              this.sendError(msg.id, -32001, `Blocked by MCP Guardian: ${agenticHook.reason}`, {
+              this.sendError(msg.id, -32001, `Blocked by Mastyff AI: ${agenticHook.reason}`, {
                 rule: 'prompt-injection',
                 policy: 'block',
               });

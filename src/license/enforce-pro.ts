@@ -14,17 +14,17 @@ import { isCiTokenCached, verifyCiToken } from './ci-token.js';
 export function formatProRequiredMessage(feature: string): string {
   const checkout = getProCheckoutUrl();
   const controlPlane =
-    process.env['GUARDIAN_CONTROL_PLANE_URL'] ?? 'https://mcp-guardian-cloud.vercel.app';
+    process.env['MASTYFF_AI_CONTROL_PLANE_URL'] ?? 'https://mastyff-ai-cloud.vercel.app';
   return [
-    `MCP Guardian Pro required for feature: ${feature}`,
+    `MCP Mastyff AI Pro required for feature: ${feature}`,
     '',
     'Set on the host where you run this command:',
-    '  GUARDIAN_LICENSE_KEY=<your-key-from-purchase-email>',
-    `  GUARDIAN_CONTROL_PLANE_URL=${controlPlane.replace(/\/$/, '')}`,
+    '  MASTYFF_AI_LICENSE_KEY=<your-key-from-purchase-email>',
+    `  MASTYFF_AI_CONTROL_PLANE_URL=${controlPlane.replace(/\/$/, '')}`,
     '',
     checkout ? `Purchase: ${checkout}` : '',
-    'Setup: https://github.com/rudraneel93/mcp-guardian/blob/master/docs/PRO_SETUP.md',
-    'License terms: https://github.com/rudraneel93/mcp-guardian/blob/master/docs/PRO_LICENSE.md',
+    'Setup: https://github.com/mastyff-ai/mastyff-ai/blob/master/docs/PRO_SETUP.md',
+    'License terms: https://github.com/mastyff-ai/mastyff-ai/blob/master/docs/PRO_LICENSE.md',
   ]
     .filter(Boolean)
     .join('\n');

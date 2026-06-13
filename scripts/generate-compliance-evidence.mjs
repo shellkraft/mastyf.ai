@@ -85,8 +85,8 @@ async function collectEvidence() {
   }
 
   // ── Control A.12.4: Logging and Monitoring ────────────────────────
-  const policyAudit = join(homedir(), '.mcp-guardian', 'policy-audit.jsonl');
-  const accessLog = join(homedir(), '.mcp-guardian', 'dashboard-access.jsonl');
+  const policyAudit = join(homedir(), '.mastyff-ai', 'policy-audit.jsonl');
+  const accessLog = join(homedir(), '.mastyff-ai', 'dashboard-access.jsonl');
   const auditEntries = [];
   if (existsSync(policyAudit)) {
     const lines = readFileSync(policyAudit, 'utf-8').split('\n').filter(Boolean);
@@ -131,9 +131,9 @@ async function collectEvidence() {
     controlId: 'CC6.1',
     controlName: 'Logical and Physical Access Controls',
     evidence: {
-      dpopEnabled: process.env['GUARDIAN_REQUIRE_DPOP'] === 'true',
+      dpopEnabled: process.env['MASTYFF_AI_REQUIRE_DPOP'] === 'true',
       mtlsEnabled: process.env['MCP_TLS_ENABLED'] === 'true',
-      auditHashChain: process.env['GUARDIAN_AUDIT_HASH_CHAIN'] === 'true',
+      auditHashChain: process.env['MASTYFF_AI_AUDIT_HASH_CHAIN'] === 'true',
       dashboardAuthDisabled: process.env['DASHBOARD_AUTH_DISABLED'] === 'true',
       rbacEnabled: true,
     },
@@ -148,7 +148,7 @@ async function collectEvidence() {
       pciDssTemplate: existsSync(join(REPO_ROOT, 'policy-templates', 'pci-dss-masking.yaml')),
       dataResidencyTemplate: existsSync(join(REPO_ROOT, 'policy-templates', 'data-residency.yaml')),
       gxpTemplate: existsSync(join(REPO_ROOT, 'policy-templates', 'gxp-compliance.yaml')),
-      encryptionAtRest: process.env['GUARDIAN_ENCRYPTION_KEY'] ? 'Enabled' : 'Not configured',
+      encryptionAtRest: process.env['MASTYFF_AI_ENCRYPTION_KEY'] ? 'Enabled' : 'Not configured',
     },
   });
 
@@ -171,10 +171,10 @@ async function collectEvidence() {
     controlId: 'SIEM-001',
     controlName: 'SIEM Integration Status',
     evidence: {
-      enabled: process.env['GUARDIAN_SIEM_ENABLED'] === 'true',
-      protocol: process.env['GUARDIAN_SIEM_PROTOCOL'] || 'cef',
-      endpoint: process.env['GUARDIAN_SIEM_ENDPOINT'] || 'not configured',
-      batchSize: parseInt(process.env['GUARDIAN_SIEM_BATCH_SIZE'] || '50', 10),
+      enabled: process.env['MASTYFF_AI_SIEM_ENABLED'] === 'true',
+      protocol: process.env['MASTYFF_AI_SIEM_PROTOCOL'] || 'cef',
+      endpoint: process.env['MASTYFF_AI_SIEM_ENDPOINT'] || 'not configured',
+      batchSize: parseInt(process.env['MASTYFF_AI_SIEM_BATCH_SIZE'] || '50', 10),
     },
   });
 
@@ -183,10 +183,10 @@ async function collectEvidence() {
     controlId: 'AI-001',
     controlName: 'Anomaly Detection Status',
     evidence: {
-      anomalyEngineEnabled: process.env['GUARDIAN_ANOMALY_BLOCK'] === 'true',
-      semanticAsyncEnabled: process.env['GUARDIAN_SEMANTIC_ASYNC'] === 'true',
-      llmEnabled: process.env['GUARDIAN_LLM_ENABLED'] === 'true',
-      threatResearchEnabled: process.env['GUARDIAN_THREAT_RESEARCH_AUTO'] === 'true',
+      anomalyEngineEnabled: process.env['MASTYFF_AI_ANOMALY_BLOCK'] === 'true',
+      semanticAsyncEnabled: process.env['MASTYFF_AI_SEMANTIC_ASYNC'] === 'true',
+      llmEnabled: process.env['MASTYFF_AI_LLM_ENABLED'] === 'true',
+      threatResearchEnabled: process.env['MASTYFF_AI_THREAT_RESEARCH_AUTO'] === 'true',
     },
   });
 
@@ -205,7 +205,7 @@ async function collectEvidence() {
 }
 
 function signEvidencePayload(payloadText) {
-  const key = process.env['GUARDIAN_EVIDENCE_SIGNING_KEY'];
+  const key = process.env['MASTYFF_AI_EVIDENCE_SIGNING_KEY'];
   if (!key) return null;
   return createHmac('sha256', key).update(payloadText).digest('hex');
 }
@@ -225,7 +225,7 @@ async function main() {
         {
           algorithm: 'hmac-sha256',
           signature: sig,
-          keyHint: process.env['GUARDIAN_EVIDENCE_SIGNING_KEY_ID'] || 'default',
+          keyHint: process.env['MASTYFF_AI_EVIDENCE_SIGNING_KEY_ID'] || 'default',
           generatedAt: new Date().toISOString(),
           target: OUTPUT_FILE,
         },

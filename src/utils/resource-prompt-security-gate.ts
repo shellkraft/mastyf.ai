@@ -35,7 +35,7 @@ export function gateResourceOrPromptText(
   method: string,
   result: unknown,
 ): { blocked: boolean; reason?: string; sanitized?: unknown } {
-  if (process.env.GUARDIAN_RESOURCE_PROMPT_GUARD === 'false') {
+  if (process.env.MASTYFF_AI_RESOURCE_PROMPT_GUARD === 'false') {
     return { blocked: false };
   }
   const text = extractText(method, result);

@@ -98,8 +98,8 @@ describe('enterprise five mitigations', () => {
     });
 
     it('PolicyEngine applies min-eval timing envelope on pass', () => {
-      const prev = process.env.GUARDIAN_POLICY_TIMING_ENVELOPE;
-      process.env.GUARDIAN_POLICY_TIMING_ENVELOPE = 'true';
+      const prev = process.env.MASTYFF_AI_POLICY_TIMING_ENVELOPE;
+      process.env.MASTYFF_AI_POLICY_TIMING_ENVELOPE = 'true';
       try {
         const engine = new PolicyEngine({
           version: '1.0',
@@ -109,8 +109,8 @@ describe('enterprise five mitigations', () => {
         engine.evaluate(ctx('noop', { x: 1 }));
         expect(Date.now() - t0).toBeGreaterThanOrEqual(20);
       } finally {
-        if (prev === undefined) delete process.env.GUARDIAN_POLICY_TIMING_ENVELOPE;
-        else process.env.GUARDIAN_POLICY_TIMING_ENVELOPE = prev;
+        if (prev === undefined) delete process.env.MASTYFF_AI_POLICY_TIMING_ENVELOPE;
+        else process.env.MASTYFF_AI_POLICY_TIMING_ENVELOPE = prev;
       }
     });
   });

@@ -39,13 +39,13 @@ function ctx(
 describe('timing side-channel (enterprise)', () => {
   beforeEach(() => {
     resetTimingProbeCounters();
-    process.env['GUARDIAN_POLICY_TIMING_ENVELOPE'] = 'true';
-    process.env['MCP_GUARDIAN_POLICY_MIN_EVAL_MS'] = '20';
+    process.env['MASTYFF_AI_POLICY_TIMING_ENVELOPE'] = 'true';
+    process.env['MASTYFF_AI_POLICY_MIN_EVAL_MS'] = '20';
   });
 
   afterEach(() => {
-    delete process.env['GUARDIAN_POLICY_TIMING_ENVELOPE'];
-    delete process.env['MCP_GUARDIAN_POLICY_MIN_EVAL_MS'];
+    delete process.env['MASTYFF_AI_POLICY_TIMING_ENVELOPE'];
+    delete process.env['MASTYFF_AI_POLICY_MIN_EVAL_MS'];
   });
 
   describe('timing-guard patterns', () => {
@@ -122,8 +122,8 @@ describe('timing side-channel (enterprise)', () => {
       expect(Date.now() - t0).toBeGreaterThanOrEqual(policyMinEvalMs() - 2);
     });
 
-    it('can be disabled via GUARDIAN_POLICY_TIMING_ENVELOPE=false', () => {
-      process.env['GUARDIAN_POLICY_TIMING_ENVELOPE'] = 'false';
+    it('can be disabled via MASTYFF_AI_POLICY_TIMING_ENVELOPE=false', () => {
+      process.env['MASTYFF_AI_POLICY_TIMING_ENVELOPE'] = 'false';
       expect(isPolicyTimingEnvelopeEnabled()).toBe(false);
       const t0 = Date.now();
       waitPolicyTimingEnvelopeSync(t0);

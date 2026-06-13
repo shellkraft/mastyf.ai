@@ -22,7 +22,7 @@ export class PostgresDatabase implements IDatabase {
   private connectionString: string;
 
   constructor() {
-    this.connectionString = process.env['DATABASE_URL'] || 'postgresql://localhost:5432/mcp_guardian';
+    this.connectionString = process.env['DATABASE_URL'] || 'postgresql://localhost:5432/mastyff_ai';
   }
 
   /** Run query under Postgres RLS session when enabled and tenantId is set. */
@@ -43,7 +43,7 @@ export class PostgresDatabase implements IDatabase {
     if (this.initialized) return;
 
     const { Pool } = await loadPg();
-    const poolMax = parseInt(process.env['GUARDIAN_PG_POOL_MAX'] ?? '10', 10);
+    const poolMax = parseInt(process.env['MASTYFF_AI_PG_POOL_MAX'] ?? '10', 10);
     this.pool = new Pool({
       connectionString: this.connectionString,
       max: Number.isFinite(poolMax) && poolMax > 0 ? poolMax : 10,

@@ -5,14 +5,14 @@ const links = [
   { href: '/dashboard/fleet', label: 'Fleet' },
   { href: '/dashboard/policy', label: 'Policy' },
   { href: '/dashboard/settings', label: 'Settings' },
-  { href: '/dashboard/connect', label: 'Connect Guardian' },
+  { href: '/dashboard/connect', label: 'Connect MastyffAi' },
 ];
 
 export function DashboardNav() {
   return (
     <nav className="dashboard-nav">
       <div className="brand">
-        <Link href="/dashboard">MCP Guardian Cloud</Link>
+        <Link href="/dashboard">MCP Mastyff AI Cloud</Link>
       </div>
       <div className="nav-links">
         {links.map((l) => (

@@ -52,7 +52,7 @@ const EXFIL_BODY_HINTS =
   /\b(?:previous|prior|last|result|output|response|file\s+contents|data\s+from)\b/i;
 
 export function flowSessionKey(ctx: CallContext): string {
-  const tenant = ctx.tenantId || process.env['GUARDIAN_TENANT_ID'] || 'default';
+  const tenant = ctx.tenantId || process.env['MASTYFF_AI_TENANT_ID'] || 'default';
   const sub = ctx.agentIdentity?.sub || ctx.agentIdentity?.clientId || 'anon';
   return `${tenant}:${ctx.serverName}:${sub}`;
 }

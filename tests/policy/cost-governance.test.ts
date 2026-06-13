@@ -62,21 +62,21 @@ describe('enterprise cost governance policy', () => {
   });
 });
 
-describe('GUARDIAN_DAILY_BUDGET_USD', () => {
-  const prev = process.env.GUARDIAN_DAILY_BUDGET_USD;
+describe('MASTYFF_AI_DAILY_BUDGET_USD', () => {
+  const prev = process.env.MASTYFF_AI_DAILY_BUDGET_USD;
 
   afterEach(() => {
-    if (prev === undefined) delete process.env.GUARDIAN_DAILY_BUDGET_USD;
-    else process.env.GUARDIAN_DAILY_BUDGET_USD = prev;
+    if (prev === undefined) delete process.env.MASTYFF_AI_DAILY_BUDGET_USD;
+    else process.env.MASTYFF_AI_DAILY_BUDGET_USD = prev;
   });
 
   it('reads daily cap from env', () => {
-    process.env.GUARDIAN_DAILY_BUDGET_USD = '42.5';
+    process.env.MASTYFF_AI_DAILY_BUDGET_USD = '42.5';
     expect(getDailyBudgetCapUsd()).toBe(42.5);
   });
 
   it('detects exceeded daily spend', async () => {
-    process.env.GUARDIAN_DAILY_BUDGET_USD = '1';
+    process.env.MASTYFF_AI_DAILY_BUDGET_USD = '1';
     const db = new HistoryDatabase(':memory:');
     const auditor = new CostAuditor(new PricingClient(), db);
     await db.addCallRecord({

@@ -19,7 +19,7 @@ describe('Proxy-to-Audit Integration', () => {
   };
 
   it('should capture real tokens via proxy and produce accurate cost report', async () => {
-    process.env.GUARDIAN_MODEL = 'gpt-4o';
+    process.env.MASTYFF_AI_MODEL = 'gpt-4o';
     const db = new HistoryDatabase(':memory:');
     const pricing = new PricingClient();
 

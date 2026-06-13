@@ -3,15 +3,15 @@
  *
  * Replaces the previous no-op endpoints that just returned a static OK message.
  * The scheduler:
- *   - Persists state to `~/.mcp-guardian/scheduler-state.json` so the
+ *   - Persists state to `~/.mastyff-ai/scheduler-state.json` so the
  *     existing `/api/threat-discovery/scheduler/status` reader keeps working.
  *   - Runs Auto-Threat-Research on a configurable interval per tenant.
- *   - Survives proxy restarts when GUARDIAN_THREAT_DISCOVERY_AUTOSTART=true
+ *   - Survives proxy restarts when MASTYFF_AI_THREAT_DISCOVERY_AUTOSTART=true
  *     by checking the persisted `running` flag on import.
  *
  * Environment:
- *   GUARDIAN_THREAT_DISCOVERY_INTERVAL_MS  default 3_600_000 (1h)
- *   GUARDIAN_THREAT_DISCOVERY_AUTOSTART    'true' to auto-start at proxy boot
+ *   MASTYFF_AI_THREAT_DISCOVERY_INTERVAL_MS  default 3_600_000 (1h)
+ *   MASTYFF_AI_THREAT_DISCOVERY_AUTOSTART    'true' to auto-start at proxy boot
  */
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
@@ -43,11 +43,11 @@ interface RunnerHandle {
 const DEFAULT_INTERVAL_MS = 60 * 60 * 1000; // 1h
 
 function stateFilePath(): string {
-  return join(homedir(), '.mcp-guardian', 'scheduler-state.json');
+  return join(homedir(), '.mastyff-ai', 'scheduler-state.json');
 }
 
 function readIntervalMs(): number {
-  const raw = parseInt(process.env.GUARDIAN_THREAT_DISCOVERY_INTERVAL_MS || '', 10);
+  const raw = parseInt(process.env.MASTYFF_AI_THREAT_DISCOVERY_INTERVAL_MS || '', 10);
   if (Number.isFinite(raw) && raw >= 60_000) return raw;
   return DEFAULT_INTERVAL_MS;
 }
@@ -258,7 +258,7 @@ export function getSchedulerStatus(tenantId: string): SchedulerState {
 
 /** Auto-start at proxy boot if env flag is set. Called from dashboard-server start path. */
 export function maybeAutoStart(tenantId: string): void {
-  if (process.env.GUARDIAN_THREAT_DISCOVERY_AUTOSTART === 'true') {
+  if (process.env.MASTYFF_AI_THREAT_DISCOVERY_AUTOSTART === 'true') {
     Logger.info('[scheduler] AUTOSTART=true — starting Threat Discovery scheduler');
     startScheduler(tenantId);
   }

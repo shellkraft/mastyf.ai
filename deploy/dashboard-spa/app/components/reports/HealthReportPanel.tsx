@@ -5,7 +5,7 @@ import {
   downloadMcpHealthReport,
   fetchMcpHealthReport,
   type McpHealthReportResponse,
-} from '@/lib/guardian-api';
+} from '@/lib/mastyff-ai-api';
 import { useCurrentWindowDays } from '../dashboard/DashboardWindowContext';
 import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';

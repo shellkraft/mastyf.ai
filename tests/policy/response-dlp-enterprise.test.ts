@@ -6,11 +6,11 @@ import {
 } from '../../src/policy/response-dlp.js';
 
 describe('response DLP enterprise', () => {
-  const prev = process.env.GUARDIAN_RESPONSE_DLP_MODE;
+  const prev = process.env.MASTYFF_AI_RESPONSE_DLP_MODE;
 
   afterEach(() => {
-    if (prev) process.env.GUARDIAN_RESPONSE_DLP_MODE = prev;
-    else delete process.env.GUARDIAN_RESPONSE_DLP_MODE;
+    if (prev) process.env.MASTYFF_AI_RESPONSE_DLP_MODE = prev;
+    else delete process.env.MASTYFF_AI_RESPONSE_DLP_MODE;
   });
 
   it('detects expanded PII patterns', () => {
@@ -19,7 +19,7 @@ describe('response DLP enterprise', () => {
   });
 
   it('redact mode scrubs sensitive spans', () => {
-    process.env.GUARDIAN_RESPONSE_DLP_MODE = 'redact';
+    process.env.MASTYFF_AI_RESPONSE_DLP_MODE = 'redact';
     const body = 'user ssn 123-45-6789 ok';
     const r = evaluateResponseDlp('t', 's', body);
     expect(r.mode).toBe('redact');
@@ -29,14 +29,14 @@ describe('response DLP enterprise', () => {
   });
 
   it('redact mode preserves line structure for labeled secrets', () => {
-    process.env.GUARDIAN_RESPONSE_DLP_MODE = 'redact';
+    process.env.MASTYFF_AI_RESPONSE_DLP_MODE = 'redact';
     const r = evaluateResponseDlp('t', 's', 'Database password: supersecret123');
     expect(r.redactedBody).toContain('Database password: [REDACTED]');
     expect(r.redactedBody).not.toContain('supersecret123');
   });
 
   it('audit mode never blocks', () => {
-    process.env.GUARDIAN_RESPONSE_DLP_MODE = 'audit';
+    process.env.MASTYFF_AI_RESPONSE_DLP_MODE = 'audit';
     const r = evaluateResponseDlp('t', 's', 'AKIAIOSFODNN7EXAMPLE');
     expect(getResponseDlpMode()).toBe('audit');
     expect(shouldBlockResponseDlp(r)).toBe(false);

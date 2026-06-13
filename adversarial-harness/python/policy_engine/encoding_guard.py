@@ -31,7 +31,7 @@ def _decoded_suspicious(text: str) -> bool:
 
 
 def is_encoding_guard_enabled() -> bool:
-    return os.environ.get("GUARDIAN_ENCODING_GUARD") != "false"
+    return os.environ.get("MASTYFF_AI_ENCODING_GUARD") != "false"
 
 
 def _try_decode_base64(b64: str) -> Optional[str]:

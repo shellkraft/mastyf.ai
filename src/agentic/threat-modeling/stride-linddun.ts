@@ -79,7 +79,7 @@ export function buildDfdFromConfig(
 ): { nodes: DfdNode[]; edges: DfdEdge[] } {
   const nodes: DfdNode[] = [
     { id: 'client', type: 'client', label: 'AI Agent / Client' },
-    { id: 'proxy', type: 'proxy', label: 'MCP Guardian Proxy' },
+    { id: 'proxy', type: 'proxy', label: 'MCP Mastyff AI Proxy' },
   ];
   const edges: DfdEdge[] = [{ from: 'client', to: 'proxy', label: 'JSON-RPC' }];
 
@@ -144,7 +144,7 @@ export function controlMapperMitigations(activePolicies: string[] = []): string[
   if (activePolicies.some(p => /rate|limit|token/i.test(p))) {
     mitigations.push('CC6.6 — Rate limiting controls configured');
   }
-  mitigations.push('CC6.7 — MCP Guardian audit trail captures tool-call decisions');
+  mitigations.push('CC6.7 — MCP Mastyff AI audit trail captures tool-call decisions');
   mitigations.push('CC7.2 — Prompt-injection and behavioral biometrics monitoring');
   return mitigations;
 }

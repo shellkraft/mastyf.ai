@@ -70,7 +70,7 @@ function collectBypasses(): BypassContext[] {
 async function main(): Promise<void> {
   if (!threatResearchAutoEnabled()) {
     console.log(
-      '[auto-threat-research] disabled — set GUARDIAN_THREAT_RESEARCH_AUTO=true and SWARM_THREAT_RESEARCH_AUTO=true',
+      '[auto-threat-research] disabled — set MASTYFF_AI_THREAT_RESEARCH_AUTO=true and SWARM_THREAT_RESEARCH_AUTO=true',
     );
     process.exit(0);
   }
@@ -88,7 +88,7 @@ async function main(): Promise<void> {
     candidates.push(buildBypassEvent(b));
   }
 
-  if (process.env.GUARDIAN_THREAT_RESEARCH_SEMANTIC !== 'false') {
+  if (process.env.MASTYFF_AI_THREAT_RESEARCH_SEMANTIC !== 'false') {
     const records = await loadSemanticAuditRecordsAsync({ sinceMs: 7 * 24 * 60 * 60 * 1000, limit: 50 });
     for (const rec of records) {
       if (candidates.length >= max * 3) break;
@@ -99,7 +99,7 @@ async function main(): Promise<void> {
     }
   }
 
-  if (process.env.GUARDIAN_THREAT_RESEARCH_THREAT_INTEL !== 'false') {
+  if (process.env.MASTYFF_AI_THREAT_RESEARCH_THREAT_INTEL !== 'false') {
     const ti = getSharedThreatIntel();
     try {
       await ti.pollLiveFeeds();
@@ -122,7 +122,7 @@ async function main(): Promise<void> {
   const events = filterUnprocessedEvents(candidates).slice(0, max);
   if (events.length === 0) {
     console.log(
-      `[auto-threat-research] wrote 0/0 fixture(s) — all ${candidates.length} candidate signal(s) already processed (${countProcessedFingerprints()} in ledger). Route new MCP blocks through Guardian for fresh block-repeat signals.`,
+      `[auto-threat-research] wrote 0/0 fixture(s) — all ${candidates.length} candidate signal(s) already processed (${countProcessedFingerprints()} in ledger). Route new MCP blocks through Mastyff AI for fresh block-repeat signals.`,
     );
     return;
   }

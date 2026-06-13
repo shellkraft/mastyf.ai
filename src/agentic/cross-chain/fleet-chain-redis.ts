@@ -4,7 +4,7 @@
 import { isRedisConfigured, createRedisClient } from '../../utils/redis-client.js';
 import { Logger } from '../../utils/logger.js';
 
-const SESSION_PREFIX = 'guardian:fleet:session:';
+const SESSION_PREFIX = 'mastyff-ai:fleet:session:';
 const TTL_SEC = 86_400;
 
 let redisSingleton: ReturnType<typeof createRedisClient> | null = null;
@@ -15,11 +15,11 @@ function redis() {
 }
 
 export function fleetRegion(): string {
-  return process.env.GUARDIAN_FLEET_REGION?.trim().toUpperCase() || 'LOCAL';
+  return process.env.MASTYFF_AI_FLEET_REGION?.trim().toUpperCase() || 'LOCAL';
 }
 
 export function fleetPeerRegions(): string[] {
-  const peers = process.env.GUARDIAN_FLEET_PEER_REGIONS?.split(',').map(r => r.trim().toUpperCase()).filter(Boolean) ?? [];
+  const peers = process.env.MASTYFF_AI_FLEET_PEER_REGIONS?.split(',').map(r => r.trim().toUpperCase()).filter(Boolean) ?? [];
   const local = fleetRegion();
   return [...new Set([local, ...peers])];
 }
@@ -29,7 +29,7 @@ function sessionKey(globalSessionId: string, region = fleetRegion()): string {
 }
 
 export function isFleetRedisSyncEnabled(): boolean {
-  return isRedisConfigured() && process.env.GUARDIAN_FLEET_CHAIN_REDIS !== 'false';
+  return isRedisConfigured() && process.env.MASTYFF_AI_FLEET_CHAIN_REDIS !== 'false';
 }
 
 export interface FleetRedisEvent {

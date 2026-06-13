@@ -1,6 +1,6 @@
 /**
  * Enterprise-Grade AI Learning Model Test Suite
- * MCP Guardian - Real-world Scenario Testing
+ * MCP Mastyff AI - Real-world Scenario Testing
  * 
  * This test suite validates the AI learning model across:
  * - 10+ enterprise scenarios

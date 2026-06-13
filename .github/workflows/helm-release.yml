@@ -20,7 +20,7 @@ jobs:
 
       - name: Package chart
         run: |
-          helm package deploy/helm/mcp-guardian --destination .helm-release
+          helm package deploy/helm/mastyff-ai --destination .helm-release
 
       - name: Push to gh-pages
         uses: helm/chart-releaser-action@v1.6.0

@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { Card } from '../ui/Card';
 import { Badge } from '../ui/Badge';
-import { queryServerReputation, syncReputationMesh, type ReputationEntry } from '@/lib/guardian-api';
+import { queryServerReputation, syncReputationMesh, type ReputationEntry } from '@/lib/mastyff-ai-api';
 
 export function ReputationPanel() {
   const [serverName, setServerName] = useState('filesystem');

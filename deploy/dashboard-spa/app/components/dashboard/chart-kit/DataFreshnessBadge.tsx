@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import type { ChartMeta } from '@/lib/guardian-api';
+import type { ChartMeta } from '@/lib/mastyff-ai-api';
 
 type Props = {
   meta?: ChartMeta | null;

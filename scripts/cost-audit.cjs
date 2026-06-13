@@ -13,7 +13,7 @@ let grandTotalTokens = 0;
 let grandTotalCost = 0;
 
 console.log('═══════════════════════════════════════════');
-console.log('  MCP Guardian — Proxy Cost Audit');
+console.log('  MCP Mastyff AI — Proxy Cost Audit');
 console.log('  Model: Claude 3.5 Sonnet (Anthropic)');
 console.log('  Pricing: $3.00/M input, $15.00/M output');
 console.log('  ' + new Date().toISOString());

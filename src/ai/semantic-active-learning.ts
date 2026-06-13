@@ -22,11 +22,11 @@ export type ThresholdRecommendation = {
   quorumRequired: boolean;
 };
 
-const DEFAULT_MIN = parseFloat(process.env.GUARDIAN_SEMANTIC_MIN_CONFIDENCE || '0.6');
-const DEFAULT_LOCAL = parseFloat(process.env.GUARDIAN_LOCAL_SEMANTIC_THRESHOLD || '0.55');
+const DEFAULT_MIN = parseFloat(process.env.MASTYFF_AI_SEMANTIC_MIN_CONFIDENCE || '0.6');
+const DEFAULT_LOCAL = parseFloat(process.env.MASTYFF_AI_LOCAL_SEMANTIC_THRESHOLD || '0.55');
 
 function semanticThreshold(): number {
-  const t = parseFloat(process.env.GUARDIAN_SEMANTIC_MIN_CONFIDENCE || '0.6');
+  const t = parseFloat(process.env.MASTYFF_AI_SEMANTIC_MIN_CONFIDENCE || '0.6');
   return Number.isFinite(t) ? t : DEFAULT_MIN;
 }
 

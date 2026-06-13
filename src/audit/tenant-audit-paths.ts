@@ -1,18 +1,18 @@
 /**
- * Per-tenant audit file paths under ~/.mcp-guardian/tenants/{tenantId}/
+ * Per-tenant audit file paths under ~/.mastyff-ai/tenants/{tenantId}/
  */
 import { existsSync, mkdirSync } from 'fs';
 import { homedir } from 'os';
 import { join } from 'path';
 import { validateTenantId, DEFAULT_TENANT_ID } from '../tenant/resolve-tenant.js';
 
-export function guardianHomeDir(): string {
-  return process.env['MCP_GUARDIAN_HOME'] || join(homedir(), '.mcp-guardian');
+export function mastyffAiHomeDir(): string {
+  return process.env['MASTYFF_AI_HOME'] || join(homedir(), '.mastyff-ai');
 }
 
 export function resolveTenantAuditDir(tenantId?: string): string {
-  const tid = validateTenantId(tenantId || process.env['GUARDIAN_TENANT_ID'] || DEFAULT_TENANT_ID);
-  return join(guardianHomeDir(), 'tenants', tid);
+  const tid = validateTenantId(tenantId || process.env['MASTYFF_AI_TENANT_ID'] || DEFAULT_TENANT_ID);
+  return join(mastyffAiHomeDir(), 'tenants', tid);
 }
 
 export function ensureTenantAuditDir(tenantId?: string): string {

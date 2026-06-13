@@ -8,13 +8,13 @@ import { Logger } from './logger.js';
 const localCache = new Map<string, { expiresAt: number; value: string }>();
 
 function defaultTtlMs(): number {
-  const n = parseInt(process.env['GUARDIAN_DASHBOARD_QUERY_CACHE_TTL_MS'] || '15000', 10);
+  const n = parseInt(process.env['MASTYFF_AI_DASHBOARD_QUERY_CACHE_TTL_MS'] || '15000', 10);
   return Number.isFinite(n) && n >= 0 ? n : 15000;
 }
 
 export function isDashboardQueryCacheEnabled(): boolean {
-  if (process.env['GUARDIAN_DASHBOARD_QUERY_CACHE'] === 'false') return false;
-  return process.env['GUARDIAN_DASHBOARD_QUERY_CACHE'] === 'true' || isRedisConfigured();
+  if (process.env['MASTYFF_AI_DASHBOARD_QUERY_CACHE'] === 'false') return false;
+  return process.env['MASTYFF_AI_DASHBOARD_QUERY_CACHE'] === 'true' || isRedisConfigured();
 }
 
 export function dashboardQueryCacheKey(parts: Record<string, string | number>): string {

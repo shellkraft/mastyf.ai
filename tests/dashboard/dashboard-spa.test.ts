@@ -31,7 +31,7 @@ describe('dashboard-spa', () => {
       join(SPA_ROOT, 'app', 'components', 'workspaces', 'ProtectionWorkspace.tsx'),
       'utf-8',
     );
-    const api = readFileSync(join(SPA_ROOT, 'lib', 'guardian-api.ts'), 'utf-8');
+    const api = readFileSync(join(SPA_ROOT, 'lib', 'mastyff-ai-api.ts'), 'utf-8');
     expect(protection).toContain('fetchAutopilotStatus');
     expect(api).toContain('/api/autopilot/status');
     expect(api).toContain('/api/reports/generate');
@@ -50,14 +50,14 @@ describe('dashboard-spa', () => {
   });
 
   it('includes health report and swarm job log API client', () => {
-    const api = readFileSync(join(SPA_ROOT, 'lib', 'guardian-api.ts'), 'utf-8');
+    const api = readFileSync(join(SPA_ROOT, 'lib', 'mastyff-ai-api.ts'), 'utf-8');
     expect(api).toContain('fetchMcpHealthReport');
     expect(api).toContain('fetchSwarmJobLog');
   });
 
   it('includes video feature panels and APIs', () => {
     const client = readFileSync(join(SPA_ROOT, 'app', 'components', 'DashboardClient.tsx'), 'utf-8');
-    const api = readFileSync(join(SPA_ROOT, 'lib', 'guardian-api.ts'), 'utf-8');
+    const api = readFileSync(join(SPA_ROOT, 'lib', 'mastyff-ai-api.ts'), 'utf-8');
     const nav = readFileSync(join(SPA_ROOT, 'lib', 'workspace-nav.ts'), 'utf-8');
     expect(client).toContain('AnalyticsDashboardPanel');
     expect(client).toContain('SecurityDashboardPanel');
@@ -79,6 +79,6 @@ describe('dashboard-spa', () => {
       expect(existsSync(join(SPA_ROOT, 'package.json'))).toBe(true);
       return;
     }
-    expect(readFileSync(outIndex, 'utf-8')).toContain('MCP Guardian');
+    expect(readFileSync(outIndex, 'utf-8')).toContain('Mastyff AI');
   });
 });

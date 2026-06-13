@@ -7,11 +7,11 @@ describe('semantic skip metric', () => {
     reportSemanticAuditSkipped('no_api_key', 'default');
   });
 
-  it('exposes mcp_guardian_semantic_audit_skipped_total', async () => {
+  it('exposes mastyff_ai_semantic_audit_skipped_total', async () => {
     const text = await Metrics.registry.getSingleMetricAsString(
-      'mcp_guardian_semantic_audit_skipped_total',
+      'mastyff_ai_semantic_audit_skipped_total',
     );
-    expect(text).toContain('mcp_guardian_semantic_audit_skipped_total');
+    expect(text).toContain('mastyff_ai_semantic_audit_skipped_total');
     expect(text).toMatch(/no_api_key/);
   });
 });

@@ -15,8 +15,8 @@ describe('open-core feature tiers', () => {
 
   beforeEach(() => {
     resetLicenseClientForTests();
-    delete process.env.GUARDIAN_CI_BYPASS_LICENSE;
-    delete process.env.GUARDIAN_DEV_UNLOCK_ALL;
+    delete process.env.MASTYFF_AI_CI_BYPASS_LICENSE;
+    delete process.env.MASTYFF_AI_DEV_UNLOCK_ALL;
   });
 
   afterEach(() => {
@@ -25,18 +25,18 @@ describe('open-core feature tiers', () => {
   });
 
   it('enables open-core by default (v3+ always gates Pro)', () => {
-    delete process.env.GUARDIAN_OPEN_CORE;
+    delete process.env.MASTYFF_AI_OPEN_CORE;
     expect(isOpenCoreEnabled()).toBe(true);
   });
 
-  it('ignores GUARDIAN_OPEN_CORE=false — gates remain active', () => {
-    process.env.GUARDIAN_OPEN_CORE = 'false';
+  it('ignores MASTYFF_AI_OPEN_CORE=false — gates remain active', () => {
+    process.env.MASTYFF_AI_OPEN_CORE = 'false';
     expect(isOpenCoreEnabled()).toBe(true);
   });
 
   it('dev unlock always returns false (removed in v3.2.3)', () => {
     process.env.NODE_ENV = 'development';
-    process.env.GUARDIAN_DEV_UNLOCK_ALL = 'true';
+    process.env.MASTYFF_AI_DEV_UNLOCK_ALL = 'true';
     expect(isDevUnlockAllowed()).toBe(false);
     process.env.NODE_ENV = 'production';
     expect(isDevUnlockAllowed()).toBe(false);
@@ -49,10 +49,10 @@ describe('open-core feature tiers', () => {
   });
 
   it('blocks Pro features without license key when open-core is on', () => {
-    delete process.env.GUARDIAN_CONTROL_PLANE_URL;
-    delete process.env.GUARDIAN_LICENSE_KEY;
-    delete process.env.GUARDIAN_DEV_UNLOCK_ALL;
-    process.env.GUARDIAN_OPEN_CORE = 'true';
+    delete process.env.MASTYFF_AI_CONTROL_PLANE_URL;
+    delete process.env.MASTYFF_AI_LICENSE_KEY;
+    delete process.env.MASTYFF_AI_DEV_UNLOCK_ALL;
+    process.env.MASTYFF_AI_OPEN_CORE = 'true';
 
     const client = new LicenseClient({
       requireLicense: false,
@@ -68,7 +68,7 @@ describe('open-core feature tiers', () => {
   });
 
   it('allows Pro features when licensed via control plane', async () => {
-    process.env.GUARDIAN_OPEN_CORE = 'true';
+    process.env.MASTYFF_AI_OPEN_CORE = 'true';
     const fetchFn = vi.fn().mockResolvedValue({
       ok: true,
       json: async () => ({

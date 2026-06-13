@@ -1,0 +1,176 @@
+replicaCount: 1
+
+image:
+  repository: ghcr.io/mastyff-ai/mastyff-ai
+  tag: latest
+  pullPolicy: IfNotPresent
+
+strategy:
+  type: RollingUpdate
+  rollingUpdate:
+    maxUnavailable: 0
+    maxSurge: 1
+
+serviceAccount:
+  create: true
+  annotations: {}
+
+podDisruptionBudget:
+  enabled: false
+  minAvailable: 1
+
+redis:
+  enabled: true
+  architecture: standalone
+  auth:
+    enabled: false
+  master:
+    persistence:
+      enabled: false
+  # External Sentinel HA (disable subchart redis when true)
+  sentinel:
+    external: false
+    sentinels: ""
+    masterName: mymaster
+
+config:
+  mcpConfigPath: /etc/mastyff-ai/mcp.json
+  policy:
+    path: /etc/mastyff-ai/policy.yaml
+    mode: block
+  env:
+    NODE_ENV: production
+    DASHBOARD_ENABLED: "true"
+    METRICS_ENABLED: "true"
+    MASTYFF_AI_STRICT_MODE: "true"
+    POLICY_AUDIT_ENABLED: "true"
+    MASTYFF_AI_SECRET_PROVIDER: env
+
+persistence:
+  enabled: true
+  storageClass: standard
+  size: 1Gi
+  mountPath: /data
+
+resources:
+  requests:
+    cpu: 200m
+    memory: 256Mi
+  limits:
+    cpu: 1000m
+    memory: 1Gi
+
+service:
+  type: ClusterIP
+  port: 4000
+  metricsPort: 9090
+  annotations: {}
+
+dashboard:
+  enabled: true
+  authEnabled: false
+  allowedCidr: ""
+
+metrics:
+  enabled: true
+  port: 9090
+
+monitoring:
+  serviceMonitor:
+    enabled: false
+    interval: 30s
+    scrapeTimeout: 10s
+    labels: {}
+
+externalSecrets:
+  enabled: false
+  secretStore: vault-backend
+  path: mastyff-ai/prod
+
+networkPolicy:
+  enabled: true
+  allowedNamespace: default
+
+# Shared HTTP/SSE ingress (no stdio children). Requires multiTenant.enabled.
+gateway:
+  enabled: false
+  websocketPort: 0
+  service:
+    type: ClusterIP
+    port: 8080
+  ingress:
+    enabled: false
+    host: mastyff-ai.local
+    tls: false
+    tlsSecret: ""
+    annotations: {}
+
+secrets:
+  mode: external
+  existingSecret: ""
+
+# PgBouncer — REQUIRED for production multi-replica Postgres (>50 replicas or any K8s HA).
+# Chaos test: without pooler, Postgres max_connections=100 exhausted at 87 replicas.
+# Route DATABASE_URL secret to pgbouncer:6432 (transaction mode), not postgres:5432.
+pgbouncer:
+  enabled: true
+  # Fail startup when DATABASE_URL is not pooler-shaped (multi-replica Postgres).
+  requireMastyffAiEnforcement: true
+  poolMaxPerReplica: 4
+
+postgres:
+  # P1: raise server max_connections when using PgBouncer (pooler + admin headroom)
+  maxConnections: 300
+
+database:
+  type: sqlite
+  url: ""
+
+livenessProbe:
+  httpGet:
+    path: /healthz
+    port: metrics
+  initialDelaySeconds: 15
+  periodSeconds: 30
+
+readinessProbe:
+  httpGet:
+    path: /readyz
+    port: metrics
+  initialDelaySeconds: 5
+  periodSeconds: 10
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1001
+  fsGroup: 1001
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: false
+  capabilities:
+    drop:
+      - ALL
+
+nodeSelector: {}
+affinity: {}
+tolerations: []
+
+# mTLS — proxy → upstream MCP (MCP_TLS_*). Mounts Secret at /etc/mastyff-ai/tls/.
+# Cert rotation requires pod restart until mtls-watcher hot-reload ships.
+mtls:
+  enabled: false
+  existingSecret: ""  # Secret keys: ca.pem, tls.crt, tls.key
+
+# DPoP — sender-constrained tokens (RFC 9449). Requires Redis for multi-replica jti store.
+dpop:
+  require: false
+
+# Multi-tenant shared gateway mode (default false — single-tenant backward compatible).
+# When enabled, clients must send X-Mastyff-Ai-Tenant or X-Tenant-Id; pod MASTYFF_AI_TENANT_ID is the fallback.
+multiTenant:
+  enabled: false
+
+backup:
+  enabled: false
+  schedule: "0 2 * * *"

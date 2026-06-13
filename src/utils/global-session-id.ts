@@ -26,9 +26,9 @@ function metaSessionId(meta?: Record<string, unknown>): string | undefined {
   if (!meta) return undefined;
   const direct = meta.sessionId ?? meta.globalSessionId;
   if (typeof direct === 'string' && direct.trim()) return direct.trim();
-  const guardian = meta.guardian as Record<string, unknown> | undefined;
-  if (guardian && typeof guardian.sessionId === 'string' && guardian.sessionId.trim()) {
-    return guardian.sessionId.trim();
+  const mastyffAi = meta.mastyffAi as Record<string, unknown> | undefined;
+  if (mastyffAi && typeof mastyffAi.sessionId === 'string' && mastyffAi.sessionId.trim()) {
+    return mastyffAi.sessionId.trim();
   }
   return undefined;
 }
@@ -36,7 +36,7 @@ function metaSessionId(meta?: Record<string, unknown>): string | undefined {
 /** Stable key spanning tool calls and MCP servers for fleet chain graphs. */
 export function resolveGlobalSessionId(input: GlobalSessionInput): string {
   const fromHeader =
-    headerOne(input.headers, 'x-guardian-global-session')
+    headerOne(input.headers, 'x-mastyff-ai-global-session')
     ?? headerOne(input.headers, 'x-mcp-session-id');
   if (fromHeader) return fromHeader;
 
@@ -53,7 +53,7 @@ export function resolveGlobalSessionId(input: GlobalSessionInput): string {
 }
 
 export function fleetChainBlockConfidenceThreshold(): number {
-  const raw = process.env.GUARDIAN_FLEET_CHAIN_BLOCK_CONFIDENCE ?? '0.65';
+  const raw = process.env.MASTYFF_AI_FLEET_CHAIN_BLOCK_CONFIDENCE ?? '0.65';
   const n = Number(raw);
   return Number.isFinite(n) ? Math.min(1, Math.max(0, n)) : 0.65;
 }

@@ -108,7 +108,7 @@ export class UnifiedDataReader {
       `;
       const params: unknown[] = [tid, startIso, endIso];
       if (region?.trim()) {
-        sql += ` INNER JOIN guardian_instances gi ON gi.instance_id = uat.instance_id
+        sql += ` INNER JOIN mastyff_ai_instances gi ON gi.instance_id = uat.instance_id
                  AND COALESCE(gi.metadata->>'region', '') = $4 `;
         params.push(region.trim());
       }
@@ -199,7 +199,7 @@ export class UnifiedDataReader {
       const inst = await client.query(
         `SELECT instance_id, instance_name, hostname, status, last_heartbeat,
                 COALESCE(metadata->>'region', '') AS region
-         FROM guardian_instances
+         FROM mastyff_ai_instances
          ORDER BY last_heartbeat DESC NULLS LAST
          LIMIT 500`,
       );
@@ -252,7 +252,7 @@ export class UnifiedDataReader {
     try {
       const result = await client.query(
         `SELECT DISTINCT COALESCE(metadata->>'region', '') AS region
-         FROM guardian_instances
+         FROM mastyff_ai_instances
          WHERE COALESCE(metadata->>'region', '') <> ''
          ORDER BY region`,
       );

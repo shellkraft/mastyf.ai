@@ -103,7 +103,7 @@ function topAttackClasses(records: StoredSemanticAudit[]): ComplianceReport['top
 
 export function formatComplianceMarkdown(report: ComplianceReport): string {
   const lines = [
-    `# MCP Guardian Compliance Briefing`,
+    `# MCP Mastyff AI Compliance Briefing`,
     ``,
     `Generated: ${report.generatedAt}`,
     `Window: ${report.windowDays} days`,
@@ -147,7 +147,7 @@ export async function generateComplianceReport(opts?: {
   const topAttackClasses_ = topAttackClasses(records);
 
   let briefing: string | undefined;
-  const useLlm = opts?.useLlm ?? process.env.GUARDIAN_COMPLIANCE_LLM !== 'false';
+  const useLlm = opts?.useLlm ?? process.env.MASTYFF_AI_COMPLIANCE_LLM !== 'false';
   if (useLlm) {
     const llm = new LlmAssistant({ hotPath: false });
     if (llm.isAvailable()) {

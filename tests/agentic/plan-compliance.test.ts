@@ -147,8 +147,8 @@ describe('plan compliance phase 2 (100%)', () => {
   });
 
   it('B3 secure weight aggregation powers federated inference', async () => {
-    process.env.GUARDIAN_FEDERATED_LEARNING = 'true';
-    process.env.GUARDIAN_FEDERATED_LEARNING_MIN_REPORTS = '1';
+    process.env.MASTYFF_AI_FEDERATED_LEARNING = 'true';
+    process.env.MASTYFF_AI_FEDERATED_LEARNING_MIN_REPORTS = '1';
     const db = new HistoryDatabase(':memory:');
     const store = new IndustryStandardStore(db);
     const fl = new FederatedLearningCoordinator(undefined, undefined, store);
@@ -169,12 +169,12 @@ describe('plan compliance phase 2 (100%)', () => {
     ]);
     expect(scoreWithAggregatedWeights([0.5, 0.5, 0.5, 0.5], weights)).toBeGreaterThan(0);
 
-    delete process.env.GUARDIAN_FEDERATED_LEARNING;
-    delete process.env.GUARDIAN_FEDERATED_LEARNING_MIN_REPORTS;
+    delete process.env.MASTYFF_AI_FEDERATED_LEARNING;
+    delete process.env.MASTYFF_AI_FEDERATED_LEARNING_MIN_REPORTS;
   });
 
-  it('A3 honors GUARDIAN_BIOMETRICS_MIN_SAMPLES for warm-up', () => {
-    process.env.GUARDIAN_BIOMETRICS_MIN_SAMPLES = '3';
+  it('A3 honors MASTYFF_AI_BIOMETRICS_MIN_SAMPLES for warm-up', () => {
+    process.env.MASTYFF_AI_BIOMETRICS_MIN_SAMPLES = '3';
     const engine = new BehaviorFingerprintEngine();
     for (let i = 0; i < 3; i++) {
       engine.observe({ agentId: 'a', toolName: 'read', argBytes: 64, timestamp: Date.now() + i * 1000 });
@@ -186,12 +186,12 @@ describe('plan compliance phase 2 (100%)', () => {
       timestamp: Date.now() + 5000,
     });
     expect(anomaly.reason).not.toMatch(/Insufficient baseline/);
-    delete process.env.GUARDIAN_BIOMETRICS_MIN_SAMPLES;
+    delete process.env.MASTYFF_AI_BIOMETRICS_MIN_SAMPLES;
   });
 
   it('B3 federated rollout traffic split and blocked signature collection', () => {
-    process.env.GUARDIAN_FEDERATED_LEARNING = 'true';
-    process.env.GUARDIAN_FEDERATED_LEARNING_MIN_REPORTS = '1';
+    process.env.MASTYFF_AI_FEDERATED_LEARNING = 'true';
+    process.env.MASTYFF_AI_FEDERATED_LEARNING_MIN_REPORTS = '1';
     const fl = new FederatedLearningCoordinator();
     fl.recordBlockedSignature('inj:test');
     expect(fl.getStats().deltaCount).toBeGreaterThanOrEqual(1);
@@ -201,12 +201,12 @@ describe('plan compliance phase 2 (100%)', () => {
     expect(routed.length).toBeLessThan(30);
     fl.promoteRolloutStage();
     expect(fl.getRolloutStage()).toBe('partial');
-    delete process.env.GUARDIAN_FEDERATED_LEARNING;
-    delete process.env.GUARDIAN_FEDERATED_LEARNING_MIN_REPORTS;
+    delete process.env.MASTYFF_AI_FEDERATED_LEARNING;
+    delete process.env.MASTYFF_AI_FEDERATED_LEARNING_MIN_REPORTS;
   });
 
   it('C3 SPIFFE workload identity elevates zero-trust score', () => {
-    process.env.GUARDIAN_SPIFFE_SOCKET_PATH = '/run/spire/sockets/agent.sock';
+    process.env.MASTYFF_AI_SPIFFE_SOCKET_PATH = '/run/spire/sockets/agent.sock';
     const engine = new ZeroTrustVerificationEngine();
     const score = engine.score({
       agentId: 'a',
@@ -217,7 +217,7 @@ describe('plan compliance phase 2 (100%)', () => {
       spiffeId: 'spiffe://example.org/agent/workload',
     });
     expect(score.dimensions.spiffe).toBeGreaterThan(0.95);
-    delete process.env.GUARDIAN_SPIFFE_SOCKET_PATH;
+    delete process.env.MASTYFF_AI_SPIFFE_SOCKET_PATH;
   });
   it('B1 certifier downgrades when network reputation disagrees', () => {
     const net = new ReputationNetwork();
@@ -226,7 +226,7 @@ describe('plan compliance phase 2 (100%)', () => {
       packageName: 'pkg',
       dimensions: {
         security_posture: 30, auth_strength: 30, cve_hygiene: 30, publisher_trust: 30,
-        policy_compliance: 30, uptime: 30, community_rating: 30, guardian_protected: 30,
+        policy_compliance: 30, uptime: 30, community_rating: 30, mastyff_ai_protected: 30,
       },
     });
     const certifier = new MCPCertifier(undefined, undefined, net);
@@ -285,12 +285,12 @@ describe('plan compliance phase 2 (100%)', () => {
   });
 
   it('A1 multi-region fleet redis keys include region tag', () => {
-    process.env.GUARDIAN_FLEET_REGION = 'us-east-1';
+    process.env.MASTYFF_AI_FLEET_REGION = 'us-east-1';
     expect(fleetRegion()).toBe('US-EAST-1');
-    process.env.GUARDIAN_FLEET_PEER_REGIONS = 'eu-west-1';
+    process.env.MASTYFF_AI_FLEET_PEER_REGIONS = 'eu-west-1';
     expect(fleetPeerRegions()).toContain('EU-WEST-1');
-    delete process.env.GUARDIAN_FLEET_REGION;
-    delete process.env.GUARDIAN_FLEET_PEER_REGIONS;
+    delete process.env.MASTYFF_AI_FLEET_REGION;
+    delete process.env.MASTYFF_AI_FLEET_PEER_REGIONS;
   });
 
   it('B1 Byzantine quorum requires min distinct raters', () => {
@@ -370,7 +370,7 @@ describe('plan compliance phase 2 (100%)', () => {
   });
 
   it('B3 federated model export/import roundtrip', () => {
-    process.env.GUARDIAN_FEDERATED_LEARNING = 'true';
+    process.env.MASTYFF_AI_FEDERATED_LEARNING = 'true';
     const db = new HistoryDatabase(':memory:');
     const store = new IndustryStandardStore(db);
     const fl = new FederatedLearningCoordinator(undefined, undefined, store);
@@ -378,11 +378,11 @@ describe('plan compliance phase 2 (100%)', () => {
     const bundle = fl.exportModelBundle();
     expect(bundle.modelVersion).toBe('import-v1');
     expect(bundle.weights.length).toBe(3);
-    delete process.env.GUARDIAN_FEDERATED_LEARNING;
+    delete process.env.MASTYFF_AI_FEDERATED_LEARNING;
   });
 
   it('B3 MPC-lite masked gradients cancel pairwise masks', () => {
-    process.env.GUARDIAN_FEDERATED_MPC_SECRET = 'test-secret';
+    process.env.MASTYFF_AI_FEDERATED_MPC_SECRET = 'test-secret';
     const g1 = [0.5, -0.2, 0.1];
     const g2 = [0.3, 0.4, -0.1];
     const roundId = 'round-1';
@@ -393,7 +393,7 @@ describe('plan compliance phase 2 (100%)', () => {
     for (let i = 0; i < 3; i++) {
       expect(Math.abs(summed[i]! - (g1[i]! + g2[i]!))).toBeLessThan(0.001);
     }
-    delete process.env.GUARDIAN_FEDERATED_MPC_SECRET;
+    delete process.env.MASTYFF_AI_FEDERATED_MPC_SECRET;
   });
 
   it('A1 roadmap fleet-graph-train exports weights JSON', () => {
@@ -511,7 +511,7 @@ describe('plan compliance behavior', () => {
     net.rateServer({
       serverName: 'bad-server',
       dimensions: { security_posture: 30, auth_strength: 30, cve_hygiene: 30, publisher_trust: 30,
-        policy_compliance: 30, uptime: 30, community_rating: 30, guardian_protected: 30 },
+        policy_compliance: 30, uptime: 30, community_rating: 30, mastyff_ai_protected: 30 },
     });
     const check = net.validateCertAgainstReputation('bad-server', 'platinum');
     expect(check.valid).toBe(false);

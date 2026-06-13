@@ -14,7 +14,7 @@ import { homedir } from 'node:os';
 
 const REPO_ROOT = join(dirname(new URL(import.meta.url).pathname), '..');
 const RED_TEAM_DIR = join(REPO_ROOT, 'reports', 'red-team');
-const BASELINE_PATH = join(homedir(), '.mcp-guardian', 'red-team-baseline.json');
+const BASELINE_PATH = join(homedir(), '.mastyff-ai', 'red-team-baseline.json');
 const HEATMAP_PATH = join(RED_TEAM_DIR, 'mitre-attack-heatmap.json');
 const ALERT_PATH = join(RED_TEAM_DIR, 'regression-alert.json');
 

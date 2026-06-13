@@ -14,7 +14,7 @@ import {
   type AuditResponse,
   type ContinuousAssuranceReport,
   type SimilarEnvironmentBenchmarksResponse,
-} from '@/lib/guardian-api';
+} from '@/lib/mastyff-ai-api';
 import { HealthReportPanel } from '../reports/HealthReportPanel';
 import { ExecutiveOverviewPanel } from '../dashboard/ExecutiveOverviewPanel';
 import { FullAnalysisDrawer } from '../FullAnalysisDrawer';
@@ -103,7 +103,7 @@ export function ProtectionWorkspace({
   return (
     <>
       <section className="briefing-hero">
-        <h2>Guardian Autopilot — your MCP protection</h2>
+        <h2>Mastyff AI Autopilot — your MCP protection</h2>
         <p className="briefing-hero-lead">
           Realtime blocking, autonomous threat learning, and scheduled digests.
         </p>
@@ -243,7 +243,7 @@ export function ProtectionWorkspace({
             </table>
           </div>
         ) : (
-          <p className="muted">No benchmark rows yet — route traffic through Guardian first.</p>
+          <p className="muted">No benchmark rows yet — route traffic through Mastyff AI first.</p>
         )}
       </Card>
 

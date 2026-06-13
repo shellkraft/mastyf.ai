@@ -34,21 +34,21 @@ class MockRedis {
   }
 }
 
-describe('enterprise findings MCP_GUARDIAN_FINDINGS', () => {
+describe('enterprise findings MASTYFF_AI_FINDINGS', () => {
   afterEach(() => {
     resetSemanticAuditStateForTests();
-    delete process.env.GUARDIAN_SEMANTIC_ASYNC_MAX_QUEUE;
-    delete process.env.GUARDIAN_SESSION_ROTATE_ON_USE;
-    delete process.env.GUARDIAN_COST_SOURCE;
+    delete process.env.MASTYFF_AI_SEMANTIC_ASYNC_MAX_QUEUE;
+    delete process.env.MASTYFF_AI_SESSION_ROTATE_ON_USE;
+    delete process.env.MASTYFF_AI_COST_SOURCE;
     delete process.env.NODE_ENV;
-    delete process.env.GUARDIAN_WS_TLS_PIN_SHA256;
+    delete process.env.MASTYFF_AI_WS_TLS_PIN_SHA256;
   });
 
   it('H-1: audit queue drops oldest at capacity', async () => {
-    process.env.GUARDIAN_SEMANTIC_ASYNC = 'true';
-    process.env.GUARDIAN_LLM_ENABLED = 'true';
+    process.env.MASTYFF_AI_SEMANTIC_ASYNC = 'true';
+    process.env.MASTYFF_AI_LLM_ENABLED = 'true';
     process.env.ANTHROPIC_API_KEY = 'test-key-for-queue';
-    process.env.GUARDIAN_SEMANTIC_ASYNC_MAX_QUEUE = '2';
+    process.env.MASTYFF_AI_SEMANTIC_ASYNC_MAX_QUEUE = '2';
     vi.resetModules();
     const mod = await import('../src/ai/async-semantic-audit.js');
     mod.resetSemanticAuditStateForTests();
@@ -111,7 +111,7 @@ describe('enterprise findings MCP_GUARDIAN_FINDINGS', () => {
   });
 
   it('M-5: rejects simulated cost source at startup', () => {
-    process.env.GUARDIAN_COST_SOURCE = 'simulated';
+    process.env.MASTYFF_AI_COST_SOURCE = 'simulated';
     expect(() => validateCostSourceAtStartup()).toThrow(/simulated/i);
   });
 
@@ -122,7 +122,7 @@ describe('enterprise findings MCP_GUARDIAN_FINDINGS', () => {
   });
 
   it('M-7: websocket TLS pin option when configured', () => {
-    process.env.GUARDIAN_WS_TLS_PIN_SHA256 = 'aa:bb:cc';
+    process.env.MASTYFF_AI_WS_TLS_PIN_SHA256 = 'aa:bb:cc';
     const opts = webSocketClientOptions('wss://example.com');
     expect(opts.rejectUnauthorized).toBe(true);
     expect(opts.checkServerIdentity).toBeTypeOf('function');
@@ -159,7 +159,7 @@ describe('enterprise findings MCP_GUARDIAN_FINDINGS', () => {
   });
 
   it('L-6: session rotation issues new token on validate', () => {
-    process.env.GUARDIAN_SESSION_ROTATE_ON_USE = 'true';
+    process.env.MASTYFF_AI_SESSION_ROTATE_ON_USE = 'true';
     const cache = new SessionCache();
     const entry = cache.createSession({ sub: 'agent-1', clientId: 'c1' });
     const first = cache.validateSessionWithRotation(entry.token);

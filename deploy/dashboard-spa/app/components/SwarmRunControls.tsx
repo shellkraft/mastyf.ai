@@ -7,7 +7,7 @@ import {
   fetchSwarmStatus,
   runSecuritySwarm,
   type SwarmJobStatus,
-} from '@/lib/guardian-api';
+} from '@/lib/mastyff-ai-api';
 import { hasPermission } from '@/lib/dashboard-roles';
 import type { PipelineState } from '@/lib/flow-types';
 

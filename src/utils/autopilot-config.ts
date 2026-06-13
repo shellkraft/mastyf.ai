@@ -1,5 +1,5 @@
 /**
- * Persisted Guardian Autopilot configuration (~/.mcp-guardian/autopilot.json).
+ * Persisted Mastyff AI Autopilot configuration (~/.mastyff-ai/autopilot.json).
  */
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
 import { homedir } from 'os';
@@ -22,19 +22,19 @@ export type AutopilotConfig = {
 };
 
 function configDir(): string {
-  return process.env.GUARDIAN_AUTOPILOT_CONFIG_DIR || join(homedir(), '.mcp-guardian');
+  return process.env.MASTYFF_AI_AUTOPILOT_CONFIG_DIR || join(homedir(), '.mastyff-ai');
 }
 
 export function autopilotConfigPath(): string {
-  return process.env.GUARDIAN_AUTOPILOT_CONFIG_PATH || join(configDir(), 'autopilot.json');
+  return process.env.MASTYFF_AI_AUTOPILOT_CONFIG_PATH || join(configDir(), 'autopilot.json');
 }
 
 export function lastDigestPath(): string {
-  return process.env.GUARDIAN_LAST_DIGEST_PATH || join(configDir(), 'last-digest.json');
+  return process.env.MASTYFF_AI_LAST_DIGEST_PATH || join(configDir(), 'last-digest.json');
 }
 
 /** @deprecated use autopilotConfigPath() */
-export const AUTOPILOT_CONFIG_PATH = join(homedir(), '.mcp-guardian', 'autopilot.json');
+export const AUTOPILOT_CONFIG_PATH = join(homedir(), '.mastyff-ai', 'autopilot.json');
 
 export function defaultAutopilotConfig(
   tenantId: string = DEFAULT_TENANT_ID,

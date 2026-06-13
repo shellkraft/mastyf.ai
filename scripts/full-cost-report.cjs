@@ -75,7 +75,7 @@ const totalCost = mcpCost + llmCost;
 
 // ── 5. Output ─────────────────────────────────────────────────────────
 console.log('═══════════════════════════════════════════════════════════');
-console.log('  MCP Guardian — Full Cost Report');
+console.log('  MCP Mastyff AI — Full Cost Report');
 console.log('  Model: ' + modelName + ' (Auto-detected from .cline/globalState.json)');
 console.log('  Pricing: $' + inputPricePerM.toFixed(4) + '/M input, $' + outputPricePerM.toFixed(4) + '/M output');
 console.log('  ' + new Date().toISOString());

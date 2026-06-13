@@ -22,13 +22,13 @@ export default async function BenchmarksPage() {
   return (
     <main style={{ maxWidth: 960, margin: '0 auto', padding: '2rem 1.5rem', fontFamily: 'system-ui, sans-serif' }}>
       <p style={{ marginBottom: '0.5rem' }}>
-        <Link href="/">← MCP Guardian Cloud</Link>
+        <Link href="/">← MCP Mastyff AI Cloud</Link>
         {' · '}
         <Link href="/observatory">Ecosystem observatory →</Link>
       </p>
       <h1 style={{ margin: '0 0 0.5rem' }}>Public benchmark leaderboard</h1>
       <p style={{ color: '#555', marginBottom: '1.5rem' }}>
-        Community-submitted Guardian profiles ranked by block rate (higher is better) and false-positive rate
+        Community-submitted Mastyff AI profiles ranked by block rate (higher is better) and false-positive rate
         (lower is better). Aggregated fleet telemetry feeds the{' '}
         <Link href="/observatory">ecosystem health observatory</Link>.
       </p>
@@ -82,7 +82,7 @@ export default async function BenchmarksPage() {
                 <td style={{ padding: '0.5rem' }}>
                   {row.p95LatencyMs != null ? row.p95LatencyMs.toFixed(1) : '—'}
                 </td>
-                <td style={{ padding: '0.5rem' }}>{row.guardianVersion ?? '—'}</td>
+                <td style={{ padding: '0.5rem' }}>{row.mastyffAiVersion ?? '—'}</td>
                 <td style={{ padding: '0.5rem' }}>
                   {new Date(row.submittedAt).toLocaleDateString()}
                 </td>

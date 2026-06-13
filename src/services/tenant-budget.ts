@@ -23,7 +23,7 @@ export function recordTenantDailySpend(tenantId: string | undefined, costUsd: nu
 }
 
 export function getEstimatedSemanticCostUsd(): number {
-  const v = parseFloat(process.env.GUARDIAN_SEMANTIC_ESTIMATED_COST_USD || '0.003');
+  const v = parseFloat(process.env.MASTYFF_AI_SEMANTIC_ESTIMATED_COST_USD || '0.003');
   return Number.isFinite(v) && v > 0 ? v : 0.003;
 }
 

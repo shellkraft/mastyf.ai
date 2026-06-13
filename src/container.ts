@@ -32,7 +32,7 @@ import { AttackGenerator } from './agentic/red-team/attack-generator.js';
 import { ThreatMeshNode } from './agentic/threat-mesh/mesh-node.js';
 import { HoneypotManager } from './agentic/honeypot/honeypot-manager.js';
 import { TrustNegotiationProtocol } from './agentic/trust-negotiation/protocol.js';
-import { GuardianScore } from './agentic/trust-score/guardian-score.js';
+import { MastyffAiScore } from './agentic/trust-score/mastyff-ai-score.js';
 import { ResponseDlpScanner } from './agentic/response-dlp/response-scanner.js';
 import { MCPCertifier } from './agentic/certification/certifier.js';
 import { McpProtocolFuzzer } from './agentic/protocol-fuzzer/mcp-fuzzer.js';
@@ -90,7 +90,7 @@ export interface Container {
   threatMeshNode: ThreatMeshNode;
   honeypotManager: HoneypotManager;
   trustProtocol: TrustNegotiationProtocol;
-  guardianScore: GuardianScore;
+  mastyffAiScore: MastyffAiScore;
   responseDlp: ResponseDlpScanner;
   certifier: MCPCertifier;
   protocolFuzzer: McpProtocolFuzzer;
@@ -154,7 +154,7 @@ export async function createContainer(dbPath?: string): Promise<Container> {
             `  • Cross-region active-active is not supported (>80ms RTT breaks locks)\n` +
             `  Set REDIS_URL, REDIS_SENTINELS, or REDIS_CLUSTER_NODES (single-region). See docs/REDIS_HA.md.`
         );
-        if (process.env['GUARDIAN_STRICT_MODE'] === 'true') {
+        if (process.env['MASTYFF_AI_STRICT_MODE'] === 'true') {
           process.exit(1);
         }
       } else {
@@ -192,9 +192,9 @@ export async function createContainer(dbPath?: string): Promise<Container> {
   const threatMeshNode = new ThreatMeshNode(industryStore);
   const honeypotManager = new HoneypotManager();
   const trustProtocol = new TrustNegotiationProtocol();
-  const guardianScore = new GuardianScore();
-  const reputationNetwork = new ReputationNetwork(industryStore, guardianScore);
-  const certifier = new MCPCertifier(industryStore, guardianScore, reputationNetwork);
+  const mastyffAiScore = new MastyffAiScore();
+  const reputationNetwork = new ReputationNetwork(industryStore, mastyffAiScore);
+  const certifier = new MCPCertifier(industryStore, mastyffAiScore, reputationNetwork);
   const protocolFuzzer = new McpProtocolFuzzer(industryStore);
   const collusionDetector = new CollusionDetector(industryStore);
   const slaEnforcer = new SlaEnforcer();
@@ -222,17 +222,17 @@ export async function createContainer(dbPath?: string): Promise<Container> {
   const ecosystemObservatory = new EcosystemObservatory(industryStore);
   const insuranceRiskQuantifier = new InsuranceRiskQuantifier(threatPredictor, riskScorer, industryStore);
   const federatedLearning = new FederatedLearningCoordinator(approvalGate, contextualBandit, industryStore);
-  if (process.env.GUARDIAN_FEDERATED_LEARNING === 'true') {
+  if (process.env.MASTYFF_AI_FEDERATED_LEARNING === 'true') {
     federatedLearning.getActiveWeights();
     void federatedLearning.syncRemoteDeltas().then(() => {
-      const min = Number(process.env.GUARDIAN_FEDERATED_LEARNING_MIN_REPORTS ?? 3);
+      const min = Number(process.env.MASTYFF_AI_FEDERATED_LEARNING_MIN_REPORTS ?? 3);
       federatedLearning.aggregateDeltas(min);
     });
   }
 
   Logger.info('[Container] Agentic AI services initialized (42 modules + roadmap)');
 
-  if (process.env.GUARDIAN_AGENTIC_ENABLED !== 'false') {
+  if (process.env.MASTYFF_AI_AGENTIC_ENABLED !== 'false') {
     const { registerIndustryStandardTasks } = await import('./utils/industry-standard-bootstrap.js');
     registerIndustryStandardTasks({
       db,
@@ -259,7 +259,7 @@ export async function createContainer(dbPath?: string): Promise<Container> {
       threatMeshNode,
       honeypotManager,
       trustProtocol,
-      guardianScore,
+      mastyffAiScore,
       responseDlp,
       certifier,
       protocolFuzzer,
@@ -317,7 +317,7 @@ export async function createContainer(dbPath?: string): Promise<Container> {
     threatMeshNode,
     honeypotManager,
     trustProtocol,
-    guardianScore,
+    mastyffAiScore,
     responseDlp,
     certifier,
     protocolFuzzer,

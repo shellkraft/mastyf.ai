@@ -148,7 +148,7 @@ export async function buildSecurityDashboard(
       { id: 'data', label: 'Data', status: 'alert' },
       { id: 'api', label: 'API', status: 'alert' },
     ],
-    executiveSummary: ['Start the Guardian proxy and route MCP traffic to populate live threat data.'],
+    executiveSummary: ['Start the Mastyff AI proxy and route MCP traffic to populate live threat data.'],
     threats: [],
     activeThreatCount: 0,
     semanticEngineActive: semStats.enabled,

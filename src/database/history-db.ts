@@ -1,5 +1,5 @@
 /**
- * MCP Guardian History Database — better-sqlite3 with WAL mode.
+ * MCP Mastyff AI History Database — better-sqlite3 with WAL mode.
  *
  * Replaces the original sql.js (WASM/in-memory) implementation with a
  * synchronous, disk-backed, WAL-mode SQLite database that survives crashes,
@@ -8,12 +8,12 @@
  * Fix 1 from the Production Readiness Audit (Part 7 — Remediation Blueprint).
  * v2.3.24: Replaced proper-lockfile with simple PID-based lock to eliminate stale lock issues.
  *
- * Secondary writers: set `MCP_GUARDIAN_DB_PATH` to the same file on the host;
+ * Secondary writers: set `MASTYFF_AI_DB_PATH` to the same file on the host;
  * WAL mode + busy_timeout=5000 allow concurrent proxy/TUI access.
  */
 import Database from 'better-sqlite3';
 import { join, dirname } from 'path';
-import { resolveGuardianDbPath } from '../utils/guardian-db-path.js';
+import { resolveMastyffAiDbPath } from '../utils/mastyff-ai-db-path.js';
 import { existsSync, mkdirSync, writeFileSync, readFileSync, unlinkSync, rmSync } from 'fs';
 import { Logger } from '../utils/logger.js';
 import { ProxyCallRecord } from '../types.js';
@@ -30,7 +30,7 @@ import { applyIndustryStandardMigration } from './industry-standard-store.js';
 
 /** Configurable audit retention (default 30 days). */
 export function resolveRetentionDays(): number {
-  const raw = process.env['MCP_GUARDIAN_RETENTION_DAYS'];
+  const raw = process.env['MASTYFF_AI_RETENTION_DAYS'];
   if (raw === undefined || raw === '') return 30;
   const n = parseInt(raw, 10);
   if (!Number.isFinite(n)) return 30;
@@ -160,7 +160,7 @@ export class HistoryDatabase implements IDatabase {
       return;
     }
 
-    const requestedPath = resolveGuardianDbPath(dbPathOrMemory);
+    const requestedPath = resolveMastyffAiDbPath(dbPathOrMemory);
     const dir = dirname(requestedPath);
     if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
 
@@ -223,7 +223,7 @@ export class HistoryDatabase implements IDatabase {
     return this.db.prepare(sql);
   }
 
-  /** SQLCipher PRAGMA key when GUARDIAN_DB_ENCRYPTION_KEY is set (requires sqlcipher-enabled build). */
+  /** SQLCipher PRAGMA key when MASTYFF_AI_DB_ENCRYPTION_KEY is set (requires sqlcipher-enabled build). */
   private applySqlCipherKeyIfConfigured(): void {
     const key = getFieldEncryptionKey();
     if (!key || this.dbPath === ':memory:') return;
@@ -682,8 +682,8 @@ export class HistoryDatabase implements IDatabase {
         .prepare(`DELETE FROM call_records WHERE created_at < datetime('now','-' || ? || ' days')`)
         .run(ttlDays);
       Logger.info(`[db] Purged ${result.changes} call records older than ${ttlDays} days`);
-    } catch (err: any) {
-      Logger.error(`[db] Purge error: ${err?.message}`);
+    } catch (err: unknown) {
+      Logger.error(`[db] Purge error: ${err instanceof Error ? err.message : String(err)}`);
     }
   }
 
@@ -732,8 +732,8 @@ export class HistoryDatabase implements IDatabase {
       this.db.close();
       if (this.lockCleanup) this.lockCleanup();
       Logger.info(`[HistoryDb] Closed${this.openedReadOnly ? '' : ' and WAL checkpointed'}`);
-    } catch (err: any) {
-      Logger.error(`[HistoryDb] Error closing: ${err?.message}`);
+    } catch (err: unknown) {
+      Logger.error(`[HistoryDb] Error closing: ${err instanceof Error ? err.message : String(err)}`);
     }
   }
 }

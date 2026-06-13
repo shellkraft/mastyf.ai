@@ -9,7 +9,7 @@ import { tenantRateLimitKey } from '../tenant/resolve-tenant.js';
 const memoryCache = new LRUCache<string, number>({ max: 10000 });
 
 function idempotencyTtlMs(): number {
-  const n = parseInt(process.env['GUARDIAN_IDEMPOTENCY_TTL_MS'] || '300000', 10);
+  const n = parseInt(process.env['MASTYFF_AI_IDEMPOTENCY_TTL_MS'] || '300000', 10);
   return Number.isFinite(n) && n > 0 ? n : 300000;
 }
 

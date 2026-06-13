@@ -3,13 +3,13 @@ import { isDpopLockFreeEnabled, claimDpopJtiLockFree } from '../../src/auth/dpop
 
 describe('DPoP lock-free jti claim', () => {
   it('enables lock-free mode by default', () => {
-    const prev = process.env.GUARDIAN_DPOP_LOCK_FREE;
-    delete process.env.GUARDIAN_DPOP_LOCK_FREE;
+    const prev = process.env.MASTYFF_AI_DPOP_LOCK_FREE;
+    delete process.env.MASTYFF_AI_DPOP_LOCK_FREE;
     expect(isDpopLockFreeEnabled()).toBe(true);
-    process.env.GUARDIAN_DPOP_LOCK_FREE = 'legacy';
+    process.env.MASTYFF_AI_DPOP_LOCK_FREE = 'legacy';
     expect(isDpopLockFreeEnabled()).toBe(false);
-    if (prev !== undefined) process.env.GUARDIAN_DPOP_LOCK_FREE = prev;
-    else delete process.env.GUARDIAN_DPOP_LOCK_FREE;
+    if (prev !== undefined) process.env.MASTYFF_AI_DPOP_LOCK_FREE = prev;
+    else delete process.env.MASTYFF_AI_DPOP_LOCK_FREE;
   });
 
   it('claimDpopJtiLockFree rejects replay on in-memory mock', async () => {

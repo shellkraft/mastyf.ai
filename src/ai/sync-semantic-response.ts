@@ -1,7 +1,7 @@
 /**
  * Synchronous semantic gate on tool responses (before forwarding to client).
- * Enable: GUARDIAN_SEMANTIC_SYNC_RESPONSE=true
- * Optional LLM: GUARDIAN_SEMANTIC_SYNC_RESPONSE_LLM=true (adds latency)
+ * Enable: MASTYFF_AI_SEMANTIC_SYNC_RESPONSE=true
+ * Optional LLM: MASTYFF_AI_SEMANTIC_SYNC_RESPONSE_LLM=true (adds latency)
  */
 import { LlmAssistant } from './llm-assistant.js';
 import { scoreLocalSemanticText } from './local-semantic-classifier.js';
@@ -19,7 +19,7 @@ import type { SemanticAuditResult } from './async-semantic-audit.js';
 import { Logger } from '../utils/logger.js';
 
 const MIN_CONFIDENCE = parseFloat(
-  process.env['GUARDIAN_SEMANTIC_SYNC_MIN_CONFIDENCE'] || process.env['GUARDIAN_SEMANTIC_MIN_CONFIDENCE'] || '0.6',
+  process.env['MASTYFF_AI_SEMANTIC_SYNC_MIN_CONFIDENCE'] || process.env['MASTYFF_AI_SEMANTIC_MIN_CONFIDENCE'] || '0.6',
 );
 
 export function isSyncSemanticResponseEnabled(tenantId?: string): boolean {
@@ -101,7 +101,7 @@ Respond ONLY with JSON: {"suspicious":boolean,"confidence":0-1,"categories":stri
     'sync_semantic_response',
     () => llm.generate(systemPrompt, userPrompt),
     null,
-    parseInt(process.env['GUARDIAN_SEMANTIC_SYNC_TIMEOUT_MS'] || '3000', 10),
+    parseInt(process.env['MASTYFF_AI_SEMANTIC_SYNC_TIMEOUT_MS'] || '3000', 10),
   );
 
   if (!response?.text) {

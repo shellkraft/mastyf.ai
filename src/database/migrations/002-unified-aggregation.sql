@@ -1,8 +1,8 @@
 -- Phase 1: Unified Aggregation Schema
--- Aggregates data from all MCP Guardian instances into a single source of truth
+-- Aggregates data from all MCP Mastyff AI instances into a single source of truth
 
--- Guardian instance registry
-CREATE TABLE IF NOT EXISTS guardian_instances (
+-- Mastyff AI instance registry
+CREATE TABLE IF NOT EXISTS mastyff_ai_instances (
   id SERIAL PRIMARY KEY,
   instance_id TEXT NOT NULL UNIQUE,
   instance_name TEXT NOT NULL,
@@ -17,7 +17,7 @@ CREATE TABLE IF NOT EXISTS guardian_instances (
 -- Aggregated metrics from Prometheus scrapes
 CREATE TABLE IF NOT EXISTS aggregated_metrics (
   id SERIAL PRIMARY KEY,
-  instance_id TEXT NOT NULL REFERENCES guardian_instances(instance_id) ON DELETE CASCADE,
+  instance_id TEXT NOT NULL REFERENCES mastyff_ai_instances(instance_id) ON DELETE CASCADE,
   timestamp TIMESTAMPTZ DEFAULT NOW(),
   total_requests BIGINT DEFAULT 0,
   blocked_requests BIGINT DEFAULT 0,
@@ -42,7 +42,7 @@ CREATE INDEX IF NOT EXISTS idx_agg_metrics_ts ON aggregated_metrics(timestamp DE
 -- Unified audit trail (all policy decisions from all instances)
 CREATE TABLE IF NOT EXISTS unified_audit_trail (
   id SERIAL PRIMARY KEY,
-  instance_id TEXT NOT NULL REFERENCES guardian_instances(instance_id) ON DELETE CASCADE,
+  instance_id TEXT NOT NULL REFERENCES mastyff_ai_instances(instance_id) ON DELETE CASCADE,
   timestamp TIMESTAMPTZ DEFAULT NOW(),
   server_name TEXT NOT NULL,
   tool_name TEXT NOT NULL,
@@ -70,7 +70,7 @@ CREATE INDEX IF NOT EXISTS idx_audit_trail_ts ON unified_audit_trail(timestamp D
 -- Centralized security scan results
 CREATE TABLE IF NOT EXISTS unified_security_scans (
   id SERIAL PRIMARY KEY,
-  instance_id TEXT NOT NULL REFERENCES guardian_instances(instance_id) ON DELETE CASCADE,
+  instance_id TEXT NOT NULL REFERENCES mastyff_ai_instances(instance_id) ON DELETE CASCADE,
   timestamp TIMESTAMPTZ DEFAULT NOW(),
   server_name TEXT NOT NULL,
   score INTEGER NOT NULL,
@@ -91,7 +91,7 @@ CREATE INDEX IF NOT EXISTS idx_unified_security_server ON unified_security_scans
 -- Centralized cost records
 CREATE TABLE IF NOT EXISTS unified_cost_records (
   id SERIAL PRIMARY KEY,
-  instance_id TEXT NOT NULL REFERENCES guardian_instances(instance_id) ON DELETE CASCADE,
+  instance_id TEXT NOT NULL REFERENCES mastyff_ai_instances(instance_id) ON DELETE CASCADE,
   timestamp TIMESTAMPTZ DEFAULT NOW(),
   server_name TEXT NOT NULL,
   tool_name TEXT,
@@ -111,7 +111,7 @@ CREATE INDEX IF NOT EXISTS idx_unified_cost_server ON unified_cost_records(serve
 -- Centralized health check records
 CREATE TABLE IF NOT EXISTS unified_health_checks (
   id SERIAL PRIMARY KEY,
-  instance_id TEXT NOT NULL REFERENCES guardian_instances(instance_id) ON DELETE CASCADE,
+  instance_id TEXT NOT NULL REFERENCES mastyff_ai_instances(instance_id) ON DELETE CASCADE,
   timestamp TIMESTAMPTZ DEFAULT NOW(),
   server_name TEXT NOT NULL,
   latency_ms INTEGER NOT NULL,
@@ -128,7 +128,7 @@ CREATE INDEX IF NOT EXISTS idx_unified_health_server ON unified_health_checks(se
 -- Shared AI learning state (replaces .ai-learning.json)
 CREATE TABLE IF NOT EXISTS ai_learning_state_shared (
   id SERIAL PRIMARY KEY,
-  instance_id TEXT NOT NULL REFERENCES guardian_instances(instance_id) ON DELETE CASCADE,
+  instance_id TEXT NOT NULL REFERENCES mastyff_ai_instances(instance_id) ON DELETE CASCADE,
   timestamp TIMESTAMPTZ DEFAULT NOW(),
   true_positive_rate REAL DEFAULT 0,
   false_positive_rate REAL DEFAULT 0,
@@ -146,7 +146,7 @@ CREATE INDEX IF NOT EXISTS idx_ai_state_instance ON ai_learning_state_shared(ins
 -- Shared AI learning outcomes (individual feedback records)
 CREATE TABLE IF NOT EXISTS ai_learning_outcomes_shared (
   id SERIAL PRIMARY KEY,
-  instance_id TEXT NOT NULL REFERENCES guardian_instances(instance_id) ON DELETE CASCADE,
+  instance_id TEXT NOT NULL REFERENCES mastyff_ai_instances(instance_id) ON DELETE CASCADE,
   timestamp TIMESTAMPTZ DEFAULT NOW(),
   suggestion_id TEXT NOT NULL,
   rule_name TEXT NOT NULL,
@@ -164,7 +164,7 @@ CREATE INDEX IF NOT EXISTS idx_ai_outcomes_source ON ai_learning_outcomes_shared
 -- Shared AI baselines (across all instances)
 CREATE TABLE IF NOT EXISTS ai_baselines_shared (
   id SERIAL PRIMARY KEY,
-  instance_id TEXT NOT NULL REFERENCES guardian_instances(instance_id) ON DELETE CASCADE,
+  instance_id TEXT NOT NULL REFERENCES mastyff_ai_instances(instance_id) ON DELETE CASCADE,
   timestamp TIMESTAMPTZ DEFAULT NOW(),
   server_name TEXT NOT NULL,
   tool_name TEXT NOT NULL,
@@ -183,7 +183,7 @@ CREATE TABLE IF NOT EXISTS ai_baselines_shared (
 CREATE INDEX IF NOT EXISTS idx_ai_baselines_server ON ai_baselines_shared(server_name, tool_name);
 
 -- Live threat intelligence feed entries
-CREATE TABLE IF NOT EXISTS guardian_threat_feed (
+CREATE TABLE IF NOT EXISTS mastyff-ai_threat_feed (
   id SERIAL PRIMARY KEY,
   threat_id TEXT NOT NULL UNIQUE,
   source TEXT NOT NULL CHECK (source IN ('NVD', 'OSV', 'GitHub', 'custom')),
@@ -200,13 +200,13 @@ CREATE TABLE IF NOT EXISTS guardian_threat_feed (
   metadata JSONB DEFAULT '{}'
 );
 
-CREATE INDEX IF NOT EXISTS idx_threat_feed_severity ON guardian_threat_feed(severity, ingested_at);
-CREATE INDEX IF NOT EXISTS idx_threat_feed_source ON guardian_threat_feed(source);
+CREATE INDEX IF NOT EXISTS idx_threat_feed_severity ON mastyff-ai_threat_feed(severity, ingested_at);
+CREATE INDEX IF NOT EXISTS idx_threat_feed_source ON mastyff-ai_threat_feed(source);
 
--- Guardian logs (structured logging from pino → PG)
-CREATE TABLE IF NOT EXISTS guardian_logs (
+-- Mastyff AI logs (structured logging from pino → PG)
+CREATE TABLE IF NOT EXISTS mastyff-ai_logs (
   id SERIAL PRIMARY KEY,
-  instance_id TEXT NOT NULL REFERENCES guardian_instances(instance_id) ON DELETE CASCADE,
+  instance_id TEXT NOT NULL REFERENCES mastyff_ai_instances(instance_id) ON DELETE CASCADE,
   timestamp TIMESTAMPTZ DEFAULT NOW(),
   level INTEGER NOT NULL,
   level_name TEXT NOT NULL,
@@ -220,6 +220,6 @@ CREATE TABLE IF NOT EXISTS guardian_logs (
   metadata JSONB DEFAULT '{}'
 );
 
-CREATE INDEX IF NOT EXISTS idx_guardian_logs_instance ON guardian_logs(instance_id, timestamp);
-CREATE INDEX IF NOT EXISTS idx_guardian_logs_level ON guardian_logs(level, timestamp);
-CREATE INDEX IF NOT EXISTS idx_guardian_logs_server ON guardian_logs(server_name, timestamp);
+CREATE INDEX IF NOT EXISTS idx_mastyff-ai_logs_instance ON mastyff-ai_logs(instance_id, timestamp);
+CREATE INDEX IF NOT EXISTS idx_mastyff-ai_logs_level ON mastyff-ai_logs(level, timestamp);
+CREATE INDEX IF NOT EXISTS idx_mastyff-ai_logs_server ON mastyff-ai_logs(server_name, timestamp);

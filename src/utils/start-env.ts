@@ -1,5 +1,5 @@
 /**
- * Default environment for `mcp-guardian start` (local dashboard + proxy).
+ * Default environment for `mastyff-ai start` (local dashboard + proxy).
  */
 import { existsSync } from 'node:fs';
 import { homedir } from 'node:os';
@@ -8,17 +8,17 @@ import { join } from 'node:path';
 export function applyStartEnv(overrides?: Record<string, string>): void {
   const home = homedir();
   const defaults: Record<string, string> = {
-    MCP_GUARDIAN_DB_PATH: join(home, '.mcp-guardian', 'history.db'),
+    MASTYFF_AI_DB_PATH: join(home, '.mastyff-ai', 'history.db'),
     DASHBOARD_ENABLED: 'true',
     DASHBOARD_AUTH_DISABLED: 'true',
-    GUARDIAN_CI_BYPASS_LICENSE: 'true',
-    GUARDIAN_WS_ENABLED: 'true',
-    GUARDIAN_LLM_ENABLED: 'true',
+    MASTYFF_AI_CI_BYPASS_LICENSE: 'true',
+    MASTYFF_AI_WS_ENABLED: 'true',
+    MASTYFF_AI_LLM_ENABLED: 'true',
     METRICS_ENABLED: 'true',
     DASHBOARD_PORT: '4000',
     METRICS_PORT: '9090',
     OLLAMA_BASE_URL: 'http://127.0.0.1:11434',
-    GUARDIAN_BLOCKING_MODE: 'block',
+    MASTYFF_AI_BLOCKING_MODE: 'block',
   };
 
   for (const [key, val] of Object.entries(defaults)) {

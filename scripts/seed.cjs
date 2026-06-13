@@ -1,6 +1,6 @@
 const Database = require('better-sqlite3');
 const now = new Date();
-const db = new Database('/private/tmp/mcp-guardian-dashboard.db');
+const db = new Database('/private/tmp/mastyff-ai-dashboard.db');
 db.exec("CREATE TABLE IF NOT EXISTS call_records (id INTEGER PRIMARY KEY AUTOINCREMENT, server_name TEXT NOT NULL, tool_name TEXT NOT NULL, request_tokens INTEGER NOT NULL, response_tokens INTEGER NOT NULL, total_tokens INTEGER NOT NULL, duration_ms INTEGER NOT NULL, created_at TEXT DEFAULT (datetime('now')))");
 const stmt = db.prepare("INSERT INTO call_records (server_name, tool_name, request_tokens, response_tokens, total_tokens, duration_ms, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)");
 const data = [

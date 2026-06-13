@@ -6,18 +6,18 @@ import {
   resetDpopEnforcementForTests,
 } from '../../src/auth/dpop-enforcement.js';
 
-describe('GUARDIAN_REQUIRE_DPOP', () => {
-  const prev = process.env.GUARDIAN_REQUIRE_DPOP;
+describe('MASTYFF_AI_REQUIRE_DPOP', () => {
+  const prev = process.env.MASTYFF_AI_REQUIRE_DPOP;
 
   beforeEach(() => {
     resetDpopEnforcementForTests();
-    delete process.env.GUARDIAN_REQUIRE_DPOP;
+    delete process.env.MASTYFF_AI_REQUIRE_DPOP;
   });
 
   afterEach(() => {
     resetDpopEnforcementForTests();
-    if (prev === undefined) delete process.env.GUARDIAN_REQUIRE_DPOP;
-    else process.env.GUARDIAN_REQUIRE_DPOP = prev;
+    if (prev === undefined) delete process.env.MASTYFF_AI_REQUIRE_DPOP;
+    else process.env.MASTYFF_AI_REQUIRE_DPOP = prev;
   });
 
   it('skips validation when flag is unset', async () => {
@@ -26,8 +26,8 @@ describe('GUARDIAN_REQUIRE_DPOP', () => {
     expect(result.valid).toBe(true);
   });
 
-  it('rejects missing proof when GUARDIAN_REQUIRE_DPOP=true', async () => {
-    process.env.GUARDIAN_REQUIRE_DPOP = 'true';
+  it('rejects missing proof when MASTYFF_AI_REQUIRE_DPOP=true', async () => {
+    process.env.MASTYFF_AI_REQUIRE_DPOP = 'true';
     expect(isDpopRequired()).toBe(true);
     const result = await validateRequiredDpop(undefined, 'POST', 'https://example/mcp');
     expect(result.valid).toBe(false);
@@ -35,7 +35,7 @@ describe('GUARDIAN_REQUIRE_DPOP', () => {
   });
 
   it('accepts valid proof with jwk in header', async () => {
-    process.env.GUARDIAN_REQUIRE_DPOP = 'true';
+    process.env.MASTYFF_AI_REQUIRE_DPOP = 'true';
     const { privateKey, publicKey } = await jose.generateKeyPair('ES256');
     const jwk = await jose.exportJWK(publicKey);
 

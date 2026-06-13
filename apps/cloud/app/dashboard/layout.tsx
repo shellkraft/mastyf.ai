@@ -15,7 +15,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
   if (!ctx) {
     const email =
       session.user.email?.trim()
-      || `${session.user.id}@oauth.mcp-guardian.local`;
+      || `${session.user.id}@oauth.mastyff-ai.local`;
     try {
       await provisionFreeOrganization({
         userId: session.user.id,

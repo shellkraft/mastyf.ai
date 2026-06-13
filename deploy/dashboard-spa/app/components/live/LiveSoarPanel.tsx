@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { fetchSoarPlaybooks, type SoarPlaybook } from '@/lib/guardian-api';
+import { fetchSoarPlaybooks, type SoarPlaybook } from '@/lib/mastyff-ai-api';
 
 export function LiveSoarPanel() {
   const [enabled, setEnabled] = useState(false);
@@ -28,7 +28,7 @@ export function LiveSoarPanel() {
   if (playbooks.length === 0) {
     return (
       <p className="muted">
-        No playbooks loaded. Set <code>GUARDIAN_SOAR_PLAYBOOKS=true</code> and configure{' '}
+        No playbooks loaded. Set <code>MASTYFF_AI_SOAR_PLAYBOOKS=true</code> and configure{' '}
         <code>config/soar-playbooks.json</code>.
       </p>
     );

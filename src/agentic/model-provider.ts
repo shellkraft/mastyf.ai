@@ -4,7 +4,7 @@
  * Supports:
  *   - OpenAI-compatible APIs (OpenAI, Azure, local Ollama/LM Studio)
  *   - Anthropic Claude
- *   - Configurable via GUARDIAN_LLM_* env vars
+ *   - Configurable via MASTYFF_AI_LLM_* env vars
  *   - Fallback ordering and retry
  *   - Token usage tracking for cost audit
  */
@@ -52,34 +52,34 @@ export class AgenticModelProvider {
   /** Load LLM configurations from environment variables. */
   private loadConfigsFromEnv(): void {
     // OpenAI
-    if (process.env['GUARDIAN_LLM_OPENAI_KEY'] || process.env['OPENAI_API_KEY']) {
+    if (process.env['MASTYFF_AI_LLM_OPENAI_KEY'] || process.env['OPENAI_API_KEY']) {
       this.configs.push({
         provider: 'openai',
-        apiKey: process.env['GUARDIAN_LLM_OPENAI_KEY'] || process.env['OPENAI_API_KEY']!,
-        baseUrl: process.env['GUARDIAN_LLM_OPENAI_BASE_URL'],
-        model: process.env['GUARDIAN_LLM_OPENAI_MODEL'] || 'gpt-4o-mini',
-        timeoutMs: parseInt(process.env['GUARDIAN_LLM_TIMEOUT_MS'] || '15000', 10),
+        apiKey: process.env['MASTYFF_AI_LLM_OPENAI_KEY'] || process.env['OPENAI_API_KEY']!,
+        baseUrl: process.env['MASTYFF_AI_LLM_OPENAI_BASE_URL'],
+        model: process.env['MASTYFF_AI_LLM_OPENAI_MODEL'] || 'gpt-4o-mini',
+        timeoutMs: parseInt(process.env['MASTYFF_AI_LLM_TIMEOUT_MS'] || '15000', 10),
       });
     }
 
     // Anthropic
-    if (process.env['GUARDIAN_LLM_ANTHROPIC_KEY'] || process.env['ANTHROPIC_API_KEY']) {
+    if (process.env['MASTYFF_AI_LLM_ANTHROPIC_KEY'] || process.env['ANTHROPIC_API_KEY']) {
       this.configs.push({
         provider: 'anthropic',
-        apiKey: process.env['GUARDIAN_LLM_ANTHROPIC_KEY'] || process.env['ANTHROPIC_API_KEY']!,
-        model: process.env['GUARDIAN_LLM_ANTHROPIC_MODEL'] || 'claude-3-5-haiku-latest',
-        timeoutMs: parseInt(process.env['GUARDIAN_LLM_TIMEOUT_MS'] || '15000', 10),
+        apiKey: process.env['MASTYFF_AI_LLM_ANTHROPIC_KEY'] || process.env['ANTHROPIC_API_KEY']!,
+        model: process.env['MASTYFF_AI_LLM_ANTHROPIC_MODEL'] || 'claude-3-5-haiku-latest',
+        timeoutMs: parseInt(process.env['MASTYFF_AI_LLM_TIMEOUT_MS'] || '15000', 10),
       });
     }
 
     // OpenAI-compatible (e.g., Ollama, LM Studio, Groq)
-    if (process.env['GUARDIAN_LLM_COMPATIBLE_KEY'] && process.env['GUARDIAN_LLM_COMPATIBLE_BASE_URL']) {
+    if (process.env['MASTYFF_AI_LLM_COMPATIBLE_KEY'] && process.env['MASTYFF_AI_LLM_COMPATIBLE_BASE_URL']) {
       this.configs.push({
         provider: 'openai-compatible',
-        apiKey: process.env['GUARDIAN_LLM_COMPATIBLE_KEY'],
-        baseUrl: process.env['GUARDIAN_LLM_COMPATIBLE_BASE_URL'],
-        model: process.env['GUARDIAN_LLM_COMPATIBLE_MODEL'] || 'llama3',
-        timeoutMs: parseInt(process.env['GUARDIAN_LLM_TIMEOUT_MS'] || '15000', 10),
+        apiKey: process.env['MASTYFF_AI_LLM_COMPATIBLE_KEY'],
+        baseUrl: process.env['MASTYFF_AI_LLM_COMPATIBLE_BASE_URL'],
+        model: process.env['MASTYFF_AI_LLM_COMPATIBLE_MODEL'] || 'llama3',
+        timeoutMs: parseInt(process.env['MASTYFF_AI_LLM_TIMEOUT_MS'] || '15000', 10),
       });
     }
 

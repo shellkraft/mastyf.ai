@@ -40,7 +40,7 @@ async function cachedLlmHealth(): Promise<{ ok: boolean; reason?: string; model?
     at: now,
     ok: ready.ok,
     reason: ready.reason,
-    model: process.env.GUARDIAN_LLM_MODEL || process.env.OLLAMA_MODEL || undefined,
+    model: process.env.MASTYFF_AI_LLM_MODEL || process.env.OLLAMA_MODEL || undefined,
   };
   return { ok: llmCache.ok, reason: llmCache.reason, model: llmCache.model };
 }

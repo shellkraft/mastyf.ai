@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { Badge } from '../ui/Badge';
-import { fetchAgenticAudit, fetchAgenticDecisions } from '@/lib/guardian-api';
+import { fetchAgenticAudit, fetchAgenticDecisions } from '@/lib/mastyff-ai-api';
 import { ProvenanceTimelinePanel } from './ProvenanceTimelinePanel';
 
 type Props = { refreshKey?: number };
@@ -68,7 +68,7 @@ export function AgenticAuditPanel({ refreshKey = 0 }: Props) {
         <div className="p-3 border-b border-gray-200 dark:border-gray-700 font-semibold">MCP request audit</div>
         {(audit?.records ?? []).length === 0 ? (
           <p className="p-6 text-center text-gray-400 text-sm">
-            No MCP traffic recorded yet. Audit records appear as requests pass through the Guardian proxy.
+            No MCP traffic recorded yet. Audit records appear as requests pass through the Mastyff AI proxy.
           </p>
         ) : (
           <div className="overflow-x-auto max-h-96">

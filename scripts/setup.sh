@@ -1,5 +1,5 @@
 #!/usr/bin/env sh
-# One-shot developer setup (git clone). Prefer: mcp-guardian setup
+# One-shot developer setup (git clone). Prefer: mastyff-ai setup
 set -e
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"

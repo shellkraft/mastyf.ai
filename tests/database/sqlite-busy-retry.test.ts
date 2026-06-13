@@ -25,7 +25,7 @@ describe('sqlite busy retry', () => {
   });
 
   it('supports concurrent writers on shared WAL database', async () => {
-    const dir = mkdtempSync(join(tmpdir(), 'guardian-busy-'));
+    const dir = mkdtempSync(join(tmpdir(), 'mastyff-ai-busy-'));
     const dbPath = join(dir, 'history.db');
     const primary = new HistoryDatabase(dbPath);
     const secondary = new HistoryDatabase(dbPath);

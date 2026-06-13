@@ -12,7 +12,7 @@ export async function evaluateIdempotency(
 ): Promise<PolicyDecision | null> {
   if (mode !== 'block' || !context.idempotencyKey) return null;
 
-  const tenant = context.tenantId || process.env['GUARDIAN_TENANT_ID'] || 'default';
+  const tenant = context.tenantId || process.env['MASTYFF_AI_TENANT_ID'] || 'default';
   const cacheKey = hashIdempotentPayload(
     tenant,
     context.serverName,

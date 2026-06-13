@@ -4,7 +4,7 @@
 import { getTotalProxyInflight } from './proxy-inflight.js';
 
 export function shutdownGraceMs(): number {
-  const n = parseInt(process.env['GUARDIAN_SHUTDOWN_GRACE_MS'] || '30000', 10);
+  const n = parseInt(process.env['MASTYFF_AI_SHUTDOWN_GRACE_MS'] || '30000', 10);
   return Number.isFinite(n) && n > 0 ? n : 30_000;
 }
 

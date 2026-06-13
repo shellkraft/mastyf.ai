@@ -47,7 +47,7 @@ describe('detection-recall', () => {
   });
 
   afterEach(() => {
-    delete process.env.GUARDIAN_WORKSPACE;
+    delete process.env.MASTYFF_AI_WORKSPACE;
   });
 
   describe('SQL / NoSQL / LDAP', () => {
@@ -193,8 +193,8 @@ describe('detection-recall', () => {
 
   describe('corpus regression (PolicyEngine, regex-only)', () => {
     it('blocks every attack fixture with zero benign false positives', async () => {
-      const prev = process.env.GUARDIAN_DISABLE_SEMANTIC;
-      process.env.GUARDIAN_DISABLE_SEMANTIC = 'true';
+      const prev = process.env.MASTYFF_AI_DISABLE_SEMANTIC;
+      process.env.MASTYFF_AI_DISABLE_SEMANTIC = 'true';
       try {
         const report = await runEval();
         const attackTotal = report.overall.tp + report.overall.fn;
@@ -205,8 +205,8 @@ describe('detection-recall', () => {
         expect(report.benignPassRate).toBe(1);
         expect(report.passed).toBe(true);
       } finally {
-        if (prev === undefined) delete process.env.GUARDIAN_DISABLE_SEMANTIC;
-        else process.env.GUARDIAN_DISABLE_SEMANTIC = prev;
+        if (prev === undefined) delete process.env.MASTYFF_AI_DISABLE_SEMANTIC;
+        else process.env.MASTYFF_AI_DISABLE_SEMANTIC = prev;
       }
     });
   });

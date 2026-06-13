@@ -38,14 +38,14 @@ async function sendToolsCall(
 }
 
 describe('WebSocketProxyServer round-trip', () => {
-  const prevMode = process.env.GUARDIAN_RESPONSE_DLP_MODE;
+  const prevMode = process.env.MASTYFF_AI_RESPONSE_DLP_MODE;
   let upstream: Awaited<ReturnType<typeof startMcpWsEchoFixture>>;
   let upstreamPort = 0;
   let proxy: WebSocketProxyServer;
   let proxyPort = 0;
 
   beforeEach(async () => {
-    process.env.GUARDIAN_RESPONSE_DLP_MODE = 'redact';
+    process.env.MASTYFF_AI_RESPONSE_DLP_MODE = 'redact';
 
     upstream = await startMcpWsEchoFixture();
     upstreamPort = upstream.port;
@@ -66,8 +66,8 @@ describe('WebSocketProxyServer round-trip', () => {
   });
 
   afterEach(async () => {
-    if (prevMode) process.env.GUARDIAN_RESPONSE_DLP_MODE = prevMode;
-    else delete process.env.GUARDIAN_RESPONSE_DLP_MODE;
+    if (prevMode) process.env.MASTYFF_AI_RESPONSE_DLP_MODE = prevMode;
+    else delete process.env.MASTYFF_AI_RESPONSE_DLP_MODE;
     await proxy.stop();
     await upstream.close();
   });
@@ -120,7 +120,7 @@ describe('WebSocketProxyServer round-trip', () => {
   it(
     'blocks tool response with sensitive echoed content in block DLP mode',
     async () => {
-      process.env.GUARDIAN_RESPONSE_DLP_MODE = 'block';
+      process.env.MASTYFF_AI_RESPONSE_DLP_MODE = 'block';
       const client = await openWs(`ws://127.0.0.1:${proxyPort}`);
       const response = await sendToolsCall(client, 12, 'echo', {
         note: 'patient ssn 123-45-6789',

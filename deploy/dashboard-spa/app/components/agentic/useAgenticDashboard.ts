@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { fetchAgenticDashboard, type AgenticDashboardResponse } from '@/lib/guardian-api';
+import { fetchAgenticDashboard, type AgenticDashboardResponse } from '@/lib/mastyff-ai-api';
 import { useDashboardWindow } from '../dashboard/DashboardWindowContext';
 
 export function useAgenticDashboard(refreshKey = 0, pollMs = 0) {
@@ -14,7 +14,7 @@ export function useAgenticDashboard(refreshKey = 0, pollMs = 0) {
     setLoading(true);
     const summary = await fetchAgenticDashboard(timeWindow);
     if (!summary) {
-      setError('Could not reach agentic dashboard API — is Guardian proxy running on port 4000?');
+      setError('Could not reach agentic dashboard API — is Mastyff AI proxy running on port 4000?');
       setData(null);
     } else {
       setError(summary.emptyReason ?? summary.error ?? null);

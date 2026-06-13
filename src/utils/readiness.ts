@@ -16,8 +16,8 @@ export async function runReadinessChecks(): Promise<{ ready: boolean; checks: Re
       const result = await checks[i]();
       results[name] = result.ok ? 'ok' : (result.detail || 'failed');
       if (!result.ok) ready = false;
-    } catch (err: any) {
-      results[name] = err?.message || 'error';
+    } catch (err: unknown) {
+      results[name] = err instanceof Error ? err.message : 'error';
       ready = false;
     }
   }

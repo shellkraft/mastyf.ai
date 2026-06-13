@@ -1,19 +1,19 @@
 #!/usr/bin/env node
 /**
- * Generate a GUARDIAN_CI_TOKEN (Ed25519-signed JWT) for CI pipelines.
+ * Generate a MASTYFF_AI_CI_TOKEN (Ed25519-signed JWT) for CI pipelines.
  *
  * Usage:
  *   node scripts/generate-ci-token.mjs [expiry-days]
  *   node scripts/generate-ci-token.mjs 30    # 30-day token
  *   node scripts/generate-ci-token.mjs 90    # 90-day token
  *
- * Requires: GUARDIAN_CI_PRIVATE_KEY env var (Ed25519 JWK) or
- * a key file at the path in GUARDIAN_CI_KEY_FILE.
+ * Requires: MASTYFF_AI_CI_PRIVATE_KEY env var (Ed25519 JWK) or
+ * a key file at the path in MASTYFF_AI_CI_KEY_FILE.
  *
  * The private key is NEVER embedded in the source or dist.
  * Only the public key lives in src/license/ci-token.ts.
  *
- * Output: base64url-encoded JWT to stdout. Set as GUARDIAN_CI_TOKEN.
+ * Output: base64url-encoded JWT to stdout. Set as MASTYFF_AI_CI_TOKEN.
  */
 
 import { subtle } from 'node:crypto';
@@ -36,17 +36,17 @@ function parseJwk(raw) {
 
 async function getPrivateKey() {
   // 1. Try env var
-  if (process.env['GUARDIAN_CI_PRIVATE_KEY']) {
-    return parseJwk(process.env['GUARDIAN_CI_PRIVATE_KEY']);
+  if (process.env['MASTYFF_AI_CI_PRIVATE_KEY']) {
+    return parseJwk(process.env['MASTYFF_AI_CI_PRIVATE_KEY']);
   }
 
   // 2. Try key file
-  const keyFile = process.env['GUARDIAN_CI_KEY_FILE'];
+  const keyFile = process.env['MASTYFF_AI_CI_KEY_FILE'];
   if (keyFile && existsSync(keyFile)) {
     return parseJwk(readFileSync(keyFile, 'utf-8'));
   }
 
-  console.error('[ci-token] No private key found. Set GUARDIAN_CI_PRIVATE_KEY or GUARDIAN_CI_KEY_FILE.');
+  console.error('[ci-token] No private key found. Set MASTYFF_AI_CI_PRIVATE_KEY or MASTYFF_AI_CI_KEY_FILE.');
   console.error('[ci-token] Generate a key pair: node scripts/generate-ci-keypair.mjs');
   process.exit(1);
 }
@@ -91,8 +91,8 @@ async function main() {
   console.log(token);
   console.error(`\n[ci-token] Token generated (expires in ${days} days):`);
   console.error(`  Expires: ${new Date(exp * 1000).toISOString()}`);
-  console.error(`  Usage: export GUARDIAN_CI_TOKEN="${token}"`);
-  console.error(`  Or add to CI secrets as GUARDIAN_CI_TOKEN`);
+  console.error(`  Usage: export MASTYFF_AI_CI_TOKEN="${token}"`);
+  console.error(`  Or add to CI secrets as MASTYFF_AI_CI_TOKEN`);
 }
 
 main().catch((err) => {

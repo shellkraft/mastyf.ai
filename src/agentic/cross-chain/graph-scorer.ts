@@ -11,7 +11,7 @@ const FEATURE_DIM = 8;
 
 function loadGraphWeights(): { w1: number[]; w2: number[] } {
   try {
-    const raw = process.env.GUARDIAN_FLEET_GRAPH_WEIGHTS?.trim();
+    const raw = process.env.MASTYFF_AI_FLEET_GRAPH_WEIGHTS?.trim();
     if (raw) {
       const parsed = JSON.parse(raw) as { w1?: number[]; w2?: number[] };
       if (parsed.w1?.length && parsed.w2?.length) {

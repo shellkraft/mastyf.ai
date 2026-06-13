@@ -118,7 +118,7 @@ export function startTenantTrainJob(tenantId: string): {
       cwd: process.cwd(),
       detached: true,
       stdio: ['ignore', 'ignore', 'ignore'],
-      env: { ...process.env, GUARDIAN_TENANT_ID: tenantId },
+      env: { ...process.env, MASTYFF_AI_TENANT_ID: tenantId },
     },
   );
   child.unref();

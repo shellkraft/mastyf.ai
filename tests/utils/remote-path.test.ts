@@ -7,8 +7,8 @@ import {
 
 describe('remote-path', () => {
   afterEach(() => {
-    delete process.env.GUARDIAN_REMOTE_SSH;
-    delete process.env.GUARDIAN_REMOTE_PATH_MAP;
+    delete process.env.MASTYFF_AI_REMOTE_SSH;
+    delete process.env.MASTYFF_AI_REMOTE_PATH_MAP;
   });
 
   it('parses JSON path map', () => {
@@ -23,15 +23,15 @@ describe('remote-path', () => {
   });
 
   it('translates paths when Remote SSH enabled', () => {
-    process.env.GUARDIAN_REMOTE_SSH = 'true';
-    process.env.GUARDIAN_REMOTE_PATH_MAP = 'C:/Users/dev/app=/home/vscode/app';
+    process.env.MASTYFF_AI_REMOTE_SSH = 'true';
+    process.env.MASTYFF_AI_REMOTE_PATH_MAP = 'C:/Users/dev/app=/home/vscode/app';
     expect(translatePath('C:/Users/dev/app/src/main.ts')).toBe('/home/vscode/app/src/main.ts');
     expect(translatePath('/tmp/other')).toBe('/tmp/other');
   });
 
   it('isRemoteSshEnabled reflects env', () => {
     expect(isRemoteSshEnabled()).toBe(false);
-    process.env.GUARDIAN_REMOTE_SSH = 'true';
+    process.env.MASTYFF_AI_REMOTE_SSH = 'true';
     expect(isRemoteSshEnabled()).toBe(true);
   });
 });

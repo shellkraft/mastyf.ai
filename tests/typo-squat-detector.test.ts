@@ -73,15 +73,15 @@ describe('TypoSquatDetector', () => {
     expect(results[0].distance).toBe(0);
   });
 
-  it('detects @mcp-guardian/server typo', () => {
-    const results = detector.detect('@mcp-guardian/servre');
+  it('detects @mastyff-ai/server typo', () => {
+    const results = detector.detect('@mastyff-ai/servre');
     expect(results.length).toBeGreaterThan(0);
-    expect(results.some((r) => r.similarityTo === '@mcp-guardian/server')).toBe(true);
+    expect(results.some((r) => r.similarityTo === '@mastyff-ai/server')).toBe(true);
   });
 
-  it('detects mcp-guardian package name typo', () => {
+  it('detects mastyff-ai package name typo', () => {
     const results = detector.detect('mcp-guardia');
     expect(results.length).toBeGreaterThan(0);
-    expect(results.some((r) => r.similarityTo === 'mcp-guardian')).toBe(true);
+    expect(results.some((r) => r.similarityTo === 'mastyff-ai')).toBe(true);
   });
 });

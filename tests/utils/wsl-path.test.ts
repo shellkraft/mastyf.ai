@@ -16,11 +16,11 @@ describe('wsl-path', () => {
   });
 
   it('path-guard blocks sensitive paths after WSL normalization', () => {
-    const prev = process.env.GUARDIAN_WSL_PATH_MAP;
-    process.env.GUARDIAN_WSL_PATH_MAP = 'true';
+    const prev = process.env.MASTYFF_AI_WSL_PATH_MAP;
+    process.env.MASTYFF_AI_WSL_PATH_MAP = 'true';
     const result = evaluatePathGuard(['/mnt/c/Users/x/.ssh/id_rsa']);
-    if (prev === undefined) delete process.env.GUARDIAN_WSL_PATH_MAP;
-    else process.env.GUARDIAN_WSL_PATH_MAP = prev;
+    if (prev === undefined) delete process.env.MASTYFF_AI_WSL_PATH_MAP;
+    else process.env.MASTYFF_AI_WSL_PATH_MAP = prev;
     expect(result.block).toBe(true);
   });
 });

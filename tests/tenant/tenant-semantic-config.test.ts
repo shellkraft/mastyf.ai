@@ -8,23 +8,23 @@ import {
 } from '../../src/tenant/tenant-semantic-config.js';
 
 describe('tenant semantic config', () => {
-  const prev = process.env.GUARDIAN_TENANT_SEMANTIC_JSON;
-  const prevSync = process.env.GUARDIAN_SEMANTIC_SYNC_RESPONSE;
+  const prev = process.env.MASTYFF_AI_TENANT_SEMANTIC_JSON;
+  const prevSync = process.env.MASTYFF_AI_SEMANTIC_SYNC_RESPONSE;
 
   beforeEach(() => {
     resetTenantSemanticConfigForTests();
-    delete process.env.GUARDIAN_SEMANTIC_SYNC_RESPONSE;
+    delete process.env.MASTYFF_AI_SEMANTIC_SYNC_RESPONSE;
   });
 
   afterEach(() => {
     resetTenantSemanticConfigForTests();
-    if (prev) process.env.GUARDIAN_TENANT_SEMANTIC_JSON = prev;
-    if (prevSync) process.env.GUARDIAN_SEMANTIC_SYNC_RESPONSE = prevSync;
+    if (prev) process.env.MASTYFF_AI_TENANT_SEMANTIC_JSON = prev;
+    if (prevSync) process.env.MASTYFF_AI_SEMANTIC_SYNC_RESPONSE = prevSync;
   });
 
   it('production global default enables sync response', () => {
     const prevNode = process.env.NODE_ENV;
-    delete process.env.GUARDIAN_SEMANTIC_SYNC_RESPONSE;
+    delete process.env.MASTYFF_AI_SEMANTIC_SYNC_RESPONSE;
     process.env.NODE_ENV = 'production';
     expect(isSyncSemanticResponseEnabledGlobal()).toBe(true);
     if (prevNode === undefined) delete process.env.NODE_ENV;
@@ -32,7 +32,7 @@ describe('tenant semantic config', () => {
   });
 
   it('tenant override enables sync response for one tenant only', () => {
-    process.env.GUARDIAN_TENANT_SEMANTIC_JSON = JSON.stringify({
+    process.env.MASTYFF_AI_TENANT_SEMANTIC_JSON = JSON.stringify({
       acme: { syncResponse: true },
       beta: { syncResponse: false },
     });
@@ -42,16 +42,16 @@ describe('tenant semantic config', () => {
   });
 
   it('falls back to global async flag', () => {
-    process.env.GUARDIAN_SEMANTIC_ASYNC = 'true';
+    process.env.MASTYFF_AI_SEMANTIC_ASYNC = 'true';
     expect(isSemanticAsyncEnabledForTenant('any')).toBe(true);
   });
 
   it('tenant strict override', () => {
-    process.env.GUARDIAN_TENANT_SEMANTIC_JSON = JSON.stringify({
+    process.env.MASTYFF_AI_TENANT_SEMANTIC_JSON = JSON.stringify({
       strict: { strict: true },
       lax: { strict: false },
     });
-    delete process.env.GUARDIAN_SEMANTIC_STRICT;
+    delete process.env.MASTYFF_AI_SEMANTIC_STRICT;
     expect(isSemanticStrictForTenant('strict')).toBe(true);
     expect(isSemanticStrictForTenant('lax')).toBe(false);
   });

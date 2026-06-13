@@ -1,5 +1,5 @@
 # HTTP outbound tools — deny private/metadata URLs (SSRF)
-# Merge with base policy: GUARDIAN_HTTP_TOOLS_POLICY=true
+# Merge with base policy: MASTYFF_AI_HTTP_TOOLS_POLICY=true
 # Tools matching http_request|fetch|request get URL arg guards.
 version: '1.0'
 policy:

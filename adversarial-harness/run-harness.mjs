@@ -81,17 +81,17 @@ const venvPython = (venvSetup.stdout || '').trim() || 'python3';
 
 run(venvPython, ['adversarial-harness/python/run_comprehensive_eval.py'], {
   label: 'python-comprehensive-eval',
-  env: { PYTHONPATH: join(__dir, 'python'), GUARDIAN_DISABLE_SEMANTIC: process.env.GUARDIAN_DISABLE_SEMANTIC || '' },
+  env: { PYTHONPATH: join(__dir, 'python'), MASTYFF_AI_DISABLE_SEMANTIC: process.env.MASTYFF_AI_DISABLE_SEMANTIC || '' },
 });
 
 run(venvPython, ['adversarial-harness/python/comprehensive_test_harness.py'], {
   label: 'python-comprehensive-harness',
-  env: { PYTHONPATH: join(__dir, 'python'), GUARDIAN_DISABLE_SEMANTIC: process.env.GUARDIAN_DISABLE_SEMANTIC || '' },
+  env: { PYTHONPATH: join(__dir, 'python'), MASTYFF_AI_DISABLE_SEMANTIC: process.env.MASTYFF_AI_DISABLE_SEMANTIC || '' },
 });
 
 run(venvPython, ['adversarial-harness/python/run_corpus.py'], {
   label: 'python-corpus-only',
-  env: { PYTHONPATH: join(__dir, 'python'), GUARDIAN_DISABLE_SEMANTIC: 'true' },
+  env: { PYTHONPATH: join(__dir, 'python'), MASTYFF_AI_DISABLE_SEMANTIC: 'true' },
 });
 
 run('pnpm', ['build'], { label: 'pnpm-build' });
@@ -102,14 +102,14 @@ run('node', ['adversarial-harness/scripts/run-node-tests.mjs'], {
 
 run('pnpm', ['exec', 'tsx', 'corpus/run-eval.ts'], {
   label: 'node-corpus-eval',
-  env: { GUARDIAN_DISABLE_SEMANTIC: process.env.GUARDIAN_DISABLE_SEMANTIC || '' },
+  env: { MASTYFF_AI_DISABLE_SEMANTIC: process.env.MASTYFF_AI_DISABLE_SEMANTIC || '' },
 });
 
 run('pnpm', ['exec', 'tsx', 'adversarial-harness/scripts/compare-node-python.ts'], {
   label: 'node-python-parity',
   env: {
     PYTHONPATH: join(__dir, 'python'),
-    GUARDIAN_DISABLE_SEMANTIC: 'true',
+    MASTYFF_AI_DISABLE_SEMANTIC: 'true',
     HARNESS_PYTHON: venvPython,
   },
 });

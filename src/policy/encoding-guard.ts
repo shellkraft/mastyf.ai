@@ -36,7 +36,7 @@ function decodedContentSuspicious(original: string, decoded: string): boolean {
 }
 
 export function isEncodingGuardEnabled(): boolean {
-  return process.env['GUARDIAN_ENCODING_GUARD'] !== 'false';
+  return process.env['MASTYFF_AI_ENCODING_GUARD'] !== 'false';
 }
 
 function tryDecodeBase64(b64: string): string | null {

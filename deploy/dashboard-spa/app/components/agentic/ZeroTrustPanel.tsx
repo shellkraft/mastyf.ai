@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { Card } from '../ui/Card';
 import { Badge } from '../ui/Badge';
-import { fetchZeroTrustScore, type ZeroTrustScore } from '@/lib/guardian-api';
+import { fetchZeroTrustScore, type ZeroTrustScore } from '@/lib/mastyff-ai-api';
 
 export function ZeroTrustPanel() {
   const [agentId, setAgentId] = useState('dashboard-agent');

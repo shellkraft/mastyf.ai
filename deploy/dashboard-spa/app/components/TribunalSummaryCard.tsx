@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import type { TribunalReport } from '@/lib/guardian-api';
+import type { TribunalReport } from '@/lib/mastyff-ai-api';
 import { TRIBUNAL_BATCH_LIMIT } from '@/lib/tribunal-config';
 
 type DebateArgument = {
@@ -102,7 +102,7 @@ export function TribunalSummaryCard({
       {noMoreRemaining ? (
         <p className="muted tribunal-queue-empty-hint">
           No more uncertain unlabeled flags in queue — generate borderline traffic or adjust{' '}
-          <code>GUARDIAN_SEMANTIC_MIN_CONFIDENCE</code>, then run tribunal again.
+          <code>MASTYFF_AI_SEMANTIC_MIN_CONFIDENCE</code>, then run tribunal again.
         </p>
       ) : null}
 
@@ -125,7 +125,7 @@ export function TribunalSummaryCard({
               audits in the uncertain band (confidence near your threshold).
             </li>
             <li>
-              After labels are applied (manually or via <code>GUARDIAN_TRIBUNAL_AUTO_LABEL=true</code>), use{' '}
+              After labels are applied (manually or via <code>MASTYFF_AI_TRIBUNAL_AUTO_LABEL=true</code>), use{' '}
               <em>Run next batch</em> to debate the next highest-uncertainty items.
             </li>
             <li>
@@ -138,8 +138,8 @@ export function TribunalSummaryCard({
               or <code>needs_review</code>.
             </li>
             <li>
-              Requires semantic async audits — enable <code>GUARDIAN_SEMANTIC_ASYNC</code> and route MCP
-              traffic through Guardian first.
+              Requires semantic async audits — enable <code>MASTYFF_AI_SEMANTIC_ASYNC</code> and route MCP
+              traffic through Mastyff AI first.
             </li>
           </ol>
         </div>
@@ -150,7 +150,7 @@ export function TribunalSummaryCard({
           No debates in the last run.
           {eligibleTotal > 0
             ? ` ${eligibleTotal} eligible flag(s) in queue — run tribunal to start.`
-            : ' Generate semantic traffic or lower GUARDIAN_SEMANTIC_MIN_CONFIDENCE to surface borderline flags.'}
+            : ' Generate semantic traffic or lower MASTYFF_AI_SEMANTIC_MIN_CONFIDENCE to surface borderline flags.'}
         </p>
       ) : (
         <>

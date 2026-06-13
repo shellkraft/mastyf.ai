@@ -1,0 +1,34 @@
+{{- if .Values.backup.enabled }}
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ include "mastyff-ai.fullname" . }}-backup
+  labels:
+    {{- include "mastyff-ai.labels" . | nindent 4 }}
+spec:
+  schedule: {{ .Values.backup.schedule | quote }}
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: backup
+              image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+              command: ["/bin/sh", "-c"]
+              args:
+                - cp {{ .Values.persistence.mountPath }}/history.db /backup/history-$(date +%Y%m%d).db
+              volumeMounts:
+                - name: data
+                  mountPath: {{ .Values.persistence.mountPath }}
+                  readOnly: true
+                - name: backup
+                  mountPath: /backup
+          volumes:
+            - name: data
+              persistentVolumeClaim:
+                claimName: {{ include "mastyff-ai.fullname" . }}-data
+            - name: backup
+              persistentVolumeClaim:
+                claimName: {{ include "mastyff-ai.fullname" . }}-backup
+{{- end }}

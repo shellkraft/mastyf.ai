@@ -60,7 +60,7 @@ function isUnderAllowedPrefix(resolved: string, prefixes: string[]): boolean {
 export function sanitizeConfigPath(input: string): string | null {
   if (!input || typeof input !== 'string') return null;
   if (input.includes('..')) {
-    Logger.warn(`[guardian] Path-traversal attempt blocked: ${input}`);
+    Logger.warn(`[mastyff-ai] Path-traversal attempt blocked: ${input}`);
     return null;
   }
 
@@ -68,7 +68,7 @@ export function sanitizeConfigPath(input: string): string | null {
   try {
     resolved = realpathSync(pathResolve(input));
   } catch {
-    Logger.warn(`[guardian] Config path does not exist or is inaccessible: ${input}`);
+    Logger.warn(`[mastyff-ai] Config path does not exist or is inaccessible: ${input}`);
     return null;
   }
 
@@ -80,6 +80,6 @@ export function sanitizeConfigPath(input: string): string | null {
     return resolved;
   }
 
-  Logger.warn(`[guardian] Config path rejected (outside allowed directories): ${input}`);
+  Logger.warn(`[mastyff-ai] Config path rejected (outside allowed directories): ${input}`);
   return null;
 }

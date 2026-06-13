@@ -14,8 +14,8 @@ import {
   fetchAuditHeatmap,
   type AuditResponse,
   type AuditHeatmapResponse,
-} from '@/lib/guardian-api';
-import { CHART_AXIS, CHART_GRID, CHART_SERIES } from '@/lib/chartTheme';
+} from '@/lib/mastyff-ai-api';
+import { CHART_AXIS, CHART_GRID, CHART_SERIES, classifyRule, RULE_CATEGORY_LABELS } from '@/lib/chartTheme';
 import { DashboardSection } from './DashboardSection';
 import { KpiCard } from './KpiCard';
 import { ChartCard } from './ChartCard';
@@ -69,6 +69,20 @@ export function AuditExplorerPanel({
     { key: 'server', header: 'Server', render: (e) => e.server_name || '—', sortValue: (e) => e.server_name || '' },
     { key: 'tool', header: 'Tool', render: (e) => e.tool_name || '—', sortValue: (e) => e.tool_name || '' },
     { key: 'action', header: 'Action', render: (e) => e.action, sortValue: (e) => e.action },
+    {
+      key: 'type',
+      header: 'Type',
+      render: (e) => {
+        if (e.action !== 'block' || !e.rule) return '—';
+        const cat = classifyRule(e.rule);
+        return (
+          <span style={{ color: cat === 'security' ? CHART_SERIES.block : CHART_SERIES.neutral }}>
+            {RULE_CATEGORY_LABELS[cat]}
+          </span>
+        );
+      },
+      sortValue: (e) => (e.action === 'block' && e.rule ? classifyRule(e.rule) : ''),
+    },
     { key: 'rule', header: 'Rule', render: (e) => e.rule || '—', sortValue: (e) => e.rule || '' },
     {
       key: 'cost',
@@ -166,7 +180,7 @@ export function AuditExplorerPanel({
           rows={events}
           rowKey={(e, i) => `${e.timestamp}-${i}`}
           pageSize={25}
-          exportFilename="guardian-audit.csv"
+          exportFilename="mastyff-ai-audit.csv"
           expandable={(e) => (
             <div>
               <strong>Reason:</strong> {e.reason || '—'}

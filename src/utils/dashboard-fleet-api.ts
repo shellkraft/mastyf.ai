@@ -3,7 +3,7 @@
  */
 import { getFleetStatus } from '../fleet/fleet-aggregator.js';
 import type { IDatabase } from '../database/database-interface.js';
-import { getGuardianRegion } from './region.js';
+import { getMastyffAiRegion } from './region.js';
 import {
   getAllActiveServerNames,
   loadAllCallRecords,
@@ -12,14 +12,14 @@ import {
 
 /**
  * True when fleet aggregation should read env-configured replicas (not the runtime local DB).
- * NOTE: MCP_GUARDIAN_DB_PATH is the single-instance local DB path and is intentionally excluded —
+ * NOTE: MASTYFF_AI_DB_PATH is the single-instance local DB path and is intentionally excluded —
  * it does not indicate a fleet/replica setup.
  */
 function isExplicitFleetConfig(): boolean {
   if (process.env['DB_TYPE']?.toLowerCase() === 'postgres' && process.env['DATABASE_URL']) {
     return true;
   }
-  if (process.env['GUARDIAN_FLEET_DB_PATHS']?.trim()) return true;
+  if (process.env['MASTYFF_AI_FLEET_DB_PATHS']?.trim()) return true;
   return false;
 }
 
@@ -79,8 +79,8 @@ async function buildLocalFallbackInstance(
   const sum = summarizeRecords(records);
   const avgLatency = sum.total > 0 ? Math.round(sum.totalLatency / sum.total) : 0;
   return {
-    instanceId: process.env['GUARDIAN_INSTANCE_ID'] || `guardian-${process.pid}`,
-    instanceName: process.env['GUARDIAN_INSTANCE_NAME'] || process.env['HOSTNAME'] || 'localhost',
+    instanceId: process.env['MASTYFF_AI_INSTANCE_ID'] || `mastyff-ai-${process.pid}`,
+    instanceName: process.env['MASTYFF_AI_INSTANCE_NAME'] || process.env['HOSTNAME'] || 'localhost',
     hostname: process.env['HOSTNAME'] || 'unknown',
     status: 'active',
     lastHeartbeat: new Date().toISOString(),
@@ -101,7 +101,7 @@ export async function buildDashboardFleetResponse(
     return {
       available: !!local,
       source: local ? 'local' : 'none',
-      region: getGuardianRegion(),
+      region: getMastyffAiRegion(),
       totalInstances: local ? 1 : 0,
       activeInstances: local ? 1 : 0,
       totalRequests: local?.totalRequests ?? 0,

@@ -1,4 +1,4 @@
--- Optional row-level security for multi-tenant Postgres (enable with GUARDIAN_PG_RLS_ENABLED=true).
+-- Optional row-level security for multi-tenant Postgres (enable with MASTYFF_AI_PG_RLS_ENABLED=true).
 -- Application must SET app.tenant_id = '<tenant>' per connection/session.
 
 ALTER TABLE IF EXISTS call_records ENABLE ROW LEVEL SECURITY;

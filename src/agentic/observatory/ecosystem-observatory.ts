@@ -38,8 +38,8 @@ export interface ObservatoryAlert {
   createdAt: string;
 }
 
-const BLOCK_RATE_WARN = parseFloat(process.env.GUARDIAN_OBSERVATORY_BLOCK_RATE_WARN ?? '0.85');
-const THREAT_HEAT_WARN = parseFloat(process.env.GUARDIAN_OBSERVATORY_THREAT_HEAT_WARN ?? '50');
+const BLOCK_RATE_WARN = parseFloat(process.env.MASTYFF_AI_OBSERVATORY_BLOCK_RATE_WARN ?? '0.85');
+const THREAT_HEAT_WARN = parseFloat(process.env.MASTYFF_AI_OBSERVATORY_THREAT_HEAT_WARN ?? '50');
 
 export class EcosystemObservatory {
   private memoryMetrics: ObservatoryMetric[] = [];
@@ -192,7 +192,7 @@ export class EcosystemObservatory {
     }));
   }
 
-  /** Ingest metrics from Guardian Cloud observatory relay (B2). */
+  /** Ingest metrics from Mastyff AI Cloud observatory relay (B2). */
   ingestCloudMetrics(metrics: Array<{ metricType: string; value: number; dimension?: Record<string, unknown> }>): number {
     let ingested = 0;
     for (const m of metrics) {

@@ -7,7 +7,7 @@ import {
 } from '../lib/tenant-slug';
 
 describe('tenant-slug', () => {
-  it('validates guardian-compatible slugs', () => {
+  it('validates mastyff-ai-compatible slugs', () => {
     expect(validateTenantSlug('acme-corp')).toBe('acme-corp');
     expect(() => validateTenantSlug('../bad')).toThrow(InvalidTenantSlugError);
     expect(() => validateTenantSlug('')).toThrow(InvalidTenantSlugError);

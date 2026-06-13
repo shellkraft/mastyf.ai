@@ -3,14 +3,18 @@
  */
 import { existsSync, readFileSync } from 'fs';
 import { load } from 'js-yaml';
+import { LRUCache } from 'lru-cache';
 import { PolicyEngine } from './policy-engine.js';
 import { getOrCreatePolicyEngine } from './policy-engine-cache.js';
 import type { PolicyConfig } from './policy-types.js';
+import { parsePolicyConfig } from './policy-schema.js';
 import { resolveTenantPolicyPath, DEFAULT_TENANT_ID } from '../tenant/resolve-tenant.js';
 import { Logger } from '../utils/logger.js';
 
+const MAX_TENANT_ENGINES = 256;
+
 export class TenantPolicyRegistry {
-  private cache = new Map<string, PolicyEngine>();
+  private cache = new LRUCache<string, PolicyEngine>({ max: MAX_TENANT_ENGINES });
   private baseEngine: PolicyEngine | null;
   private baseConfig: PolicyConfig | null;
 
@@ -39,7 +43,7 @@ export class TenantPolicyRegistry {
     }
 
     try {
-      const tenantYaml = load(readFileSync(path, 'utf-8')) as PolicyConfig;
+      const tenantYaml = parsePolicyConfig(load(readFileSync(path, 'utf-8')));
       const merged = this.mergeConfigs(this.baseConfig, tenantYaml);
       const engine = getOrCreatePolicyEngine(merged);
       this.cache.set(tid, engine);

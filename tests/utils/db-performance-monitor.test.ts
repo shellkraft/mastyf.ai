@@ -2,20 +2,20 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { monitorDbQuery, getSlowQueryThresholdMs } from '../../src/utils/db-performance-monitor.js';
 
 describe('db-performance-monitor', () => {
-  const prev = process.env.GUARDIAN_DB_SLOW_QUERY_MS;
+  const prev = process.env.MASTYFF_AI_DB_SLOW_QUERY_MS;
 
   beforeEach(() => {
     vi.spyOn(console, 'info').mockImplementation(() => {});
   });
 
   afterEach(() => {
-    if (prev === undefined) delete process.env.GUARDIAN_DB_SLOW_QUERY_MS;
-    else process.env.GUARDIAN_DB_SLOW_QUERY_MS = prev;
+    if (prev === undefined) delete process.env.MASTYFF_AI_DB_SLOW_QUERY_MS;
+    else process.env.MASTYFF_AI_DB_SLOW_QUERY_MS = prev;
     vi.restoreAllMocks();
   });
 
   it('default threshold is 100ms', () => {
-    delete process.env.GUARDIAN_DB_SLOW_QUERY_MS;
+    delete process.env.MASTYFF_AI_DB_SLOW_QUERY_MS;
     expect(getSlowQueryThresholdMs()).toBe(100);
   });
 

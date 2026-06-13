@@ -115,7 +115,7 @@ export class ZeroTrustVerificationEngine {
     const spiffeId = ctx.spiffeId ?? getActiveSpiffeId();
     if (!spiffeId) return ctx.authenticated ? 0.6 : 0.3;
     if (!spiffeId.includes('spiffe://')) return 0.5;
-    const socketConfigured = Boolean(process.env.GUARDIAN_SPIFFE_SOCKET_PATH?.trim());
+    const socketConfigured = Boolean(process.env.MASTYFF_AI_SPIFFE_SOCKET_PATH?.trim());
     const mtlsConfigured = Boolean(process.env.MCP_TLS_CERT?.trim() || process.env.MCP_TLS_ENABLED === 'true');
     if (socketConfigured || mtlsConfigured) return 0.98;
     return 0.95;
@@ -165,7 +165,7 @@ export class ZeroTrustVerificationEngine {
     if (ctx.dataSensitivity === 'high') score -= 0.15;
     const hour = ctx.hourUtc ?? new Date().getUTCHours();
     if (hour < 6 || hour > 22) score -= 0.1;
-    const allowedRegions = process.env.GUARDIAN_ZERO_TRUST_ALLOWED_REGIONS?.split(',').map(r => r.trim().toUpperCase()).filter(Boolean);
+    const allowedRegions = process.env.MASTYFF_AI_ZERO_TRUST_ALLOWED_REGIONS?.split(',').map(r => r.trim().toUpperCase()).filter(Boolean);
     if (allowedRegions?.length && ctx.geoRegion && !allowedRegions.includes(ctx.geoRegion.toUpperCase())) {
       score -= 0.25;
     }

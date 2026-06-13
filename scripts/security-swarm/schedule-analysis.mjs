@@ -11,9 +11,9 @@ import { fileURLToPath } from 'node:url';
 
 const __dir = dirname(fileURLToPath(import.meta.url));
 const REPO = join(__dir, '..', '..');
-const logPath = join(homedir(), '.mcp-guardian', 'scheduled-analysis.log');
+const logPath = join(homedir(), '.mastyff-ai', 'scheduled-analysis.log');
 
-if (process.env.GUARDIAN_CI_BYPASS_LICENSE !== 'true') {
+if (process.env.MASTYFF_AI_CI_BYPASS_LICENSE !== 'true') {
   const gate = join(REPO, 'security-swarm', 'lib', 'require-pro-license.mjs');
   if (!existsSync(gate)) {
     console.error('[license] Missing security-swarm/lib/require-pro-license.mjs');
@@ -25,15 +25,15 @@ if (process.env.GUARDIAN_CI_BYPASS_LICENSE !== 'true') {
 
 const cronLine = `0 9 * * 1 cd ${REPO} && pnpm security-swarm:analyze >> ${logPath} 2>&1`;
 
-console.log('MCP Guardian — scheduled security analysis\n');
+console.log('MCP Mastyff AI — scheduled security analysis\n');
 console.log('Cron (every Monday 09:00):');
 console.log(cronLine);
-console.log('\nmacOS launchd (save as ~/Library/LaunchAgents/com.mcp-guardian.analysis.plist):');
+console.log('\nmacOS launchd (save as ~/Library/LaunchAgents/com.mastyff-ai.analysis.plist):');
 console.log(`<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-  <key>Label</key><string>com.mcp-guardian.analysis</string>
+  <key>Label</key><string>com.mastyff-ai.analysis</string>
   <key>ProgramArguments</key>
   <array>
     <string>/bin/sh</string>
@@ -48,5 +48,5 @@ console.log(`<?xml version="1.0" encoding="UTF-8"?>
   </dict>
 </dict>
 </plist>`);
-console.log('\nLoad: launchctl load ~/Library/LaunchAgents/com.mcp-guardian.analysis.plist');
+console.log('\nLoad: launchctl load ~/Library/LaunchAgents/com.mastyff-ai.analysis.plist');
 console.log(`Log: ${logPath}`);

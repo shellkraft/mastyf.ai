@@ -77,7 +77,7 @@ export class DPoPValidator {
       const alg = this.inferAlgorithm(jwk);
       const publicKey = await jose.importJWK(jwk, alg);
       const { payload } = await jose.jwtVerify(proofToken, publicKey, {
-        algorithms: ['ES256', 'RS256', 'EdDSA'],
+        algorithms: ['ES256', 'ES384', 'RS256', 'EdDSA'],
         clockTolerance: 10,
       });
 
@@ -124,8 +124,9 @@ export class DPoPValidator {
       }
 
       return { valid: true };
-    } catch (err: any) {
-      return { valid: false, error: `DPoP validation failed: ${err?.message}` };
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      return { valid: false, error: `DPoP validation failed: ${message}` };
     }
   }
 

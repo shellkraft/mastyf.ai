@@ -18,13 +18,13 @@ describe('instant attack learning', () => {
   let dir: string;
 
   beforeEach(() => {
-    dir = mkdtempSync(join(tmpdir(), 'guardian-instant-'));
-    process.env.GUARDIAN_AI_ENABLED = 'true';
-    process.env.GUARDIAN_AI_INSTANT_LEARNING = 'true';
-    process.env.GUARDIAN_AI_ATTACK_MIN_BLOCKS = '3';
-    process.env.GUARDIAN_AI_INSTANT_WINDOW_MS = '300000';
-    process.env.GUARDIAN_AI_ATTACK_STATE_PATH = join(dir, '.attack-learning-state.json');
-    process.env.GUARDIAN_AI_SUGGESTIONS_PATH = join(dir, '.ai-pending-suggestions.json');
+    dir = mkdtempSync(join(tmpdir(), 'mastyff-ai-instant-'));
+    process.env.MASTYFF_AI_AI_ENABLED = 'true';
+    process.env.MASTYFF_AI_AI_INSTANT_LEARNING = 'true';
+    process.env.MASTYFF_AI_AI_ATTACK_MIN_BLOCKS = '3';
+    process.env.MASTYFF_AI_AI_INSTANT_WINDOW_MS = '300000';
+    process.env.MASTYFF_AI_AI_ATTACK_STATE_PATH = join(dir, '.attack-learning-state.json');
+    process.env.MASTYFF_AI_AI_SUGGESTIONS_PATH = join(dir, '.ai-pending-suggestions.json');
     resetInstantAttackLearningState();
     resetBlockLearningDebounce();
   });
@@ -32,8 +32,8 @@ describe('instant attack learning', () => {
   afterEach(() => {
     resetInstantAttackLearningState();
     resetBlockLearningDebounce();
-    delete process.env.GUARDIAN_AI_ATTACK_STATE_PATH;
-    delete process.env.GUARDIAN_AI_SUGGESTIONS_PATH;
+    delete process.env.MASTYFF_AI_AI_ATTACK_STATE_PATH;
+    delete process.env.MASTYFF_AI_AI_SUGGESTIONS_PATH;
   });
 
   it('updates attack-learning-state.json after each block', () => {
@@ -45,7 +45,7 @@ describe('instant attack learning', () => {
       argsFingerprint: 'abc123',
     });
 
-    expect(existsSync(process.env.GUARDIAN_AI_ATTACK_STATE_PATH!)).toBe(true);
+    expect(existsSync(process.env.MASTYFF_AI_AI_ATTACK_STATE_PATH!)).toBe(true);
     const state = loadAttackLearningState();
     expect(state.totalEvents).toBe(1);
     expect(state.ruleToolCounts['sensitive-path:read_file']?.count).toBe(1);
@@ -64,7 +64,7 @@ describe('instant attack learning', () => {
       if (i < 2) expect(result.queued).toBe(false);
     }
 
-    const pending = JSON.parse(readFileSync(process.env.GUARDIAN_AI_SUGGESTIONS_PATH!, 'utf-8'));
+    const pending = JSON.parse(readFileSync(process.env.MASTYFF_AI_AI_SUGGESTIONS_PATH!, 'utf-8'));
     expect(pending.suggestions.length).toBeGreaterThan(0);
     expect(pending.suggestions[0].source).toBe('attack');
     expect(pending.suggestions[0].ruleName).toMatch(/^attack-learned/);
@@ -76,7 +76,7 @@ describe('instant attack learning', () => {
   });
 
   it('does not write policy YAML — only queues pending suggestions', () => {
-    process.env.GUARDIAN_AI_AUTO_APPLY = 'false';
+    process.env.MASTYFF_AI_AI_AUTO_APPLY = 'false';
     const policyPath = join(dir, 'policy.yaml');
     writeFileSync(
       policyPath,
@@ -98,15 +98,15 @@ describe('instant attack learning', () => {
     }
 
     expect(readFileSync(policyPath, 'utf-8')).toBe(before);
-    const pending = JSON.parse(readFileSync(process.env.GUARDIAN_AI_SUGGESTIONS_PATH!, 'utf-8'));
+    const pending = JSON.parse(readFileSync(process.env.MASTYFF_AI_AI_SUGGESTIONS_PATH!, 'utf-8'));
     expect(pending.suggestions.length).toBeGreaterThan(0);
   });
 
-  it('times out slow instant LLM per GUARDIAN_AI_INSTANT_LLM_TIMEOUT_MS', async () => {
+  it('times out slow instant LLM per MASTYFF_AI_AI_INSTANT_LLM_TIMEOUT_MS', async () => {
     vi.useFakeTimers();
-    process.env.GUARDIAN_AI_INSTANT_LLM = 'true';
-    process.env.GUARDIAN_AI_INSTANT_LLM_TIMEOUT_MS = '50';
-    process.env.GUARDIAN_AI_INSTANT_LLM_RATE_MS = '0';
+    process.env.MASTYFF_AI_AI_INSTANT_LLM = 'true';
+    process.env.MASTYFF_AI_AI_INSTANT_LLM_TIMEOUT_MS = '50';
+    process.env.MASTYFF_AI_AI_INSTANT_LLM_RATE_MS = '0';
 
     const generateSpy = vi.spyOn(LlmAssistant.prototype, 'generate').mockImplementation(
       () =>
@@ -139,9 +139,9 @@ describe('instant attack learning', () => {
 
   it('quorum gates self-improvement threshold changes', () => {
     const statePath = join(dir, '.ai-learning.json');
-    process.env.GUARDIAN_AI_STATE_PATH = statePath;
-    process.env.GUARDIAN_AI_MIN_DISTINCT_LABELERS = '2';
-    process.env.GUARDIAN_AI_MIN_TOTAL_LABELS = '10';
+    process.env.MASTYFF_AI_AI_STATE_PATH = statePath;
+    process.env.MASTYFF_AI_AI_MIN_DISTINCT_LABELERS = '2';
+    process.env.MASTYFF_AI_AI_MIN_TOTAL_LABELS = '10';
 
     const engine = new SelfImprovement(statePath);
     const initial = engine.getAdaptiveThreshold();

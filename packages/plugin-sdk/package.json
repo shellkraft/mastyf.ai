@@ -1,7 +1,7 @@
 {
-  "name": "@mcp-guardian/plugin-sdk",
+  "name": "@mastyff-ai/plugin-sdk",
   "version": "4.1.7",
-  "description": "Stable detector plugin SDK for MCP Guardian",
+  "description": "Stable detector plugin SDK for MCP MastyffAi",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -29,7 +29,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/rudraneel93/mcp-guardian.git",
+    "url": "git+https://github.com/mastyff-ai/mastyff-ai.git",
     "directory": "packages/plugin-sdk"
   }
 }

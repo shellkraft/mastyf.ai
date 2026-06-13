@@ -155,7 +155,7 @@ func writeJsonRPCDeny(w http.ResponseWriter, reason string) {
 		"jsonrpc": "2.0",
 		"error": map[string]any{
 			"code":    -32003,
-			"message": "MCP Guardian Data Plane blocked this tool call",
+			"message": "MCP Mastyff AI Data Plane blocked this tool call",
 			"data": map[string]any{
 				"reason": reason,
 			},
@@ -235,7 +235,7 @@ func main() {
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(map[string]any{
 			"ok":      true,
-			"service": "mcp-guardian-data-plane",
+			"service": "mastyff-ai-data-plane",
 		})
 	})
 	mux.HandleFunc("/readyz", func(w http.ResponseWriter, _ *http.Request) {
@@ -277,14 +277,14 @@ func main() {
 			return
 		}
 		if should && shadowMode {
-			r.Header.Set("X-Guardian-Shadow-Blocked", "true")
-			r.Header.Set("X-Guardian-Shadow-Reason", reason)
+			r.Header.Set("X-Mastyff-Ai-Shadow-Blocked", "true")
+			r.Header.Set("X-Mastyff-Ai-Shadow-Reason", reason)
 		}
 		proxy.ServeHTTP(w, r)
 	})
 
 	log.Printf(
-		"mcp-guardian data-plane listening on :%s -> %s (control=%s, shadow=%t, failOpen=%t)",
+		"mastyff-ai data-plane listening on :%s -> %s (control=%s, shadow=%t, failOpen=%t)",
 		port,
 		upstream.String(),
 		controlPlaneURL,

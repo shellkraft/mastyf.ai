@@ -27,10 +27,10 @@ const TRUSTED_MCP_PACKAGES = [
   '@exa-labs/exa-mcp-server',
   'mcp-server-cloudflare',
   '@anthropic-ai/sdk',
-  'mcp-guardian',
-  '@mcp-guardian/server',
-  '@mcp-guardian/core',
-  '@mcp-guardian/cli',
+  'mastyff-ai',
+  '@mastyff-ai/server',
+  '@mastyff-ai/core',
+  '@mastyff-ai/cli',
   'pino',
 ] as const;
 

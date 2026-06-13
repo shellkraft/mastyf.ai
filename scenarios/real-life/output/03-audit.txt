@@ -1,26 +1,26 @@
-{"level":30,"time":1778925190885,"pid":10551,"hostname":"Rudraneels-Mac-mini.local","msg":"[HistoryDb] Opened: /Users/rudraneeldas/.mcp-guardian/history.db (WAL mode, PID 10551)"}
+{"level":30,"time":1778925190885,"pid":10551,"hostname":"Rudraneels-Mac-mini.local","msg":"[HistoryDb] Opened: /Users/rudraneeldas/.mastyff-ai/history.db (WAL mode, PID 10551)"}
 
 💰 Cost Audit
 
 production-filesystem: 0 tokens, $0.0000 (unknown)
   Input: 0 tokens, Output: 0 tokens
-  ℹ️ No recorded call data. Use `mcp-guardian proxy` to capture real token usage.
+  ℹ️ No recorded call data. Use `mastyff-ai proxy` to capture real token usage.
 
 suspicious-typo-package: 0 tokens, $0.0000 (unknown)
   Input: 0 tokens, Output: 0 tokens
-  ℹ️ No recorded call data. Use `mcp-guardian proxy` to capture real token usage.
+  ℹ️ No recorded call data. Use `mastyff-ai proxy` to capture real token usage.
 
 dev-echo-backend: 0 tokens, $0.0000 (unknown)
   Input: 0 tokens, Output: 0 tokens
-  ℹ️ No recorded call data. Use `mcp-guardian proxy` to capture real token usage.
+  ℹ️ No recorded call data. Use `mastyff-ai proxy` to capture real token usage.
 
 misconfigured-analytics: 0 tokens, $0.0000 (unknown)
   Input: 0 tokens, Output: 0 tokens
-  ℹ️ No recorded call data. Use `mcp-guardian proxy` to capture real token usage.
+  ℹ️ No recorded call data. Use `mastyff-ai proxy` to capture real token usage.
 
 legacy-shell-runner: 0 tokens, $0.0000 (unknown)
   Input: 0 tokens, Output: 0 tokens
-  ℹ️ No recorded call data. Use `mcp-guardian proxy` to capture real token usage.
+  ℹ️ No recorded call data. Use `mastyff-ai proxy` to capture real token usage.
 
 Total estimated cost: $0.0000
 

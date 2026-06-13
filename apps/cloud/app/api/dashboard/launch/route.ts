@@ -8,7 +8,7 @@ import { NextResponse } from 'next/server';
 
 const EXCHANGE_TTL_SECONDS = 60;
 
-function normalizeGuardianUrl(raw: string): string | null {
+function normalizeMastyffAiUrl(raw: string): string | null {
   try {
     const url = new URL(raw.trim());
     if (url.protocol !== 'http:' && url.protocol !== 'https:') return null;
@@ -30,10 +30,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'No organization' }, { status: 403 });
   }
 
-  const body = (await request.json()) as { guardianUrl?: string };
-  const guardianUrl = normalizeGuardianUrl(body.guardianUrl ?? '');
-  if (!guardianUrl) {
-    return NextResponse.json({ error: 'Valid guardianUrl required (http/https)' }, { status: 400 });
+  const body = (await request.json()) as { mastyffAiUrl?: string };
+  const mastyffAiUrl = normalizeMastyffAiUrl(body.mastyffAiUrl ?? '');
+  if (!mastyffAiUrl) {
+    return NextResponse.json({ error: 'Valid mastyffAiUrl required (http/https)' }, { status: 400 });
   }
 
   const plaintext = generateExchangeToken();
@@ -43,11 +43,11 @@ export async function POST(request: Request) {
     id: randomUUID(),
     orgId: ctx.org.id,
     tokenHash: hashExchangeToken(plaintext),
-    guardianUrl,
+    mastyffAiUrl,
     expiresAt,
   });
 
-  const redirectUrl = `${guardianUrl}/api/auth/cloud-exchange?token=${encodeURIComponent(plaintext)}`;
+  const redirectUrl = `${mastyffAiUrl}/api/auth/cloud-exchange?token=${encodeURIComponent(plaintext)}`;
 
   return NextResponse.json({ redirectUrl, expiresIn: EXCHANGE_TTL_SECONDS });
 }

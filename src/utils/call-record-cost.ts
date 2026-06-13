@@ -1,7 +1,7 @@
 import type { IDatabase } from '../database/database-interface.js';
 import type { ProxyCallRecord } from '../types.js';
 
-const MAX_BLOCK_REASON_CHARS = parseInt(process.env.GUARDIAN_AUDIT_MAX_BLOCK_REASON_CHARS || '4096', 10);
+const MAX_BLOCK_REASON_CHARS = parseInt(process.env.MASTYFF_AI_AUDIT_MAX_BLOCK_REASON_CHARS || '4096', 10);
 
 /** Trim oversized audit fields before queue/DB write (L-2). */
 export function compactCallRecordForPersistence(record: ProxyCallRecord): ProxyCallRecord {

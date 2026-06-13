@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Comprehensive adversarial test harness for MCP Guardian.
+Comprehensive adversarial test harness for Mastyff AI.
 
 - Faithful Python port of PolicyEngine (see policy_engine/) — mirrors TypeScript sync pipeline
 - Corpus: 151 attack + 55 benign fixtures
@@ -528,7 +528,7 @@ def main() -> int:
 
     REPORT_DIR.mkdir(parents=True, exist_ok=True)
 
-    print("=== MCP Guardian Comprehensive Adversarial Harness ===\n")
+    print("=== MCP Mastyff AI Comprehensive Adversarial Harness ===\n")
     print("[1/5] Policy engine evaluation (corpus + custom + matrix + uploaded-bypass)...")
     policy = run_policy_engine_suite()
     _, fixture_counts = load_policy_cases()

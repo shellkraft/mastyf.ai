@@ -69,7 +69,7 @@ export async function bootstrapCompliance(db: IDatabase): Promise<void> {
   const dbType = (process.env['DB_TYPE'] || 'sqlite').toLowerCase();
   if (
     dbType === 'sqlite' &&
-    process.env['GUARDIAN_AUDIT_SYNC_ENABLED'] === 'true' &&
+    process.env['MASTYFF_AI_AUDIT_SYNC_ENABLED'] === 'true' &&
     process.env['DATABASE_URL'] &&
     db instanceof HistoryDatabase
   ) {
@@ -93,16 +93,16 @@ export async function bootstrapCompliance(db: IDatabase): Promise<void> {
         const pong = await redis.ping();
         await redis.quit();
         return { ok: pong === 'PONG', detail: pong };
-      } catch (err: any) {
+      } catch (err: unknown) {
         try {
           await redis.quit();
         } catch {
           // ignore
         }
-        if (process.env['GUARDIAN_STRICT_MODE'] === 'true') {
-          return { ok: false, detail: err?.message };
+        if (process.env['MASTYFF_AI_STRICT_MODE'] === 'true') {
+          return { ok: false, detail: err instanceof Error ? err.message : String(err) };
         }
-        return { ok: true, detail: `redis optional: ${err?.message}` };
+        return { ok: true, detail: `redis optional: ${err instanceof Error ? err.message : String(err)}` };
       }
     });
   }
@@ -115,8 +115,8 @@ export async function bootstrapCompliance(db: IDatabase): Promise<void> {
         await pool.query('SELECT 1');
         await pool.end();
         return { ok: true };
-      } catch (err: any) {
-        return { ok: false, detail: err?.message };
+      } catch (err: unknown) {
+        return { ok: false, detail: err instanceof Error ? err.message : String(err) };
       }
     });
   }
@@ -137,51 +137,51 @@ export async function bootstrapCompliance(db: IDatabase): Promise<void> {
 /** Startup warnings for production security posture (mcp tests 31 §3.5 / §3.1). */
 function isMultiReplicaDeployment(): boolean {
   if (process.env.KUBERNETES_SERVICE_HOST) return true;
-  const n = parseInt(process.env.GUARDIAN_REPLICA_COUNT || '1', 10);
+  const n = parseInt(process.env.MASTYFF_AI_REPLICA_COUNT || '1', 10);
   return Number.isFinite(n) && n > 1;
 }
 
 export function runEnterpriseSecurityPreflight(): void {
   assertEnterpriseLicensePosture();
 
-  if (process.env.GUARDIAN_ENTERPRISE_MODE === 'true') {
+  if (process.env.MASTYFF_AI_ENTERPRISE_MODE === 'true') {
     if (!isManagedSecretProviderConfigured()) {
-      const msg = '[bootstrap] GUARDIAN_ENTERPRISE_MODE=true requires managed secrets provider (set GUARDIAN_SECRET_PROVIDER=hashicorp-vault|aws-secrets-manager)';
-      if (process.env.GUARDIAN_ALLOW_ENV_SECRETS_IN_ENTERPRISE === 'true') {
-        Logger.warn(`${msg} (temporary override via GUARDIAN_ALLOW_ENV_SECRETS_IN_ENTERPRISE=true)`);
+      const msg = '[bootstrap] MASTYFF_AI_ENTERPRISE_MODE=true requires managed secrets provider (set MASTYFF_AI_SECRET_PROVIDER=hashicorp-vault|aws-secrets-manager)';
+      if (process.env.MASTYFF_AI_ALLOW_ENV_SECRETS_IN_ENTERPRISE === 'true') {
+        Logger.warn(`${msg} (temporary override via MASTYFF_AI_ALLOW_ENV_SECRETS_IN_ENTERPRISE=true)`);
       } else {
         throw new Error(msg);
       }
     }
     if (!isRedisConfigured()) {
       const msg =
-        '[bootstrap] GUARDIAN_ENTERPRISE_MODE=true but REDIS_URL is unset — session flow, distributed rate limits, and policy cache are per-instance only';
-      if (process.env.GUARDIAN_STRICT_MODE === 'true' || isMultiReplicaDeployment()) {
+        '[bootstrap] MASTYFF_AI_ENTERPRISE_MODE=true but REDIS_URL is unset — session flow, distributed rate limits, and policy cache are per-instance only';
+      if (process.env.MASTYFF_AI_STRICT_MODE === 'true' || isMultiReplicaDeployment()) {
         throw new Error(msg);
       }
       Logger.warn(msg);
     }
-    if (process.env.GUARDIAN_POLICY_EVAL_CACHE_LEGACY_HEURISTIC === 'true') {
+    if (process.env.MASTYFF_AI_POLICY_EVAL_CACHE_LEGACY_HEURISTIC === 'true') {
       Logger.warn(
-        '[bootstrap] GUARDIAN_POLICY_EVAL_CACHE_LEGACY_HEURISTIC=true in enterprise — prefer opt-in rule.cacheable only',
+        '[bootstrap] MASTYFF_AI_POLICY_EVAL_CACHE_LEGACY_HEURISTIC=true in enterprise — prefer opt-in rule.cacheable only',
       );
     }
   }
 
-  const jwtMaxSec = parseInt(process.env.GUARDIAN_JWT_MAX_LIFETIME_SEC || '86400', 10);
+  const jwtMaxSec = parseInt(process.env.MASTYFF_AI_JWT_MAX_LIFETIME_SEC || '86400', 10);
   if (Number.isFinite(jwtMaxSec) && jwtMaxSec > 86400) {
-    const msg = `[bootstrap] GUARDIAN_JWT_MAX_LIFETIME_SEC=${jwtMaxSec} exceeds 86400 — long-lived tokens increase replay risk`;
-    if (process.env.GUARDIAN_JWT_STRICT_LIFETIME === 'true') {
+    const msg = `[bootstrap] MASTYFF_AI_JWT_MAX_LIFETIME_SEC=${jwtMaxSec} exceeds 86400 — long-lived tokens increase replay risk`;
+    if (process.env.MASTYFF_AI_JWT_STRICT_LIFETIME === 'true') {
       throw new Error(msg);
     }
     Logger.warn(msg);
   }
   if (
     process.env.NODE_ENV === 'production'
-    && process.env.GUARDIAN_SEMANTIC_SYNC_RESPONSE === 'false'
+    && process.env.MASTYFF_AI_SEMANTIC_SYNC_RESPONSE === 'false'
   ) {
     Logger.warn(
-      '[bootstrap] GUARDIAN_SEMANTIC_SYNC_RESPONSE=false in production — tool responses bypass sync semantic gate',
+      '[bootstrap] MASTYFF_AI_SEMANTIC_SYNC_RESPONSE=false in production — tool responses bypass sync semantic gate',
     );
   }
 }
@@ -201,14 +201,14 @@ export async function bootstrapControlPlane(
       ...(federatedStats ? { federatedStats } : {}),
     };
   });
-  const tenantSlug = process.env['GUARDIAN_TENANT_ID'] || 'default';
+  const tenantSlug = process.env['MASTYFF_AI_TENANT_ID'] || 'default';
   startPolicySubscriber(tenantSlug, policyWatcher ?? null);
 }
 
 /** Start mTLS cert watcher and prime shared HTTPS agent for HTTP/SSE proxies. */
 export function bootstrapMtlsHotReload(): void {
   if (process.env['MCP_TLS_ENABLED'] !== 'true') return;
-  if (process.env['GUARDIAN_MTLS_HOT_RELOAD'] === 'false') return;
+  if (process.env['MASTYFF_AI_MTLS_HOT_RELOAD'] === 'false') return;
   try {
     getMtlsAgent();
     mtlsWatcher = new MtlsCertWatcher();

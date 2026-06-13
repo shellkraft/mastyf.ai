@@ -16,16 +16,16 @@ export default async function DashboardPage() {
   const ctx = await getUserOrg(session!.user!.id);
   if (!ctx) return null;
 
-  const envBlock = `# MCP Guardian — connect your self-hosted instance (optional cloud policy / advanced SSO)
-GUARDIAN_MULTI_TENANT_ENABLED=true
-GUARDIAN_TENANT_ID=${ctx.org.slug}
-GUARDIAN_CONTROL_PLANE_URL=${appUrl()}
-# Copy AUTH_SECRET from Vercel (mcp-guardian-cloud → Settings → Environment Variables):
-GUARDIAN_CLOUD_JWT_SECRET=<paste-cloud-AUTH_SECRET>
-DASHBOARD_JWT_SECRET=<same-as-GUARDIAN_CLOUD_JWT_SECRET>
+  const envBlock = `# MCP Mastyff AI — connect your self-hosted instance (optional cloud policy / advanced SSO)
+MASTYFF_AI_MULTI_TENANT_ENABLED=true
+MASTYFF_AI_TENANT_ID=${ctx.org.slug}
+MASTYFF_AI_CONTROL_PLANE_URL=${appUrl()}
+# Copy AUTH_SECRET from Vercel (mastyff-ai-cloud → Settings → Environment Variables):
+MASTYFF_AI_CLOUD_JWT_SECRET=<paste-cloud-AUTH_SECRET>
+DASHBOARD_JWT_SECRET=<same-as-MASTYFF_AI_CLOUD_JWT_SECRET>
 # Optional — Pro license / policy API:
-# GUARDIAN_LICENSE_KEY=<gcp_...-from-settings>
-# Policy file path on your Guardian host:
+# MASTYFF_AI_LICENSE_KEY=<gcp_...-from-settings>
+# Policy file path on your Mastyff AI host:
 # policy-templates/tenants/${ctx.org.slug}/policy.yaml
 
 # Pull policy via API (optional automation):
@@ -40,10 +40,10 @@ DASHBOARD_JWT_SECRET=<same-as-GUARDIAN_CLOUD_JWT_SECRET>
       </p>
 
       <div className="card">
-        <h2>Connect self-hosted Guardian</h2>
+        <h2>Connect self-hosted MastyffAi</h2>
         <p className="muted">
           Copy these settings into your Helm values, docker-compose, or .env. Download policy YAML
-          from the Policy page or sync via the API. Guardian is fully open source — no subscription
+          from the Policy page or sync via the API. Mastyff AI is fully open source — no subscription
           required.
         </p>
         <pre className="env-block">{envBlock}</pre>

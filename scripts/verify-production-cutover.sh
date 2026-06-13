@@ -9,13 +9,13 @@ warn() { echo "[cutover] WARN: $*" >&2; }
 fail() { echo "[cutover] FAIL: $*" >&2; FAIL=1; }
 ok() { echo "[cutover] OK: $*"; }
 
-echo "[cutover] MCP Guardian production cutover verification"
+echo "[cutover] MCP Mastyff AI production cutover verification"
 
 # Build + tests
 pnpm run build || fail "pnpm build"
 pnpm test || fail "pnpm test"
 pnpm test:integration || fail "pnpm test:integration"
-GUARDIAN_DISABLE_SEMANTIC=true pnpm verify:corpus || fail "corpus verify"
+MASTYFF_AI_DISABLE_SEMANTIC=true pnpm verify:corpus || fail "corpus verify"
 
 # Enterprise preflight (expects production-like env when set)
 env -u DASHBOARD_AUTH_DISABLED pnpm enterprise:preflight || fail "enterprise preflight"
@@ -28,13 +28,13 @@ else
 fi
 
 # Helm enterprise overlay
-if [ -f deploy/helm/mcp-guardian/values-enterprise.yaml ]; then
+if [ -f deploy/helm/mastyff-ai/values-enterprise.yaml ]; then
   ok "values-enterprise.yaml present"
   if command -v helm >/dev/null 2>&1; then
-    helm dependency update deploy/helm/mcp-guardian >/dev/null 2>&1 || true
-    helm template guardian deploy/helm/mcp-guardian \
-      -f deploy/helm/mcp-guardian/values.yaml \
-      -f deploy/helm/mcp-guardian/values-enterprise.yaml \
+    helm dependency update deploy/helm/mastyff-ai >/dev/null 2>&1 || true
+    helm template mastyff-ai deploy/helm/mastyff-ai \
+      -f deploy/helm/mastyff-ai/values.yaml \
+      -f deploy/helm/mastyff-ai/values-enterprise.yaml \
       --set redis.enabled=false \
       > /dev/null && ok "helm template enterprise overlay"
   fi

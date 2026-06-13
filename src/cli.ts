@@ -27,7 +27,7 @@ import { broadcastDashboardEvent } from './utils/dashboard-events.js';
 import { triggerLearningCycleIfEnabled } from './ai/suggestion-engine.js';
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
-import { resolveGuardianInstallRoot } from './utils/guardian-package-root.js';
+import { resolveMastyffAiInstallRoot } from './utils/mastyff-ai-package-root.js';
 
 const __cliDir = dirname(fileURLToPath(import.meta.url));
 function cliVersion(): string {
@@ -120,7 +120,7 @@ function cliTenantId(opts: { tenant?: string }): string {
 }
 
 function checkScanStrict(reports: SecurityReport[]): void {
-  if (process.env['GUARDIAN_SCAN_STRICT'] !== 'true') return;
+  if (process.env['MASTYFF_AI_SCAN_STRICT'] !== 'true') return;
   const issues: string[] = [];
   for (const r of reports) {
     if (r.cveLookupStatus === 'degraded' || r.cveLookupStatus === 'unavailable') {
@@ -134,7 +134,7 @@ function checkScanStrict(reports: SecurityReport[]): void {
     }
   }
   if (issues.length > 0) {
-    console.error(chalk.red('GUARDIAN_SCAN_STRICT failures:\n' + issues.map((i) => `  - ${i}`).join('\n')));
+    console.error(chalk.red('MASTYFF_AI_SCAN_STRICT failures:\n' + issues.map((i) => `  - ${i}`).join('\n')));
     process.exit(1);
   }
 }
@@ -161,7 +161,7 @@ function checkAlertThresholds(reports: SecurityReport[], opts: ScanOptions | Rep
 // ── CLI commands ──────────────────────────────────────────────────────
 const program = new Command();
 program
-  .name('mcp-guardian')
+  .name('mastyff-ai')
   .description('Security, cost, and health audit for MCP infrastructure')
   .version(cliVersion());
 
@@ -173,7 +173,7 @@ program
   .option('--threshold-score <number>', 'Exit code 2 if any server score drops below threshold', parseInt)
   .option('--fail-on-critical', 'Exit code 1 if any critical CVE found')
   .option('--fail-on-secrets', 'Exit code 1 if any hardcoded secrets detected')
-  .option('--tenant <id>', 'Tenant id for stored scan rows (default: GUARDIAN_TENANT_ID)')
+  .option('--tenant <id>', 'Tenant id for stored scan rows (default: MASTYFF_AI_TENANT_ID)')
   .action(async (opts: ScanOptions) => {
     const { servers, sourcePaths } = loadConfigs(opts);
     if (servers.length === 0) { console.error(chalk.yellow('No servers found in config.')); process.exit(0); }
@@ -188,7 +188,7 @@ program
     const container = await createContainer();
     const reports = await Promise.all(servers.map((s) => container.securityScanner.scanServer(s)));
     await Promise.all(reports.map((r) => container.db.addSecurityScan(r.serverName, r.score, r.cves.length, r, tenantId)));
-    await triggerLearningCycleIfEnabled(container.db, servers, { cliCommand: true }); // no-op unless GUARDIAN_AI_ON_CLI=true
+    await triggerLearningCycleIfEnabled(container.db, servers, { cliCommand: true }); // no-op unless MASTYFF_AI_AI_ON_CLI=true
     broadcastDashboardEvent({
       type: 'health-change',
       payload: { source: 'scan', servers: reports.length },
@@ -207,7 +207,7 @@ program
   .option('-a, --all', 'Aggregate all discoverable config files')
   .option('-s, --server <name>', 'Filter to a specific server')
   .option('--threshold-cost <number>', 'Exit code 2 if total cost exceeds threshold (USD)', parseFloat)
-  .option('--tenant <id>', 'Tenant id for stored cost rows (default: GUARDIAN_TENANT_ID)')
+  .option('--tenant <id>', 'Tenant id for stored cost rows (default: MASTYFF_AI_TENANT_ID)')
   .action(async (opts: AuditOptions) => {
     const { servers } = loadConfigs(opts);
     const filtered = opts.server ? servers.filter((s) => s.name === opts.server) : servers;
@@ -218,7 +218,7 @@ program
     const results = await Promise.all(filtered.map((s) => container.costAuditor.auditServer(s)));
     container.costAuditor.dispose();
     await Promise.all(results.map((r) => container.db.addCostRecord(r.serverName, r.tokensUsed, r.estimatedCostUSD, tenantId)));
-    await triggerLearningCycleIfEnabled(container.db, filtered, { cliCommand: true }); // skipped unless GUARDIAN_AI_ON_CLI=true
+    await triggerLearningCycleIfEnabled(container.db, filtered, { cliCommand: true }); // skipped unless MASTYFF_AI_AI_ON_CLI=true
     container.db.close();
 
     console.log(new ReportGenerator().formatCostReports(results));
@@ -241,7 +241,7 @@ program
   .option('-f, --format <format>', 'Output format: text (default) or json', 'text')
   .option('--threshold-latency <ms>', 'Exit code 2 if any server exceeds latency threshold', parseInt)
   .option('--fail-on-overload', 'Exit code 1 if any server has tool overload')
-  .option('--tenant <id>', 'Tenant id for stored health rows (default: GUARDIAN_TENANT_ID)')
+  .option('--tenant <id>', 'Tenant id for stored health rows (default: MASTYFF_AI_TENANT_ID)')
   .action(async (opts: HealthOptions) => {
     const { servers } = loadConfigs(opts);
     const filtered = opts.server ? servers.filter((s) => s.name === opts.server) : servers;
@@ -251,7 +251,7 @@ program
     const container = await createContainer();
     const results = await Promise.all(filtered.map((s) => container.healthMonitor.checkServer(s, tenantId)));
     await Promise.all(results.map((r) => container.db.addHealthCheck(r.serverName, r.latencyMs, r.successRate > 0.5, r.toolCount, tenantId)));
-    await triggerLearningCycleIfEnabled(container.db, filtered, { cliCommand: true }); // skipped unless GUARDIAN_AI_ON_CLI=true
+    await triggerLearningCycleIfEnabled(container.db, filtered, { cliCommand: true }); // skipped unless MASTYFF_AI_AI_ON_CLI=true
     container.db.close();
 
     console.log(new ReportGenerator().formatHealthReports(results));
@@ -271,13 +271,13 @@ program
 
 program
   .command('report')
-  .description('Generate a full MCP Guardian report')
+  .description('Generate a full MCP Mastyff AI report')
   .option('-c, --config <path>', 'Path to an MCP config file')
   .option('-a, --all', 'Aggregate all discoverable config files')
   .option('-f, --format <format>', 'Output format: text (default), markdown, or json', 'text')
   .option('--output <path>', 'Save report to a file instead of stdout')
   .option('--threshold-score <number>', 'Exit code 2 if overall score drops below threshold', parseInt)
-  .option('--tenant <id>', 'Tenant id for stored report rows (default: GUARDIAN_TENANT_ID)')
+  .option('--tenant <id>', 'Tenant id for stored report rows (default: MASTYFF_AI_TENANT_ID)')
   .action(async (opts: ReportOptions) => {
     const { servers, sourcePaths } = loadConfigs(opts);
     if (servers.length === 0) { console.error(chalk.yellow('No servers found in config.')); process.exit(0); }
@@ -301,7 +301,7 @@ program
       ...costs.map((r) => container.db.addCostRecord(r.serverName, r.tokensUsed, r.estimatedCostUSD, tenantId)),
       ...health.map((r) => container.db.addHealthCheck(r.serverName, r.latencyMs, r.successRate > 0.5, r.toolCount, tenantId)),
     ]);
-    await triggerLearningCycleIfEnabled(container.db, servers, { cliCommand: true }); // no-op unless GUARDIAN_AI_ON_CLI=true
+    await triggerLearningCycleIfEnabled(container.db, servers, { cliCommand: true }); // no-op unless MASTYFF_AI_AI_ON_CLI=true
     broadcastDashboardEvent({
       type: 'health-change',
       payload: { source: 'report', servers: servers.length },
@@ -425,11 +425,11 @@ program
   .option('--apply', 'Patch live client MCP JSON', false)
   .option(
     '--project-root <path>',
-    'MCP Guardian package root (dist/cli.js)',
-    resolveGuardianInstallRoot(),
+    'MCP Mastyff AI package root (dist/cli.js)',
+    resolveMastyffAiInstallRoot(),
   )
-  .option('--workspace-root <path>', 'Directory for guardian-configs output', process.cwd())
-  .option('--skip <names>', 'Comma-separated server names to skip', 'mcp-guardian,guardian')
+  .option('--workspace-root <path>', 'Directory for mastyff-ai-configs output', process.cwd())
+  .option('--skip <names>', 'Comma-separated server names to skip', 'mastyff-ai,mastyff-ai')
   .option('--start-proxy', 'Print command to start proxy for first wrapped server', false)
   .option('--start', 'Start proxy + dashboard after onboarding', false)
   .action(async (opts: {
@@ -472,7 +472,7 @@ program
 program
   .command('start')
   .description('Start MCP proxy + web dashboard (local defaults, http://localhost:4000)')
-  .option('-c, --config <path>', 'Guardian MCP config JSON (single stdio server)')
+  .option('-c, --config <path>', 'Mastyff AI MCP config JSON (single stdio server)')
   .option('--policy <path>', 'Policy YAML (default: policy-audit.yaml from install root)')
   .option('--blocking-mode <mode>', 'Policy mode: audit, warn, block', 'block')
   .option('--build-dashboard', 'Build dashboard SPA before starting (git clone)')
@@ -495,7 +495,7 @@ program
   .command('setup')
   .description('Developer setup: pnpm install, build server, build dashboard SPA (git clone only)')
   .option('--skip-dashboard', 'Skip dashboard SPA build', false)
-  .option('--project-root <path>', 'Monorepo root', resolveGuardianInstallRoot())
+  .option('--project-root <path>', 'Monorepo root', resolveMastyffAiInstallRoot())
   .action(async (opts: { skipDashboard?: boolean; projectRoot: string }) => {
     const { runSetup } = await import('./cli/setup.js');
     await runSetup({ projectRoot: opts.projectRoot, skipDashboard: opts.skipDashboard });
@@ -503,18 +503,18 @@ program
 
 program
   .command('wrap')
-  .description('Wrap Cline/Cursor/Claude MCP servers with Guardian proxy (per-server configs + optional client patch)')
+  .description('Wrap Cline/Cursor/Claude MCP servers with Mastyff AI proxy (per-server configs + optional client patch)')
   .option('--client <name>', 'Client config to wrap: cline, cursor, claude-desktop, windsurf, auto', 'auto')
   .option('-c, --config <path>', 'Explicit MCP client config path (overrides --client)')
   .option('--policy <path>', 'Policy YAML for wrapped proxies', 'policy-audit.yaml')
   .option('--apply', 'Patch live client MCP JSON (creates timestamped .bak backup)', false)
   .option(
     '--project-root <path>',
-    'MCP Guardian package root (dist/cli.js)',
-    resolveGuardianInstallRoot(),
+    'MCP Mastyff AI package root (dist/cli.js)',
+    resolveMastyffAiInstallRoot(),
   )
-  .option('--workspace-root <path>', 'Directory for guardian-configs output', process.cwd())
-  .option('--skip <names>', 'Comma-separated server names to skip (default: mcp-guardian,guardian)', 'mcp-guardian,guardian')
+  .option('--workspace-root <path>', 'Directory for mastyff-ai-configs output', process.cwd())
+  .option('--skip <names>', 'Comma-separated server names to skip (default: mastyff-ai,mastyff-ai)', 'mastyff-ai,mastyff-ai')
   .action(async (opts: {
     client: string;
     config?: string;
@@ -595,7 +595,7 @@ const fleetCmd = program.command('fleet').description('Fleet-wide observability 
 
 fleetCmd
   .command('status')
-  .description('Aggregate status from Postgres (DATABASE_URL) or GUARDIAN_FLEET_DB_PATHS')
+  .description('Aggregate status from Postgres (DATABASE_URL) or MASTYFF_AI_FLEET_DB_PATHS')
   .option('--json', 'Output JSON')
   .action(async (opts: { json?: boolean }) => {
     const { runFleetStatus } = await import('./cli/fleet-status.js');
@@ -608,7 +608,7 @@ roadmapCmd
   .command('fleet-graph-train')
   .description('Train GNN weights from fleet chain alerts and export JSON (A1)')
   .requiredOption('--output <path>', 'Write weights JSON (w1/w2 arrays)')
-  .option('--db <path>', 'History DB path (default: GUARDIAN_HISTORY_DB or :memory:)')
+  .option('--db <path>', 'History DB path (default: MASTYFF_AI_HISTORY_DB or :memory:)')
   .action(async (opts: { output: string; db?: string }) => {
     try {
       const { runRoadmapFleetGraphTrain } = await import('./cli/roadmap-cmd.js');
@@ -711,10 +711,10 @@ roadmapCmd
 program
   .command('tui')
   .description('Launch interactive terminal dashboard with real-time metrics, AI insights, and audit trails')
-  .option('--dashboard-url <url>', 'Merge live metrics from dashboard API (default: GUARDIAN_DASHBOARD_URL or http://localhost:4000)')
-  .option('--policy <path>', 'Policy YAML for Policy tab (default: GUARDIAN_POLICY_PATH / default-policy.yaml)')
+  .option('--dashboard-url <url>', 'Merge live metrics from dashboard API (default: MASTYFF_AI_DASHBOARD_URL or http://localhost:4000)')
+  .option('--policy <path>', 'Policy YAML for Policy tab (default: MASTYFF_AI_POLICY_PATH / default-policy.yaml)')
   .action(async (opts: { dashboardUrl?: string; policy?: string }) => {
-    if (opts.policy) process.env.GUARDIAN_POLICY_PATH = opts.policy;
+    if (opts.policy) process.env.MASTYFF_AI_POLICY_PATH = opts.policy;
     const { startTui } = await import('./tui/app.js');
     await startTui(opts.dashboardUrl);
   });
@@ -735,7 +735,7 @@ program
 
 program
   .command('proxy')
-  .description('Start MCP Guardian proxy with optional OAuth 2.1 authentication and active policy enforcement')
+  .description('Start MCP Mastyff AI proxy with optional OAuth 2.1 authentication and active policy enforcement')
   .option('-c, --config <path>', 'Path to MCP config file')
   .option('--policy <path>', 'Path to policy YAML file (enables active blocking)')
   .option('--blocking-mode <mode>', 'Override policy mode: audit (passive), warn (flag), block (enforce)', 'block')
@@ -743,7 +743,7 @@ program
   .option('--auth-audience <aud>', 'Expected audience claim in JWT')
   .option('--auth-required', 'Require authentication for all tool calls (fail-closed)', false)
   .option('--dry-run', 'Simulate policy against historical call_records without activating the proxy')
-  .option('--gateway', 'Shared ingress: SSE/WebSocket only (requires GUARDIAN_MULTI_TENANT_ENABLED)', false)
+  .option('--gateway', 'Shared ingress: SSE/WebSocket only (requires MASTYFF_AI_MULTI_TENANT_ENABLED)', false)
   .action(async (opts: ProxyOptions) => {
     const paths = opts.config ? [opts.config] : ConfigParser.findConfigPaths();
     if (paths.length === 0) { console.error(chalk.red('No MCP config files found. Use --config to specify a path.')); process.exit(1); }
@@ -752,7 +752,7 @@ program
     if (servers.length === 0) { console.error(chalk.yellow('No servers found in config.')); process.exit(0); }
 
     if (opts.gateway) {
-      process.env['GUARDIAN_GATEWAY_MODE'] = 'true';
+      process.env['MASTYFF_AI_GATEWAY_MODE'] = 'true';
     }
 
     const stdioServerCount = servers.filter((s) => s.command).length;
@@ -760,7 +760,7 @@ program
       console.error(chalk.red(
         'Multiple stdio MCP servers in one proxy process are not supported.\n' +
         `  Found ${stdioServerCount} servers with "command" in ${paths[0]}.\n` +
-        '  Use `mcp-guardian wrap` (one proxy per server) or pass a single-server config.\n' +
+        '  Use `mastyff-ai wrap` (one proxy per server) or pass a single-server config.\n' +
         '  See docs/REAL_WORLD_INTEGRATION.md',
       ));
       process.exit(1);
@@ -783,11 +783,11 @@ program
           policyConfig.policy.mode = opts.blockingMode as 'audit' | 'warn' | 'block';
         }
         dryRunEngine = new PolicyEngine(policyConfig);
-      } catch (err: any) {
-        console.error(chalk.red(`Failed to load policy for dry-run: ${err?.message}`));
+      } catch (err: unknown) {
+        console.error(chalk.red(`Failed to load policy for dry-run: ${err instanceof Error ? err.message : String(err)}`));
         process.exit(1);
       }
-      const db = new HistoryDatabase(process.env.MCP_GUARDIAN_DB_PATH || undefined);
+      const db = new HistoryDatabase(process.env.MASTYFF_AI_DB_PATH || undefined);
       let totalBlocked = 0;
       let totalPassed = 0;
       const perServer: Record<string, { blocked: number; passed: number }> = {};
@@ -863,9 +863,9 @@ program
         policyEngine = policyWatcher.get() || undefined;
         useWatcherForManager = true; // Default: pass watcher so hot-reload works
         if (opts.blockingMode && ['audit', 'warn', 'block'].includes(opts.blockingMode) && policyEngine) {
-          if (process.env['GUARDIAN_DISALLOW_MODE_OVERRIDE'] === 'true') {
+          if (process.env['MASTYFF_AI_DISALLOW_MODE_OVERRIDE'] === 'true') {
             console.error(chalk.yellow(
-              `--blocking-mode ignored (GUARDIAN_DISALLOW_MODE_OVERRIDE=true). Using policy file mode: ${policyEngine.getMode()}`,
+              `--blocking-mode ignored (MASTYFF_AI_DISALLOW_MODE_OVERRIDE=true). Using policy file mode: ${policyEngine.getMode()}`,
             ));
           } else {
             const { load } = await import('js-yaml');
@@ -880,8 +880,8 @@ program
         }
         console.error(chalk.green(`Policy loaded: ${opts.policy} (mode: ${policyEngine?.getMode() || 'none'})`));
         console.error(chalk.dim(`  ${policyEngine ? '5' : '0'} rule(s) active`));
-      } catch (err: any) {
-        console.error(chalk.red(`Failed to load policy: ${err?.message}`));
+      } catch (err: unknown) {
+        console.error(chalk.red(`Failed to load policy: ${err instanceof Error ? err.message : String(err)}`));
         process.exit(1);
       }
     } else {
@@ -889,7 +889,7 @@ program
     }
 
     await bootstrapSecrets();
-    const db = await createDatabase(process.env.MCP_GUARDIAN_DB_PATH || undefined);
+    const db = await createDatabase(process.env.MASTYFF_AI_DB_PATH || undefined);
     await bootstrapCompliance(db);
     await bootstrapControlPlane(policyWatcher);
     const { loadDetectorPluginsFromPath } = await import('./plugins/detector-plugin.js');
@@ -928,12 +928,23 @@ program
     };
 
     // WebSocket for TUI live updates (full dashboard API optional via DASHBOARD_ENABLED=true)
-    if (process.env['GUARDIAN_WS_ENABLED'] === undefined) {
-      process.env['GUARDIAN_WS_ENABLED'] = 'true';
+    if (process.env['MASTYFF_AI_WS_ENABLED'] === undefined) {
+      process.env['MASTYFF_AI_WS_ENABLED'] = 'true';
     }
     const dashboardPort = parseInt(process.env['DASHBOARD_PORT'] || '4000', 10);
-    startDashboardServer(dashboardPort, policyWatcher)
-      .then(() => void rewireDashboardWs())
+    const dashboardServerP = startDashboardServer(dashboardPort, policyWatcher);
+    dashboardServerP
+      .then(async ({ server: httpServer }) => {
+        void rewireDashboardWs();
+        if (httpServer && manager) {
+          try {
+            const { mountMcpEndpoint } = await import('./utils/mcp-http-bridge.js');
+            mountMcpEndpoint(httpServer, '/mcp', manager);
+          } catch (errMcp: unknown) {
+            console.error(chalk.yellow(`MCP endpoint mount warning: ${errMcp instanceof Error ? errMcp.message : String(errMcp)}`));
+          }
+        }
+      })
       .catch((err: unknown) => {
         const msg = err instanceof Error ? err.message : String(err);
         console.error(chalk.yellow(`Dashboard/WS server warning: ${msg}`));
@@ -944,10 +955,10 @@ program
       initializeAiEngine(db, servers)
         .then(() => void rewireDashboardWs())
         .catch((err: any) => {
-          console.error(chalk.yellow(`AI learning engine warning: ${err?.message}`));
+          console.error(chalk.yellow(`AI learning engine warning: ${err instanceof Error ? err.message : String(err)}`));
         });
     } else {
-      console.error(chalk.dim('AI learning disabled (GUARDIAN_AI_ENABLED=false)'));
+      console.error(chalk.dim('AI learning disabled (MASTYFF_AI_AI_ENABLED=false)'));
     }
 
     try {
@@ -957,13 +968,13 @@ program
       const { resolveCliTenantId } = await import('./tenant/resolve-tenant.js');
       startAutopilotServices(db, resolveCliTenantId({}), servers);
       if (isAutopilotMode()) {
-        console.error(chalk.green('Guardian Autopilot services started (scheduler + reports)'));
+        console.error(chalk.green('Mastyff AI Autopilot services started (scheduler + reports)'));
       }
     } catch (err: unknown) {
       console.error(chalk.yellow(`Autopilot services warning: ${err instanceof Error ? err.message : String(err)}`));
     }
 
-    console.error(chalk.green('MCP Guardian proxy running. Press Ctrl+C to stop.'));
+    console.error(chalk.green('MCP Mastyff AI proxy running. Press Ctrl+C to stop.'));
     const cleanup = async () => {
       try {
         const { drainProxyInflight } = await import('./proxy/proxy-shutdown.js');
@@ -1025,7 +1036,7 @@ program
 
 // ── Default action: when piped stdin (Glama/mcp-proxy), start MCP server ──
 const isPiped = !process.stdin.isTTY;
-const isServer = process.env['MCP_GUARDIAN_MODE'] === 'server';
+const isServer = process.env['MASTYFF_AI_MODE'] === 'server';
 
 program
   .command('analyze')
@@ -1034,7 +1045,7 @@ program
   .option('--no-llm', 'Skip Ollama narrative (measured facts only)', false)
   .option('--output <path>', 'Save report to file')
   .option('-f, --format <format>', 'Output format: md (default) or json', 'md')
-  .option('--tenant <id>', 'Tenant id (default: GUARDIAN_TENANT_ID)')
+  .option('--tenant <id>', 'Tenant id (default: MASTYFF_AI_TENANT_ID)')
   .option('--project-root <path>', 'Project root for default report paths', process.cwd())
   .action(async (opts: {
     window: string;
@@ -1058,18 +1069,18 @@ program
 
 program
   .command('bench')
-  .description('Run Guardian benchmark scorecard from harness/swarm reports')
+  .description('Run Mastyff AI benchmark scorecard from harness/swarm reports')
   .option('--profile <name>', 'Benchmark profile name', 'enterprise')
   .option('--reports <dir>', 'Reports directory', join(process.cwd(), 'reports'))
   .option('--json', 'Output JSON only', false)
   .option('--persist', 'Save scorecard to local history.db', false)
   .option('--run-harness', 'Run adversarial harness before scoring', false)
   .action(async (opts: { profile: string; reports: string; json: boolean; persist: boolean; runHarness: boolean }) => {
-    if (opts.runHarness) process.env.GUARDIAN_BENCH_RUN_HARNESS = 'true';
-    const { runHarnessThenScorecard, runGuardianBenchScorecard, persistBenchmarkScorecard } = await import('./utils/guardian-bench.js');
+    if (opts.runHarness) process.env.MASTYFF_AI_BENCH_RUN_HARNESS = 'true';
+    const { runHarnessThenScorecard, runMastyffAiBenchScorecard, persistBenchmarkScorecard } = await import('./utils/mastyff-ai-bench.js');
     const scorecard = opts.runHarness
       ? await runHarnessThenScorecard(opts.reports, opts.profile)
-      : runGuardianBenchScorecard(opts.reports, opts.profile);
+      : runMastyffAiBenchScorecard(opts.reports, opts.profile);
     if (opts.json) {
       console.log(JSON.stringify(scorecard, null, 2));
     } else {
@@ -1079,7 +1090,7 @@ program
     if (opts.persist) {
       const { createDatabase } = await import('./database/create-database.js');
       const { IndustryStandardStore } = await import('./database/industry-standard-store.js');
-      const db = await createDatabase(process.env.MCP_GUARDIAN_DB_PATH);
+      const db = await createDatabase(process.env.MASTYFF_AI_DB_PATH);
       persistBenchmarkScorecard(new IndustryStandardStore(db), scorecard);
       console.log('Scorecard persisted to history.db');
     }
@@ -1091,11 +1102,11 @@ const autopilotCmd = program
 
 autopilotCmd
   .command('init')
-  .description('Wrap MCP configs (block policy), write ~/.mcp-guardian/autopilot.json')
+  .description('Wrap MCP configs (block policy), write ~/.mastyff-ai/autopilot.json')
   .option('--client <name>', 'Client: cline, cursor, claude-desktop, windsurf, auto', 'auto')
   .option('-c, --config <path>', 'Explicit MCP client config path')
   .option('--apply', 'Patch live client MCP JSON', false)
-  .option('--project-root <path>', 'MCP Guardian repo root', process.cwd())
+  .option('--project-root <path>', 'MCP Mastyff AI repo root', process.cwd())
   .action(async (opts: {
     client: string;
     config?: string;
@@ -1116,9 +1127,9 @@ autopilotCmd
 autopilotCmd
   .command('start')
   .description('Start proxy with Autopilot env (dashboard, learning, scheduler)')
-  .option('-c, --config <path>', 'Guardian MCP config JSON')
+  .option('-c, --config <path>', 'Mastyff AI MCP config JSON')
   .option('--policy <path>', 'Policy YAML', 'default-policy.yaml')
-  .option('--project-root <path>', 'MCP Guardian repo root', process.cwd())
+  .option('--project-root <path>', 'MCP Mastyff AI repo root', process.cwd())
   .action(async (opts: { config?: string; policy?: string; projectRoot: string }) => {
     const { runAutopilotStart } = await import('./cli/autopilot.js');
     runAutopilotStart(opts);

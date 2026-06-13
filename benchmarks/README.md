@@ -1,4 +1,4 @@
-# MCP Guardian Performance Benchmarks
+# MCP Mastyff AI Performance Benchmarks
 
 Measures per-call latency for MCP `tools/call` round-trips:
 

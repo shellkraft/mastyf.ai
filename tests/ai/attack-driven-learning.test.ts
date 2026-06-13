@@ -52,11 +52,11 @@ describe('attack-driven learning', () => {
   beforeEach(() => {
     resetBlockLearningDebounce();
     resetInstantAttackLearningState();
-    process.env.GUARDIAN_AI_ENABLED = 'true';
-    process.env.GUARDIAN_AI_USE_DB_SNAPSHOTS = 'true';
-    process.env.GUARDIAN_AI_SKIP_INITIAL_CYCLE = 'true';
-    process.env.GUARDIAN_AI_DISABLE_PERIODIC = 'true';
-    process.env.GUARDIAN_AI_ATTACK_MIN_BLOCKS = '3';
+    process.env.MASTYFF_AI_AI_ENABLED = 'true';
+    process.env.MASTYFF_AI_AI_USE_DB_SNAPSHOTS = 'true';
+    process.env.MASTYFF_AI_AI_SKIP_INITIAL_CYCLE = 'true';
+    process.env.MASTYFF_AI_AI_DISABLE_PERIODIC = 'true';
+    process.env.MASTYFF_AI_AI_ATTACK_MIN_BLOCKS = '3';
   });
 
   afterEach(() => {
@@ -94,7 +94,7 @@ describe('attack-driven learning', () => {
   });
 
   it('recordPolicyDecisionGlobal feeds collector metadata', async () => {
-    const dir = mkdtempSync(join(tmpdir(), 'guardian-adl-'));
+    const dir = mkdtempSync(join(tmpdir(), 'mastyff-ai-adl-'));
     const db = new HistoryDatabase(join(dir, 'h.db'));
     const collector = new DataCollector(db);
     registerDataCollector(collector);
@@ -123,11 +123,11 @@ describe('attack-driven learning', () => {
   });
 
   it('runLearningCycle surfaces attack suggestions from blocked call_records', async () => {
-    const dir = mkdtempSync(join(tmpdir(), 'guardian-adl-cycle-'));
+    const dir = mkdtempSync(join(tmpdir(), 'mastyff-ai-adl-cycle-'));
     const pendingPath = join(dir, '.ai-pending-suggestions.json');
-    process.env.GUARDIAN_AI_SUGGESTIONS_PATH = pendingPath;
-    process.env.GUARDIAN_AI_STATE_PATH = join(dir, '.ai-learning.json');
-    process.env.GUARDIAN_AI_BASELINES_PATH = join(dir, '.ai-baselines.json');
+    process.env.MASTYFF_AI_AI_SUGGESTIONS_PATH = pendingPath;
+    process.env.MASTYFF_AI_AI_STATE_PATH = join(dir, '.ai-learning.json');
+    process.env.MASTYFF_AI_AI_BASELINES_PATH = join(dir, '.ai-baselines.json');
 
     const db = new HistoryDatabase(join(dir, 'history.db'));
     await seedBlocked(db, 'filesystem', 'read_file', 'sensitive-path', 'path /home/finco/.ssh/config', 4);
@@ -143,9 +143,9 @@ describe('attack-driven learning', () => {
   });
 
   it('recordBlockLearningEvent updates instant state synchronously', () => {
-    const dir = mkdtempSync(join(tmpdir(), 'guardian-adl-instant-'));
-    process.env.GUARDIAN_AI_ATTACK_STATE_PATH = join(dir, '.attack-learning-state.json');
-    process.env.GUARDIAN_AI_INSTANT_LEARNING = 'true';
+    const dir = mkdtempSync(join(tmpdir(), 'mastyff-ai-adl-instant-'));
+    process.env.MASTYFF_AI_AI_ATTACK_STATE_PATH = join(dir, '.attack-learning-state.json');
+    process.env.MASTYFF_AI_AI_INSTANT_LEARNING = 'true';
 
     recordBlockLearningEvent({
       block_rule: 'secret-scan',
@@ -161,7 +161,7 @@ describe('attack-driven learning', () => {
 
   it('onPolicyBlock schedules debounced flush without throwing', async () => {
     vi.useFakeTimers();
-    process.env.GUARDIAN_AI_BLOCK_DEBOUNCE_MS = '50';
+    process.env.MASTYFF_AI_AI_BLOCK_DEBOUNCE_MS = '50';
     onPolicyBlock({
       block_rule: 'secret-scan',
       toolName: 'write_file',
@@ -179,8 +179,8 @@ describe('attack-driven learning', () => {
   });
 
   it('applySuggestionToPolicy merges rule without duplicates', async () => {
-    process.env.GUARDIAN_POLICY_SIM_GATE = 'false';
-    const dir = mkdtempSync(join(tmpdir(), 'guardian-policy-'));
+    process.env.MASTYFF_AI_POLICY_SIM_GATE = 'false';
+    const dir = mkdtempSync(join(tmpdir(), 'mastyff-ai-policy-'));
     const policyPath = join(dir, 'policy.yaml');
     writeFileSync(
       policyPath,

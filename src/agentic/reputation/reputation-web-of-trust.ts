@@ -9,8 +9,8 @@ export interface TrustEdge {
   weight: number;
 }
 
-const DEFAULT_ANCHOR = () => process.env.GUARDIAN_REPUTATION_TRUST_ANCHOR?.trim()
-  ?? process.env.GUARDIAN_TENANT_ID?.trim()
+const DEFAULT_ANCHOR = () => process.env.MASTYFF_AI_REPUTATION_TRUST_ANCHOR?.trim()
+  ?? process.env.MASTYFF_AI_TENANT_ID?.trim()
   ?? 'local-rater';
 
 export function resolveTrustAnchor(): string {
@@ -56,7 +56,7 @@ export function computeTransitiveTrust(
 export function isRaterTrusted(
   targetRaterId: string,
   edges: TrustEdge[],
-  minTrust = Number(process.env.GUARDIAN_REPUTATION_MIN_TRUST ?? '0.35'),
+  minTrust = Number(process.env.MASTYFF_AI_REPUTATION_MIN_TRUST ?? '0.35'),
 ): boolean {
   return computeTransitiveTrust(targetRaterId, edges) >= minTrust;
 }

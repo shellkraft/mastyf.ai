@@ -15,6 +15,7 @@
  * Configure JWT secret: DASHBOARD_JWT_SECRET=<secret>
  */
 import { createHmac, randomBytes, timingSafeEqual } from 'crypto';
+import { LRUCache } from 'lru-cache';
 import { Logger } from '../utils/logger.js';
 import { StructuredLogger } from '../utils/structured-logger.js';
 import { resolveTenantContext, DEFAULT_TENANT_ID } from '../tenant/resolve-tenant.js';
@@ -65,18 +66,18 @@ interface LoginRateEntry {
  * DashboardAuth provides authentication for the dashboard HTTP server.
  *
  * Two modes:
- * 1. API Key: Set DASHBOARD_API_KEY, pass as ?api_key=<key> or Authorization: Bearer <key>
+ * 1. API Key: Set DASHBOARD_API_KEY, pass as Authorization: Bearer <key> or X-API-Key header
  * 2. JWT Sessions: Set DASHBOARD_JWT_SECRET, POST /api/login with credentials
  */
-export const CSRF_COOKIE_NAME = 'mcp_guardian_csrf';
-export const SESSION_COOKIE_NAME = 'mcp_guardian_session';
+export const CSRF_COOKIE_NAME = 'mastyff_ai_csrf';
+export const SESSION_COOKIE_NAME = 'mastyff_ai_session';
 export const CSRF_HEADER_NAME = 'x-csrf-token';
 
 export class DashboardAuth {
   private config: DashboardAuthConfig;
   private loginRateMap: Map<string, LoginRateEntry> = new Map();
-  private activeTokens: Set<string> = new Set();
-  private sessionMeta: Map<string, { tenantId: string; roles: DashboardRole[] }> = new Map();
+  private activeTokens: LRUCache<string, true>;
+  private sessionMeta: LRUCache<string, { tenantId: string; roles: DashboardRole[] }>;
   private apiKeyRoles: Map<string, DashboardRole> = parseDashboardRolesEnv();
   private cleanupInterval: ReturnType<typeof setInterval> | null = null;
 
@@ -92,17 +93,21 @@ export class DashboardAuth {
       jwtSecret:
         config?.jwtSecret
         ?? process.env['DASHBOARD_JWT_SECRET']
-        ?? process.env['GUARDIAN_CLOUD_JWT_SECRET']
+        ?? process.env['MASTYFF_AI_CLOUD_JWT_SECRET']
         ?? process.env['LICENSE_JWT_SECRET']
         ?? undefined,
       sessionTtlSeconds: config?.sessionTtlSeconds ?? 3600,
       allowedOrigins: config?.allowedOrigins ?? (process.env['DASHBOARD_ALLOWED_ORIGINS']
         ? process.env['DASHBOARD_ALLOWED_ORIGINS'].split(',').map(s => s.trim())
-        : (process.env['GUARDIAN_ENTERPRISE_MODE'] === 'true'
+        : (process.env['MASTYFF_AI_ENTERPRISE_MODE'] === 'true'
           ? ['https://localhost:4000']
           : ['http://localhost:4000', 'http://localhost:3000', 'http://127.0.0.1:4000'])),
       maxLoginAttemptsPerMinute: config?.maxLoginAttemptsPerMinute ?? 5,
     };
+
+    const sessionTtlMs = this.config.sessionTtlSeconds * 1000;
+    this.activeTokens = new LRUCache<string, true>({ max: 10_000, ttl: sessionTtlMs });
+    this.sessionMeta = new LRUCache<string, { tenantId: string; roles: DashboardRole[] }>({ max: 10_000, ttl: sessionTtlMs });
 
     if (this.config.enabled && this.config.apiKey) {
       Logger.info('[dashboard-auth] API key authentication enabled');
@@ -120,14 +125,16 @@ export class DashboardAuth {
     }
   }
 
-  /**
-   * Authenticate a dashboard HTTP request.
-   * Checks multiple sources:
-   * 1. ?api_key=<key> query parameter
-   * 2. Authorization: Bearer <token> header
-   * 3. Session cookie (browser login)
-   * 4. X-API-Key header
-   */
+   /**
+    * Authenticate a dashboard HTTP request.
+    * Checks multiple sources:
+    * 1. Authorization: Bearer <token> header
+    * 2. Session cookie (browser login)
+    * 3. X-API-Key header
+    *
+    * NOTE: Query string API key (?api_key=) is intentionally NOT supported
+    * as query strings leak to access logs, browser history, and Referer headers.
+    */
   authenticate(req: {
     url?: string;
     headers?: Record<string, string | string[] | undefined>;
@@ -152,23 +159,6 @@ export class DashboardAuth {
     if (req.method && ['POST', 'PUT', 'DELETE', 'PATCH'].includes(req.method) && this.isCsrfEnforced()) {
       const csrfResult = this.validateCsrfRequest(headers);
       if (!csrfResult.authenticated) return csrfResult;
-    }
-
-    // ── Check query param API key ──
-    try {
-      const urlObj = new URL(url, 'http://localhost');
-      const queryKey = urlObj.searchParams.get('api_key');
-      if (queryKey && this.config.apiKey) {
-        if (this.timingSafeCompare(queryKey, this.config.apiKey)) {
-          return {
-            authenticated: true,
-            identity: 'api_key',
-            roles: resolveRolesForApiKey(queryKey, this.apiKeyRoles),
-          };
-        }
-      }
-    } catch {
-      // Malformed URL — continue to other auth methods
     }
 
     // ── Check Authorization header ──
@@ -368,13 +358,13 @@ export class DashboardAuth {
 
   /** Set-Cookie header value for the CSRF double-submit cookie. */
   csrfSetCookieHeader(token: string): string {
-    const secure = process.env['GUARDIAN_ENTERPRISE_MODE'] === 'true' ? '; Secure' : '';
+    const secure = process.env['MASTYFF_AI_ENTERPRISE_MODE'] === 'true' ? '; Secure' : '';
     return `${CSRF_COOKIE_NAME}=${token}; Path=/; SameSite=Strict; Max-Age=3600${secure}`;
   }
 
   /** Set-Cookie header value for the HttpOnly session cookie. */
   sessionSetCookieHeader(token: string): string {
-    const secure = process.env['GUARDIAN_ENTERPRISE_MODE'] === 'true' ? '; Secure' : '';
+    const secure = process.env['MASTYFF_AI_ENTERPRISE_MODE'] === 'true' ? '; Secure' : '';
     return `${SESSION_COOKIE_NAME}=${token}; Path=/; HttpOnly; SameSite=Strict; Max-Age=${this.config.sessionTtlSeconds}${secure}`;
   }
 
@@ -448,7 +438,7 @@ export class DashboardAuth {
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>MCP Guardian — Login</title>
+<title>MCP Mastyff AI — Login</title>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; background: #0d1117; color: #c9d1d9; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
@@ -465,7 +455,7 @@ button:hover { background: #2ea043; }
 </head>
 <body>
 <div class="container">
-<h1>🛡️ MCP Guardian</h1>
+<h1>🛡️ Mastyff AI</h1>
 <h2>Dashboard Authentication</h2>
 ${errorHtml}
 <form method="POST" action="/api/login">
@@ -516,7 +506,7 @@ ${csrfField}
   ): string {
     if (!this.config.jwtSecret) {
       throw new Error(
-        'Set DASHBOARD_JWT_SECRET or GUARDIAN_CLOUD_JWT_SECRET (same value as cloud AUTH_SECRET)',
+        'Set DASHBOARD_JWT_SECRET or MASTYFF_AI_CLOUD_JWT_SECRET (same value as cloud AUTH_SECRET)',
       );
     }
     Logger.info(`[dashboard-auth] Cloud session for ${identity} tenant=${tenantSlug}`);
@@ -547,19 +537,19 @@ ${csrfField}
       roles,
     })).toString('base64url');
 
-    const signature = createHmac('sha256', this.config.jwtSecret || randomBytes(32).toString('hex'))
+    const secret = this.config.jwtSecret;
+    if (!secret) {
+      Logger.error('[dashboard-auth] Cannot create session: DASHBOARD_JWT_SECRET is not configured');
+      throw new Error('DASHBOARD_JWT_SECRET is required to create session tokens');
+    }
+
+    const signature = createHmac('sha256', secret)
       .update(payload)
       .digest('base64url');
 
     const token = `${payload}.${signature}`;
-    this.activeTokens.add(token);
+    this.activeTokens.set(token, true);
     this.sessionMeta.set(token, { tenantId, roles });
-
-    // Auto-expire after TTL
-    setTimeout(() => {
-      this.activeTokens.delete(token);
-      this.sessionMeta.delete(token);
-    }, this.config.sessionTtlSeconds * 1000);
 
     return token;
   }
@@ -574,7 +564,7 @@ ${csrfField}
       }
     }
     if (body.role) return resolveRolesFromSessionPayload({ role: body.role });
-    const envRole = process.env['GUARDIAN_DASHBOARD_LOGIN_ROLE'];
+    const envRole = process.env['MASTYFF_AI_DASHBOARD_LOGIN_ROLE'];
     if (envRole) return resolveRolesFromSessionPayload({ role: envRole });
     return ['viewer'];
   }

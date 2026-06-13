@@ -20,8 +20,8 @@ function envInt(name: string, fallback: number): number {
   return Number.isFinite(n) && n > 0 ? n : fallback;
 }
 
-const MAX_QUEUE = envInt('GUARDIAN_AUDIT_QUEUE_MAX', 5000);
-const BATCH_SIZE = envInt('GUARDIAN_AUDIT_QUEUE_BATCH', 32);
+const MAX_QUEUE = envInt('MASTYFF_AI_AUDIT_QUEUE_MAX', 5000);
+const BATCH_SIZE = envInt('MASTYFF_AI_AUDIT_QUEUE_BATCH', 32);
 
 let queue: AuditWriteJob[] = [];
 let draining = false;

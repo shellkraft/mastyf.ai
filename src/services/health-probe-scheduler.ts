@@ -13,7 +13,7 @@ export function startHealthProbeScheduler(
   servers: McpServerConfig[],
   tenantId?: string,
 ): void {
-  const intervalMs = parseInt(process.env['GUARDIAN_HEALTH_PROBE_INTERVAL_MS'] || '0', 10);
+  const intervalMs = parseInt(process.env['MASTYFF_AI_HEALTH_PROBE_INTERVAL_MS'] || '0', 10);
   if (!Number.isFinite(intervalMs) || intervalMs <= 0 || servers.length === 0) return;
   if (timer) return;
 

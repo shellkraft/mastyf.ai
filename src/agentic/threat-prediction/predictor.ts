@@ -199,7 +199,7 @@ export class ThreatPredictor {
     }
 
     actions.push({
-      action: 'Enable MCP Guardian semantic guard for high-risk tools',
+      action: 'Enable MCP Mastyff AI semantic guard for high-risk tools',
       priority: 'medium',
       impact: 'Detects anomalous tool call patterns',
       effort: 'Low',

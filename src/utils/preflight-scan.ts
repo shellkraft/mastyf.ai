@@ -7,7 +7,7 @@ import { resolveTenantId } from '../tenant/resolve-tenant.js';
 import { Logger } from './logger.js';
 
 export function runPreflightScanAndHealth(servers: McpServerConfig[], db: IDatabase): void {
-  if (process.env.GUARDIAN_SKIP_PREFLIGHT_SCAN === 'true') return;
+  if (process.env.MASTYFF_AI_SKIP_PREFLIGHT_SCAN === 'true') return;
 
   void (async () => {
     try {

@@ -22,7 +22,7 @@ export async function upsertFederatedThreatStats(
   const id = `${orgId}:${instanceId}:${stats.tenantId}`;
   const db = getDb();
   await db.execute(sql`
-    INSERT INTO guardian_federated_threat_stats (
+    INSERT INTO mastyff-ai_federated_threat_stats (
       id, org_id, instance_id, tenant_id, region,
       attack_class_counts, rule_efficacy, threshold_recommendation, last_seen
     ) VALUES (
@@ -49,7 +49,7 @@ export async function queryFederatedThreatRadar(orgId: string): Promise<Federate
   const db = getDb();
   const result = await db.execute(sql`
     SELECT attack_class_counts, rule_efficacy, instance_id
-    FROM guardian_federated_threat_stats
+    FROM mastyff-ai_federated_threat_stats
     WHERE org_id = ${orgId}
       AND last_seen >= NOW() - INTERVAL '7 days'
   `);

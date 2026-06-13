@@ -1,5 +1,5 @@
 /**
- * Abstracted database interface for MCP Guardian.
+ * Abstracted database interface for Mastyff AI.
  * Supports SQLite (local/file) and PostgreSQL (cloud/horizontal scaling).
  */
 import { ProxyCallRecord } from '../types.js';

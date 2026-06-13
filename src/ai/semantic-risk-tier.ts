@@ -28,6 +28,6 @@ export function classifySemanticRiskTier(toolName: string, args: unknown): Seman
 
 export function shouldFailClosedOnSemanticDegrade(tier: SemanticRiskTier): boolean {
   if (tier === 'high') return true;
-  if (tier === 'medium') return process.env['GUARDIAN_SEMANTIC_FAIL_CLOSED_MEDIUM'] === 'true';
-  return process.env['GUARDIAN_SEMANTIC_FAIL_CLOSED_LOW'] === 'true';
+  if (tier === 'medium') return process.env['MASTYFF_AI_SEMANTIC_FAIL_CLOSED_MEDIUM'] === 'true';
+  return process.env['MASTYFF_AI_SEMANTIC_FAIL_CLOSED_LOW'] === 'true';
 }

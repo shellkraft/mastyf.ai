@@ -42,7 +42,7 @@ def _load_baseline_patterns() -> list[re.Pattern[str]]:
 
 
 def _load_dynamic_patterns() -> list[re.Pattern[str]]:
-    state_path = os.environ.get("GUARDIAN_THREAT_STATE_PATH")
+    state_path = os.environ.get("MASTYFF_AI_THREAT_STATE_PATH")
     if not state_path:
         state_path = str(REPO_ROOT / ".threat-state.json")
     path = Path(state_path)
@@ -73,7 +73,7 @@ def _load_dynamic_patterns() -> list[re.Pattern[str]]:
 
 def _get_patterns() -> list[re.Pattern[str]]:
     global _cached_patterns, _cached_at
-    if os.environ.get("GUARDIAN_DISABLE_THREAT_INTEL_GUARD") == "true":
+    if os.environ.get("MASTYFF_AI_DISABLE_THREAT_INTEL_GUARD") == "true":
         return []
     import time
 

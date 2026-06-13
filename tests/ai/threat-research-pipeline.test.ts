@@ -55,35 +55,35 @@ describe('threat-research-pipeline', () => {
   let dir: string;
 
   beforeEach(() => {
-    dir = mkdtempSync(join(tmpdir(), 'guardian-threat-research-'));
+    dir = mkdtempSync(join(tmpdir(), 'mastyff-ai-threat-research-'));
     const customDir = join(dir, 'custom-attacks');
     mkdirSync(customDir, { recursive: true });
     resetThreatResearchQueueForTests();
-    process.env.GUARDIAN_THREAT_RESEARCH_AUTO = 'true';
-    process.env.GUARDIAN_CI_BYPASS_LICENSE = 'true';
-    process.env.GUARDIAN_AUTO_CORPUS_DIR = customDir;
-    process.env.GUARDIAN_AUTO_CORPUS_MANIFEST = join(dir, 'auto-corpus-manifest.json');
-    process.env.GUARDIAN_THREAT_RESEARCH_STATE_PATH = dir;
-    process.env.GUARDIAN_THREAT_RESEARCH_REQUIRE_REPLAY = 'false';
-    process.env.GUARDIAN_THREAT_RESEARCH_MAX_PER_HOUR = '20';
+    process.env.MASTYFF_AI_THREAT_RESEARCH_AUTO = 'true';
+    process.env.MASTYFF_AI_CI_BYPASS_LICENSE = 'true';
+    process.env.MASTYFF_AI_AUTO_CORPUS_DIR = customDir;
+    process.env.MASTYFF_AI_AUTO_CORPUS_MANIFEST = join(dir, 'auto-corpus-manifest.json');
+    process.env.MASTYFF_AI_THREAT_RESEARCH_STATE_PATH = dir;
+    process.env.MASTYFF_AI_THREAT_RESEARCH_REQUIRE_REPLAY = 'false';
+    process.env.MASTYFF_AI_THREAT_RESEARCH_MAX_PER_HOUR = '20';
     vi.mocked(threatLab.discoverFromBypass).mockResolvedValue(validDiscovery as threatLab.ThreatLabDiscovery);
   });
 
   afterEach(() => {
     resetThreatResearchQueueForTests();
-    delete process.env.GUARDIAN_THREAT_RESEARCH_AUTO;
-    delete process.env.GUARDIAN_CI_BYPASS_LICENSE;
-    delete process.env.GUARDIAN_AUTO_CORPUS_DIR;
-    delete process.env.GUARDIAN_AUTO_CORPUS_MANIFEST;
-    delete process.env.GUARDIAN_THREAT_RESEARCH_STATE_PATH;
-    delete process.env.GUARDIAN_THREAT_RESEARCH_REQUIRE_REPLAY;
-    delete process.env.GUARDIAN_THREAT_RESEARCH_MAX_PER_HOUR;
+    delete process.env.MASTYFF_AI_THREAT_RESEARCH_AUTO;
+    delete process.env.MASTYFF_AI_CI_BYPASS_LICENSE;
+    delete process.env.MASTYFF_AI_AUTO_CORPUS_DIR;
+    delete process.env.MASTYFF_AI_AUTO_CORPUS_MANIFEST;
+    delete process.env.MASTYFF_AI_THREAT_RESEARCH_STATE_PATH;
+    delete process.env.MASTYFF_AI_THREAT_RESEARCH_REQUIRE_REPLAY;
+    delete process.env.MASTYFF_AI_THREAT_RESEARCH_MAX_PER_HOUR;
     delete process.env.SWARM_THREAT_RESEARCH_AUTO;
     vi.clearAllMocks();
   });
 
   it('reports disabled when auto flag off', () => {
-    delete process.env.GUARDIAN_THREAT_RESEARCH_AUTO;
+    delete process.env.MASTYFF_AI_THREAT_RESEARCH_AUTO;
     expect(threatResearchAutoEnabled()).toBe(false);
   });
 
@@ -113,7 +113,7 @@ describe('threat-research-pipeline', () => {
   });
 
   it('enforces hourly rate limit', async () => {
-    process.env.GUARDIAN_THREAT_RESEARCH_MAX_PER_HOUR = '1';
+    process.env.MASTYFF_AI_THREAT_RESEARCH_MAX_PER_HOUR = '1';
     const first = await processThreatResearchEvent(
       buildBypassEvent({ fingerprint: 'rate-1', toolName: 'bash', category: 'shell-obfuscation' }),
     );

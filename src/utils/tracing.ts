@@ -32,7 +32,7 @@ export async function initTracing(): Promise<void> {
 
     await sdk.start();
     Logger.info('[tracing] OpenTelemetry tracing initialized — exporting to OTLP HTTP endpoint');
-  } catch (err: any) {
-    Logger.warn(`[tracing] OpenTelemetry initialization failed: ${err?.message}`);
+  } catch (err: unknown) {
+    Logger.warn(`[tracing] OpenTelemetry initialization failed: ${err instanceof Error ? err.message : String(err)}`);
   }
 }

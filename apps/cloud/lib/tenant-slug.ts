@@ -8,7 +8,7 @@ export class InvalidTenantSlugError extends Error {
   }
 }
 
-/** Validate slug matches Guardian tenant_id rules. */
+/** Validate slug matches Mastyff AI tenant_id rules. */
 export function validateTenantSlug(raw: string): string {
   const trimmed = raw.trim();
   if (!trimmed) {

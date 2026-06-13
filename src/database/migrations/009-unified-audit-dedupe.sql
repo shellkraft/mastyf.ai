@@ -8,7 +8,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_unified_audit_trail_source_dedupe
   WHERE source_record_id IS NOT NULL;
 
 CREATE TABLE IF NOT EXISTS audit_sync_cursors (
-  instance_id TEXT NOT NULL REFERENCES guardian_instances(instance_id) ON DELETE CASCADE,
+  instance_id TEXT NOT NULL REFERENCES mastyff_ai_instances(instance_id) ON DELETE CASCADE,
   tenant_id TEXT NOT NULL DEFAULT 'default',
   server_name TEXT NOT NULL,
   last_source_id BIGINT NOT NULL DEFAULT 0,

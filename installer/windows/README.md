@@ -12,23 +12,23 @@ Build a per-user MSI with [Inno Setup 6](https://jrsoftware.org/isinfo.php) on W
 
 ```powershell
 cd installer\windows
-& "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" mcp-guardian.iss
+& "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" mastyff-ai.iss
 ```
 
-Output: `dist/installer/mcp-guardian-2.7.0-win64.exe` (setup) — rename to `.msi` if you wrap with WiX, or distribute the Inno installer as-is.
+Output: `dist/installer/mastyff-ai-2.7.0-win64.exe` (setup) — rename to `.msi` if you wrap with WiX, or distribute the Inno installer as-is.
 
 ## Installed layout
 
-- `{app}\dist\` — compiled Guardian
-- `{app}\guardian-proxy.ps1` — IDE wrap launcher
+- `{app}\dist\` — compiled MastyffAi
+- `{app}\mastyff-ai-proxy.ps1` — IDE wrap launcher
 - `{app}\default-policy.yaml`
 - HKCU `Path` append for `{app}` (per-user)
 
 ## Post-install
 
 ```powershell
-node "$env:LOCALAPPDATA\Programs\MCP Guardian\dist\cli.js" doctor
-mcp-guardian wrap --client cursor --policy default-policy.yaml --apply
+node "$env:LOCALAPPDATA\Programs\MCP MastyffAi\dist\cli.js" doctor
+mastyff-ai wrap --client cursor --policy default-policy.yaml --apply
 ```
 
 Signing: use your org code-signing cert with `signtool` on the generated setup executable before distribution.

@@ -23,7 +23,7 @@ export type WsAuthContext = {
 
 export type WsBroadcasterOptions = {
   dashboardAuth?: DashboardAuth;
-  /** Ignored unless GUARDIAN_REQUIRE_LICENSE=true (license paywall removed by default). */
+  /** Ignored unless MASTYFF_AI_REQUIRE_LICENSE=true (license paywall removed by default). */
   requireLicense?: boolean;
 };
 
@@ -79,7 +79,7 @@ export class WsBroadcaster {
           }
           const license = getLicenseClient();
           if (!license.hasFeature('websocket')) {
-            done(false, 4402, 'MCP Guardian Pro license required for live WebSocket');
+            done(false, 4402, 'MCP Mastyff AI Pro license required for live WebSocket');
             return;
           }
           const tenantId =
@@ -372,7 +372,7 @@ export class WsBroadcaster {
       type: 'snapshot',
       tenantId,
       payload: {
-        message: 'Connected to MCP Guardian dashboard',
+        message: 'Connected to MCP Mastyff AI dashboard',
         uptime: process.uptime(),
         version: process.env.npm_package_version || '2.3.24',
         timestamp: new Date().toISOString(),

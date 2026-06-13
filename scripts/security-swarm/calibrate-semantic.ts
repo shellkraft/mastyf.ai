@@ -1,7 +1,7 @@
 #!/usr/bin/env npx tsx
 /**
  * Swarm calibrator — analyze labeled semantic audit outcomes and recommend thresholds.
- * Reads persisted records from PostgreSQL (when configured) and ~/.mcp-guardian JSONL fallback.
+ * Reads persisted records from PostgreSQL (when configured) and ~/.mastyff-ai JSONL fallback.
  */
 import { writeFileSync, mkdirSync, readFileSync, existsSync } from 'fs';
 import { join } from 'path';
@@ -113,8 +113,8 @@ async function main(): Promise<void> {
   const avgConfidence =
     confidences.length > 0 ? confidences.reduce((a, b) => a + b, 0) / confidences.length : 0;
 
-  const currentMin = parseFloat(process.env.GUARDIAN_SEMANTIC_MIN_CONFIDENCE || '0.6');
-  const currentLocal = parseFloat(process.env.GUARDIAN_LOCAL_SEMANTIC_THRESHOLD || '0.55');
+  const currentMin = parseFloat(process.env.MASTYFF_AI_SEMANTIC_MIN_CONFIDENCE || '0.6');
+  const currentLocal = parseFloat(process.env.MASTYFF_AI_LOCAL_SEMANTIC_THRESHOLD || '0.55');
   let recommendedMin = currentMin;
   let recommendedLocal = currentLocal;
   if (totalLabeled >= 10) {
@@ -134,7 +134,7 @@ async function main(): Promise<void> {
     records.length === 0
       ? llmConfigured
         ? 'No semantic audit outcomes in the last window. Async semantic only persists flagged calls (suspicious + confidence ≥ threshold). Run hybrid proxy traffic, then label via POST /api/learning/label.'
-        : 'Semantic LLM not configured (set OPENAI_API_KEY or ANTHROPIC_API_KEY and GUARDIAN_LLM_ENABLED). Async semantic audits will not produce calibration data.'
+        : 'Semantic LLM not configured (set OPENAI_API_KEY or ANTHROPIC_API_KEY and MASTYFF_AI_LLM_ENABLED). Async semantic audits will not produce calibration data.'
       : undefined;
 
   const report = {
@@ -156,14 +156,14 @@ async function main(): Promise<void> {
     },
     thresholds: {
       current: {
-        GUARDIAN_SEMANTIC_MIN_CONFIDENCE: currentMin,
-        GUARDIAN_LOCAL_SEMANTIC_THRESHOLD: currentLocal,
+        MASTYFF_AI_SEMANTIC_MIN_CONFIDENCE: currentMin,
+        MASTYFF_AI_LOCAL_SEMANTIC_THRESHOLD: currentLocal,
       },
       recommended: {
-        GUARDIAN_SEMANTIC_MIN_CONFIDENCE: Math.round(recommendedMin * 1000) / 1000,
-        GUARDIAN_LOCAL_SEMANTIC_THRESHOLD: Math.round(recommendedLocal * 1000) / 1000,
+        MASTYFF_AI_SEMANTIC_MIN_CONFIDENCE: Math.round(recommendedMin * 1000) / 1000,
+        MASTYFF_AI_LOCAL_SEMANTIC_THRESHOLD: Math.round(recommendedLocal * 1000) / 1000,
       },
-      note: 'Apply manually or via tenant config; auto-apply requires quorum (GUARDIAN_AI_AUTO_APPLY stays false in prod).',
+      note: 'Apply manually or via tenant config; auto-apply requires quorum (MASTYFF_AI_AI_AUTO_APPLY stays false in prod).',
     },
     profile:
       totalLabeled >= 10 && fp / totalLabeled > 0.15
@@ -229,10 +229,10 @@ async function main(): Promise<void> {
   console.log('Semantic calibration report');
   console.log(JSON.stringify(report.totals, null, 2));
   console.log(
-    `Recommended GUARDIAN_SEMANTIC_MIN_CONFIDENCE: ${report.thresholds.recommended.GUARDIAN_SEMANTIC_MIN_CONFIDENCE}`,
+    `Recommended MASTYFF_AI_SEMANTIC_MIN_CONFIDENCE: ${report.thresholds.recommended.MASTYFF_AI_SEMANTIC_MIN_CONFIDENCE}`,
   );
   console.log(
-    `Recommended GUARDIAN_LOCAL_SEMANTIC_THRESHOLD: ${report.thresholds.recommended.GUARDIAN_LOCAL_SEMANTIC_THRESHOLD}`,
+    `Recommended MASTYFF_AI_LOCAL_SEMANTIC_THRESHOLD: ${report.thresholds.recommended.MASTYFF_AI_LOCAL_SEMANTIC_THRESHOLD}`,
   );
   console.log(`Recommended profile: ${report.profile}`);
   console.log(`Written: ${outPath}`);

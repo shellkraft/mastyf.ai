@@ -38,7 +38,7 @@ CREATE TABLE IF NOT EXISTS public_benchmark_scores (
   false_positive_rate REAL NOT NULL,
   p95_latency_ms REAL,
   scorecard JSONB NOT NULL,
-  guardian_version TEXT,
+  "mastyff-ai_version" TEXT,
   submitted_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 

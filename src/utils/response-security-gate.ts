@@ -72,7 +72,7 @@ export async function gateToolResponseText(opts: {
     return {
       outcome: {
         action: 'block',
-        message: `MCP Guardian: Tool response blocked by output DLP — ${summary || 'sensitive data in response'}`,
+        message: `Mastyff AI: Tool response blocked by output DLP — ${summary || 'sensitive data in response'}`,
         rule: 'response-dlp',
       },
       inspect,
@@ -91,7 +91,7 @@ export async function gateToolResponseText(opts: {
       return {
         outcome: {
           action: 'block',
-          message: `MCP Guardian: Tool response blocked by semantic review — ${sem.result.reasoning || sem.result.categories.join(', ')}`,
+          message: `Mastyff AI: Tool response blocked by semantic review — ${sem.result.reasoning || sem.result.categories.join(', ')}`,
           rule: 'sync-semantic-response',
         },
         inspect,
@@ -104,7 +104,7 @@ export async function gateToolResponseText(opts: {
     return {
       outcome: {
         action: 'block',
-        message: `MCP Guardian: Tool response blocked — ${summary || 'policy violation in response'}`,
+        message: `Mastyff AI: Tool response blocked — ${summary || 'policy violation in response'}`,
         rule: 'response-inspection',
       },
       inspect,

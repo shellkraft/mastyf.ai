@@ -6,15 +6,15 @@
  *   1. Threat Lab (LLM-driven discovery from swarm bypasses, semantic TPs, ThreatIntel)
  *   2. Auto Threat Research (runtime detection → LLM research → adv-NNN.json)
  *   3. Security Swarm analysis (corpus eval + harness + parity gates)
- *   4. Auto-corpus promotion (adv-NNN.json → corpus/attacks/ — if GUARDIAN_AUTO_CORPUS_PROMOTE=true)
+ *   4. Auto-corpus promotion (adv-NNN.json → corpus/attacks/ — if MASTYFF_AI_AUTO_CORPUS_PROMOTE=true)
  *
  * Usage:
  *   node scripts/schedule-threat-discovery.mjs [--daemon] [--interval <minutes>]
  *
  * Environment:
- *   GUARDIAN_SCHEDULE_INTERVAL_MINUTES — how often to run the loop (default: 360 = 6h)
- *   GUARDIAN_SCHEDULE_SWARM_INTERVAL_HOURS — how often to run full swarm (default: 24)
- *   GUARDIAN_SCHEDULE_RUN_ONCE — exit after first cycle (default: false, for cron usage)
+ *   MASTYFF_AI_SCHEDULE_INTERVAL_MINUTES — how often to run the loop (default: 360 = 6h)
+ *   MASTYFF_AI_SCHEDULE_SWARM_INTERVAL_HOURS — how often to run full swarm (default: 24)
+ *   MASTYFF_AI_SCHEDULE_RUN_ONCE — exit after first cycle (default: false, for cron usage)
  */
 import { spawnSync, spawn } from 'node:child_process';
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
@@ -23,7 +23,7 @@ import { homedir } from 'node:os';
 
 const REPO_ROOT = join(dirname(new URL(import.meta.url).pathname), '..');
 const STATE_PATH = join(
-  process.env.GUARDIAN_THREAT_RESEARCH_STATE_PATH || join(homedir(), '.mcp-guardian'),
+  process.env.MASTYFF_AI_THREAT_RESEARCH_STATE_PATH || join(homedir(), '.mastyff-ai'),
   'scheduler-state.json',
 );
 
@@ -83,8 +83,8 @@ function runCmd(cmd, args, opts = {}) {
 function envWithLicense() {
   return {
     ...process.env,
-    GUARDIAN_CI_BYPASS_LICENSE: 'true',
-    GUARDIAN_THREAT_RESEARCH_AUTO: 'true',
+    MASTYFF_AI_CI_BYPASS_LICENSE: 'true',
+    MASTYFF_AI_THREAT_RESEARCH_AUTO: 'true',
     SWARM_THREAT_RESEARCH_AUTO: 'true',
     SWARM_THREAT_LAB: 'true',
   };
@@ -124,7 +124,7 @@ async function runThreatDiscovery() {
   // Step 3: Swarm analysis (only if due)
   const now = Date.now();
   const swarmIntervalHours = parseInt(
-    process.env.GUARDIAN_SCHEDULE_SWARM_INTERVAL_HOURS || '24',
+    process.env.MASTYFF_AI_SCHEDULE_SWARM_INTERVAL_HOURS || '24',
     10,
   );
   const lastSwarmAt = state.lastSwarmAt ? new Date(state.lastSwarmAt).getTime() : 0;
@@ -150,7 +150,7 @@ async function runThreatDiscovery() {
   }
 
   // Step 4: Auto-corpus promotion (only if enabled)
-  if (process.env.GUARDIAN_AUTO_CORPUS_PROMOTE === 'true') {
+  if (process.env.MASTYFF_AI_AUTO_CORPUS_PROMOTE === 'true') {
     log('Step 4/4: Auto-corpus promotion');
     try {
       const { promoteBatchToCorpus } = await import('../src/ai/auto-corpus-promoter.js');
@@ -166,7 +166,7 @@ async function runThreatDiscovery() {
       log(`Auto-corpus promotion error: ${err.message}`);
     }
   } else {
-    log('Step 4/4: Auto-corpus promotion skipped (GUARDIAN_AUTO_CORPUS_PROMOTE != true)');
+    log('Step 4/4: Auto-corpus promotion skipped (MASTYFF_AI_AUTO_CORPUS_PROMOTE != true)');
   }
 
   state.lastRunAt = new Date().toISOString();
@@ -181,13 +181,13 @@ async function runThreatDiscovery() {
 
 async function main() {
   const intervalMinutes = parseInt(
-    process.env.GUARDIAN_SCHEDULE_INTERVAL_MINUTES || '360',
+    process.env.MASTYFF_AI_SCHEDULE_INTERVAL_MINUTES || '360',
     10,
   );
-  const runOnce = process.argv.includes('--run-once') || process.env.GUARDIAN_SCHEDULE_RUN_ONCE === 'true';
+  const runOnce = process.argv.includes('--run-once') || process.env.MASTYFF_AI_SCHEDULE_RUN_ONCE === 'true';
 
-  log(`MCP Guardian — Threat Discovery Scheduler`);
-  log(`Interval: ${intervalMinutes} min | Swarm: every ${process.env.GUARDIAN_SCHEDULE_SWARM_INTERVAL_HOURS || '24'}h`);
+  log(`MCP Mastyff AI — Threat Discovery Scheduler`);
+  log(`Interval: ${intervalMinutes} min | Swarm: every ${process.env.MASTYFF_AI_SCHEDULE_SWARM_INTERVAL_HOURS || '24'}h`);
   log(`State: ${STATE_PATH}`);
 
   if (runOnce) {

@@ -45,7 +45,7 @@ function buildMinimalPdf(lines: string[]): Buffer {
 }
 
 export function complianceEvidenceDir(): string {
-  return process.env.GUARDIAN_COMPLIANCE_EVIDENCE_DIR || join(homedir(), '.mcp-guardian', 'compliance-evidence');
+  return process.env.MASTYFF_AI_COMPLIANCE_EVIDENCE_DIR || join(homedir(), '.mastyff-ai', 'compliance-evidence');
 }
 
 export async function writeComplianceEvidencePdf(bundle: ComplianceEvidenceBundle): Promise<string> {
@@ -55,7 +55,7 @@ export async function writeComplianceEvidencePdf(bundle: ComplianceEvidenceBundl
   const path = join(dir, `compliance-${bundle.framework}-${stamp}.pdf`);
 
   const lines = [
-    'MCP Guardian Compliance Evidence',
+    'MCP Mastyff AI Compliance Evidence',
     `Framework: ${bundle.framework}`,
     `Generated: ${bundle.generatedAt}`,
     `Policy: ${bundle.policyPath}`,

@@ -44,7 +44,7 @@ pnpm build
 pnpm eval
 # or: pnpm exec tsx corpus/run-eval.ts
 # CI gate (regex-only semantic path):
-GUARDIAN_DISABLE_SEMANTIC=true ./scripts/verify-corpus-parity.sh
+MASTYFF_AI_DISABLE_SEMANTIC=true ./scripts/verify-corpus-parity.sh
 ```
 
 Writes `corpus-eval-report.json` at repo root. Exits non-zero if any attack expected `block` is not blocked, or any benign expected `pass` is blocked.

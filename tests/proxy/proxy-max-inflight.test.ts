@@ -4,16 +4,16 @@ import { HistoryDatabase } from '../../src/database/history-db.js';
 import { PolicyEngine } from '../../src/policy/policy-engine.js';
 
 describe('McpProxyServer max inflight', () => {
-  const prev = process.env['GUARDIAN_PROXY_MAX_INFLIGHT'];
+  const prev = process.env['MASTYFF_AI_PROXY_MAX_INFLIGHT'];
 
   afterEach(() => {
-    if (prev === undefined) delete process.env['GUARDIAN_PROXY_MAX_INFLIGHT'];
-    else process.env['GUARDIAN_PROXY_MAX_INFLIGHT'] = prev;
+    if (prev === undefined) delete process.env['MASTYFF_AI_PROXY_MAX_INFLIGHT'];
+    else process.env['MASTYFF_AI_PROXY_MAX_INFLIGHT'] = prev;
     vi.restoreAllMocks();
   });
 
   it('rejects tools/call when in-flight limit reached', async () => {
-    process.env['GUARDIAN_PROXY_MAX_INFLIGHT'] = '1';
+    process.env['MASTYFF_AI_PROXY_MAX_INFLIGHT'] = '1';
     const db = new HistoryDatabase(':memory:');
     const proxy = new McpProxyServer(
       'node',
@@ -53,7 +53,7 @@ describe('McpProxyServer max inflight', () => {
   });
 
   it('does not invoke policy evaluateAsync when over inflight cap', async () => {
-    process.env['GUARDIAN_PROXY_MAX_INFLIGHT'] = '1';
+    process.env['MASTYFF_AI_PROXY_MAX_INFLIGHT'] = '1';
     const db = new HistoryDatabase(':memory:');
     const engine = new PolicyEngine({
       version: '1',

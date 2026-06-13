@@ -61,7 +61,7 @@ function mockOnnxScore(features: number[]): OnnxInferenceResult {
 }
 
 async function tryOnnxRuntimeScore(features: number[], modelVersion: string): Promise<OnnxInferenceResult | null> {
-  if (process.env.GUARDIAN_FEDERATED_ONNX === 'false') return null;
+  if (process.env.MASTYFF_AI_FEDERATED_ONNX === 'false') return null;
   try {
     const moduleName = 'onnxruntime-' + 'node';
     const ort = await (Function('return import(arguments[0])') as (name: string) => Promise<{
@@ -72,7 +72,7 @@ async function tryOnnxRuntimeScore(features: number[], modelVersion: string): Pr
       }> };
       Tensor: new (type: string, data: Float32Array, dims: number[]) => unknown;
     }>)(moduleName);
-    const modelPath = process.env.GUARDIAN_FEDERATED_ONNX_MODEL;
+    const modelPath = process.env.MASTYFF_AI_FEDERATED_ONNX_MODEL;
     if (!modelPath) return null;
     const session = await ort.InferenceSession.create(modelPath);
     const inputName = session.inputNames[0];
@@ -109,7 +109,7 @@ export class FederatedLearningCoordinator {
   ) {}
 
   isEnabled(): boolean {
-    return process.env.GUARDIAN_FEDERATED_LEARNING === 'true';
+    return process.env.MASTYFF_AI_FEDERATED_LEARNING === 'true';
   }
 
   submitLocalDelta(params: {
@@ -231,7 +231,7 @@ export class FederatedLearningCoordinator {
       const roundId = newVersion;
       const participantIds = this.pendingGradients.map((_, i) => `local-${i}`);
       let avgGradient: number[];
-      if (process.env.GUARDIAN_FEDERATED_MPC === 'true' && participantIds.length > 1) {
+      if (process.env.MASTYFF_AI_FEDERATED_MPC === 'true' && participantIds.length > 1) {
         const masked = this.pendingGradients.map((g, i) =>
           maskGradientForUpload(g.gradient, participantIds[i]!, participantIds, roundId),
         );

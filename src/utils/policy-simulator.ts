@@ -5,7 +5,7 @@ import { readFileSync, existsSync } from 'fs';
 import { PolicyDiff } from '../agentic/policy-gen/policy-diff.js';
 import type { SynthesizedPolicy } from '../agentic/policy-gen/policy-synthesizer.js';
 import { simulatePolicyCounterfactual, type CounterfactualReport } from '../ai/policy-counterfactual.js';
-import { runGuardianBenchScorecard, type BenchmarkScorecard } from './guardian-bench.js';
+import { runMastyffAiBenchScorecard, type BenchmarkScorecard } from './mastyff-ai-bench.js';
 import type { PolicyRule } from '../policy/policy-types.js';
 
 function stubPolicy(yaml: string): SynthesizedPolicy {
@@ -52,7 +52,7 @@ export async function simulatePolicyChange(opts: {
     windowDays: opts.windowDays,
   });
 
-  const harnessSample = runGuardianBenchScorecard(undefined, opts.benchProfile ?? 'policy-sim');
+  const harnessSample = runMastyffAiBenchScorecard(undefined, opts.benchProfile ?? 'policy-sim');
 
   let policyDiffSummary: string | undefined;
   if (opts.generatedPolicyYaml && opts.existingPolicyYaml) {
@@ -80,5 +80,5 @@ export async function simulatePolicyChange(opts: {
   };
 }
 
-export type { BenchmarkScorecard } from './guardian-bench.js';
+export type { BenchmarkScorecard } from './mastyff-ai-bench.js';
 export type { CounterfactualReport } from '../ai/policy-counterfactual.js';

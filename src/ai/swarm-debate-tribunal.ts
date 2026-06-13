@@ -75,7 +75,7 @@ export async function applyTribunalAutoLabels(
   debates: TribunalDebate[],
   opts?: { userId?: string; tenantId?: string },
 ): Promise<number> {
-  if (process.env.GUARDIAN_TRIBUNAL_AUTO_LABEL !== 'true') return 0;
+  if (process.env.MASTYFF_AI_TRIBUNAL_AUTO_LABEL !== 'true') return 0;
   const { labelSemanticAuditRecord } = await import('./semantic-audit-store.js');
   let applied = 0;
   for (const d of debates) {
@@ -187,7 +187,7 @@ export async function runTribunalDebate(
   rec: StoredSemanticAudit,
   opts?: { useLlm?: boolean },
 ): Promise<TribunalDebate> {
-  const useLlm = opts?.useLlm ?? process.env.GUARDIAN_TRIBUNAL_LLM !== 'false';
+  const useLlm = opts?.useLlm ?? process.env.MASTYFF_AI_TRIBUNAL_LLM !== 'false';
   const args: DebateArgument[] = [];
   const ctx = recordContext(rec);
 

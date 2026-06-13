@@ -24,26 +24,26 @@ export function resolveAgentContext(params: {
 }): AgentContext {
   const meta = params.meta ?? {};
   const auth = meta.auth as Record<string, unknown> | undefined;
-  const guardian = meta.guardian as Record<string, unknown> | undefined;
+  const mastyffAi = meta['mastyff-ai'] as Record<string, unknown> | undefined;
 
   const userId =
-    (guardian?.userId as string | undefined)
+    (mastyffAi?.userId as string | undefined)
     ?? (auth?.sub as string | undefined)
     ?? params.authSub;
 
   const clientId =
-    (guardian?.clientId as string | undefined)
+    (mastyffAi?.clientId as string | undefined)
     ?? (meta.clientId as string | undefined)
     ?? 'mcp-client';
 
   const sessionId =
-    (guardian?.sessionId as string | undefined)
+    (mastyffAi?.sessionId as string | undefined)
     ?? (meta.sessionId as string | undefined)
     ?? params.fallbackSessionKey
     ?? hashId(`${params.serverName}:${clientId}:${Date.now()}`);
 
   const agentId =
-    (guardian?.agentId as string | undefined)
+    (mastyffAi?.agentId as string | undefined)
     ?? (meta.agentId as string | undefined)
     ?? (userId ? hashId(`agent:${userId}:${clientId}`) : hashId(`agent:${clientId}:${params.serverName}`));
 

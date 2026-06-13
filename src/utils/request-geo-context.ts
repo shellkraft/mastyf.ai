@@ -15,7 +15,7 @@ export function extractRequestGeoContext(
   if (!headers) return { hourUtc };
 
   const region =
-    headerValue(headers['x-guardian-geo-region'])
+    headerValue(headers['x-mastyff-ai-geo-region'])
     ?? headerValue(headers['cf-ipcountry'])
     ?? headerValue(headers['x-vercel-ip-country'])
     ?? headerValue(headers['x-geo-country']);

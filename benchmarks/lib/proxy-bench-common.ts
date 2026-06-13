@@ -140,8 +140,8 @@ export class ProxyBenchSession {
 
   async start(): Promise<void> {
     // Echo fixture is trusted — skip response PI scan so tier SLOs measure policy + proxy overhead.
-    if (process.env.GUARDIAN_SKIP_RESPONSE_SCAN === undefined) {
-      process.env.GUARDIAN_SKIP_RESPONSE_SCAN = 'true';
+    if (process.env.MASTYFF_AI_SKIP_RESPONSE_SCAN === undefined) {
+      process.env.MASTYFF_AI_SKIP_RESPONSE_SCAN = 'true';
     }
     this.db = new HistoryDatabase(':memory:');
     const policyEngine = new PolicyEngine(PROXY_BENCH_POLICY);

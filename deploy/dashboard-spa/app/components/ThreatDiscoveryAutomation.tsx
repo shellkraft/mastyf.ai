@@ -4,9 +4,9 @@ import { useCallback, useEffect, useState } from 'react';
 import {
   buildMutatingHeaders,
   fetchThreatAutomationSummary,
-  guardianFetch,
+  mastyffAiFetch,
   type ThreatAutomationSummary,
-} from '@/lib/guardian-api';
+} from '@/lib/mastyff-ai-api';
 function fmt(ts: string | null): string {
   return ts ? new Date(ts).toLocaleString() : 'Never';
 }
@@ -52,7 +52,7 @@ export function ThreatDiscoveryAutomation() {
   const startScheduler = async () => {
     try {
       const headers = await buildMutatingHeaders();
-      await guardianFetch('/api/threat-discovery/scheduler/start', { method: 'POST', headers });
+      await mastyffAiFetch('/api/threat-discovery/scheduler/start', { method: 'POST', headers });
       setActionMessage('Scheduler started.');
     } catch {
       setActionMessage('Could not start scheduler.');
@@ -63,7 +63,7 @@ export function ThreatDiscoveryAutomation() {
   const stopScheduler = async () => {
     try {
       const headers = await buildMutatingHeaders();
-      await guardianFetch('/api/threat-discovery/scheduler/stop', { method: 'POST', headers });
+      await mastyffAiFetch('/api/threat-discovery/scheduler/stop', { method: 'POST', headers });
       setActionMessage('Scheduler stopped.');
     } catch {
       setActionMessage('Could not stop scheduler.');
@@ -226,7 +226,7 @@ export function ThreatDiscoveryAutomation() {
         <div className="card" style={{ marginTop: '0.75rem' }}>
           <h4>Why Idle?</h4>
           <ul>
-            {!promotion.enabled ? <li>Enable `GUARDIAN_AUTO_CORPUS_PROMOTE=true` for automatic promotion.</li> : null}
+            {!promotion.enabled ? <li>Enable `MASTYFF_AI_AUTO_CORPUS_PROMOTE=true` for automatic promotion.</li> : null}
             {state.features.threatLabMode === 'reactive' ? <li>Threat Lab is reactive; run Security Swarm or switch proactive mode to generate more candidates.</li> : null}
             <li>Most fingerprints may already be deduplicated ({state.processedFingerprints} seen).</li>
             <li>Current minimum confidence is {minConfidence}; lower it if too many candidates are dropped.</li>
@@ -319,7 +319,7 @@ export function ThreatDiscoveryAutomation() {
         )}
         {!promotion.enabled && (
           <div style={{ marginTop: '0.5rem' }} className="status status-warning">
-            Set GUARDIAN_AUTO_CORPUS_PROMOTE=true on the server to enable automatic corpus growth.
+            Set MASTYFF_AI_AUTO_CORPUS_PROMOTE=true on the server to enable automatic corpus growth.
           </div>
         )}
       </div>
@@ -350,7 +350,7 @@ export function ThreatDiscoveryAutomation() {
             onClick={async () => {
               try {
                 const headers = await buildMutatingHeaders();
-                const resp = await guardianFetch('/api/threat-discovery/threat-lab/run', {
+                const resp = await mastyffAiFetch('/api/threat-discovery/threat-lab/run', {
                   method: 'POST',
                   headers,
                   body: JSON.stringify({ mode: 'reactive' }),
@@ -379,7 +379,7 @@ export function ThreatDiscoveryAutomation() {
             onClick={async () => {
               try {
                 const headers = await buildMutatingHeaders();
-                const resp = await guardianFetch('/api/threat-discovery/auto-research/run', { method: 'POST', headers });
+                const resp = await mastyffAiFetch('/api/threat-discovery/auto-research/run', { method: 'POST', headers });
                 const body = (await resp.json().catch(() => ({}))) as { jobId?: string };
                 setActionMessage(body.jobId ? `Auto Research started (${body.jobId}).` : 'Auto Research start requested.');
               } catch {

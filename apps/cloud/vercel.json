@@ -2,5 +2,5 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "nextjs",
   "installCommand": "cd ../.. && pnpm install",
-  "buildCommand": "cd ../.. && pnpm --filter @mcp-guardian/cloud run build"
+  "buildCommand": "cd ../.. && pnpm --filter @mastyff-ai/cloud run build"
 }

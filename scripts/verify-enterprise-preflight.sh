@@ -9,7 +9,7 @@ warn() { echo "[enterprise-preflight] WARN: $*" >&2; }
 fail() { echo "[enterprise-preflight] FAIL: $*" >&2; FAIL=1; }
 ok() { echo "[enterprise-preflight] OK: $*"; }
 
-echo "[enterprise-preflight] MCP Guardian enterprise preflight"
+echo "[enterprise-preflight] MCP Mastyff AI enterprise preflight"
 
 if [ -f dist/cli.js ]; then
   ok "dist/cli.js present"
@@ -23,8 +23,8 @@ else
   ok "dashboard auth not explicitly disabled"
 fi
 
-if [ "${GUARDIAN_STRICT_MODE:-}" != "true" ]; then
-  warn "GUARDIAN_STRICT_MODE is not true — multi-replica may misbehave without Redis"
+if [ "${MASTYFF_AI_STRICT_MODE:-}" != "true" ]; then
+  warn "MASTYFF_AI_STRICT_MODE is not true — multi-replica may misbehave without Redis"
 fi
 
 if [ -n "${DATABASE_URL:-}" ]; then
@@ -33,8 +33,8 @@ if [ -n "${DATABASE_URL:-}" ]; then
       ok "DATABASE_URL appears pooler-shaped"
       ;;
     *)
-      if [ "${GUARDIAN_REQUIRE_PGBOUNCER:-}" = "true" ]; then
-        fail "GUARDIAN_REQUIRE_PGBOUNCER=true but DATABASE_URL is not PgBouncer"
+      if [ "${MASTYFF_AI_REQUIRE_PGBOUNCER:-}" = "true" ]; then
+        fail "MASTYFF_AI_REQUIRE_PGBOUNCER=true but DATABASE_URL is not PgBouncer"
       else
         warn "DATABASE_URL does not look like PgBouncer — required for K8s HA"
       fi
@@ -50,10 +50,10 @@ else
   ok "Redis configuration present"
 fi
 
-if [ -f deploy/helm/mcp-guardian/values-enterprise.yaml ]; then
+if [ -f deploy/helm/mastyff-ai/values-enterprise.yaml ]; then
   ok "Helm values-enterprise.yaml present"
 else
-  fail "missing deploy/helm/mcp-guardian/values-enterprise.yaml"
+  fail "missing deploy/helm/mastyff-ai/values-enterprise.yaml"
 fi
 
 if [ -f default-policy.yaml ]; then

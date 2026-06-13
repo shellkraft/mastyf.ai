@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
-import { fetchPlanComplianceAudit, type PlanComplianceReport } from '@/lib/guardian-api';
+import { fetchPlanComplianceAudit, type PlanComplianceReport } from '@/lib/mastyff-ai-api';
 
 type Props = {
   refreshKey?: number;

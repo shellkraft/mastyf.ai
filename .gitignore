@@ -1,4 +1,6 @@
 node_modules/
+build/
+.envrc
 *.tgz
 package.json.prepack-backup
 .packages.prepack-backup.json
@@ -10,6 +12,8 @@ dist/
 *.log
 package-lock.json
 coverage/
+test-results/
+reports/
 .turbo/
 .threat-state.json
 .ai-learning.json
@@ -27,7 +31,7 @@ assets/ml/prompt-injection/onnx/*.onnx
 scripts/.agent-proxy-config.json
 scenarios/real-life/output/
 reports/tenants/
-reports/.guardian-home/
+reports/.mastyff-ai-home/
 *.db-shm
 *.db-wal
 *.db.pid
@@ -38,3 +42,8 @@ reports/home/tenants/default/dashboard-access.jsonl
 .env*.local
 *.tsbuildinfo
 apps/proxy-core/proxy-core
+benchmarks/results/
+sca/*.md
+sca/*.png
+sca/ai-learning-metrics.json
+deploy/dashboard.html

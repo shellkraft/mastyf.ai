@@ -16,13 +16,13 @@ export default async function ObservatoryPage() {
   return (
     <main style={{ maxWidth: 960, margin: '0 auto', padding: '2rem 1.5rem', fontFamily: 'system-ui, sans-serif' }}>
       <p style={{ marginBottom: '0.5rem' }}>
-        <Link href="/">← MCP Guardian Cloud</Link>
+        <Link href="/">← MCP Mastyff AI Cloud</Link>
         {' · '}
         <Link href="/benchmarks">Benchmarks</Link>
       </p>
       <h1 style={{ margin: '0 0 0.5rem' }}>MCP Ecosystem Observatory</h1>
       <p style={{ color: '#555', marginBottom: '1.5rem' }}>
-        Fleet-wide anonymized telemetry — adoption, threat heat, and block-rate trends across Guardian deployments.
+        Fleet-wide anonymized telemetry — adoption, threat heat, and block-rate trends across Mastyff AI deployments.
       </p>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem', marginBottom: '2rem' }}>

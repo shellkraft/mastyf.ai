@@ -62,7 +62,7 @@ jobs:
             const critical = results.flatMap(s => s.tools)
               .filter(t => t.status === 'critical');
 
-            const body = '## MCP Guardian: Critical Issues Found\n\n' +
+            const body = '## Mastyff AI: Critical Issues Found\n\n' +
               critical.map(t =>
                 '**' + t.toolName + '**\n' +
                 t.issues.filter(i => i.severity === 'critical')

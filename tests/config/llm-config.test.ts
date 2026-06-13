@@ -9,15 +9,15 @@ import {
 
 describe('llm-config', () => {
   const keys = [
-    'GUARDIAN_LLM_PROVIDER',
-    'GUARDIAN_LLM_MODEL',
+    'MASTYFF_AI_LLM_PROVIDER',
+    'MASTYFF_AI_LLM_MODEL',
     'ANTHROPIC_API_KEY',
     'OPENAI_API_KEY',
     'OLLAMA_BASE_URL',
-    'GUARDIAN_LLM_MAX_TOKENS',
-    'GUARDIAN_LLM_TIMEOUT_MS',
-    'GUARDIAN_LLM_TEMPERATURE',
-    'GUARDIAN_MODEL',
+    'MASTYFF_AI_LLM_MAX_TOKENS',
+    'MASTYFF_AI_LLM_TIMEOUT_MS',
+    'MASTYFF_AI_LLM_TEMPERATURE',
+    'MASTYFF_AI_MODEL',
   ] as const;
 
   const saved: Record<string, string | undefined> = {};
@@ -37,16 +37,16 @@ describe('llm-config', () => {
 
   it('defaults provider to anthropic when ANTHROPIC_API_KEY is set', () => {
     process.env.ANTHROPIC_API_KEY = 'sk-test';
-    delete process.env.GUARDIAN_LLM_PROVIDER;
-    delete process.env.GUARDIAN_LLM_MODEL;
+    delete process.env.MASTYFF_AI_LLM_PROVIDER;
+    delete process.env.MASTYFF_AI_LLM_MODEL;
     resetLlmConfigForTests();
     expect(getLlmConfig().provider).toBe('anthropic');
     expect(getLlmConfig().model).toContain('claude');
   });
 
-  it('respects GUARDIAN_LLM_PROVIDER=ollama', () => {
-    process.env.GUARDIAN_LLM_PROVIDER = 'ollama';
-    process.env.GUARDIAN_LLM_MODEL = 'llama3';
+  it('respects MASTYFF_AI_LLM_PROVIDER=ollama', () => {
+    process.env.MASTYFF_AI_LLM_PROVIDER = 'ollama';
+    process.env.MASTYFF_AI_LLM_MODEL = 'llama3';
     const cfg = getLlmConfig();
     expect(cfg.provider).toBe('ollama');
     expect(cfg.model).toBe('llama3');
@@ -54,32 +54,32 @@ describe('llm-config', () => {
   });
 
   it('reads max tokens, timeout, and temperature from env', () => {
-    process.env.GUARDIAN_LLM_MAX_TOKENS = '2048';
-    process.env.GUARDIAN_LLM_TIMEOUT_MS = '15000';
-    process.env.GUARDIAN_LLM_TEMPERATURE = '0.5';
+    process.env.MASTYFF_AI_LLM_MAX_TOKENS = '2048';
+    process.env.MASTYFF_AI_LLM_TIMEOUT_MS = '15000';
+    process.env.MASTYFF_AI_LLM_TEMPERATURE = '0.5';
     const cfg = getLlmConfig();
     expect(cfg.maxTokens).toBe(2048);
     expect(cfg.timeoutMs).toBe(15000);
     expect(cfg.temperature).toBe(0.5);
   });
 
-  it('resolveModelId prefers payload then GUARDIAN_MODEL then config default', () => {
-    process.env.GUARDIAN_LLM_PROVIDER = 'openai';
-    process.env.GUARDIAN_LLM_MODEL = 'gpt-4o-mini';
+  it('resolveModelId prefers payload then MASTYFF_AI_MODEL then config default', () => {
+    process.env.MASTYFF_AI_LLM_PROVIDER = 'openai';
+    process.env.MASTYFF_AI_LLM_MODEL = 'gpt-4o-mini';
     expect(resolveModelId('from-payload')).toBe('from-payload');
-    delete process.env.GUARDIAN_MODEL;
+    delete process.env.MASTYFF_AI_MODEL;
     expect(resolveModelId()).toBe('gpt-4o-mini');
-    process.env.GUARDIAN_MODEL = 'gpt-4o';
+    process.env.MASTYFF_AI_MODEL = 'gpt-4o';
     expect(resolveModelId()).toBe('gpt-4o');
   });
 
-  it('resolveModelIdForServer prefers server env and GUARDIAN_MODEL_<SERVER>', () => {
-    process.env.GUARDIAN_LLM_MODEL = 'gpt-4o-mini';
-    expect(resolveModelIdForServer('my-server', { GUARDIAN_MODEL: 'claude-3-5-sonnet' })).toBe(
+  it('resolveModelIdForServer prefers server env and MASTYFF_AI_MODEL_<SERVER>', () => {
+    process.env.MASTYFF_AI_LLM_MODEL = 'gpt-4o-mini';
+    expect(resolveModelIdForServer('my-server', { MASTYFF_AI_MODEL: 'claude-3-5-sonnet' })).toBe(
       'claude-3-5-sonnet',
     );
-    delete process.env.GUARDIAN_MODEL_MY_SERVER;
-    process.env.GUARDIAN_MODEL_MY_SERVER = 'gpt-4o';
+    delete process.env.MASTYFF_AI_MODEL_MY_SERVER;
+    process.env.MASTYFF_AI_MODEL_MY_SERVER = 'gpt-4o';
     expect(resolveModelIdForServer('my-server')).toBe('gpt-4o');
   });
 

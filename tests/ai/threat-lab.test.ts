@@ -102,13 +102,13 @@ describe('ThreatLab', () => {
   });
 
   it('discoverFromBypass returns null when LLM disabled', async () => {
-    const prev = process.env.GUARDIAN_LLM_ENABLED;
-    process.env.GUARDIAN_LLM_ENABLED = 'false';
+    const prev = process.env.MASTYFF_AI_LLM_ENABLED;
+    process.env.MASTYFF_AI_LLM_ENABLED = 'false';
     const discovery = await discoverFromBypass(
       { fingerprint: 'abc', toolName: 'search', category: 'prompt-injection', payload: 'test' },
       { seq: 1 },
     );
-    process.env.GUARDIAN_LLM_ENABLED = prev;
+    process.env.MASTYFF_AI_LLM_ENABLED = prev;
     expect(discovery).toBeNull();
   });
 

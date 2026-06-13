@@ -19,7 +19,7 @@ import {
   fetchCostRecommendations,
   type CostRecommendation,
   type CostResponse,
-} from '@/lib/guardian-api';
+} from '@/lib/mastyff-ai-api';
 import {
   CHART_AXIS,
   CHART_COLORS,
@@ -276,7 +276,7 @@ export function CostGovernancePanel({ refreshKey = 0, initialCost = null }: Prop
                 columns={serverColumns}
                 rows={cost?.serverReports || []}
                 rowKey={(r) => r.name}
-                exportFilename="guardian-cost-by-server.csv"
+                exportFilename="mastyff-ai-cost-by-server.csv"
               />
             </DashboardSection>
           </div>
@@ -286,7 +286,7 @@ export function CostGovernancePanel({ refreshKey = 0, initialCost = null }: Prop
                 columns={toolColumns}
                 rows={tools}
                 rowKey={(r) => `${r.server}:${r.tool}`}
-                exportFilename="guardian-cost-by-tool.csv"
+                exportFilename="mastyff-ai-cost-by-tool.csv"
               />
             </DashboardSection>
           </div>

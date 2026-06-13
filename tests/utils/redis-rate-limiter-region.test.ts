@@ -25,15 +25,15 @@ describe('RedisRateLimiter region isolation', () => {
     process.env = env;
   });
 
-  it('uses GUARDIAN_REGION in limiter scope', async () => {
-    process.env.GUARDIAN_REGION = 'us-east-1';
+  it('uses MASTYFF_AI_REGION in limiter scope', async () => {
+    process.env.MASTYFF_AI_REGION = 'us-east-1';
     const { RedisRateLimiter } = await import('../../src/utils/redis-rate-limiter.js');
     const limiter = new RedisRateLimiter();
     expect(limiter.getRegion()).toBe('us-east-1');
   });
 
-  it('changes region label when GUARDIAN_REGION changes', async () => {
-    process.env.GUARDIAN_REGION = 'eu-west-1';
+  it('changes region label when MASTYFF_AI_REGION changes', async () => {
+    process.env.MASTYFF_AI_REGION = 'eu-west-1';
     const { RedisRateLimiter } = await import('../../src/utils/redis-rate-limiter.js');
     const limiter = new RedisRateLimiter();
     expect(limiter.getRegion()).toBe('eu-west-1');
