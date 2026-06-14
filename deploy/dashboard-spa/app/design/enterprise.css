@@ -1801,13 +1801,20 @@ code {
 }
 
 .heatmap-cell {
-  width: 10px;
-  height: 14px;
+  flex: 1;
+  height: 16px;
   border-radius: 2px;
   background: var(--viz-heatmap-empty);
   transition: all var(--transition-fast);
   cursor: pointer;
-  flex-shrink: 0;
+}
+
+.heatmap-header {
+  flex: 1;
+  font-size: 9px;
+  color: var(--text-faint);
+  text-align: center;
+  line-height: 1;
 }
 
 .heatmap-cell:hover {

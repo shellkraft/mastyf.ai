@@ -150,7 +150,7 @@ export function ActivityCenter({
   const groupOrder = ['tool_call', 'policy_block', 'audit_event', 'flow_step', 'threat', 'decision', 'error', 'system', 'other'];
 
   const heatmapChart = (heatmap?.cells ?? []).slice(0, 20).map(c => ({
-    label: `${c.rule.slice(0, 14)} · ${c.tool.slice(0, 14)}`,
+    label: `${c.rule.slice(0, 16)}…${c.tool.slice(0, 10)}`,
     count: c.count,
   }));
 
@@ -359,28 +359,35 @@ export function ActivityCenter({
           </Card>
 
           <div className="grid grid-12" style={{ marginBottom: 'var(--space-5)' }}>
-            <div className="col-span-7">
-              <Card title="Activity Heatmap" subtitle="Day × hour event density">
+            <div className="col-span-8">
+              <Card title="Activity Heatmap" subtitle="Day × hour event density — darker = more events">
                 {(() => {
                   const matrix = heatmap?.activity;
                   if (!matrix?.days?.length) return <EmptyState title="No heatmap data" message="Insufficient event data for the selected window" />;
                   const max = matrix.maxCount || 1;
                   return (
                     <div>
+                      <div className="flex mb-1" style={{ paddingLeft: 36 }}>
+                        {matrix.hours.map((h: number) => (
+                          <span key={h} className="heatmap-header">{h}h</span>
+                        ))}
+                      </div>
                       {matrix.days.map((day: string, di: number) => (
-                        <div key={di} className="flex items-center gap-1 mb-1">
-                          <span className="text-xs text-muted mono" style={{ width: 32 }}>{day}</span>
-                          {matrix.hours.map((h: number, hi: number) => {
-                            const count = matrix.matrix[di]?.[hi] ?? 0;
-                            const level = count === 0 ? 0 : count / max > 0.5 ? 4 : count / max > 0.25 ? 3 : count / max > 0.1 ? 2 : 1;
-                            return (
-                              <span
-                                key={hi}
-                                className={`heatmap-cell level-${level}`}
-                                title={`${day} ${h}:00 — ${count} events`}
-                              />
-                            );
-                          })}
+                        <div key={di} className="flex mb-1" style={{ alignItems: 'center' }}>
+                          <span className="text-xs text-muted mono" style={{ width: 32, flexShrink: 0 }}>{day}</span>
+                          <div className="flex" style={{ flex: 1, gap: 1 }}>
+                            {matrix.hours.map((h: number, hi: number) => {
+                              const count = matrix.matrix[di]?.[hi] ?? 0;
+                              const level = count === 0 ? 0 : count / max > 0.5 ? 4 : count / max > 0.25 ? 3 : count / max > 0.1 ? 2 : 1;
+                              return (
+                                <span
+                                  key={hi}
+                                  className={`heatmap-cell level-${level}`}
+                                  title={`${day} ${h}:00 — ${count} events`}
+                                />
+                              );
+                            })}
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -388,16 +395,16 @@ export function ActivityCenter({
                 })()}
               </Card>
             </div>
-            <div className="col-span-5">
+            <div className="col-span-4">
               <Card title="Top Block Patterns" subtitle="Rule × tool combinations">
                 {heatmapChart.length === 0 ? (
                   <EmptyState title="No block data" message="No blocked events recorded" />
                 ) : (
-                  <ResponsiveContainer width="100%" height={300}>
+                  <ResponsiveContainer width="100%" height={280}>
                     <BarChart data={heatmapChart} layout="vertical">
                       <CartesianGrid {...CHART_GRID} />
                       <XAxis type="number" {...CHART_AXIS} />
-                      <YAxis type="category" dataKey="label" width={140} {...CHART_AXIS} />
+                      <YAxis type="category" dataKey="label" width={130} tick={{ fontSize: 10 }} {...CHART_AXIS} />
                       <Tooltip />
                       <Bar dataKey="count" fill={CHART_SERIES.block} name="Blocks" />
                     </BarChart>
