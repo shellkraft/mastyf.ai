@@ -1,0 +1,62 @@
+name: Deploy Cloud (production)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'apps/cloud/**'
+      - 'src/agentic/trust-score/**'
+      - 'src/clients/npm-registry-client.ts'
+      - 'scripts/vercel-cloud-production.sh'
+      - 'pnpm-lock.yaml'
+  workflow_dispatch:
+
+concurrency:
+  group: cloud-production
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    if: github.repository == 'mastyf-ai/mastyf.ai'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Deploy to Vercel
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+          DATABASE_URL: ${{ secrets.CLOUD_DATABASE_URL }}
+          AUTH_SECRET: ${{ secrets.CLOUD_AUTH_SECRET }}
+          APP_URL: https://www.mastyf.ai
+        run: |
+          if [[ -z "$VERCEL_TOKEN" || -z "$DATABASE_URL" ]]; then
+            echo "Skipping deploy — VERCEL_TOKEN or CLOUD_DATABASE_URL secret not configured."
+            exit 0
+          fi
+          chmod +x scripts/vercel-cloud-production.sh
+          ./scripts/vercel-cloud-production.sh
+
+      - name: Smoke test
+        env:
+          APP_URL: https://www.mastyf.ai
+        run: |
+          if [[ -n "${{ secrets.VERCEL_TOKEN }}" ]]; then
+            chmod +x scripts/verify-pro-production.sh
+            ./scripts/verify-pro-production.sh
+          else
+            echo "Skipping smoke test — VERCEL_TOKEN not configured."
+          fi
