@@ -61,10 +61,7 @@ export class InvalidPackageNameError extends Error {
 }
 
 async function loadScorer() {
-  return import(
-    /* webpackIgnore: true */
-    '@mastyf-ai/server/package-scorer'
-  );
+  return import('@mastyf-ai/server/package-scorer');
 }
 
 function rowToResult(row: CacheRow, source: PackageScoreSource, id?: string): PackageScoreResult {
