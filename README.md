@@ -1,301 +1,972 @@
 # mastyf.ai
 
-**Know which MCP servers are safe to trust — then protect them in production.**
+**A safety layer between your AI assistant and the MCP tools it uses.**
 
-[mastyf.ai](https://www.mastyf.ai) is a security platform for the Model Context Protocol (MCP). It scores npm MCP packages, hosts public trust badges, and provides a free cloud console for policy and fleet management. The same codebase also ships as **`@mastyf-ai/server`** on npm — a self-hosted MCP security proxy you can run on your own machine, in Docker, or on Kubernetes.
-
-[![npm version](https://img.shields.io/npm/v/@mastyf-ai/server)](https://www.npmjs.com/package/@mastyf-ai/server)
+[![Website](https://img.shields.io/badge/Website-live-blue)](https://mastyf-ai-cloud-jet.vercel.app/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.4-blue)](https://www.typescriptlang.org/)
 [![License](https://img.shields.io/badge/License-MIT-yellow)](LICENSE)
+[![CI](https://img.shields.io/badge/CI-GitHub_Actions-blue)](https://github.com/mastyf-ai/mastyf.ai/actions)
 
-GitHub: [github.com/mastyf-ai/mastyf.ai](https://github.com/mastyf-ai/mastyf.ai)
+**Version 4.1.7** · [Website](https://mastyf-ai-cloud-jet.vercel.app/) · [GitHub](https://github.com/mastyf-ai/mastyf.ai) · [Install from source](#getting-started--install-clone-and-run)
 
----
-
-## What mastyf.ai does
-
-When you connect an AI assistant to an MCP server, that server can run tools on your behalf — read files, call APIs, execute shell commands, and more. mastyf.ai helps you answer two questions:
-
-1. **Before you install:** Is this npm MCP package safe? What is its trust score?
-2. **After you deploy:** How do I block risky tool calls, audit traffic, and manage policy across a team?
-
-The **website** (`apps/cloud`) handles public scores, badges, and the cloud console. The **npm package** (`@mastyf-ai/server`, CLI command `mastyf-ai`) is the self-hosted engine that scans configs, proxies MCP traffic, and enforces YAML policy.
+> **Live website:** [https://mastyf-ai-cloud-jet.vercel.app/](https://mastyf-ai-cloud-jet.vercel.app/) — trust scores, badges, and a free cloud console.  
+> **Self-hosted proxy:** this repository (`@mastyf-ai/server`, CLI `mastyf-ai`) is **not published to npm yet** — clone and build from source below.
 
 ---
 
-## Platform features (website)
+### What's new in 4.1.7
 
-These pages and APIs are served by the Next.js app in `apps/cloud`. The live deployment at [mastyf-ai-cloud-jet.vercel.app](https://mastyf-ai-cloud-jet.vercel.app) has been verified for the routes below.
+- **Active Rules controls** — Security → Policy now includes list/search, soft disable/enable, and hard delete operations synced to YAML
+- **Policy runtime semantics** — `enabled: false` is honored across rule strategies with backward-compatible defaults
+- **Policy mutation APIs** — cloud + local dashboard endpoints for list/toggle/delete with updated README guidance
 
-### Home page (`/`)
+### What's new in 4.1.6
 
-The landing page explains the product and includes a **badge lookup widget**. Type any npm MCP package name (for example `@playwright/mcp`) and jump straight to its score page. Navigation links go to security scores, the cloud console, GitHub, and sign-in.
+- **`mastyf-ai start`** — one command for proxy + web dashboard on port 4000 (local dev defaults)
+- **`mastyf-ai setup`** — one-shot install for git clones (`pnpm install`, build, dashboard SPA)
+- **npm tarball prep** — prebuilt dashboard UI (`deploy/dashboard-spa/out/`) built at pack time (publish pipeline not live yet)
 
-### Security scores directory (`/certified`)
+### What's new in 4.1.0
 
-This is the main public feature. You can:
+**Industry roadmap plan compliance** — runtime verification and dashboard wiring for fleet-wide modules (A1–C5, B1–B3):
 
-- **Search any npm MCP package** — scores are computed on demand from npm metadata, CVE feeds, and static analysis. No prior registration is required.
-- **See recently scored packages** — when a Postgres database is connected, past scores appear in a table with score, grade, scan tier, and date.
-- **Understand the three steps:** look up → optional deep scan → embed a badge in your README.
+- **`mastyf-ai roadmap audit`** — CLI + `GET /api/agentic/plan-compliance/audit` verify shipped modules; exit 0 when production-ready
+- **Dashboard Agentic AI panels** — plan compliance, reputation, zero-trust, federated learning, observatory mesh sync, sandbox wizard, chain graph (A1)
+- **Protection home strip** — roadmap compliance score on the main Protection tab with link to Agentic AI
+- **A1 ONNX graph path** — optional fleet chain classifier via `MASTYF_AI_FLEET_GRAPH_ONNX_MODEL`
+- **B3 MPC-lite masking** — pairwise-masked federated gradients (`MASTYF_AI_FEDERATED_MPC`)
+- **B2/B1 mesh relays** — observatory and reputation mesh publish/pull; dev stub via `MASTYF_AI_OBSERVATORY_STUB`
+- **Cloud package scoring** — on-demand npm MCP trust scores, badge API, and `/certified` pages in `apps/cloud/`
 
-**How static scoring works:** When you open a package page, mastyf.ai downloads the package from npm, inspects its manifest and dependencies, checks known CVEs, and runs security heuristics. The result is a **0–100 trust score** and a letter grade from **A+ to F**, plus a tier label (bronze, silver, gold, etc.).
+Run `mastyf-ai roadmap audit --json` or open **Agentic AI → Overview** in the dashboard to confirm module compliance.
 
-Scores are cached in Postgres when available (24 hours for static scans, 7 days for live scans). Without a database, scoring still works — results are just not persisted in the directory table.
+### What's new in 4.0.0
 
-### Package score page (`/certified/<package>`)
+**Industry-standard MCP protection** — mastyf.ai moves from per-call filtering to fleet-wide, cross-agent security:
 
-Each package gets a dedicated page showing:
+- **MTX v1** — open threat exchange format (`@mastyf-ai/mtx`) + cloud hub
+- **Certified MCP** — HMAC attestation, persistent registry, verification API
+- **Multi-step attack chains** — collusion detector + session-chain graph with proxy enforcement
+- **Capability graph & intent binding** — tool/resource graph and session intent allowlists
+- **Agent reputation ledger** — persistent scores with proxy enforcement
+- **Dynamic sandbox tiers** — shadow / redact / allow with RL-ready persistence
+- **Protocol fuzzer** — expanded corpus with real block validation and cert gates
+- **Policy simulator** — `/api/policy/simulate` + `ab_test_policy` MCP tool
+- **Incident playbooks & AI investigator** — webhook/isolate executors; Threat Lab–linked investigations
+- **Compliance evidence runner** — live policy + audit wired to SOC2/HIPAA/PCI/FedRAMP/ISO mappings
+- **mastyf-ai bench** — `mastyf-ai bench` CLI + public leaderboard at `/benchmarks`
 
-- **Score ring** with numeric score and letter grade
-- **Scan tier badge** — `static` (npm-only analysis) or `live` (server was actually started and probed)
-- **Score report panel** — plain-English breakdown of checks (CVE posture, secrets, tool definitions, supply chain signals, etc.)
-- **Badge embed gallery** — copy-paste snippets for GitHub markdown, HTML, and direct SVG/JSON URLs
-- **Deep scan button** — visible when deep scan is enabled (see below)
-- **Maintainer attestation** — if a package owner published a signed score via `mastyf-ai certify publish`, that attestation can appear alongside computed scores (newer live scan wins over older attestation)
+**Roadmap (shipped in 4.0):** Semantic policy translator with approval flows, config provenance chain, STRIDE/LINDDUN threat modeling, behavioral biometrics, cross-MCP attack chains with SIEM export, digital twin sandbox, zero-trust SPIFFE scoring, decentralized reputation network, ecosystem observatory, insurance risk quantification + PDF export, and federated threat detection — see `src/agentic/industry-standard.ts` and module directories under `src/agentic/`.
 
-If the package does not exist on npm, you see a friendly “package not found” page instead of an error.
+### Fleet mandate for CISO buyers
 
-### Trust badges and Badge API
+mastyf.ai v4 is designed as a **fleet-wide control plane**, not a single-proxy filter:
 
-Badges are small SVG images you embed in README files, docs, or websites. They show the current trust score and grade for a package.
+- **Mandatory policy provenance** — every YAML change is hash-chained, signed, and exportable to SIEM/auditors
+- **Human-in-the-loop policy approval** — NL drafts must pass simulation + explicit approval before apply
+- **Cross-agent attack chain detection** — session graphs span servers; alerts export as CEF for Splunk/Datadog
+- **SPIFFE/mTLS identity** — zero-trust composite scores include workload identity from SPIFFE SVIDs
+- **Cloud observatory + reputation mesh** — anonymized fleet telemetry and server reputation consensus via the mastyf.ai cloud console
+- **Insurance-ready risk reports** — ALE quantification with underwriter PDF export for cyber insurance workflows
 
-| Endpoint | What it returns |
-|----------|-----------------|
-| `GET /api/v1/badge/<package>` | SVG badge image |
-| `GET /api/v1/badge/<package>?style=github` | GitHub-style flat badge |
-| `GET /api/v1/badge/<package>/json` | Full JSON score payload |
-| `GET /api/v1/badge/<package>?format=json` | Same JSON via query param |
+---
 
-**Example (verified on production):**
+## What problem does this solve?
+
+Modern AI assistants (Claude, Cursor, Cline, and others) can connect to **tools** — read files, run commands, query databases, post to Slack, and more. Those connections often use a standard called **MCP** (Model Context Protocol).
+
+That power is useful, but risky:
+
+- The AI might read files it should not see.
+- It might run shell commands or delete data by mistake or because of a malicious prompt.
+- Secrets can leak through tool arguments.
+- API costs can spike without you noticing.
+- You may install an npm MCP package without knowing its CVE posture or supply-chain risk.
+
+**mastyf.ai helps on both sides:**
+
+1. **Before install** — look up any npm MCP package for a 0–100 trust score and embeddable badge at [mastyf-ai-cloud-jet.vercel.app/certified](https://mastyf-ai-cloud-jet.vercel.app/certified) (no account required).
+2. **After deploy** — run the self-hosted proxy so every tool request is checked against your rules, blocked when risky, and logged — **before** anything reaches your real tools.
+
+```
+Your AI assistant
+       │
+       ▼
+  mastyf-ai proxy  ← reads your rules, blocks bad calls, keeps a log
+       │
+       ▼
+  Your real tools (files, GitHub, database, …)
+```
+
+---
+
+## How it works (step by step)
+
+1. **You clone and build mastyf.ai** and point it at your existing MCP setup (or run `mastyf-ai onboard` to do this automatically).
+2. **mastyf.ai wraps your tool servers** so the AI talks to mastyf.ai instead of talking to them directly.
+3. When the AI tries to use a tool, mastyf.ai receives the request first.
+4. mastyf.ai compares the request to your **policy** (a simple rules file you control).
+5. If the request is allowed, mastyf.ai forwards it to the real tool and returns the result.
+6. If the request breaks a rule, mastyf.ai **blocks it** and tells the AI it was denied — the real tool never runs.
+7. Every allow and block is saved to a local database so you can review history and see charts on the dashboard.
+
+You stay in control: mastyf.ai does not silently change your rules unless you approve it (for example when reviewing Threat Lab suggestions).
+
+---
+
+## Architecture
+
+This section shows how mastyf.ai is wired together: what runs where, how a tool call flows through governance, and how Security Swarm / Threat Lab pipelines connect to the proxy.
+
+**In this section:** System overview · Tool call path · Transports · Agentic AI · Dashboard · Security Swarm pipelines · Learning loop · Cloud app
+
+### System overview
+
+When you run **`mastyf-ai start`** or `pnpm dashboard:proxy`, one Node process typically hosts the **policy proxy**, the **dashboard API**, and (optionally) **agentic services**. All components share the same audit database (`MASTYF_AI_DB_PATH`, default `~/.mastyf-ai/history.db`).
+
+```
+AI clients (Cursor / Cline / Claude)
+       │
+       ▼
+┌──────────────────────────────────────────┐
+│  mastyf.ai process                       │
+│  Proxy (stdio/HTTP/SSE/WS/streamable)    │
+│  PolicyEngine (YAML + hot reload)        │
+│  Agentic container (optional hooks)      │
+│  Dashboard REST + WebSocket              │
+└──────────────┬───────────────────────────┘
+               │
+       ┌───────┴────────┐
+       ▼                ▼
+  history.db      SIEM exporters (optional)
+       │
+       ▼
+  Upstream MCP servers (filesystem, GitHub, …)
+```
+
+| Component | Role | Main code |
+| --------- | ---- | --------- |
+| **Proxy layer** | Intercepts JSON-RPC; enforces policy on every `tools/call` | [`src/proxy/`](src/proxy/) |
+| **Policy engine** | Evaluates YAML rules, rate limits, RBAC, patterns | [`src/policy/`](src/policy/) |
+| **History DB** | Stores allow/block audit, tokens, cost | [`src/database/history-db.ts`](src/database/history-db.ts) |
+| **Dashboard** | Local UI + REST API over the same DB | [`deploy/dashboard-spa/`](deploy/dashboard-spa/), [`src/utils/dashboard-server.ts`](src/utils/dashboard-server.ts) |
+| **Agentic** | Smart features (injection scan, policy gen, trust, mesh, etc.) | [`src/agentic/`](src/agentic/) |
+| **Cloud app** | Public scores, badges, org console (not on npm) | [`apps/cloud/`](apps/cloud/) |
+
+Enterprise deployments may add **Redis** (rate limits, DPoP, circuit-breaker sync) and **PostgreSQL** instead of SQLite — see [`deploy/helm/`](deploy/helm/) and [`packages/PACKAGING.md`](packages/PACKAGING.md).
+
+### Tool call path (`tools/call`)
+
+Every dangerous decision happens **before** the real MCP server runs. If mastyf.ai blocks a call, the upstream tool never receives it.
+
+```
+AI client → pre-forward guard → policy engine → semantic gate → audit → upstream MCP
+                ↓ blocked anywhere = upstream never called
+```
+
+**Integration details:**
+
+1. **Pre-forward guard** ([`src/proxy/tool-call-pre-guard.ts`](src/proxy/tool-call-pre-guard.ts)) — caps expanded argument size and runs agentic pre-hooks (prompt injection, etc.) on all transports.
+2. **Policy** ([`src/policy/policy-engine.ts`](src/policy/policy-engine.ts)) — your YAML rules; rate-limit counters survive hot-reload via [`src/policy/rate-limit-store.ts`](src/policy/rate-limit-store.ts).
+3. **Semantic gate** ([`src/proxy/proxy-post-policy-gates.ts`](src/proxy/proxy-post-policy-gates.ts)) — optional LLM/heuristic check on arguments before forward.
+4. **Audit** — `persistCallRecord` → async audit-write-queue → SQLite; blocks also emit structured SIEM events when enabled.
+
+### Transports
+
+mastyf.ai implements the same governance stack on every MCP transport your IDE might use:
+
+| Transport | Entry module | `tools/call` governance |
+| --------- | ------------ | ----------------------- |
+| **stdio** | [`src/proxy/proxy-server.ts`](src/proxy/proxy-server.ts) | Full pipeline (default for wrapped configs) |
+| **HTTP** | [`src/proxy/http-proxy-server.ts`](src/proxy/http-proxy-server.ts) | Full + pre-forward guard |
+| **SSE** | [`src/proxy/sse-proxy-server.ts`](src/proxy/sse-proxy-server.ts) | Full + pre-forward guard |
+| **WebSocket** | [`src/proxy/websocket-proxy-server.ts`](src/proxy/websocket-proxy-server.ts) | Full + pre-forward guard |
+| **Streamable HTTP** | [`src/proxy/streamable-http-proxy-server.ts`](src/proxy/streamable-http-proxy-server.ts) | Full + pre-forward guard |
+
+Run `mastyf-ai onboard` so client configs point at mastyf.ai-wrapped servers. If an IDE connects to an MCP server **around** the proxy (common with raw SSE URLs), calls are **untracked** — metrics and logs will show `sse_untracked`.
+
+### Agentic AI integration
+
+Agentic features are optional modules loaded at boot ([`src/container.ts`](src/container.ts)). They do not replace your YAML policy; they add observation, scoring, and recommendations.
+
+| Integration point | What happens |
+| ----------------- | ------------ |
+| **Every `tools/call`** | [`runAgenticPreForwardHooks`](src/agentic/proxy-integration.ts) can block or sanitize arguments when agentic mode is on |
+| **MCP tools** | ~70+ agentic tools registered in [`src/index.ts`](src/index.ts) for automation and dashboard actions |
+| **Modules** | 40+ agentic modules in [`src/agentic/`](src/agentic/) (prediction, policy-gen, mesh, collusion, reputation, drift, compliance, etc.) |
+| **Dashboard** | **Agentic AI** workspace reads [`/api/agentic/*`](src/utils/agentic-dashboard-summary.ts) summaries |
+| **Database** | Agentic state in [`011-agentic-tables.sql`](src/database/migrations/011-agentic-tables.sql) |
+
+Module directories (each implements a shipped capability): `threat-prediction`, `policy-gen`, `prompt-injection`, `threat-mesh`, `honeypot`, `supply-chain`, `compliance`, `drift`, `red-team`, `protocol-fuzzer`, `trust-negotiation`, `trust-score`, `collusion-detector`, `capability-graph`, `intent-binding`, `agent-reputation`, `sandbox-tier`, `certification`, `incident-playbook`, `response-dlp`, `rl`, `mcp-lifecycle`, `cross-chain`, `digital-twin`, `biometrics`, `provenance`, `threat-modeling`, `zero-trust`, `observatory`, `federated`, `reputation`, `insurance`, `semantic-policy`, and related helpers in `core.ts` / `scheduler.ts`.
+
+### Dashboard and observability
+
+```
+Proxy writes → history.db → Dashboard REST API → Next.js SPA (Protection, Activity, Agentic)
+                          → WebSocket push (MASTYF_AI_WS_ENABLED)
+                          → Prometheus metrics (optional)
+                          → SIEM exporters (MASTYF_AI_SIEM_ENABLED)
+```
+
+The dashboard is not a separate database — it reads the same `call_records` the proxy writes. Set `MASTYF_AI_DB_PATH` consistently when running `pnpm real-life:filesystem` or other tests so charts match proxy traffic.
+
+### Security Swarm pipeline architecture
+
+These workflows run **alongside** the live proxy. They consume audit data, swarm reports, and LLM output to improve detection — they do not sit in the hot path of every tool call.
+
+#### Security Swarm
+
+Automated red-team loop: generate attacks, run the harness, detect bypasses, feed learning.
+
+- **What it does:** Runs scripted steps (build, corpus eval, parity, harness) and records bypasses when policy allows an attack that should be blocked.
+- **How it connects:** Reads/writes under `reports/security-swarm/`; bypasses and proposals can inform Threat Lab and runtime attack-learning.
+- **Run:** `pnpm security-swarm:fast` (PR gate) or `pnpm security-swarm:analyze` (full analysis). See [`security-swarm/README.md`](security-swarm/README.md).
+
+#### Threat Lab (LLM discovery)
+
+Human-reviewed LLM proposals for new attack fixtures and policy ideas.
+
+- **What it does:** Collects signals (bypasses, semantic TPs, ThreatIntel), asks a local LLM for new corpus candidates, validates them, writes `threat-lab-candidates.json` for **you to accept**.
+- **How it connects:** Outputs feed the adversarial harness and optional policy-applier after review — nothing is applied silently.
+- **Run:** `pnpm security-swarm:threat-lab` (requires Ollama at `http://127.0.0.1:11434`).
+
+#### Auto Threat Research
+
+Background LLM research when the proxy blocks suspicious traffic; writes validated `adv-*.json` fixtures.
+
+- **What it does:** Debounces block events, classifies attack types, writes harness fixtures when validation passes (dedupe + rate caps).
+- **How it connects:** Uses the same auto-corpus writer as Threat Lab when both `MASTYF_AI_THREAT_RESEARCH_AUTO` and `SWARM_THREAT_RESEARCH_AUTO` are enabled.
+- **Run:** Enable env flags on the proxy host; or trigger from dashboard **Threat Discovery**.
+
+### Continuous improvement loop
+
+```
+Live proxy blocks → history.db → Security Swarm + Threat Lab + Auto Threat Research
+                                      ↓
+                         new fixtures & policy ideas (human review)
+                                      ↓
+                         adversarial harness + corpus → stronger default policy
+```
+
+### Cloud app (`apps/cloud`)
+
+The Next.js app powers the live website at [mastyf-ai-cloud-jet.vercel.app](https://mastyf-ai-cloud-jet.vercel.app/). It is **not** published to npm.
+
+| Route / API | What it does |
+| ----------- | ------------ |
+| `/certified` | Look up npm MCP packages; 0–100 trust score and grade |
+| `/api/v1/badge/<package>` | SVG or JSON trust badge for README embeds |
+| `/api/v1/deep-scan/<package>` | Optional live MCP probe (stdio via `npx`) |
+| `/dashboard` | Free org console — policy YAML, API keys, fleet |
+| `/observatory` | Anonymized fleet telemetry snapshot |
+| `/benchmarks` | Community proxy profile leaderboard |
+
+Cloud deploy: [`apps/cloud/docs/VERCEL_DEPLOY.md`](apps/cloud/docs/VERCEL_DEPLOY.md) · Custom domain: [`apps/cloud/docs/CUSTOM_DOMAIN.md`](apps/cloud/docs/CUSTOM_DOMAIN.md)
+
+---
+
+## Features explained
+
+Below is what each major capability does, in plain language.
+
+### mastyf.ai website — security scores & badges
+
+**What it is:** A public lookup for npm MCP package trust — no install required.
+
+**How it works:** Enter a package name at [`/certified`](https://mastyf-ai-cloud-jet.vercel.app/certified). Static analysis runs on npm metadata, CVE feeds, and registry signals. You get a 0–100 score, letter grade, category breakdown, and copy-paste badge markdown. Optional deep scan connects to the package over stdio when enabled.
+
+**Why it matters:** Teams can check supply-chain posture before agents touch production data.
 
 ```bash
 curl -s "https://mastyf-ai-cloud-jet.vercel.app/api/v1/badge/@playwright%2Fmcp/json"
 ```
 
-Returns JSON with `score`, `grade`, `scanTier`, `checks`, `computedAt`, `badgeUrl`, and `verifyUrl`.
+---
 
-SVG responses support `ETag` caching — clients re-fetch only when the score changes.
+### mastyf.ai cloud console
 
-### Deep scan (live probe)
+**What it is:** A free signed-in console for policy and fleet management — hosted, no self-hosted proxy required.
 
-Static scoring analyzes the published npm tarball. **Deep scan** goes further: it starts the MCP server locally via `npx`, connects over stdio, lists tools, and probes them for runtime security signals. The result is a **live** scan tier with a richer score.
+**How it works:** Sign in with Google or GitHub at [`/dashboard`](https://mastyf-ai-cloud-jet.vercel.app/dashboard). Edit policy YAML in the browser, publish changes, rotate API keys, and view self-hosted proxy heartbeats when linked.
 
-Deep scan is **enabled automatically** when you run the cloud app locally (`localhost:3001` or `NODE_ENV=development`). On production Vercel it returns **501** unless you explicitly set `MASTYF_AI_ENABLE_DEEP_SCAN=true` (subprocess support is required).
-
-Trigger via the button on a package page, or:
-
-```bash
-curl -X POST "http://localhost:3001/api/v1/deep-scan/@playwright%2Fmcp"
-```
-
-Set `MASTYF_AI_DISABLE_DEEP_SCAN=true` to turn it off everywhere.
-
-### Cloud console (`/dashboard`)
-
-Sign in at `/login` to access your organization's cloud console. The console is **free** and does not require running the self-hosted proxy.
-
-| Page | What you can do |
-|------|-----------------|
-| **Overview** (`/dashboard`) | See your tenant ID, copy environment variables for API automation, quick links |
-| **Policy** (`/dashboard/policy`) | Edit YAML security policy in a web editor; download or publish changes |
-| **Fleet** (`/dashboard/fleet`) | View self-hosted proxy instances that send heartbeats; threat graph for your org |
-| **Settings** (`/dashboard/settings`) | Create and rotate API keys, manage account, sign out |
-| **Connect** (`/dashboard/connect`) | Optional setup to link a self-hosted `mastyf-ai` proxy to your cloud tenant for policy sync and SSO |
-
-**Local dev sign-in:** Set `AUTH_DEV_LOGIN=true` in `apps/cloud/.env.local` to sign in without OAuth.
-
-**Requires Postgres:** Auth, organizations, API keys, policy storage, fleet heartbeats, and the score cache directory all need `DATABASE_URL` pointing to a PostgreSQL database (local or Neon).
-
-### MCP Ecosystem Observatory (`/observatory`)
-
-A public dashboard of anonymized fleet telemetry: adoption score, threat heat index, average block rate, servers tracked, and top threat classes (prompt injection, credential exfiltration, shell obfuscation, etc.). Also lists certification-backed reputation entries when the database is available.
-
-API: `GET /api/v1/observatory/snapshot` — returns the same metrics as JSON.
-
-### Public benchmark leaderboard (`/benchmarks`)
-
-Community-submitted proxy profiles ranked by block rate and false-positive rate. Feeds aggregated data into the observatory. Submit via `POST /api/v1/benchmarks/submit` (requires auth/API key).
-
-### Legal pages
-
-- `/terms` — Terms of service
-- `/privacy` — Privacy policy
+**Why it matters:** Policy and tenant management without running the full proxy stack locally.
 
 ---
 
-## Self-hosted features (`mastyf-ai` CLI)
+### Policy proxy (the core)
 
-Install globally from npm:
+**What it is:** A filter on every tool call.
+
+**How it works:** You write rules in a YAML file (see [The policy file](#the-policy-file) below). Rules can allow specific tools, deny dangerous ones, limit how often tools run, cap token usage, and match patterns in arguments (for example “block if the path contains `../`”). When you change the file, mastyf.ai can reload rules without restarting.
+
+**Why it matters:** This is your main line of defense — fast, predictable, and fully under your control.
+
+---
+
+### Attack blocking (built into the default policy)
+
+**What it is:** Hundreds of pre-written checks for common abuse.
+
+**How it works:** Before a call reaches your server, mastyf.ai looks for things like shell commands hidden in arguments, path traversal (`../etc/passwd`), SQL injection patterns, attempts to exfiltrate secrets, suspicious URLs, and Unicode tricks that hide malicious text. If a pattern matches, the call is blocked and logged.
+
+**Why it matters:** Many real-world attacks look like normal tool calls; these checks catch a large class of them without an AI model.
+
+---
+
+### Cost tracking
+
+**What it is:** A running tally of how much your tool usage costs.
+
+**How it works:** mastyf.ai estimates tokens and dollar cost per call (using model pricing when available). You can set budgets and see burn rate over time in the dashboard.
+
+**Why it matters:** Runaway agents or loops can get expensive; you see it early.
+
+---
+
+### Health monitoring
+
+**What it is:** A health check for each connected MCP server.
+
+**How it works:** mastyf.ai tracks success rate, latency, and whether a server is responding. If a server keeps failing, a circuit breaker can stop hammering it.
+
+**Why it matters:** You notice broken or flaky integrations before users complain.
+
+---
+
+### Live audit log
+
+**What it is:** A permanent record of what was allowed and what was blocked.
+
+**How it works:** Each decision is stored in a local SQLite database (default: `~/.mastyf-ai/history.db`). The dashboard reads this database to show tables, charts, and filters.
+
+**Why it matters:** Security and debugging need a clear trail — who tried what, when, and why it was blocked.
+
+---
+
+### Package scanning (CVE and typo-squat)
+
+**What it is:** A check on MCP packages before you trust them.
+
+**How it works:** mastyf.ai can scan installed or configured packages for known security issues (CVEs) and names that look like famous packages but are slightly misspelled (typo-squatting). CLI: `mastyf-ai scan --all`.
+
+**Why it matters:** Supply-chain attacks often arrive as “almost the right” package name.
+
+---
+
+### Adversarial harness (offline tests)
+
+**What it is:** A large automated test suite that fires attack-like requests at your policy **without** a live AI.
+
+**How it works:** Run `pnpm harness` from the repo. It replays **~835 fixtures** and reports what would be blocked or allowed. Node/Python parity compares **~813** fixtures via `pnpm harness:parity`.
+
+**Why it matters:** You can change rules and immediately see if you broke legitimate use or left a hole open.
+
+---
+
+### Real-life scenarios (live tests)
+
+**What it is:** A short or long run of real attack traffic against a real filesystem MCP server through mastyf.ai.
+
+**How it works:** Commands like `pnpm real-life:filesystem` drive the official filesystem server with path traversal, injection, and similar tests while the proxy is running. Results show up in the dashboard if you use the same database path.
+
+**Why it matters:** Offline tests are fast; live tests prove the full path (proxy → policy → log → UI) works.
+
+---
+
+## Agentic AI features (version 4.1)
+
+These are **smart assistants inside mastyf.ai** that watch, score, and recommend — they do not replace your policy unless you choose to apply a suggestion.
+
+### Shipped today
+
+| Feature | What it does for you |
+| ------- | -------------------- |
+| **Threat prediction** | Scores how risky each MCP server is and suggests hardening before something breaks. |
+| **Policy generation** | Watches normal tool use, then drafts a tight “only what you actually need” policy you can review. |
+| **Prompt injection detection** | Scans tool arguments for text meant to hijack another AI (heuristic + optional LLM). |
+| **Threat mesh (MTX)** | Opt-in anonymized attack-pattern sharing; `@mastyf-ai/mtx` open exchange format. |
+| **Honeypots** | Deploys fake decoy servers; probes trigger alerts. |
+| **Supply chain checks** | Publisher verification, dependency confusion, typo-squat detection, SBOM export. |
+| **Compliance mapping** | Maps posture to SOC 2, HIPAA, PCI-DSS, FedRAMP, ISO 27001 with evidence runner. |
+| **Drift detection** | Notices when a server’s tools or behavior change unexpectedly. |
+| **Red team & protocol fuzzer** | Curated and mutated attacks; expanded fuzz corpus with cert gates. |
+| **Trust protocol & trust score** | Agent-to-agent negotiation plus local trust scoring. |
+| **Collusion & attack chains** | Multi-step pattern detection across agents/tools (session-chain graph). |
+| **Capability graph & intent binding** | Maps tool/resource relationships; session intent allowlists. |
+| **Agent reputation** | Persistent reputation ledger with proxy enforcement. |
+| **Sandbox tiers** | Dynamic shadow / redact / allow per tool or server. |
+| **Certified MCP** | HMAC-signed server attestation and verification tiers. |
+| **Policy simulator** | Preview policy impact before deploy (`ab_test_policy`, REST simulate API). |
+| **Incident playbooks & investigator** | Automated playbook steps; AI incident investigation in the dashboard. |
+| **MCP lifecycle guard** | Session-gated access to `tools/list`, `resources/read`, `prompts/get`. |
+| **Response DLP** | Scans upstream tool responses and streaming output for secrets. |
+| **RL tuning** | Contextual bandits and Thompson sampling for threshold optimization. |
+
+**Dashboard:** Open **Agentic AI** in the web UI for overview charts, trust scores, audit tables, and admin tools.
+
+### Industry-standard roadmap (shipped in 4.0)
+
+mastyf.ai’s industry-standard layer delivers **cross-server, cross-agent, systemic** protection. All eleven capabilities shipped in v4.0:
+
+| Tier | Features | Theme |
+| ---- | -------- | ----- |
+| **1 — Paradigm** | A1 Cross-MCP attack chain detection · A2 Digital twin & policy sandbox · A3 Agent behavioral biometrics | See the forest, not just the trees |
+| **2 — Ecosystem** | B1 Decentralized reputation network · B2 Ecosystem health observatory · B3 Federated threat detection | Network effects across deployments |
+| **3 — Enterprise** | C1 Config provenance chain · C2 Threat modeling as code (STRIDE/LINDDUN) · C3 Zero-trust continuous verification · C4 Insurance risk quantification · C5 Semantic policy translator | Compliance, CFO, and business stakeholders |
+
+**Verify compliance:** Run `mastyf-ai roadmap audit` (or `--json` for machine-readable output). The dashboard **Agentic AI → Overview** tab shows the same runtime audit via **Industry Roadmap Compliance**. Additional CLI utilities: `mastyf-ai roadmap fleet-graph-train`, `federated-export|import`, `observatory-sync`, `reputation-sync`.
+
+**Production env vars** (optional): fleet chain blocking (`MASTYF_AI_FLEET_CHAIN_BLOCK_CONFIDENCE`), multi-region Redis (`MASTYF_AI_FLEET_REGION`), observatory relay or dev stub (`MASTYF_AI_OBSERVATORY_RELAY_URL`, `MASTYF_AI_OBSERVATORY_STUB`), federated learning (`MASTYF_AI_FEDERATED_LEARNING`, `MASTYF_AI_FEDERATED_MPC`), ONNX graph model (`MASTYF_AI_FLEET_GRAPH_ONNX_MODEL`). Full list in [`.env.example`](.env.example).
+
+---
+
+## The web dashboard
+
+**What it is:** A local website (default [http://localhost:4000](http://localhost:4000)) that shows what mastyf.ai is doing.
+
+**How it works:** When you run **`mastyf-ai start`** (or `pnpm dashboard:proxy` from a git clone), the same process serves the dashboard and the API. The UI reads real data from your history database — not fake demo numbers.
+
+**Main areas:**
+
+| Area | What you see |
+| ---- | ------------ |
+| **Protection** | Overall status and plain-English analysis of your setup. |
+| **Activity** | Audit log of allowed and blocked calls. |
+| **Threats** | Active threats and quarantine actions. |
+| **Security** | Security score and trends. |
+| **Operations** | Traffic, errors, and cost charts over time. |
+| **Agentic AI** | Autonomous features: trust, threats, policy, operations, audit, and tools. Industry roadmap panels (A1–C5, B1–B3) live here — plan compliance audit on **Overview**. |
+| **Settings** | Servers, policy, and setup checklist. |
+
+In **Security → Policy**, you can manage rules without hand-editing YAML:
+
+- **Active Rules list** with search/filter
+- **Soft disable/enable** (writes `enabled: false/true` on the rule)
+- **Hard delete** (removes the rule from `policy.rules[]`)
+- Editor stays in sync with structured actions so YAML remains source-of-truth
+
+**Tip:** If charts say “no traffic in this time window,” widen the **Time window** dropdown (for example **Last 7 days**). Short windows only show very recent calls.
+
+---
+
+## Security Swarm
+
+**What it is:** A team of automated testers that keep trying to break your policy the way an attacker would.
+
+**How it works:**
+
+- One track **generates and runs attacks**, checks for bypasses, and writes reports.
+- Another track **learns from real blocks** on your proxy and improves detection over time.
+- The two tracks feed each other so tests get better as your deployment sees real traffic.
+
+**Why it matters:** Your policy is only as strong as the attacks you have tested against; the swarm expands that set continuously.
+
+**Run:**
 
 ```bash
-npm install -g @mastyf-ai/server
+pnpm security-swarm:fast      # PR gate (~5–15 min)
+pnpm security-swarm:analyze   # full analysis + live MCP scenarios
 ```
 
-The CLI command is **`mastyf-ai`**. Main commands:
+Architecture and artifacts: [`security-swarm/README.md`](security-swarm/README.md) · [Architecture § Security Swarm pipeline](#security-swarm-pipeline-architecture) above.
 
-| Command | Purpose |
-|---------|---------|
-| `mastyf-ai scan --all` | Scan all discoverable MCP config files for CVEs, secrets, and risky tools |
-| `mastyf-ai start` | Start the MCP proxy and local web dashboard (default `http://localhost:4000`) |
-| `mastyf-ai onboard --apply` | Detect IDE MCP servers, wrap them with audit policy, save status |
-| `mastyf-ai wrap` | Wrap Cline/Cursor/Claude MCP configs with the proxy |
-| `mastyf-ai proxy --policy ./policy.yaml` | Run proxy with YAML policy enforcement |
-| `mastyf-ai audit` | Audit token costs across MCP servers |
-| `mastyf-ai health` | Health-check configured MCP servers |
-| `mastyf-ai report` | Generate a full security/cost/health report |
-| `mastyf-ai certify publish` | Scan a server, compute trust score, publish badge to mastyf.ai Cloud |
-| `mastyf-ai fleet` | Fleet-wide observability across replicas |
-| `mastyf-ai doctor` | Quick diagnostics for DB path, policy, and env |
-| `mastyf-ai tui` | Interactive terminal dashboard |
+---
 
-### How the proxy works
+## Threat Lab
 
-AI clients send MCP tool calls through the **mastyf.ai proxy**. The proxy inspects each call against policy and scanners before forwarding to the upstream MCP server.
+**What it is:** Uses a local AI model to **propose** new attack patterns and rule ideas based on what mastyf.ai has seen.
 
-```
-AI client  →  mastyf-ai proxy  →  upstream MCP server
-                    │
-                    ├─ Policy (YAML, hot-reload)
-                    ├─ CVE / secrets / injection scans
-                    ├─ Cost & health metrics
-                    └─ Dashboard + alerts
-```
+**How it works:**
 
-**Detection layers:** regex patterns, JSON schema checks, shell AST analysis, optional LLM semantic review, response DLP, and a YAML policy engine with rate limits and RBAC.
+1. Collects signals from recent blocks, CVE data, and swarm findings.
+2. The model suggests new test cases and possible policy lines.
+3. Automated checks validate proposals.
+4. **You review and approve** — nothing is applied automatically.
 
-**Transports:** stdio, SSE, WebSocket, streamable HTTP, multi-tenant gateway.
-
-**Control plane / data plane:** Node.js compiles policies; Go (`apps/proxy-core/`) can run a high-performance data plane.
-
-### Link proxy to cloud (optional)
-
-Point your self-hosted proxy at mastyf.ai Cloud to pull policy and register fleet heartbeats:
+**Run:**
 
 ```bash
-export MASTYF_AI_CONTROL_PLANE_URL=https://www.mastyf.ai
-export MASTYF_AI_TENANT_ID=your-org-slug
-export MASTYF_AI_CLOUD_API_KEY=your-api-key
-```
-
-Copy full env vars from **Dashboard → Connect** after sign-in.
-
-### Publish a maintainer score
-
-Package maintainers can publish a signed attestation:
-
-```bash
-mastyf-ai certify publish \
-  --server my-server \
-  --package @scope/my-mcp \
-  --pkg-version 1.0.0 \
-  --cloud-url https://www.mastyf.ai
+pnpm security-swarm:threat-lab
+# Requires Ollama at http://127.0.0.1:11434
 ```
 
 ---
 
-## Cloud API reference (summary)
+## Auto Threat Research
 
-Public (no auth):
+**What it is:** Background research when something interesting is blocked.
 
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/api/v1/badge/<package>` | SVG or JSON trust badge |
-| GET | `/api/v1/observatory/snapshot` | Observatory metrics JSON |
-| GET | `/api/v1/certifications` | Public certification registry |
-| GET | `/api/v1/certifications/verify/<id>` | Verify a certification |
-| POST | `/api/v1/deep-scan/<package>` | Run live deep scan (local dev only by default) |
+**How it works:** When the proxy blocks a suspicious call, events can be queued, grouped, and analyzed by an LLM to classify the attack type and add it to your research corpus. **It does not change your live policy by itself** — it builds knowledge for you to use later.
 
-Authenticated (Bearer API key or session):
+**Enable:**
 
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/api/v1/policy` | Fetch tenant policy YAML |
-| POST | `/api/v1/policy/publish` | Publish policy changes |
-| GET | `/api/v1/policy/rules` | List policy rules |
-| POST | `/api/v1/instances/heartbeat` | Register proxy instance heartbeat |
-| GET | `/api/v1/fleet/threat-graph` | Fleet threat graph data |
-| GET | `/api/v1/fleet/federated-radar` | Federated threat radar |
-| POST | `/api/v1/keys/rotate` | Rotate API keys |
-| GET | `/api/v1/org` | Organization details |
-| GET | `/api/v1/license` | Cloud org API key validation (401 without key) |
-| POST | `/api/v1/benchmarks/submit` | Submit benchmark profile |
-| POST | `/api/v1/mtx/contribute` | Contribute to threat matrix |
-| GET | `/api/v1/mtx/catalog` | Threat matrix catalog |
-| POST | `/api/v1/reputation/query` | Reputation query |
+```bash
+export MASTYF_AI_THREAT_RESEARCH_AUTO=true
+export SWARM_THREAT_RESEARCH_AUTO=true
+pnpm security-swarm:auto-threat-research
+```
 
 ---
 
-## Quick start — website (local dev)
+## mastyf.ai Autopilot
+
+**What it is:** One-command setup: wrap MCP configs, start the proxy, turn on the dashboard, and optional background services (digests, learning).
+
+**How it works:**
+
+```bash
+pnpm autopilot:init -- --apply
+pnpm autopilot:start
+pnpm autopilot:status
+```
+
+Or via CLI: `mastyf-ai autopilot init` / `mastyf-ai autopilot start`.
+
+---
+
+## Open source vs optional license enforcement
+
+This repository is **MIT licensed**. All proxy, policy, dashboard, swarm, and agentic code ships in the repo.
+
+| Capability | Default (MIT) | With `MASTYF_AI_REQUIRE_LICENSE=true` |
+| ---------- | ------------- | ------------------------------------- |
+| Policy proxy and YAML rules | Yes | Yes |
+| Attack blocking, audit log, cost tracking | Yes | Yes |
+| Harness and real-life scenarios | Yes | Yes |
+| Full dashboard + Security Swarm | Yes | Yes (requires valid cloud API key) |
+| Fleet, SSO, Kubernetes, PostgreSQL | Yes (self-hosted) | Yes |
+
+By default, feature gating is **off** — everything in the repo runs without a license key. Set `MASTYF_AI_REQUIRE_LICENSE=true` plus `MASTYF_AI_LICENSE_KEY` and `MASTYF_AI_CONTROL_PLANE_URL` only when you want cloud-enforced licensing in production.
+
+Local development: `MASTYF_AI_CI_BYPASS_LICENSE=true` with `pnpm dashboard:proxy` or `mastyf-ai start`.
+
+---
+
+## Getting started — install, clone, and run
+
+This section walks through every path to a working mastyf.ai: **git clone** (current recommended path), and **`mastyf-ai start`** (or `pnpm dashboard:proxy` from the repo) to run the **proxy + web dashboard** together on port **4000**.
+
+> **npm note:** The package name `@mastyf-ai/server` and CLI `mastyf-ai` are defined in this repo but **not yet published to npm**. Install from source below. When npm publish is live, `npm install -g @mastyf-ai/server` will be the recommended user path.
+
+### What you need
+
+| Requirement | Notes |
+| ----------- | ----- |
+| **Node.js 18+** | Required |
+| **pnpm** | Required for the monorepo (`pnpm install`, `pnpm build`) |
+| **Git** | Clone-from-source workflow |
+| **Postgres** | Cloud console local dev only (`DATABASE_URL` in `apps/cloud/.env.local`) |
+| **Ollama** (optional) | Local LLM at http://127.0.0.1:11434 for semantic detection, Threat Lab, and Auto Threat Research |
+
+---
+
+### Clone and set up (recommended today)
 
 ```bash
 git clone https://github.com/mastyf-ai/mastyf.ai.git
 cd mastyf.ai
+
+# Install workspace dependencies (pnpm is required for the monorepo)
+corepack enable
 pnpm install
 
-cp apps/cloud/.env.example apps/cloud/.env.local
-# Set DATABASE_URL to Postgres (local or Neon)
-# Set AUTH_DEV_LOGIN=true for easy local sign-in
+# Copy optional environment overrides
+cp .env.example .env
+# Edit .env if you need NVD keys, LLM URLs, custom DB path, etc.
 
-pnpm cloud:dev
+# Compile TypeScript + workspace packages + dashboard SPA (first time)
+pnpm build
+pnpm setup
+# setup = pnpm install (if needed) + build + scripts/build-dashboard-spa.sh
 ```
 
-Open **http://localhost:3001**
+**One-liner after clone:**
 
-| URL | Feature |
-|-----|---------|
-| `/` | Landing + badge lookup |
-| `/certified` | Security scores directory |
-| `/certified/@playwright/mcp` | Example package score page |
-| `/login` | Sign in |
-| `/dashboard` | Cloud console (after sign-in) |
-| `/observatory` | Ecosystem observatory |
-| `/benchmarks` | Benchmark leaderboard |
+```bash
+git clone https://github.com/mastyf-ai/mastyf.ai.git && cd mastyf.ai && pnpm install && pnpm build && pnpm setup
+```
 
-More deploy docs: [apps/cloud/docs/VERCEL_DEPLOY.md](apps/cloud/docs/VERCEL_DEPLOY.md) · [apps/cloud/docs/CUSTOM_DOMAIN.md](apps/cloud/docs/CUSTOM_DOMAIN.md)
+**Run from the repo without a global install:**
+
+```bash
+node dist/cli.js start
+# or: pnpm dashboard:proxy
+```
+
+Verify install health:
+
+```bash
+node dist/cli.js --version
+node dist/cli.js doctor
+```
 
 ---
 
-## Quick start — CLI (npm)
+### Configure environment
+
+mastyf.ai reads environment variables at startup. For local development, defaults in `scripts/start-dashboard-proxy.sh` are usually enough.
 
 ```bash
-npm install -g @mastyf-ai/server
+cp .env.example .env
+```
 
-# Scan all MCP servers in your IDE configs
-mastyf-ai scan --all
+| Variable | Purpose | Default (dev) |
+| -------- | ------- | ------------- |
+| `MASTYF_AI_DB_PATH` | SQLite audit/history DB | `~/.mastyf-ai/history.db` |
+| `DASHBOARD_ENABLED` | REST API + web UI | `true` when using `mastyf-ai start` or `dashboard:proxy` |
+| `DASHBOARD_PORT` | Dashboard URL port | `4000` |
+| `DASHBOARD_AUTH_DISABLED` | Skip login on localhost | `true` in dev script |
+| `MASTYF_AI_CI_BYPASS_LICENSE` | Local dev license bypass | `true` in dev script |
+| `MASTYF_AI_LLM_ENABLED` | Semantic / AI features | `true` in dev script |
+| `OLLAMA_BASE_URL` | Local LLM endpoint | `http://127.0.0.1:11434` |
+| `MASTYF_AI_WS_ENABLED` | Live WebSocket metrics | `true` |
+| `MASTYF_AI_CONTROL_PLANE_URL` | Cloud console URL for policy sync | `https://mastyf-ai-cloud-jet.vercel.app` |
 
-# Start proxy + local dashboard
+Example — use a repo-local database so tests and dashboard share the same file:
+
+```bash
+export MASTYF_AI_DB_PATH="$PWD/reports/local-history.db"
+mkdir -p "$(dirname "$MASTYF_AI_DB_PATH")"
+```
+
+Full reference: [`.env.example`](.env.example).
+
+---
+
+### Start the dashboard and proxy (recommended)
+
+**Primary command (after build):**
+
+```bash
+mastyf-ai start
+# or from repo without global link:
+node dist/cli.js start
+```
+
+Sets local defaults (`DASHBOARD_ENABLED`, `MASTYF_AI_DB_PATH=~/.mastyf-ai/history.db`, license bypass for localhost), picks a single-server `mastyf-ai-configs/*.json` (or onboard `configsDir`), and runs proxy + API + UI.
+
+**Custom config or policy:**
+
+```bash
+mastyf-ai start --config mastyf-ai-configs/filesystem.json --policy default-policy.yaml
+mastyf-ai start --build-dashboard   # git clone: build SPA if out/ missing
+```
+
+**From the repo (dev script, same stack + extra dev env):**
+
+```bash
+pnpm dashboard:proxy
+# or: pnpm dashboard:proxy -- mastyf-ai-configs/filesystem.json default-policy.yaml
+```
+
+**What this does:**
+
+1. Rebuilds `dist/` if dashboard-related sources changed (dev script only)
+2. Builds the dashboard SPA (`deploy/dashboard-spa/out/`) if missing
+3. Picks a single-server MCP config unless you pass `--config`
+4. Starts **one Node process** that runs:
+   - the **MCP proxy** (stdio to your upstream MCP server),
+   - the **dashboard REST API**,
+   - the **static web UI** at [http://localhost:4000/](http://localhost:4000/),
+   - optional **agentic** schedulers and WebSocket push.
+
+**Expected console output:**
+
+```
+[dashboard-proxy] DB: /Users/you/.mastyf-ai/history.db
+[dashboard-proxy] Dashboard: http://localhost:4000/
+[dashboard-proxy] Config: mastyf-ai-configs/filesystem.json  Policy: default-policy.yaml  Mode: block
+```
+
+Open the browser → **Protection**, **Activity**, **Agentic AI**, etc. If charts are empty, widen the time window (e.g. **Last 7 days**) or generate traffic (next section).
+
+**Stop:** `Ctrl+C` in the terminal. If port 4000 is stuck: `lsof -ti :4000 | xargs kill`.
+
+---
+
+### Dashboard UI development (hot reload)
+
+When editing React panels under `deploy/dashboard-spa/`, run the SPA dev server separately:
+
+```bash
+# Terminal 1 — proxy + API (backend)
+pnpm dashboard:proxy
+
+# Terminal 2 — Next.js dev server for the SPA (frontend hot reload)
+pnpm dashboard:dev
+```
+
+---
+
+### Easiest path: onboard (wrap your AI client)
+
+After **build**, let mastyf.ai find and wrap MCP configs for Cursor, Claude Desktop, Cline, and Windsurf:
+
+```bash
 mastyf-ai onboard --apply
 mastyf-ai start
+```
 
-# Or run with explicit policy
-mastyf-ai proxy --policy ./policy.yaml --blocking-mode block
+`--apply` patches your live IDE MCP JSON (with backup). Restart your AI client so traffic flows through mastyf.ai.
+
+**If you see “No MCP config found for client auto”:**
+
+- Install and configure an IDE with MCP first (Cursor, Cline, Claude Desktop, or Windsurf), **or**
+- Pass a client: `mastyf-ai onboard --client cursor --apply`, **or**
+- Pass a config file: `mastyf-ai onboard --config /path/to/mcp.json --apply`, **or**
+- Skip onboard and start with a repo example: `mastyf-ai start --config mastyf-ai-configs/filesystem.json`
+
+**Common config paths (macOS):**
+
+| Client | Config file |
+| ------ | ----------- |
+| Cline | `~/Library/Application Support/Code/User/globalStorage/saoudrizwan.claude-dev/settings/cline_mcp_settings.json` |
+| Cursor | `~/.cursor/mcp.json` |
+| Claude Desktop | `~/Library/Application Support/Claude/claude_desktop_config.json` |
+
+From a **git clone** (before/after build):
+
+```bash
+pnpm build
+pnpm onboard -- --client auto --apply
+# or: node dist/cli.js onboard --apply
 ```
 
 ---
 
-## Deploy mastyf.ai to Vercel
+### Run proxy without `start` (advanced)
+
+Prefer **`mastyf-ai start`** — it sets the same env vars automatically. Use `proxy` directly only when you need full control:
 
 ```bash
-export VERCEL_TOKEN="..."           # vercel.com/account/tokens
-export DATABASE_URL="postgresql://..."  # Neon — not localhost
-
-pnpm cloud:migrate:prod
-pnpm cloud:deploy-now
+export DASHBOARD_ENABLED=true
+export DASHBOARD_PORT=4000
+export MASTYF_AI_DB_PATH="$HOME/.mastyf-ai/history.db"
+mastyf-ai proxy --config mastyf-ai-configs/filesystem.json --policy default-policy.yaml --blocking-mode block
 ```
 
-Default URL: **https://mastyf-ai-cloud-jet.vercel.app**  
-Custom domain (`www.mastyf.ai`): see [apps/cloud/docs/CUSTOM_DOMAIN.md](apps/cloud/docs/CUSTOM_DOMAIN.md)
-
-Verify after deploy:
+**From repo:**
 
 ```bash
-APP_URL=https://mastyf-ai-cloud-jet.vercel.app pnpm cloud:verify-prod
+node dist/cli.js proxy --config mastyf-ai-configs/filesystem.json --policy default-policy.yaml
+```
+
+Without `DASHBOARD_ENABLED`, you get proxy-only (no web UI). Logs still go to `MASTYF_AI_DB_PATH`.
+
+---
+
+### Generate test traffic and verify
+
+With **`mastyf-ai start`** or `pnpm dashboard:proxy` running in one terminal:
+
+```bash
+# Same DB as the proxy (important for dashboard charts)
+export MASTYF_AI_DB_PATH="${MASTYF_AI_DB_PATH:-$HOME/.mastyf-ai/history.db}"
+
+# Short live attack smoke test against the official filesystem MCP server
+pnpm real-life:filesystem
+
+# Offline policy matrix (no live MCP server required)
+pnpm harness
+
+# Plain-English summary of current posture
+pnpm analyze
+
+# Industry roadmap module audit (CLI)
+node dist/cli.js roadmap audit
+# or after global link: mastyf-ai roadmap audit
+```
+
+Refresh **http://localhost:4000/** → **Activity** / **Protection** should show new events.
+
+Details: [`scenarios/real-life/README.md`](scenarios/real-life/README.md).
+
+---
+
+### Website (cloud app) local dev
+
+```bash
+cp apps/cloud/.env.example apps/cloud/.env.local
+# DATABASE_URL=postgresql://...
+# AUTH_DEV_LOGIN=true
+
+pnpm cloud:dev
+# → http://localhost:3001
 ```
 
 ---
 
-## Production deployment (self-hosted proxy)
+### mastyf.ai Autopilot (one-command fleet setup)
+
+Wraps configs, starts proxy, dashboard, and optional background jobs:
+
+```bash
+pnpm autopilot:init -- --apply
+pnpm autopilot:start
+pnpm autopilot:status
+```
+
+---
+
+### Web dashboard — what you will see
+
+| Tab / area | Purpose |
+| ---------- | ------- |
+| **Protection** | Overall status, roadmap compliance strip (v4.1+) |
+| **Activity** | Audit log of allowed and blocked `tools/call` |
+| **Threats** | Active threats, quarantine, fleet chain graph (A1) |
+| **Security** | Score, trends, and **Policy Studio** with Active Rules controls |
+| **Operations** | Traffic, errors, cost charts; Security Swarm job status |
+| **Agentic AI** | Trust, policy gen, observatory, federated learning, plan compliance audit |
+| **Settings** | Servers, policy, setup checklist |
+
+The dashboard reads the **same SQLite DB** as the proxy (`MASTYF_AI_DB_PATH`). It is not a separate demo dataset.
+
+---
+
+### Command reference
+
+| Command | What it does |
+| ------- | ------------ |
+| `git clone … && pnpm install && pnpm build && pnpm setup` | Install from source (recommended today) |
+| `mastyf-ai start` | **Proxy + dashboard on :4000** (after build or global link) |
+| `mastyf-ai onboard --apply` | Auto-wrap MCP client configs |
+| `mastyf-ai onboard --apply --start` | Onboard then start |
+| `mastyf-ai setup` | Dev: pnpm install + build + dashboard SPA |
+| `mastyf-ai doctor` | Validate install, DB, SPA, config |
+| `mastyf-ai proxy --policy …` | Manual proxy (add `--config`) |
+| `pnpm install && pnpm build` | Dev: install + compile monorepo |
+| `pnpm setup` / `pnpm dashboard:build` | Dev: build dashboard SPA |
+| `pnpm dashboard:proxy` | Dev: proxy + API + UI (repo script) |
+| `pnpm dashboard:dev` | Dev: SPA hot reload (with proxy running) |
+| `pnpm real-life:filesystem` | Live MCP attack smoke test |
+| `pnpm harness` | Offline adversarial policy matrix |
+| `pnpm analyze` | Plain-English security summary |
+| `pnpm security-swarm:fast` | Security Swarm PR gate |
+| `pnpm security-swarm:analyze` | Full swarm analysis |
+| `pnpm autopilot:init` / `autopilot:start` | Wrap + start full stack |
+| `mastyf-ai roadmap audit` | Verify industry roadmap modules (A1–C5) |
+| `pnpm cloud:dev` | Run mastyf.ai website locally on :3001 |
+| `pnpm cloud:deploy-now` | Deploy cloud app to Vercel |
+
+---
+
+### Troubleshooting
+
+| Symptom | Fix |
+| ------- | --- |
+| **`mastyf-ai start` not found** | Build from clone: `pnpm build && node dist/cli.js start`. npm global install not available until `@mastyf-ai/server` is published. |
+| **`pnpm dashboard:proxy` not found** | Run from **repo root**, or use **`node dist/cli.js start`** |
+| **No MCP config found** | `mastyf-ai onboard --apply` or `mastyf-ai start --config mastyf-ai-configs/filesystem.json` |
+| **Database disk I/O error** | Stop proxy; `rm -f ~/.mastyf-ai/history.db-wal history.db-shm history.db.pid`; restart |
+| **Empty dashboard charts** | Same `MASTYF_AI_DB_PATH` as proxy; widen time window; `pnpm real-life:filesystem` |
+| **Port 4000 in use** | `lsof -ti :4000 \| xargs kill` or `DASHBOARD_PORT=4001 mastyf-ai start` |
+| **better-sqlite3 errors** (pnpm 10) | `pnpm approve-builds` → allow `better-sqlite3` → `pnpm install` |
+| **Ollama warning on start** | Optional — `ollama serve` for semantic / Threat Lab |
+| **Swarm stuck at 75%** | Check `reports/tenants/default/security-swarm/job.log`; re-run from dashboard |
+| **Cloud sign-in fails locally** | Set `AUTH_DEV_LOGIN=true` and `DATABASE_URL` in `apps/cloud/.env.local` |
+| **next: command not found** (dashboard build) | Run `pnpm setup` or `cd deploy/dashboard-spa && npm install && npm run build` |
+
+---
+
+## Quick start (summary)
+
+**From git (recommended today):**
+
+```bash
+git clone https://github.com/mastyf-ai/mastyf.ai.git && cd mastyf.ai
+pnpm install && pnpm build && pnpm setup
+node dist/cli.js onboard --apply
+node dist/cli.js start    # → http://localhost:4000/
+```
+
+**Use the website (no install):**
+
+Open [https://mastyf-ai-cloud-jet.vercel.app/certified](https://mastyf-ai-cloud-jet.vercel.app/certified) and enter an npm MCP package name.
+
+See **Getting started — install, clone, and run** above for the full walkthrough.
+
+---
+
+## The policy file
+
+Rules live in `default-policy.yaml` (or a path you set). Example:
+
+```yaml
+version: '1.0'
+policy:
+  mode: block
+  default_action: block
+
+  rules:
+    - name: allow-safe-tools
+      description: Only allow read-only tools
+      action: block
+      tools:
+        allow:
+          - read_file
+          - list_directory
+          - search
+
+    - name: block-shell-commands
+      description: Never let the AI run shell commands
+      action: block
+      tools:
+        deny:
+          - bash
+          - execute_command
+          - eval
+
+    - name: rate-limit
+      description: Max 60 tool calls per minute
+      action: block
+      maxCallsPerMinute: 60
+```
+
+The bundled default policy already blocks many common attack patterns. You can extend it or start from templates in [`policy-templates/`](policy-templates/).
+
+---
+
+## Settings you might change
+
+| Variable | Plain meaning |
+| -------- | ------------- |
+| `MASTYF_AI_POLICY` | Path to your rules file |
+| `MASTYF_AI_DB_PATH` | Where call history is stored (share this between proxy and test runners) |
+| `MASTYF_AI_RETENTION_DAYS` | How long to keep audit rows (default 30) |
+| `MASTYF_AI_MAX_PAYLOAD_BYTES` | Max raw JSON-RPC message size (default 10MB) |
+| `MASTYF_AI_MAX_EXPANDED_PAYLOAD_BYTES` | Max serialized tool-argument size after decode (default 50MB) |
+| `MASTYF_AI_JWKS_REFRESH_MS` | How often to refresh OIDC JWKS (default 5 minutes) |
+| `MASTYF_AI_STRICT_ALLOWLIST_RBAC` | Require RBAC on `tools.allow` policy rules |
+| `MASTYF_AI_HEALTH_PROBE_INTERVAL_MS` | Periodic MCP health probes (0 = disabled) |
+| `MASTYF_AI_SHUTDOWN_GRACE_MS` | Wait for in-flight calls on shutdown (default 30s) |
+| `MASTYF_AI_DB_ENCRYPTION_KEY` | Encrypt sensitive audit fields at rest |
+| `MASTYF_AI_DB_ENCRYPT_AUDIT_ARGS` | Also encrypt redacted argument snippets in audit |
+| `MASTYF_AI_SIEM_ENABLED` | Export block/audit events to Splunk, Datadog, webhooks, etc. |
+| `DASHBOARD_PORT` | Dashboard port (default 4000) |
+| `MASTYF_AI_DAILY_BUDGET_USD` | Daily spend alert threshold |
+| `MASTYF_AI_LLM_PROVIDER` / `OLLAMA_BASE_URL` | Local AI for semantic checks and Threat Lab |
+| `MASTYF_AI_CI_BYPASS_LICENSE` | Local dev only: skip license checks |
+| `MASTYF_AI_REQUIRE_LICENSE` | Production: enforce cloud license (off by default) |
+
+More: [`deploy/helm/`](deploy/helm/) for teams, Redis, and multiple servers.
+
+---
+
+## Supported AI clients
+
+mastyf.ai can auto-discover and wrap configs for:
+
+- **Cline** (VS Code)
+- **Claude Desktop**
+- **Cursor**
+- **Windsurf**
+
+Or pass any MCP config: `mastyf-ai proxy --config path/to/config.json`.
+
+---
+
+## Production deployment
 
 ### Docker
 
@@ -313,81 +984,65 @@ helm repo add mastyf-ai https://mastyf-ai.github.io/mastyf-ai
 helm install mastyf-ai mastyf-ai/mastyf-ai
 ```
 
+### Deploy cloud app to Vercel
+
+```bash
+export VERCEL_TOKEN="..."
+export DATABASE_URL="postgresql://..."   # Neon — not localhost
+
+pnpm cloud:migrate:prod
+pnpm cloud:deploy-now
+```
+
+Verify: `APP_URL=https://mastyf-ai-cloud-jet.vercel.app pnpm cloud:verify-prod`
+
 ---
 
 ## Repo layout
 
 ```
 mastyf.ai/
-├── apps/cloud/           # Next.js — scores, badges, cloud console
+├── apps/cloud/           # Next.js — scores, badges, cloud console (not on npm)
 ├── apps/proxy-core/      # Go data-plane proxy
-├── packages/             # Shared npm packages (@mastyf-ai/core, etc.)
-├── src/                  # Main proxy source (scanners, agentic AI, CLI)
+├── packages/             # @mastyf-ai/core, plugin-sdk, mtx, cli
+├── src/                  # Proxy, policy, agentic AI, CLI
 ├── deploy/               # Docker, Helm, embedded dashboard SPA
 ├── security-swarm/       # Autonomous red-team agents
-├── adversarial-harness/  # Attack corpus & harness
+├── adversarial-harness/  # ~835 attack fixtures & Node/Python harness
+├── corpus/               # Policy evaluation corpus (~300 JSON entries)
+├── mastyf-ai-configs/    # Example MCP configs for local dev
+├── scenarios/real-life/  # Live MCP attack scenarios
 └── scripts/              # Deploy, migrate, benchmarks
 ```
 
 ---
 
-## Development
+## Documentation map
 
-```bash
-pnpm install
-pnpm build
-pnpm test
-pnpm typecheck
-
-pnpm cloud:dev          # Website on :3001
-pnpm cloud:build
-pnpm cloud:test         # Cloud unit tests (25 tests)
-
-pnpm eval               # Corpus evaluation
-pnpm security-swarm:fast
-```
-
----
-
-## Verified behavior (June 2026)
-
-Tested against production deployment `https://mastyf-ai-cloud-jet.vercel.app`:
-
-| Check | Result |
-|-------|--------|
-| `/`, `/certified`, `/certified/@playwright/mcp` | 200 OK |
-| `/login`, `/benchmarks`, `/observatory`, `/terms`, `/privacy` | 200 OK |
-| `/dashboard` (unsigned) | 307 redirect to login |
-| `GET /api/v1/badge/@playwright/mcp/json` | 200 — score 58, grade C, static scan |
-| `GET /api/v1/badge/@playwright/mcp?style=github` | 200 SVG |
-| `GET /api/v1/observatory/snapshot` | 200 JSON |
-| `GET /api/v1/license` (no key) | 401 |
-| `POST /api/v1/deep-scan/...` on Vercel | 501 (expected — enable locally) |
-| `pnpm cloud:test` | 25/25 passed |
-
----
-
-## Common commands
-
-| Command | What it does |
-|---------|----------------|
-| `pnpm cloud:dev` | Run mastyf.ai website locally on :3001 |
-| `pnpm cloud:deploy-now` | Deploy cloud app to Vercel |
-| `mastyf-ai scan --all` | Scan MCP configs for issues |
-| `mastyf-ai start` | Start protected proxy + dashboard |
-| `mastyf-ai certify publish ...` | Publish maintainer trust score |
+| Topic | Document |
+| ----- | -------- |
+| Security Swarm | [`security-swarm/README.md`](security-swarm/README.md) |
+| Adversarial harness | [`adversarial-harness/README.md`](adversarial-harness/README.md) |
+| Corpus evaluation | [`corpus/README.md`](corpus/README.md) |
+| Real-life MCP tests | [`scenarios/real-life/README.md`](scenarios/real-life/README.md) |
+| MTX threat exchange | [`packages/mtx/README.md`](packages/mtx/README.md) |
+| Packaging | [`packages/PACKAGING.md`](packages/PACKAGING.md) |
+| Cloud deploy | [`apps/cloud/docs/VERCEL_DEPLOY.md`](apps/cloud/docs/VERCEL_DEPLOY.md) |
+| Custom domain | [`apps/cloud/docs/CUSTOM_DOMAIN.md`](apps/cloud/docs/CUSTOM_DOMAIN.md) |
+| Policy templates | [`policy-templates/README.md`](policy-templates/README.md) |
 
 ---
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+**MIT** — see [LICENSE](LICENSE). All features in this repository are open source under the MIT license.
+
+Optional enterprise license enforcement is available via `MASTYF_AI_REQUIRE_LICENSE=true` when linking to the mastyf.ai cloud control plane — it is **not required** for local or self-hosted use.
 
 ---
 
 ## Links
 
-- **Website:** [mastyf.ai](https://www.mastyf.ai)
-- **npm:** [@mastyf-ai/server](https://www.npmjs.com/package/@mastyf-ai/server)
+- **Website (live):** [mastyf-ai-cloud-jet.vercel.app](https://mastyf-ai-cloud-jet.vercel.app/)
 - **GitHub:** [mastyf-ai/mastyf.ai](https://github.com/mastyf-ai/mastyf.ai)
-- **Deploy docs:** [apps/cloud/docs/VERCEL_DEPLOY.md](apps/cloud/docs/VERCEL_DEPLOY.md)
+- **npm (planned, not live yet):** `@mastyf-ai/server`
