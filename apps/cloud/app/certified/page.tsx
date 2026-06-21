@@ -107,6 +107,8 @@ export default async function CertifiedDirectoryPage() {
 
         <p className="certified-foot">
           Badge API: <code>{cloudBase}/api/v1/badge/&lt;package&gt;</code>
+          {' · '}
+          <Link href="/tutorials/live-score">Watch tutorial</Link>
         </p>
       </main>
     </>

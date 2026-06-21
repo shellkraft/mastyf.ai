@@ -3,7 +3,16 @@
 | File | Description |
 |------|-------------|
 | [live-security-score-video-script.md](../live-security-score-video-script.md) | **Wispr Flow** narration script (~90s) |
-| [live-security-score-demo-jet.webm](./live-security-score-demo-jet.webm) | Screen recording — [mastyf-ai-cloud-jet.vercel.app/certified](https://mastyf-ai-cloud-jet.vercel.app/certified) |
+| [live-security-score-demo-jet.webm](./live-security-score-demo-jet.webm) | Screen recording (repo copy) |
+
+**Share on the live site (after deploy):**
+
+- Watch: [mastyf-ai-cloud-jet.vercel.app/tutorials/live-score](https://mastyf-ai-cloud-jet.vercel.app/tutorials/live-score)
+- Direct file: […/tutorials/live-security-score-demo.webm](https://mastyf-ai-cloud-jet.vercel.app/tutorials/live-security-score-demo.webm)
+
+**GitHub:**
+
+- [View / download on GitHub](https://github.com/mastyf-ai/mastyf.ai/blob/main/docs/tutorials/videos/live-security-score-demo-jet.webm)
 
 ## Add Wispr Flow voiceover
 
