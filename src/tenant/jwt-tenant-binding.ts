@@ -130,7 +130,7 @@ export function resolveProxyTenantId(opts: {
   if (isMultiTenantModeEnabled() && isOpenCoreEnabled()) {
     if (!getLicenseClient().hasFeature('multi_tenant')) {
       throw new JwtTenantRequiredError(
-        'Multi-tenant mode requires MCP Mastyf AI Pro (set MASTYF_AI_LICENSE_KEY)',
+        'Multi-tenant mode requires linking to mastyf.ai Cloud (set MASTYF_AI_CONTROL_PLANE_URL and API key)',
       );
     }
   }

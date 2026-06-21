@@ -79,7 +79,7 @@ export class WsBroadcaster {
           }
           const license = getLicenseClient();
           if (!license.hasFeature('websocket')) {
-            done(false, 4402, 'MCP Mastyf AI Pro license required for live WebSocket');
+            done(false, 4402, 'Live WebSocket unavailable for this deployment');
             return;
           }
           const tenantId =

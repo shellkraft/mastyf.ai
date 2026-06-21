@@ -37,6 +37,11 @@ policy:
           - nbminer
           - ethminer
           - miner
+          - execute_code
+          - render_html
+          - write_log
+          - graphql_query
+          - template_render
     - name: deny-github-write-tools
       description: Block GitHub mutation tools (exfil via create_issue, push, etc.)
       action: block
@@ -177,6 +182,8 @@ policy:
             - \badmin'\s*--
             - \\$where
             - \\$ne
+            - __type\s*\(
+            - __schema
         - field: q
           patterns:
             - \badmin'\s*--
@@ -193,6 +200,24 @@ policy:
             - \bdelete\s+from\b
             - \bselect\s+\*\s+from\b.+\b(payments|transactions|credentials|users)\b
             - \\$ne
+            - </script>
+            - <script[\s>/]
+            - onerror\s*=
+        - field: message
+          patterns:
+            - \r\n
+            - \nFATAL:
+        - field: assertion
+          patterns:
+            - <saml:Assertion
+            - <saml:AttributeValue>admin</saml:AttributeValue>
+        - field: template
+          patterns:
+            - '%25%[0-9a-fA-F]{2}%[0-9a-fA-F]{2}'
+        - field: '*'
+          patterns:
+            - "\\.unsigned(?:\"|'|\\s|$)"
+            - 'JTY0ZWNobw=='
     - name: block-encoding-evasion
       description: Block base64 and raw hex blobs used to hide instructions (layered decode in encoding-guard)
       action: block

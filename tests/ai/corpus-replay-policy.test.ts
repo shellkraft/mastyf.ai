@@ -33,13 +33,13 @@ describe('corpus replay policy split', () => {
     expect(corpusReplayPolicyPath()).toBe(join(process.cwd(), 'default-policy.yaml'));
   });
 
-  it('blocks path traversal under replay policy but not permissive live policy', () => {
+  it('blocks dangerous tools under replay policy but not permissive live policy', () => {
     const candidate = {
       id: 'replay-test',
-      toolName: 'read_file',
-      arguments: { path: '../../../etc/passwd' },
+      toolName: 'execute_code',
+      arguments: { code: 'console.log(1)', language: 'javascript' },
       expected: 'block' as const,
-      category: 'path-traversal',
+      category: 'dangerous-js',
     };
 
     const livePolicy = load(readFileSync(process.env.MASTYF_AI_POLICY_PATH!, 'utf-8')) as PolicyConfig;

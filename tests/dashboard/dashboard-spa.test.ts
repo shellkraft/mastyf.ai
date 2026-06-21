@@ -11,32 +11,37 @@ describe('dashboard-spa', () => {
     expect(pageSrc).toContain('DashboardPageClient');
   });
 
-  it('uses enterprise layout and six workspaces', () => {
+  it('uses enterprise layout and operator enablement workspaces', () => {
     const client = join(SPA_ROOT, 'app', 'components', 'DashboardClient.tsx');
     const nav = join(SPA_ROOT, 'lib', 'workspace-nav.ts');
     const enterpriseCss = join(SPA_ROOT, 'app', 'design', 'enterprise.css');
-    expect(readFileSync(nav, 'utf-8')).toContain("'threats'");
+    expect(readFileSync(nav, 'utf-8')).toContain("'security'");
     expect(readFileSync(nav, 'utf-8')).toContain("'help'");
     const src = readFileSync(client, 'utf-8');
     expect(src).toContain('EnterpriseLayout');
-    expect(src).toContain('HelpWorkspace');
-    expect(src).toContain('LiveThreatIntelPanel');
+    expect(src).toContain('OperatorEnablementCenter');
+    expect(src).toContain('SecurityOperationsCenter');
     expect(src).not.toContain('SocDashboardLayout');
     expect(src).not.toContain('repo-data');
-    expect(readFileSync(enterpriseCss, 'utf-8')).toContain('.pipeline-strip');
+    expect(readFileSync(enterpriseCss, 'utf-8')).toContain('.pipeline-step');
   });
 
-  it('includes Protection workspace and Autopilot API client', () => {
+  it('includes Security operations center and Autopilot API client', () => {
     const protection = readFileSync(
       join(SPA_ROOT, 'app', 'components', 'workspaces', 'ProtectionWorkspace.tsx'),
       'utf-8',
     );
+    const security = readFileSync(
+      join(SPA_ROOT, 'app', 'components', 'operations', 'SecurityOperationsCenter.tsx'),
+      'utf-8',
+    );
     const api = readFileSync(join(SPA_ROOT, 'lib', 'mastyf-ai-api.ts'), 'utf-8');
     expect(protection).toContain('fetchAutopilotStatus');
+    expect(security).toContain('fetchSecurityDashboard');
     expect(api).toContain('/api/autopilot/status');
     expect(api).toContain('/api/reports/generate');
     const nav = readFileSync(join(SPA_ROOT, 'lib', 'workspace-nav.ts'), 'utf-8');
-    expect(nav).toContain("label: 'Protection'");
+    expect(nav).toContain("label: 'Security'");
   });
 
   it('deep-links Enterprise AI incidents into Threat Lab workbench', () => {
@@ -55,14 +60,20 @@ describe('dashboard-spa', () => {
     expect(api).toContain('fetchSwarmJobLog');
   });
 
-  it('includes video feature panels and APIs', () => {
-    const client = readFileSync(join(SPA_ROOT, 'app', 'components', 'DashboardClient.tsx'), 'utf-8');
+  it('includes analytics, security dashboard, and setup status APIs', () => {
+    const configHub = readFileSync(
+      join(SPA_ROOT, 'app', 'components', 'operations', 'ConfigurationHub.tsx'),
+      'utf-8',
+    );
+    const security = readFileSync(
+      join(SPA_ROOT, 'app', 'components', 'operations', 'SecurityOperationsCenter.tsx'),
+      'utf-8',
+    );
     const api = readFileSync(join(SPA_ROOT, 'lib', 'mastyf-ai-api.ts'), 'utf-8');
     const nav = readFileSync(join(SPA_ROOT, 'lib', 'workspace-nav.ts'), 'utf-8');
-    expect(client).toContain('AnalyticsDashboardPanel');
-    expect(client).toContain('SecurityDashboardPanel');
-    expect(client).toContain('SetupChecklistPanel');
-    expect(nav).toContain("'analytics'");
+    expect(configHub).toContain('fetchSetupStatus');
+    expect(security).toContain('fetchSecurityDashboard');
+    expect(nav).toContain("'security'");
     expect(api).toContain('/api/analytics/summary');
     expect(api).toContain('/api/security/dashboard');
     expect(api).toContain('/api/setup/status');
@@ -79,6 +90,6 @@ describe('dashboard-spa', () => {
       expect(existsSync(join(SPA_ROOT, 'package.json'))).toBe(true);
       return;
     }
-    expect(readFileSync(outIndex, 'utf-8')).toContain('Mastyf AI');
+    expect(readFileSync(outIndex, 'utf-8')).toContain('mastyf.ai');
   });
 });

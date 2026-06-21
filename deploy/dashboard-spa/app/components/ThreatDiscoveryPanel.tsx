@@ -7,7 +7,6 @@ import { ThreatLabWorkbench } from './ThreatLabWorkbench';
 import { AutoResearchMonitor } from './AutoResearchMonitor';
 import { ThreatArchitectureView } from './ThreatArchitectureView';
 import { ThreatDiscoveryAutomation } from './ThreatDiscoveryAutomation';
-import { ProUpgradeBanner } from './ProUpgradeBanner';
 import type { AuthStatus } from '@/lib/mastyf-ai-api';
 
 import type { ThreatLabContext } from './IncidentInvestigatorDrawer';
@@ -74,10 +73,8 @@ export function ThreatDiscoveryPanel({
     <section className="threat-discovery-hub" aria-label="Threat Discovery">
       <h2>Threat Discovery</h2>
       <p className="hint">
-        LLM-driven threat discovery, self-sustaining auto research, and corpus audit — Pro feature.
+        LLM-driven threat discovery, self-sustaining auto research, and corpus audit.
       </p>
-
-      <ProUpgradeBanner authStatus={authStatus ?? null} />
 
       {!externalView ? (
         <nav className="threat-discovery-tabs" aria-label="Threat Discovery sections">

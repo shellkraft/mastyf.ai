@@ -49,7 +49,7 @@ export function ThreatDiscoveryOverview({
     return (
       <p className="muted">
         {loadError ||
-          'Threat Discovery status unavailable — ensure Pro license and dashboard API on port 4000.'}
+          'Threat Discovery status unavailable — ensure the dashboard API is running on port 4000.'}
       </p>
     );
   }

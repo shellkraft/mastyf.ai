@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
-# Smoke-test MCP Mastyf AI Cloud production (no purchase required).
-# Full Pro E2E still needs a Lemon Squeezy test checkout + webhook secret.
+# Smoke-test mastyf.ai Cloud production.
 set -euo pipefail
 
 APP_URL="${APP_URL:-https://www.mastyf.ai}"
@@ -26,7 +25,7 @@ check() {
   fi
 }
 
-echo "MCP Mastyf AI Cloud production smoke — $APP_URL"
+echo "mastyf.ai Cloud production smoke — $APP_URL"
 echo ""
 
 check "Landing" "$APP_URL/" "200"
@@ -38,20 +37,6 @@ check "License API without key" "$APP_URL/api/v1/license" "401"
 check "Heartbeat without key" "$APP_URL/api/v1/instances/heartbeat" "401" POST
 
 echo ""
-echo "Webhook endpoint (unsigned POST should reject):"
-WH_CODE="$(curl -sS -o /dev/null -w '%{http_code}' -X POST "$APP_URL/api/webhooks/lemonsqueezy" \
-  -H 'Content-Type: application/json' -d '{}' || echo "000")"
-if [[ "$WH_CODE" == "401" || "$WH_CODE" == "403" || "$WH_CODE" == "400" ]]; then
-  echo "OK   Webhook rejects unsigned body ($WH_CODE)"
-else
-  echo "WARN Webhook returned $WH_CODE (expected 401/403/400)"
-fi
-
-echo ""
-echo "Manual Pro E2E (requires LS test mode):"
-echo "  1. Complete test checkout at NEXT_PUBLIC_PRO_CHECKOUT_URL"
-echo "  2. Confirm row in pro_license_keys (Neon)"
-echo "  3. curl -H 'Authorization: Bearer YOUR-KEY' $APP_URL/api/v1/license"
-echo "  See docs/WEBHOOK_AUTOMATION.md"
+echo "Org API key test (after sign-in): curl -H 'Authorization: Bearer YOUR-CLOUD-API-KEY' $APP_URL/api/v1/license"
 
 exit "$FAIL"

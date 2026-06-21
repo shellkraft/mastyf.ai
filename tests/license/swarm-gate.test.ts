@@ -1,15 +1,12 @@
-import { describe, expect, it, beforeAll, afterEach } from 'vitest';
+import { describe, expect, it, beforeAll } from 'vitest';
 import { spawnSync } from 'node:child_process';
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 const REPO = join(import.meta.dirname, '..', '..');
 const CHECK_PRO = join(REPO, 'dist', 'license', 'check-pro.js');
-const RUN_SWARM = join(REPO, 'security-swarm', 'run.mjs');
 
-describe('Security Swarm Pro gate (v3)', () => {
-  const envBackup = { ...process.env };
-
+describe('Security Swarm license gate (removed)', () => {
   beforeAll(() => {
     const build = spawnSync('pnpm', ['build:mastyf-ai'], {
       cwd: REPO,
@@ -22,27 +19,9 @@ describe('Security Swarm Pro gate (v3)', () => {
     expect(existsSync(CHECK_PRO)).toBe(true);
   });
 
-  afterEach(() => {
-    process.env = { ...envBackup };
-  });
-
-  it('check-pro exits 1 without license key', () => {
+  it('check-pro always exits 0 (MIT open source)', () => {
     delete process.env.MASTYF_AI_LICENSE_KEY;
-    delete process.env.MASTYF_AI_CONTROL_PLANE_URL;
-    delete process.env.MASTYF_AI_CI_BYPASS_LICENSE;
-    delete process.env.MASTYF_AI_DEV_UNLOCK_ALL;
-
-    const r = spawnSync(process.execPath, [CHECK_PRO, 'swarm'], {
-      cwd: REPO,
-      encoding: 'utf8',
-    });
-    expect(r.status).toBe(1);
-    expect(r.stderr || r.stdout).toMatch(/MCP Mastyf AI Pro required/i);
-  });
-
-  it('check-pro exits 0 with CI bypass', () => {
-    delete process.env.MASTYF_AI_LICENSE_KEY;
-    process.env.MASTYF_AI_CI_BYPASS_LICENSE = 'true';
+    delete process.env.MASTYF_AI_REQUIRE_LICENSE;
 
     const r = spawnSync(process.execPath, [CHECK_PRO, 'swarm'], {
       cwd: REPO,
@@ -51,31 +30,8 @@ describe('Security Swarm Pro gate (v3)', () => {
     expect(r.status).toBe(0);
   });
 
-  it('check-pro exits non-zero with maintainer dev unlock (removed in v3.2.3)', () => {
-    delete process.env.MASTYF_AI_LICENSE_KEY;
-    delete process.env.MASTYF_AI_CI_BYPASS_LICENSE;
-    process.env.NODE_ENV = 'development';
-    process.env.MASTYF_AI_DEV_UNLOCK_ALL = 'true';
-
-    const r = spawnSync(process.execPath, [CHECK_PRO, 'swarm'], {
-      cwd: REPO,
-      encoding: 'utf8',
-    });
-    expect(r.status).not.toBe(0);
-  });
-
-  it('run.mjs exits before swarm work without license', () => {
-    delete process.env.MASTYF_AI_LICENSE_KEY;
-    delete process.env.MASTYF_AI_CONTROL_PLANE_URL;
-    delete process.env.MASTYF_AI_CI_BYPASS_LICENSE;
-    delete process.env.MASTYF_AI_DEV_UNLOCK_ALL;
-
-    const r = spawnSync(process.execPath, [RUN_SWARM, '--help'], {
-      cwd: REPO,
-      encoding: 'utf8',
-      timeout: 15_000,
-    });
-    expect(r.status).not.toBe(0);
-    expect(r.stderr || r.stdout).toMatch(/MCP Mastyf AI Pro required|license/i);
+  it('gate-pro.mjs is legacy no-op', () => {
+    const gate = readFileSync(join(REPO, 'security-swarm/lib/gate-pro.mjs'), 'utf8');
+    expect(gate).toMatch(/Legacy Pro gate — removed|MIT open source/i);
   });
 });

@@ -80,7 +80,7 @@ describe('TypoSquatDetector', () => {
   });
 
   it('detects mastyf-ai package name typo', () => {
-    const results = detector.detect('mcp-guardia');
+    const results = detector.detect('mastyf-a');
     expect(results.length).toBeGreaterThan(0);
     expect(results.some((r) => r.similarityTo === 'mastyf-ai')).toBe(true);
   });

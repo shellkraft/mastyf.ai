@@ -61,9 +61,9 @@ export async function runAutopilotInit(opts: {
     const lc = getLicenseClient();
     await lc.start();
     if (lc.hasFeature('dashboard')) {
-      console.log(chalk.green('  Pro license: dashboard feature OK'));
+      console.log(chalk.green('  Dashboard API: available'));
     } else {
-      console.log(chalk.yellow('  Pro license: set MASTYF_AI_LICENSE_KEY for full Autopilot'));
+      console.log(chalk.yellow('  Dashboard API: set DASHBOARD_ENABLED=true to enable'));
     }
   } catch {
     console.log(chalk.dim('  License check skipped'));

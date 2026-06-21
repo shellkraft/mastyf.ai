@@ -803,7 +803,7 @@ async function parseApiErrorMessage(
     const body = (await res.json()) as { error?: string };
     if (body?.error?.includes('Dashboard API disabled')) {
       return (
-        'Dashboard REST API is disabled (Pro license gate). From the repo run: ' +
+        'Dashboard REST API is disabled. From the repo run: ' +
         'pnpm build:mastyf-ai && pnpm dashboard:proxy -- mastyf-ai-configs/filesystem.json ' +
         '(sets MASTYF_AI_CI_BYPASS_LICENSE). Open http://localhost:4000/ — not a separate Next dev port unless you use ?apiBase=http://localhost:4000'
       );
@@ -1639,7 +1639,7 @@ export async function fetchSemanticOutcomes(): Promise<SemanticOutcomesResponse>
   if (!res.ok) {
     return {
       records: [],
-      meta: { hint: 'Semantic outcomes API unavailable — check dashboard auth and Pro license.' },
+      meta: { hint: 'Semantic outcomes API unavailable — check dashboard auth.' },
     };
   }
   const body = (await res.json()) as {
@@ -1969,7 +1969,7 @@ export async function fetchThreatDiscoveryStatus(): Promise<{
     };
   }
   if (res.status === 402) {
-    return { status: null, error: 'Pro license required (swarm feature).' };
+    return { status: null, error: 'Security swarm API unavailable on this deployment.' };
   }
   if (!res.ok) {
     const body = (await res.json().catch(() => ({}))) as { error?: string };
@@ -1991,7 +1991,7 @@ export async function fetchThreatAutomationSummary(): Promise<{
     };
   }
   if (res.status === 402) {
-    return { status: null, error: 'Pro license required (swarm feature).' };
+    return { status: null, error: 'Security swarm API unavailable on this deployment.' };
   }
   if (!res.ok) {
     const body = (await res.json().catch(() => ({}))) as { error?: string };

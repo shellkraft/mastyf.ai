@@ -35,7 +35,6 @@ import {
   loadLicenseClientConfig,
 } from '../license/license-client.js';
 import {
-  getProCheckoutUrl,
   isCiLicenseBypass,
   isOpenCoreEnabled,
 } from '../license/feature-tiers.js';
@@ -362,10 +361,11 @@ export async function startDashboardServer(
     && isOpenCoreEnabled()
     && !isCiLicenseBypass()
     && !isCiTokenCached()
+    && isLicenseEnforcementEnabled()
     && !licenseClient.hasFeature('dashboard')
   ) {
     Logger.error(
-      '[license] DASHBOARD_ENABLED requires MCP Mastyf AI Pro — set MASTYF_AI_LICENSE_KEY and MASTYF_AI_CONTROL_PLANE_URL (see docs/PRO_SETUP.md)',
+      '[license] DASHBOARD_ENABLED requires a valid cloud API key when MASTYF_AI_REQUIRE_LICENSE=true',
     );
     dashboardEnabled = false;
   }
@@ -396,7 +396,7 @@ export async function startDashboardServer(
 
   function licenseStatusPayload() {
     const tier = licenseClient.getTier();
-    const upgradeUrl = getProCheckoutUrl() ?? licenseClient.getCloudBillingUrl() ?? null;
+    const upgradeUrl = licenseClient.getCloudBillingUrl() ?? null;
     const openCore = isOpenCoreEnabled();
 
     if (!openCore && !isLicenseEnforcementEnabled()) {
@@ -448,7 +448,7 @@ export async function startDashboardServer(
     }
     setCors();
     writeJson(res, 402, {
-      error: 'MCP Mastyf AI Pro license required',
+      error: 'Dashboard feature not available for this deployment',
       ...licenseStatusPayload(),
     });
     return false;

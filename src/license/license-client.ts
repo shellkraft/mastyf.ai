@@ -210,9 +210,7 @@ export class LicenseClient {
         return false;
       }
       if (isOpenCoreEnabled()) {
-        Logger.info(
-          '[license] Community tier — Pro features (dashboard, swarm, multi-tenant, semantic async) require MASTYF_AI_LICENSE_KEY',
-        );
+        Logger.info('[license] MIT open source — all features available without a license key');
       }
       return true;
     }

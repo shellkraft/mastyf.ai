@@ -1,8 +1,6 @@
 import { extractBearerToken, extractRawBearerToken, isCloudLicenseKey } from '@/lib/api-keys';
 import { allLicensedFeatures } from '@/lib/entitlements';
 import { resolveOrgFromApiKey } from '@/lib/org-context';
-import { findProLicenseByPlaintext } from '@/lib/pro-license-keys';
-import { resolveProCheckoutUrl } from '@/lib/pro-checkout-url';
 import { NextResponse } from 'next/server';
 
 function licensePayload(opts: {
@@ -21,10 +19,11 @@ function licensePayload(opts: {
     features: opts.licensed ? [...allLicensedFeatures()] : [],
     expiresAt: null as string | null,
     graceUntil: null as string | null,
-    cloudBillingUrl: resolveProCheckoutUrl(),
+    cloudBillingUrl: '',
   };
 }
 
+/** Validates cloud org API keys for self-hosted proxy ↔ control plane linking. */
 export async function GET(request: Request) {
   const authHeader = request.headers.get('authorization');
   const rawToken = extractRawBearerToken(authHeader);
@@ -33,29 +32,17 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'Bearer token required' }, { status: 401 });
   }
 
-  if (isCloudLicenseKey(rawToken)) {
-    const token = extractBearerToken(authHeader) ?? rawToken;
-    const ctx = await resolveOrgFromApiKey(token);
-    if (!ctx) {
-      return NextResponse.json(licensePayload({
-        licensed: false,
-        tenantSlug: 'default',
-        status: 'invalid_key',
-      }), { status: 401 });
-    }
-    return NextResponse.json(
-      licensePayload({
-        licensed: true,
-        tenantSlug: ctx.org.slug,
-        orgId: ctx.org.id,
-        orgName: ctx.org.name,
-        status: 'active',
-      }),
-    );
+  if (!isCloudLicenseKey(rawToken)) {
+    return NextResponse.json(licensePayload({
+      licensed: false,
+      tenantSlug: 'default',
+      status: 'invalid_key',
+    }), { status: 401 });
   }
 
-  const proRow = await findProLicenseByPlaintext(rawToken);
-  if (!proRow) {
+  const token = extractBearerToken(authHeader) ?? rawToken;
+  const ctx = await resolveOrgFromApiKey(token);
+  if (!ctx) {
     return NextResponse.json(licensePayload({
       licensed: false,
       tenantSlug: 'default',
@@ -66,8 +53,9 @@ export async function GET(request: Request) {
   return NextResponse.json(
     licensePayload({
       licensed: true,
-      tenantSlug: `pro-${proRow.id.slice(0, 8)}`,
-      orgName: 'mastyf.ai Pro',
+      tenantSlug: ctx.org.slug,
+      orgId: ctx.org.id,
+      orgName: ctx.org.name,
       status: 'active',
     }),
   );

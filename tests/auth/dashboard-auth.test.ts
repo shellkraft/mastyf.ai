@@ -13,11 +13,21 @@ describe('DashboardAuth', () => {
     expect(auth.authenticate({ url: '/api/health', method: 'GET' }).authenticated).toBe(true);
   });
 
-  it('authenticates valid API key via query param', () => {
+  it('rejects API key in query string (leaks to logs and Referer)', () => {
     const auth = new DashboardAuth({ enabled: true, apiKey: 'test-secret-key-12345' });
     const result = auth.authenticate({
       url: '/api/servers?api_key=test-secret-key-12345',
       method: 'GET',
+    });
+    expect(result.authenticated).toBe(false);
+  });
+
+  it('authenticates valid API key via Authorization header', () => {
+    const auth = new DashboardAuth({ enabled: true, apiKey: 'test-secret-key-12345' });
+    const result = auth.authenticate({
+      url: '/api/servers',
+      method: 'GET',
+      headers: { authorization: 'Bearer test-secret-key-12345' },
     });
     expect(result.authenticated).toBe(true);
     expect(result.identity).toBe('api_key');

@@ -1,0 +1,6 @@
+version: '1.0'
+policy:
+  mode: block
+  default_action: pass
+  default_sandbox_tier: shadow
+  rules: []
