@@ -1,105 +1,79 @@
-export const NPM_PACKAGE_URL = 'https://www.npmjs.com/package/@mastyf-ai/server';
+import {
+  NPM_INSTALL_CMD,
+  NPM_PACKAGE_NAME,
+  NPM_PACKAGE_URL,
+  NPM_PRODUCT_NAME,
+  SITE_NAME,
+} from '@/lib/product-links';
 
-/** Headline metrics from README adversarial harness + enterprise sim (May 2026). */
-export const HERO_STATS = [
-  { value: '557+', label: 'Adversarial fixtures', detail: 'Prompt injection, exfil, SSRF, shell obfuscation, chaining' },
-  { value: '11k+', label: 'npm downloads / month', detail: '@mastyf-ai/server on npmjs.com' },
-  { value: '154/154', label: 'Corpus attacks blocked', detail: '0 false positives on 74 benign fixtures' },
-  { value: '93.3%', label: 'Enterprise sim block rate', detail: '308/330 modeled attacks · 38.8ms avg latency' },
-  { value: '~41s', label: 'Instant learning discovery', detail: 'vs ~4.9h batch-only (repo eval)' },
-  { value: '8.6/10', label: 'Production readiness', detail: 'Enterprise security assessment (May 2026)' },
+/** What visitors get from mastyf.ai — the website and platform. */
+export const PLATFORM_FEATURES = [
+  {
+    title: 'Security scores',
+    body: 'Enter any npm MCP package name and get an instant 0–100 trust score with a plain-English breakdown — no account required.',
+    href: '/certified',
+    cta: 'Look up a package',
+  },
+  {
+    title: 'Trust badges',
+    body: 'Embed a live SVG badge in your README so users can verify a server’s score on a public page.',
+    href: '/certified',
+    cta: 'See badges',
+  },
+  {
+    title: 'Cloud console',
+    body: 'Sign in free to edit policy YAML, copy tenant env snippets, rotate API keys, and manage your fleet — no local install needed.',
+    href: '/dashboard',
+    cta: 'Open console',
+  },
+] as const;
+
+/** Simple flow — how mastyf.ai works for most people. */
+export const HOW_IT_WORKS = [
+  {
+    step: '1',
+    title: 'Look up a package',
+    body: 'Type an npm MCP package name (for example @playwright/mcp). Static analysis runs immediately.',
+  },
+  {
+    step: '2',
+    title: 'Read the score',
+    body: 'See overall grade, category breakdown, and what to fix — written for humans, not security engineers only.',
+  },
+  {
+    step: '3',
+    title: 'Share or go deeper',
+    body: 'Embed a badge, run an optional deep scan, or sign in to manage policies for your own servers in the cloud console.',
+  },
 ] as const;
 
 export const PROBLEM_BULLETS = [
-  'AI agents connect to databases, GitHub, Slack, and internal APIs via MCP — with no security layer in between.',
-  'Malicious tool responses inject instructions, exfiltrate credentials, and chain calls to bypass access controls.',
-  'Security teams have zero visibility, no enforcement, and no audit trail for what agents actually do in production.',
+  'AI agents connect to real tools — databases, GitHub, Slack — through MCP with little visibility for security teams.',
+  'One bad MCP server can leak secrets, inject prompts, or chain tool calls into a breach.',
+  'Teams need a simple way to know which packages are safe before agents touch production data.',
 ] as const;
 
-export const SOLUTION_PILLARS = [
+/** Why MCP Guardian exists in the story — foundation, not the headline. */
+export const FOUNDATION_POINTS = [
   {
-    title: 'Inspect every tools/call',
-    body: 'Transparent proxy between agent clients and MCP servers — block malicious calls before they reach the tool server.',
+    title: 'Runtime protection',
+    body: `${NPM_PRODUCT_NAME} sits between your AI agent and MCP servers, inspecting every tool call and response in real time.`,
   },
   {
-    title: 'Three-layer detection',
-    body: 'Regex + JSON Schema + optional LLM semantic audit. Shell tokenizer AST catches obfuscation regex misses.',
+    title: 'Battle-tested engine',
+    body: '557+ adversarial fixtures, three-layer detection, and a self-improving Security Swarm power the scores you see on mastyf.ai.',
   },
   {
-    title: 'Response-side DLP',
-    body: 'Scan tool outputs for secrets, PII, and prompt injection before they reach the AI model.',
-  },
-  {
-    title: 'Self-improving swarm',
-    body: 'Multi-agent Security Swarm continuously red-teams the product and proposes rule updates — compounding defensive advantage.',
+    title: 'Self-host when you need it',
+    body: `Install ${NPM_PACKAGE_NAME} from npm to run the proxy on your own infrastructure. mastyf.ai itself is not on npm — it is this website and cloud platform.`,
   },
 ] as const;
 
-export const USP_ITEMS = [
-  {
-    title: 'Native MCP semantics',
-    body: 'Understands tool call structure, rug-pull detection, typosquat scanning, and cross-tool chain attacks — not generic HTTP routing.',
-  },
-  {
-    title: '557+ validated attack fixtures',
-    body: 'Years of adversarial research shipped in-repo. Competitors would need to replicate from scratch.',
-  },
-  {
-    title: 'Self-sustaining threat research',
-    body: 'Live proxy traffic feeds LLM discovery pipelines that auto-generate new adv fixtures — no competitor has this loop.',
-  },
-  {
-    title: 'Enterprise-ready day one',
-    body: 'Helm on K8s, Postgres RLS, DPoP OAuth, audit hash chain, mTLS hot-reload, multi-tenant JWT — drops into existing stacks.',
-  },
-] as const;
-
-export const COMPARISON_ROWS = [
-  {
-    capability: 'MCP protocol native',
-    'mastyf-ai': 'Full stdio, HTTP, SSE, WebSocket',
-    generic: 'HTTP-only; breaks on SDK updates',
-  },
-  {
-    capability: 'Prompt injection / tool-chain detection',
-    'mastyf-ai': '557+ fixtures + normalization pipeline',
-    generic: 'Custom middleware; YAML-only misses ~75%',
-  },
-  {
-    capability: 'Response DLP + secret scanning',
-    'mastyf-ai': '267 rules, context-aware redaction',
-    generic: 'Not applicable',
-  },
-  {
-    capability: 'Continuous red-team loop',
-    'mastyf-ai': 'Security Swarm + Auto Threat Research',
-    generic: 'Manual pen tests',
-  },
-  {
-    capability: 'Compliance overlays',
-    'mastyf-ai': 'HIPAA, PCI-DSS, GxP templates + audit chain',
-    generic: 'Build your own',
-  },
-  {
-    capability: 'Deployment',
-    'mastyf-ai': 'Helm chart, <1h on existing K8s',
-    generic: 'Weeks of custom integration',
-  },
-] as const;
-
-export const TARGET_SEGMENTS = [
-  {
-    title: 'FinTech & payments',
-    body: 'AI agents over transaction APIs and payment databases — CISO buyer, platform team deploys.',
-  },
-  {
-    title: 'Healthcare & life sciences',
-    body: 'EHR and patient-record workflows — HIPAA audit trail, immutable JSONL hash chain.',
-  },
-  {
-    title: 'SaaS & platform teams',
-    body: '500–10,000 employee companies shipping agents to customer data — SOC2 access logging built in.',
-  },
+export const HERO_STATS = [
+  { value: '0–100', label: 'Trust scores', detail: 'Instant lookup for any npm MCP package' },
+  { value: 'Free', label: 'Cloud console', detail: 'Policy, API keys, fleet — sign in with Google or GitHub' },
+  { value: '557+', label: 'Attack fixtures', detail: `Detection engine behind ${SITE_NAME}` },
+  { value: '11k+', label: `${NPM_PRODUCT_NAME} downloads`, detail: 'Monthly npm installs of the open-source proxy' },
 ] as const;
 
 export const SWARM_AGENTS = [
@@ -109,42 +83,29 @@ export const SWARM_AGENTS = [
   { name: 'Parity', track: 'CI', role: 'Python ↔ TypeScript policy parity' },
   { name: 'BlockGuard', track: 'Runtime', role: 'Policy block on every tools/call' },
   { name: 'InstantLearner', track: 'Runtime', role: 'Rolling stats → attack-pattern suggestions' },
-  { name: 'SemanticAuditor', track: 'Runtime', role: 'Tier-2 LLM semantic audit (Pro)' },
+  { name: 'SemanticAuditor', track: 'Runtime', role: 'Tier-2 LLM semantic audit' },
   { name: 'Calibrator', track: 'Runtime', role: 'Threshold tuning from labeled outcomes' },
 ] as const;
 
-export const FEATURES = [
+export const DETECTION_LAYERS = [
   {
-    title: 'Transparent stdio proxy',
-    body: 'Drop-in for Cursor, Cline, and Claude Code — enforce YAML policy on every MCP tools/call without changing agent code.',
+    title: 'Regex triage',
+    body: 'TR39 confusables offline, chaining patterns, fast block on obvious injection and exfil paths.',
   },
   {
-    title: 'Three-layer detection',
-    body: 'Regex triage (TR39 confusables) → Ajv schema validation → optional LLM semantic verdict with circuit breaker and local fallback.',
+    title: 'Schema analysis',
+    body: 'Ajv validation, recursive depth limits, maxLength — catch malformed or oversized tool payloads.',
   },
   {
-    title: 'Cost & health governance',
-    body: 'Per-tenant token budgets, cost auditor, health monitors, and Grafana-ready SLO dashboards for production fleets.',
-  },
-  {
-    title: 'Multi-tenant enterprise',
-    body: 'JWT-bound tenants, Postgres RLS, DPoP, audit hash chain, mTLS hot-reload, and Helm enterprise overlay.',
-  },
-  {
-    title: 'Live dashboard (Pro)',
-    body: 'Browser SPA with WebSocket feed, policy editor, swarm reports, ThreatIntel polling, and SOC2-style access audit.',
-  },
-  {
-    title: 'Open-core + cloud plane',
-    body: 'MIT Community proxy and harness on npm; optional Pro license for swarm CLI, fleet, AI learning, and semantic async.',
+    title: 'Semantic LLM audit',
+    body: 'Async tier-2 LLM audit, 10/min cap, 24h cache, Ollama/local fallback when API exhausted.',
   },
 ] as const;
 
-export const EVIDENCE_ROWS = [
-  { suite: 'Corpus (default-policy)', result: '154/154 blocked · 74/74 benign pass', trust: 'CI-gated' },
-  { suite: 'Evasion probes', result: '148/155 blocked (7 tracked bypasses)', trust: 'CI-gated' },
-  { suite: 'Node live integration', result: '26/26 stdio proxy tests', trust: 'CI-gated' },
-  { suite: 'Python ↔ TS parity', result: '400/402 (99.5%) · 0 corpus mismatches', trust: 'Offline mirror' },
-  { suite: 'Enterprise 5-scenario sim', result: '330 attacks · 93.33% block · 0 FP', trust: 'Synthetic' },
-  { suite: 'Attack learning (long eval)', result: '5003 blocks · instant 41s vs batch 4.9h', trust: 'Repo eval' },
-] as const;
+export {
+  NPM_PACKAGE_URL,
+  NPM_PACKAGE_NAME,
+  NPM_PRODUCT_NAME,
+  NPM_INSTALL_CMD,
+  SITE_NAME,
+};

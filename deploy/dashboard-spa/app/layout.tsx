@@ -3,8 +3,8 @@ import './design/tokens.css';
 import './design/enterprise.css';
 
 export const metadata: Metadata = {
-  title: 'MCP Guardian',
-  description: 'Enterprise MCP Security & Governance Platform',
+  title: 'mastyf.ai',
+  description: 'Enterprise MCP security & governance — mastyf.ai dashboard',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

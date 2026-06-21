@@ -311,40 +311,6 @@ export class McpProxyServer {
             model,
             tenantId: reqCtx.tenantId || this.defaultTenantId,
           };
-          persistCallRecord(this.db, record, reqMsg, this.spawnEnv, this.spawnArgs).catch((err) =>
-            Logger.debug(`Proxy: failed to store call record: ${err?.message}`)
-          );
-          void agenticRecordCompletedToolCall({
-            serverName: this.serverName,
-            sessionId: String(msg.id),
-            toolName: reqCtx.requestToolName || 'unknown',
-            args: reqCtx.requestArguments,
-            latencyMs: proxyLatencyMs,
-            blocked: false,
-            responseSize: line.length,
-          });
-          const tenantBreaker = this.breakerFor(reqCtx.tenantId || this.defaultTenantId);
-          tenantBreaker.recordSuccess();
-          Metrics.circuitBreakerState.set({ server_name: this.serverName }, tenantBreaker.getState() === 'CLOSED' ? 0 : tenantBreaker.getState() === 'OPEN' ? 1 : 2);
-          Metrics.proxyLatencyMs.observe(
-            Metrics.withTenantMetricLabels({ server_name: this.serverName }, reqCtx.tenantId),
-            proxyLatencyMs,
-          );
-          Metrics.requestsTotal.inc(
-            Metrics.withTenantMetricLabels(
-              { server_name: this.serverName, decision: 'pass', authn_success: 'true' },
-              reqCtx.tenantId,
-            ),
-          );
-          if (this.sessionCache) Metrics.activeSessions.set(this.sessionCache.size);
-
-          StructuredLogger.info({
-            event: 'response_sent',
-            serverName: this.serverName,
-            requestId: msg.id,
-            toolName: reqCtx.requestToolName,
-            proxyLatencyMs,
-          });
 
           if (msg?.result && !isResponseScanSkipped()) {
             const responseText = JSON.stringify(msg.result);
@@ -408,19 +374,17 @@ export class McpProxyServer {
             }
 
             if (gate.outcome.action === 'block' && policyMode === 'block') {
-              const blockedRecord: ProxyCallRecord = {
-                serverName: this.serverName,
-                toolName: reqCtx.requestToolName || 'unknown',
-                requestTokens: reqCtx.requestTokens,
-                responseTokens: 0,
-                totalTokens: reqCtx.requestTokens,
-                durationMs: Date.now() - reqCtx.requestStartTime,
-                timestamp: new Date().toISOString(),
-              };
               persistCallRecord(
                 this.db,
-                { ...blockedRecord, blocked: true, blockRule: gate.outcome.rule },
-                undefined,
+                {
+                  ...record,
+                  responseTokens: 0,
+                  totalTokens: record.requestTokens,
+                  blocked: true,
+                  blockRule: gate.outcome.rule,
+                  blockReason: gate.outcome.message,
+                },
+                reqMsg,
                 this.spawnEnv,
                 this.spawnArgs,
               ).catch(() => {});
@@ -445,6 +409,41 @@ export class McpProxyServer {
               return;
             }
           }
+
+          persistCallRecord(this.db, record, reqMsg, this.spawnEnv, this.spawnArgs).catch((err) =>
+            Logger.debug(`Proxy: failed to store call record: ${err?.message}`)
+          );
+          void agenticRecordCompletedToolCall({
+            serverName: this.serverName,
+            sessionId: String(msg.id),
+            toolName: reqCtx.requestToolName || 'unknown',
+            args: reqCtx.requestArguments,
+            latencyMs: proxyLatencyMs,
+            blocked: false,
+            responseSize: line.length,
+          });
+          const tenantBreaker = this.breakerFor(reqCtx.tenantId || this.defaultTenantId);
+          tenantBreaker.recordSuccess();
+          Metrics.circuitBreakerState.set({ server_name: this.serverName }, tenantBreaker.getState() === 'CLOSED' ? 0 : tenantBreaker.getState() === 'OPEN' ? 1 : 2);
+          Metrics.proxyLatencyMs.observe(
+            Metrics.withTenantMetricLabels({ server_name: this.serverName }, reqCtx.tenantId),
+            proxyLatencyMs,
+          );
+          Metrics.requestsTotal.inc(
+            Metrics.withTenantMetricLabels(
+              { server_name: this.serverName, decision: 'pass', authn_success: 'true' },
+              reqCtx.tenantId,
+            ),
+          );
+          if (this.sessionCache) Metrics.activeSessions.set(this.sessionCache.size);
+
+          StructuredLogger.info({
+            event: 'response_sent',
+            serverName: this.serverName,
+            requestId: msg.id,
+            toolName: reqCtx.requestToolName,
+            proxyLatencyMs,
+          });
 
           if (reqCtx.rotatedSessionToken && msg.result && typeof msg.result === 'object') {
             const result = msg.result as Record<string, unknown>;

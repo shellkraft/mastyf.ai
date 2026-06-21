@@ -4,6 +4,7 @@ import { auth } from '@/lib/auth';
 import { getDb } from '@/lib/db';
 import { getUserOrg } from '@/lib/org-context';
 import { queryFleetThreatGraph } from '@/lib/fleet-threat-graph';
+import { NPM_PRODUCT_NAME } from '@/lib/product-links';
 import { sql } from 'drizzle-orm';
 import { redirect } from 'next/navigation';
 
@@ -46,7 +47,7 @@ export default async function FleetPage() {
       <DashboardNav />
       <section className="dashboard-section">
         <h1>Fleet</h1>
-        <p>Self-hosted Mastyf AI instances registered via heartbeat ({instances.length})</p>
+        <p>Self-hosted {NPM_PRODUCT_NAME} instances registered via heartbeat ({instances.length})</p>
         <LaunchDashboard />
         <table className="fleet-table">
           <thead>
@@ -75,7 +76,7 @@ export default async function FleetPage() {
               <tr>
                 <td colSpan={5}>
                   No instances yet. Set <code>MASTYF_AI_CLOUD_API_KEY</code> and{' '}
-                  <code>MASTYF_AI_CONTROL_PLANE_URL</code> on your Mastyf AI host.
+                  <code>MASTYF_AI_CONTROL_PLANE_URL</code> on your {NPM_PRODUCT_NAME} host.
                 </td>
               </tr>
             )}

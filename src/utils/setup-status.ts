@@ -111,18 +111,10 @@ export async function probeDatabaseHealth(): Promise<SetupDatabaseHealth> {
   }
 }
 
-function defaultControlPlaneUrl(): string {
-  return (
-    process.env.MASTYF_AI_CONTROL_PLANE_URL?.trim()
-    || process.env.MASTYF_AI_CLOUD_URL?.trim()
-    || 'https://mastyf-ai-cloud.vercel.app'
-  );
-}
-
-export function readCloudSetup(): SetupCloudView {
+import { defaultControlPlaneUrl } from '../constants/cloud-url.js';
   const file = readSetupFile();
   const envUrl = process.env.MASTYF_AI_CONTROL_PLANE_URL?.trim();
-  const connected = !!(envUrl || file.upstreamUrl?.includes('vercel') || process.env.MASTYF_AI_CLOUD_API_KEY?.trim());
+  const connected = !!(envUrl || file.upstreamUrl?.includes('mastyf.ai') || file.upstreamUrl?.includes('vercel') || process.env.MASTYF_AI_CLOUD_API_KEY?.trim());
   return {
     connected,
     controlPlaneUrl: file.upstreamUrl || envUrl || defaultControlPlaneUrl(),

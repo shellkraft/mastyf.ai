@@ -154,6 +154,9 @@ importers:
       '@auth/drizzle-adapter':
         specifier: ^1.7.4
         version: 1.11.2
+      '@mastyf-ai/server':
+        specifier: link:../../
+        version: link:../..
       '@vercel/analytics':
         specifier: ^2.0.1
         version: 2.0.1(next@15.5.18(@opentelemetry/api@1.9.1)(react-dom@19.2.6(react@19.2.6))(react@19.2.6))(react@19.2.6)

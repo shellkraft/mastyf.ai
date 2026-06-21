@@ -290,6 +290,9 @@ export type SwarmLatest = {
   timings?: { totalSec?: number; steps?: Array<{ label: string; elapsedSec: number }> };
   bypasses?: { detected?: number; netNew?: number };
   findings?: Array<{ severity: string; source: string; summary: string }>;
+  steps?: Array<{ label: string; ok?: boolean; elapsedSec?: number }>;
+  corpus?: { fn?: number; fp?: number; attackBlockRate?: number; benignPassRate?: number };
+  parity?: { agreementRate?: number; corpusMismatches?: number };
   commitSha?: string;
   timestamp?: string;
 };
@@ -2032,22 +2035,35 @@ export async function fetchThreatLabCandidates(): Promise<ThreatLabCandidate[]> 
   return body.candidates || [];
 }
 
-export async function acceptThreatLabCandidate(id: string): Promise<boolean> {
+export async function acceptThreatLabCandidate(id: string): Promise<{
+  ok: boolean;
+  error?: string;
+  ruleName?: string;
+}> {
+  const headers = await buildMutatingHeaders();
   const res = await mastyfAiFetch('/api/security-swarm/threat-lab-candidates/accept', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers,
     body: JSON.stringify({ id }),
   });
-  return res.ok;
+  if (!res.ok) {
+    return { ok: false, error: await parseApiError(res) };
+  }
+  const body = (await res.json().catch(() => ({}))) as { ruleName?: string; error?: string };
+  return { ok: true, ruleName: body.ruleName };
 }
 
-export async function rejectThreatLabCandidate(id: string): Promise<boolean> {
+export async function rejectThreatLabCandidate(id: string): Promise<{ ok: boolean; error?: string }> {
+  const headers = await buildMutatingHeaders();
   const res = await mastyfAiFetch('/api/security-swarm/threat-lab-candidates/reject', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers,
     body: JSON.stringify({ id }),
   });
-  return res.ok;
+  if (!res.ok) {
+    return { ok: false, error: await parseApiError(res) };
+  }
+  return { ok: true };
 }
 
 export type AutoCorpusEntry = {
@@ -2674,16 +2690,100 @@ export async function agenticPost(
 }
 
 export async function fetchCertificationRegistry(): Promise<{
-  certifications: Array<{ serverName: string; level: string; score: number; expiresAt: string }>;
+  certifications: Array<{
+    serverName: string;
+    packageName: string;
+    level: string;
+    score: number;
+    expiresAt: string;
+  }>;
   count: number;
 } | null> {
   const res = await mastyfAiFetch('/api/certification/registry');
   if (!res.ok) return null;
   const body = (await res.json()) as {
-    certifications?: Array<{ serverName: string; level: string; score: number; expiresAt: string }>;
+    certifications?: Array<{
+      serverName: string;
+      packageName: string;
+      level: string;
+      score: number;
+      expiresAt: string;
+    }>;
     count?: number;
   };
   return { certifications: body.certifications ?? [], count: body.count ?? 0 };
+}
+
+const DEFAULT_CLOUD_PUBLIC_URL = 'https://mastyf-ai-cloud.vercel.app';
+const BADGE_RENDERER_VERSION = '3';
+
+export function resolveCloudPublicUrl(override?: string | null): string {
+  const url = override?.trim() || DEFAULT_CLOUD_PUBLIC_URL;
+  return url.replace(/\/$/, '');
+}
+
+function withGithubBadgeStyle(url: string): string {
+  let out = url;
+  if (!out.includes('style=')) {
+    out = `${out}${out.includes('?') ? '&' : '?'}style=github`;
+  }
+  if (!out.includes('v=')) {
+    out = `${out}&v=${BADGE_RENDERER_VERSION}`;
+  }
+  return out;
+}
+
+export type PublicBadgeMetadata = {
+  found: boolean;
+  packageName: string;
+  score?: number;
+  grade?: string;
+  level?: string;
+  badgeUrl?: string;
+  verifyUrl?: string;
+  embedMarkdown?: string;
+};
+
+export async function fetchPublicBadgeMetadata(
+  packageName: string,
+  cloudBaseUrl?: string | null,
+): Promise<PublicBadgeMetadata | null> {
+  const base = resolveCloudPublicUrl(cloudBaseUrl);
+  const pkg = encodeURIComponent(packageName);
+  try {
+    const res = await fetch(`${base}/api/v1/badge/${pkg}/json`, { cache: 'no-store' });
+    if (!res.ok) {
+      if (res.status === 404) {
+        return { found: false, packageName };
+      }
+      return null;
+    }
+    const body = (await res.json()) as {
+      found?: boolean;
+      packageName?: string;
+      score?: number;
+      grade?: string;
+      level?: string;
+      badgeUrl?: string;
+      verifyUrl?: string;
+    };
+    const badgeUrl = withGithubBadgeStyle(
+      body.badgeUrl ?? `${base}/api/v1/badge/${pkg}?style=github&v=${BADGE_RENDERER_VERSION}`,
+    );
+    const verifyUrl = body.verifyUrl ?? `${base}/certified/${pkg}`;
+    return {
+      found: body.found ?? true,
+      packageName: body.packageName ?? packageName,
+      score: body.score,
+      grade: body.grade,
+      level: body.level,
+      badgeUrl,
+      verifyUrl,
+      embedMarkdown: `[![mastyf.ai security score](${badgeUrl})](${verifyUrl})`,
+    };
+  } catch {
+    return null;
+  }
 }
 
 export async function fetchIndustryChainGraph(): Promise<{
@@ -2739,7 +2839,9 @@ export type PlanComplianceReport = {
 export async function fetchPlanComplianceAudit(): Promise<PlanComplianceReport | null> {
   const res = await mastyfAiFetch('/api/agentic/plan-compliance/audit');
   if (!res.ok) return null;
-  return (await res.json()) as PlanComplianceReport;
+  const body = (await res.json()) as PlanComplianceReport & { error?: string };
+  if (body.error && !body.modules?.length) return null;
+  return body;
 }
 
 export type FederatedStatus = {

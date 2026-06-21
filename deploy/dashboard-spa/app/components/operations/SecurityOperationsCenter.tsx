@@ -4,16 +4,24 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   acceptThreatLabCandidate,
   dismissThreatIntel,
+  fetchAiThreats,
   fetchHealth,
+  fetchIntelQuarantinePolicy,
+  fetchMonitorQuarantinePolicy,
   fetchQuarantinedThreats,
   fetchSecurity,
   fetchSecurityDashboard,
   fetchSecurityQuarantinedThreats,
+  fetchShadowRedTeamReport,
+  fetchSignatureHints,
+  fetchSupplyChainGraph,
   fetchSwarmLatest,
   fetchThreatDiscoveryStatus,
   fetchThreatLabCandidates,
+  pollAiThreats,
   quarantineAllThreats,
   quarantineSecurityThreat,
+  quarantineThreatIntel,
   rejectThreatLabCandidate,
   restoreSecurityThreat,
   restoreThreatIntel,
@@ -21,12 +29,15 @@ import {
   runThreatLab,
   runAutoThreatResearch,
   type HealthResponse,
+  type QuarantinePolicyDetail,
   type QuarantineRecord,
   type SecurityDashboardResponse,
   type SecurityDashboardThreat,
   type SecurityMonitorQuarantineRecord,
   type SecurityResponse,
   type ThreatDiscoveryStatus,
+  type ThreatIntelEntry,
+  type ThreatIntelStatus,
   type ThreatLabCandidate,
 } from '@/lib/mastyf-ai-api';
 import { hasPermission } from '@/lib/dashboard-roles';
@@ -36,8 +47,15 @@ import { Badge, SeverityBadge } from '../ui/Badge';
 import { KpiCard } from '../ui/KpiCard';
 import { EmptyState } from '../ui/EmptyState';
 import { WorkspaceSubNav } from '../ui/WorkspaceSubNav';
+import { QuarantinePolicyDrawer } from '../security/QuarantinePolicyDrawer';
+import { formatEnforcementStatus, formatQuarantineResultMessage } from '@/lib/quarantine-messages';
+import { SocAutomationSection } from './SocAutomationSection';
+import { SocAutoResearchSection } from './SocAutoResearchSection';
+import { SocEnterpriseIntelSection } from './SocEnterpriseIntelSection';
+import { SocSwarmAnalysisView } from './SocSwarmAnalysisView';
+import { SocAiLearningView } from './SocAiLearningView';
 
-type SecurityView = 'overview' | 'threats' | 'intel' | 'quarantine';
+type SecurityView = 'overview' | 'threats' | 'intel' | 'swarm' | 'learning' | 'quarantine';
 
 type Props = {
   view: SecurityView;
@@ -47,14 +65,16 @@ type Props = {
   onAction?: (msg: string) => void;
 };
 
-const WINDOW_DAYS = 1;
-
 const VIEW_TABS = [
   { id: 'overview' as const, label: 'Posture Overview' },
   { id: 'threats' as const, label: 'Threat Detection' },
   { id: 'intel' as const, label: 'Threat Intel' },
+  { id: 'swarm' as const, label: 'Swarm Analysis' },
+  { id: 'learning' as const, label: 'AI Learning' },
   { id: 'quarantine' as const, label: 'Quarantine' },
 ];
+
+const WINDOW_DAYS = 30;
 
 function scoreLevel(score: number | null): 'good' | 'fair' | 'poor' {
   if (score == null) return 'poor';
@@ -107,7 +127,7 @@ function OverviewView({ roles, refreshKey, onAction }: { roles: string[]; refres
     setBusy('quarantine-all');
     const res = await quarantineAllThreats();
     if (res.ok) {
-      onAction?.(`Quarantined ${res.quarantined ?? 0} threat(s)`);
+      onAction?.(`Quarantined ${res.quarantined ?? 0} threat(s). See Security → Quarantine for enforcement status and applied YAML rules.`);
       await load();
     } else {
       onAction?.(res.error || 'Quarantine failed');
@@ -121,7 +141,10 @@ function OverviewView({ roles, refreshKey, onAction }: { roles: string[]; refres
     setBusy(row.id);
     const res = await quarantineSecurityThreat(row);
     if (res.ok) {
-      onAction?.(`Quarantined ${row.id}`);
+      onAction?.(formatQuarantineResultMessage(row.id, {
+        enforcementStatus: res.enforcementStatus,
+        appliedRuleName: res.appliedRuleName,
+      }));
       await load();
     } else {
       onAction?.(res.error || 'Quarantine failed');
@@ -354,12 +377,16 @@ function ThreatsView({ roles, refreshKey, onAction }: { roles: string[]; refresh
   const onAccept = async (id: string) => {
     if (!canMutate) { onAction?.('Requires operator role'); return; }
     setBusy(`accept:${id}`);
-    const ok = await acceptThreatLabCandidate(id);
-    if (ok) {
-      onAction?.(`Accepted candidate ${id}`);
+    const res = await acceptThreatLabCandidate(id);
+    if (res.ok) {
+      onAction?.(
+        res.ruleName
+          ? `Accepted ${id} — applied rule ${res.ruleName}`
+          : `Accepted ${id}`,
+      );
       await load();
     } else {
-      onAction?.(`Failed to accept ${id}`);
+      onAction?.(res.error || `Failed to accept ${id}`);
     }
     setBusy('');
   };
@@ -367,12 +394,12 @@ function ThreatsView({ roles, refreshKey, onAction }: { roles: string[]; refresh
   const onReject = async (id: string) => {
     if (!canMutate) { onAction?.('Requires operator role'); return; }
     setBusy(`reject:${id}`);
-    const ok = await rejectThreatLabCandidate(id);
-    if (ok) {
+    const res = await rejectThreatLabCandidate(id);
+    if (res.ok) {
       onAction?.(`Rejected candidate ${id}`);
       await load();
     } else {
-      onAction?.(`Failed to reject ${id}`);
+      onAction?.(res.error || `Failed to reject ${id}`);
     }
     setBusy('');
   };
@@ -447,14 +474,32 @@ function ThreatsView({ roles, refreshKey, onAction }: { roles: string[]; refresh
                     <div className="flex items-center gap-2 text-xs text-muted">
                       {c.provenance?.source && <span>{c.provenance.source}</span>}
                     </div>
-                    {(!c.reviewStatus || c.reviewStatus === 'pending') && canMutate && (
+                    {(!c.reviewStatus || c.reviewStatus === 'pending') && (
                       <div className="flex gap-2 mt-3">
-                        <Button size="sm" variant="primary" disabled={!!busy} onClick={() => void onAccept(c.id)}>
-                          {busy === `accept:${c.id}` ? '…' : 'Accept'}
-                        </Button>
-                        <Button size="sm" variant="ghost" disabled={!!busy} onClick={() => void onReject(c.id)}>
-                          {busy === `reject:${c.id}` ? '…' : 'Reject'}
-                        </Button>
+                        {canMutate ? (
+                          <>
+                            <Button
+                              size="sm"
+                              variant="primary"
+                              loading={busy === `accept:${c.id}`}
+                              disabled={!!busy && busy !== `accept:${c.id}`}
+                              onClick={() => void onAccept(c.id)}
+                            >
+                              {busy === `accept:${c.id}` ? 'Accepting…' : 'Accept'}
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              loading={busy === `reject:${c.id}`}
+                              disabled={!!busy && busy !== `reject:${c.id}`}
+                              onClick={() => void onReject(c.id)}
+                            >
+                              {busy === `reject:${c.id}` ? 'Rejecting…' : 'Reject'}
+                            </Button>
+                          </>
+                        ) : (
+                          <span className="text-xs text-muted">Requires operator role to accept or reject</span>
+                        )}
                       </div>
                     )}
                   </div>
@@ -489,6 +534,15 @@ function ThreatsView({ roles, refreshKey, onAction }: { roles: string[]; refresh
           )}
         </div>
       </div>
+
+      <SocAutomationSection refreshKey={refreshKey} onAction={onAction} />
+
+      <div className="section">
+        <SocAutoResearchSection
+          entries={status?.autoCorpus.manifest?.entries ?? []}
+          status={status}
+        />
+      </div>
     </>
   );
 }
@@ -497,19 +551,33 @@ function ThreatsView({ roles, refreshKey, onAction }: { roles: string[]; refresh
 
 function IntelView({ roles, refreshKey, onAction }: { roles: string[]; refreshKey: number; onAction?: (msg: string) => void }) {
   const canMutate = hasPermission(roles, 'policy_mutate');
+  const canAi = hasPermission(roles, 'ai');
   const [findings, setFindings] = useState<any[]>([]);
   const [candidates, setCandidates] = useState<ThreatLabCandidate[]>([]);
+  const [aiThreats, setAiThreats] = useState<ThreatIntelStatus | null>(null);
+  const [supplyChain, setSupplyChain] = useState<Record<string, unknown> | null>(null);
+  const [shadowRedTeam, setShadowRedTeam] = useState<Record<string, unknown> | null>(null);
+  const [signatureHints, setSignatureHints] = useState<Record<string, unknown> | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState('');
+  const [pollBusy, setPollBusy] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
-    const [swarm, lab] = await Promise.all([
+    const [swarm, lab, threats, sc, shadow, hints] = await Promise.all([
       fetchSwarmLatest(),
       fetchThreatLabCandidates(),
+      fetchAiThreats(),
+      fetchSupplyChainGraph(),
+      fetchShadowRedTeamReport(),
+      fetchSignatureHints(),
     ]);
     setFindings(swarm?.findings ?? []);
     setCandidates(lab);
+    setAiThreats(threats);
+    setSupplyChain(sc);
+    setShadowRedTeam(shadow);
+    setSignatureHints(hints);
     setLoading(false);
   }, []);
 
@@ -524,6 +592,36 @@ function IntelView({ roles, refreshKey, onAction }: { roles: string[]; refreshKe
       await load();
     } else {
       onAction?.(res.error || 'Failed to dismiss');
+    }
+    setBusy('');
+  };
+
+  const onPollThreats = async () => {
+    if (!canAi) { onAction?.('Requires ai role'); return; }
+    setPollBusy(true);
+    try {
+      const res = await pollAiThreats();
+      if (res.ok && res.status) {
+        setAiThreats(res.status);
+        onAction?.(`Threat catalog refreshed (${res.status.threats} known IDs)`);
+      } else {
+        onAction?.(res.error || 'Poll failed');
+      }
+    } finally {
+      setPollBusy(false);
+    }
+  };
+
+  const onQuarantineIntel = async (entry: ThreatIntelEntry) => {
+    if (!canMutate) { onAction?.('Requires operator role'); return; }
+    if (!window.confirm(`Quarantine ${entry.id}? This may add a blocking policy rule.`)) return;
+    setBusy(`q:${entry.id}`);
+    const res = await quarantineThreatIntel(entry.id);
+    if (res.ok) {
+      onAction?.(`Quarantined ${entry.id}${res.appliedRuleName ? ` · rule ${res.appliedRuleName}` : ''}. See Quarantine tab.`);
+      await load();
+    } else {
+      onAction?.(res.error || 'Quarantine failed');
     }
     setBusy('');
   };
@@ -547,18 +645,20 @@ function IntelView({ roles, refreshKey, onAction }: { roles: string[]; refreshKe
     return items;
   }, [findings, candidates]);
 
+  const catalogEntries = aiThreats?.entries ?? [];
+
   return (
     <>
       <div className="kpi-grid">
-        <KpiCard label="Total Intel Items" value={merged.length} accent="info" />
-        <KpiCard label="Critical" value={merged.filter(i => i.severity.toUpperCase() === 'CRITICAL').length} accent="danger" />
-        <KpiCard label="High" value={merged.filter(i => i.severity.toUpperCase() === 'HIGH').length} accent="warning" />
-        <KpiCard label="Swarm Findings" value={findings.length} accent="info" />
+        <KpiCard label="Live Feed Items" value={merged.length} accent="info" />
+        <KpiCard label="AI Catalog (CVE/OSV)" value={aiThreats?.threats ?? catalogEntries.length} accent="warning" />
+        <KpiCard label="Critical" value={merged.filter(i => i.severity.toUpperCase() === 'CRITICAL').length + catalogEntries.filter(e => e.severity === 'CRITICAL').length} accent="danger" />
+        <KpiCard label="Swarm Findings" value={findings.length} accent="info" secondary={aiThreats?.lastPollAt ? `Last poll ${formatTs(aiThreats.lastPollAt)}` : undefined} />
       </div>
 
       <Card
         title="Live Threat Intelligence Feed"
-        subtitle={`${merged.length} item(s) — sorted by severity`}
+        subtitle="Merged swarm findings and Threat Lab candidates — sorted by severity"
         actions={
           <Button variant="ghost" size="sm" onClick={() => void load()} disabled={loading}>
             {loading ? '…' : 'Refresh'}
@@ -568,7 +668,7 @@ function IntelView({ roles, refreshKey, onAction }: { roles: string[]; refreshKe
         {loading ? (
           <p className="text-sm text-muted">Loading feed…</p>
         ) : merged.length === 0 ? (
-          <EmptyState title="No intel" message="No threat intelligence findings available" />
+          <EmptyState title="No intel" message="Run Swarm Analysis or Threat Lab to generate findings" />
         ) : (
           <div className="table-wrap">
             <table className="table">
@@ -592,7 +692,7 @@ function IntelView({ roles, refreshKey, onAction }: { roles: string[]; refreshKe
                     <td><Badge variant={item.kind === 'swarm' ? 'info' : 'warning'}>{item.kind}</Badge></td>
                     <td className="text-sm">{item.summary}</td>
                     <td>
-                      {canMutate && item.kind !== 'candidate' ? (
+                      {canMutate && item.kind === 'swarm' ? (
                         <Button size="sm" variant="ghost" disabled={!!busy} onClick={() => void onDismiss(item.id)}>
                           {busy === `dismiss:${item.id}` ? '…' : 'Dismiss'}
                         </Button>
@@ -605,6 +705,69 @@ function IntelView({ roles, refreshKey, onAction }: { roles: string[]; refreshKe
           </div>
         )}
       </Card>
+
+      <Card
+        title="AI Copilot Threat Catalog"
+        subtitle="External CVE/OSV/NVD advisories polled by the AI engine — quarantine to auto-apply blocking rules"
+        actions={
+          <Button variant="secondary" size="sm" onClick={() => void onPollThreats()} disabled={pollBusy || !canAi}>
+            {pollBusy ? 'Polling…' : 'Poll sources'}
+          </Button>
+        }
+      >
+        {loading ? (
+          <p className="text-sm text-muted">Loading catalog…</p>
+        ) : catalogEntries.length === 0 ? (
+          <EmptyState
+            title="No catalog entries"
+            message={canAi ? 'Click Poll sources to fetch OSV/NVD/GitHub advisories' : 'Requires ai role to poll external sources'}
+          />
+        ) : (
+          <div className="table-wrap">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Source</th>
+                  <th>Severity</th>
+                  <th>Package</th>
+                  <th>Description</th>
+                  <th />
+                </tr>
+              </thead>
+              <tbody>
+                {catalogEntries.slice(0, 50).map(entry => (
+                  <tr key={entry.id} className={entry.severity === 'CRITICAL' ? 'row-critical' : entry.severity === 'HIGH' ? 'row-warning' : ''}>
+                    <td><code className="text-xs">{entry.id}</code></td>
+                    <td>{entry.source}</td>
+                    <td><SeverityBadge severity={entry.severity} /></td>
+                    <td className="text-xs">{entry.affectedPackage || '—'}</td>
+                    <td className="text-sm">{entry.description?.slice(0, 100)}{entry.description && entry.description.length > 100 ? '…' : ''}</td>
+                    <td>
+                      {canMutate ? (
+                        <div className="flex gap-1">
+                          <Button size="sm" variant="ghost" disabled={!!busy} onClick={() => void onQuarantineIntel(entry)}>
+                            {busy === `q:${entry.id}` ? '…' : 'Quarantine'}
+                          </Button>
+                          <Button size="sm" variant="ghost" disabled={!!busy} onClick={() => void onDismiss(entry.id)}>
+                            Dismiss
+                          </Button>
+                        </div>
+                      ) : null}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Card>
+
+      <SocEnterpriseIntelSection
+        supplyChain={supplyChain}
+        shadowRedTeam={shadowRedTeam}
+        signatureHints={signatureHints}
+      />
     </>
   );
 }
@@ -617,6 +780,10 @@ function QuarantineView({ roles, refreshKey, onAction }: { roles: string[]; refr
   const [intelRows, setIntelRows] = useState<QuarantineRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState('');
+  const [policyOpen, setPolicyOpen] = useState(false);
+  const [policyLoading, setPolicyLoading] = useState(false);
+  const [policyDetail, setPolicyDetail] = useState<QuarantinePolicyDetail | null>(null);
+  const [policyError, setPolicyError] = useState('');
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -631,13 +798,43 @@ function QuarantineView({ roles, refreshKey, onAction }: { roles: string[]; refr
 
   useEffect(() => { void load(); }, [load, refreshKey]);
 
+  const openMonitorPolicy = async (row: SecurityMonitorQuarantineRecord) => {
+    setPolicyOpen(true);
+    setPolicyLoading(true);
+    setPolicyError('');
+    setPolicyDetail(null);
+    const { detail, error } = await fetchMonitorQuarantinePolicy(row);
+    setPolicyDetail(detail);
+    setPolicyError(error || (!detail ? 'Policy detail unavailable' : ''));
+    setPolicyLoading(false);
+  };
+
+  const openIntelPolicy = async (row: QuarantineRecord) => {
+    setPolicyOpen(true);
+    setPolicyLoading(true);
+    setPolicyError('');
+    setPolicyDetail(null);
+    const { detail, error } = await fetchIntelQuarantinePolicy(row);
+    setPolicyDetail(detail);
+    setPolicyError(error || (!detail ? 'Policy detail unavailable' : ''));
+    setPolicyLoading(false);
+  };
+
   const onRestoreMonitor = async (threatKey: string, id: string) => {
     if (!canMutate) { onAction?.('Requires operator role'); return; }
     if (!window.confirm(`Restore ${id}?`)) return;
+    const removeRule = window.confirm(
+      `Remove the quarantine policy rule from your YAML policy file?\n\nOK — restore and delete the quarantine-* rule\nCancel — restore only (keep the rule)`,
+    );
     setBusyId(`monitor:${threatKey}`);
-    const res = await restoreSecurityThreat(threatKey, { removeRule: false });
+    const res = await restoreSecurityThreat(threatKey, { removeRule });
     if (res.ok) {
-      onAction?.(`Restored ${id}`);
+      onAction?.(
+        removeRule
+          ? `Restored ${id}. Policy rule ${res.removedRule ? 'removed' : 'not found in policy'}`
+          : `Restored ${id} (policy rule kept)`,
+      );
+      setPolicyOpen(false);
       await load();
     } else {
       onAction?.(res.error || 'Restore failed');
@@ -652,6 +849,7 @@ function QuarantineView({ roles, refreshKey, onAction }: { roles: string[]; refr
     const res = await restoreThreatIntel(id);
     if (res.ok) {
       onAction?.(`Restored ${id}`);
+      setPolicyOpen(false);
       await load();
     } else {
       onAction?.(res.error || 'Restore failed');
@@ -663,6 +861,18 @@ function QuarantineView({ roles, refreshKey, onAction }: { roles: string[]; refr
 
   return (
     <>
+      <QuarantinePolicyDrawer
+        open={policyOpen}
+        loading={policyLoading}
+        detail={policyDetail}
+        error={policyError}
+        onClose={() => {
+          setPolicyOpen(false);
+          setPolicyDetail(null);
+          setPolicyError('');
+        }}
+      />
+
       <div className="kpi-grid">
         <KpiCard label="Total Quarantined" value={totalQuarantined} accent="warning" />
         <KpiCard label="Threat Monitor" value={monitorRows.length} accent="danger" />
@@ -684,6 +894,8 @@ function QuarantineView({ roles, refreshKey, onAction }: { roles: string[]; refr
                   <th>Type</th>
                   <th>Source</th>
                   <th>Severity</th>
+                  <th>Enforcement</th>
+                  <th>Applied rule</th>
                   <th>Quarantined</th>
                   <th>Operator</th>
                   <th />
@@ -696,14 +908,21 @@ function QuarantineView({ roles, refreshKey, onAction }: { roles: string[]; refr
                     <td>{r.type}</td>
                     <td>{r.source}</td>
                     <td><SeverityBadge severity={r.severity} /></td>
+                    <td className="text-xs">{formatEnforcementStatus(r.enforcementStatus)}</td>
+                    <td className="text-xs">{r.appliedRuleName ? <code>{r.appliedRuleName}</code> : '—'}</td>
                     <td className="text-xs">{formatTs(r.quarantinedAt)}</td>
                     <td>{r.operator || '—'}</td>
                     <td>
-                      {canMutate ? (
-                        <Button size="sm" variant="ghost" disabled={!!busyId} onClick={() => void onRestoreMonitor(r.threatKey, r.id)}>
-                          {busyId === `monitor:${r.threatKey}` ? '…' : 'Restore'}
+                      <div className="flex gap-1">
+                        <Button size="sm" variant="ghost" onClick={() => void openMonitorPolicy(r)}>
+                          Policy
                         </Button>
-                      ) : '—'}
+                        {canMutate ? (
+                          <Button size="sm" variant="ghost" disabled={!!busyId} onClick={() => void onRestoreMonitor(r.threatKey, r.id)}>
+                            {busyId === `monitor:${r.threatKey}` ? '…' : 'Restore'}
+                          </Button>
+                        ) : null}
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -727,6 +946,7 @@ function QuarantineView({ roles, refreshKey, onAction }: { roles: string[]; refr
                   <th>Source</th>
                   <th>Severity</th>
                   <th>Description</th>
+                  <th>Applied rule</th>
                   <th>Quarantined</th>
                   <th>Operator</th>
                   <th />
@@ -741,14 +961,20 @@ function QuarantineView({ roles, refreshKey, onAction }: { roles: string[]; refr
                     <td className="text-sm" style={{ maxWidth: 300 }}>
                       <span className="truncate">{r.description?.slice(0, 120)}{r.description && r.description.length > 120 ? '…' : ''}</span>
                     </td>
+                    <td className="text-xs">{r.appliedRuleName ? <code>{r.appliedRuleName}</code> : '—'}</td>
                     <td className="text-xs">{formatTs(r.quarantinedAt)}</td>
                     <td>{r.operator || '—'}</td>
                     <td>
-                      {canMutate ? (
-                        <Button size="sm" variant="ghost" disabled={!!busyId} onClick={() => void onRestoreIntel(r.id)}>
-                          {busyId === `intel:${r.id}` ? '…' : 'Restore'}
+                      <div className="flex gap-1">
+                        <Button size="sm" variant="ghost" onClick={() => void openIntelPolicy(r)}>
+                          Policy
                         </Button>
-                      ) : '—'}
+                        {canMutate ? (
+                          <Button size="sm" variant="ghost" disabled={!!busyId} onClick={() => void onRestoreIntel(r.id)}>
+                            {busyId === `intel:${r.id}` ? '…' : 'Restore'}
+                          </Button>
+                        ) : null}
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -769,7 +995,7 @@ export function SecurityOperationsCenter({ view, onViewChange, roles = [], refre
       <div className="page-header">
         <div>
           <h1>Security Operations Center</h1>
-          <p>Real-time threat monitoring, detection, and response</p>
+          <p>mastyf.ai — detect, analyze, quarantine, and learn from threats across your MCP fleet</p>
         </div>
       </div>
 
@@ -778,6 +1004,10 @@ export function SecurityOperationsCenter({ view, onViewChange, roles = [], refre
       {view === 'overview' && <OverviewView roles={roles} refreshKey={refreshKey} onAction={onAction} />}
       {view === 'threats' && <ThreatsView roles={roles} refreshKey={refreshKey} onAction={onAction} />}
       {view === 'intel' && <IntelView roles={roles} refreshKey={refreshKey} onAction={onAction} />}
+      {view === 'swarm' && (
+        <SocSwarmAnalysisView roles={roles} refreshKey={refreshKey} onAction={onAction} />
+      )}
+      {view === 'learning' && <SocAiLearningView roles={roles} refreshKey={refreshKey} onAction={onAction} />}
       {view === 'quarantine' && <QuarantineView roles={roles} refreshKey={refreshKey} onAction={onAction} />}
     </section>
   );

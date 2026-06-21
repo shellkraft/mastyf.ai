@@ -21,7 +21,7 @@ export class DashboardErrorBoundary extends Component<Props, State> {
       return (
         <main role="alert">
           <header>
-            <h1>MCP MastyfAi</h1>
+            <h1>mastyf.ai</h1>
           </header>
           <p className="status status-error">
             Dashboard error: {this.state.error.message}

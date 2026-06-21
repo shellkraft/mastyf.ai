@@ -82,6 +82,26 @@ export async function listPublicCertifications(opts?: {
   return mapCertRows(result);
 }
 
+/** Latest non-expired certification for an npm package name (badge lookup). */
+export async function getPublicCertificationByPackage(
+  packageName: string,
+): Promise<(PublicCertification & { attestationJws?: string }) | null> {
+  const db = getDb();
+  const result = await db.execute(sql`
+    SELECT id, org_id, server_name, package_name, version, level, score,
+           attestation_jws, checks, issued_at, expires_at, created_at
+    FROM public_mcp_certifications
+    WHERE package_name = ${packageName}
+      AND expires_at > NOW()
+    ORDER BY issued_at DESC
+    LIMIT 1
+  `);
+  const rows = mapCertRows(result);
+  if (!rows.length) return null;
+  const raw = result as unknown as Array<{ attestation_jws?: string }>;
+  return { ...rows[0]!, attestationJws: raw[0]?.attestation_jws };
+}
+
 export async function submitPublicCertification(
   orgId: string | null,
   body: {

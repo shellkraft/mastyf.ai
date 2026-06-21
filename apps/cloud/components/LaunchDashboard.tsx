@@ -1,8 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { NPM_PRODUCT_NAME } from '@/lib/product-links';
 
-function isValidMastyfAiUrl(url: string): boolean {
+function isValidGuardianUrl(url: string): boolean {
   const trimmed = url.trim();
   if (!trimmed || trimmed === 'null') return false;
   try {
@@ -25,8 +26,8 @@ export function LaunchDashboard() {
 
   const onLaunch = async () => {
     setError('');
-    if (!isValidMastyfAiUrl(mastyfAiUrl)) {
-      setError('Enter a valid http:// or https:// Mastyf AI URL.');
+    if (!isValidGuardianUrl(mastyfAiUrl)) {
+      setError(`Enter a valid http:// or https:// ${NPM_PRODUCT_NAME} URL.`);
       return;
     }
     setLoading(true);
@@ -40,7 +41,7 @@ export function LaunchDashboard() {
       });
       const data = (await res.json()) as { redirectUrl?: string; error?: string };
       const redirectUrl = data.redirectUrl?.trim();
-      if (!res.ok || !redirectUrl || !isValidMastyfAiUrl(redirectUrl)) {
+      if (!res.ok || !redirectUrl || !isValidGuardianUrl(redirectUrl)) {
         throw new Error(data.error ?? 'Launch failed');
       }
       window.location.href = redirectUrl;
@@ -54,11 +55,11 @@ export function LaunchDashboard() {
     <div className="card">
       <h2>Open live dashboard (SSO)</h2>
       <p className="muted">
-        One-time redirect to your Mastyf AI ops UI. Requires the env block above on that host (
+        One-time redirect to your {NPM_PRODUCT_NAME} ops UI. Requires the env block above on that host (
         <code>MASTYF_AI_CLOUD_JWT_SECRET</code> must match cloud <code>AUTH_SECRET</code>).
       </p>
       <label style={{ display: 'block', marginTop: '1rem' }}>
-        Mastyf AI base URL
+        {NPM_PRODUCT_NAME} base URL
         <input
           type="url"
           value={mastyfAiUrl}

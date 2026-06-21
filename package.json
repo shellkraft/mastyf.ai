@@ -18,6 +18,14 @@
     "mastyf-ai": "./dist/cli.js"
   },
   "main": "./dist/index.js",
+  "exports": {
+    ".": "./dist/index.js",
+    "./package-scorer": {
+      "types": "./dist/agentic/trust-score/score-package-by-name.d.ts",
+      "import": "./dist/agentic/trust-score/score-package-by-name.js",
+      "default": "./dist/agentic/trust-score/score-package-by-name.js"
+    }
+  },
   "engines": {
     "node": ">=18"
   },
@@ -56,8 +64,8 @@
     "cost-tracking"
   ],
   "scripts": {
-    "build": "pnpm --filter @mastyf-ai/plugin-sdk run build && tsc --project tsconfig.json && mkdir -p dist/database/migrations && cp src/database/migrations/*.sql dist/database/migrations/ && turbo run build",
-    "build:mastyf-ai": "pnpm --filter @mastyf-ai/plugin-sdk run build && tsc --project tsconfig.json",
+    "build": "pnpm --filter @mastyf-ai/plugin-sdk run build && tsc --project tsconfig.json && mkdir -p dist/database/migrations dist/policy && cp src/database/migrations/*.sql dist/database/migrations/ && cp src/policy/regex-eval-worker.mjs dist/policy/ && turbo run build",
+    "build:mastyf-ai": "pnpm --filter @mastyf-ai/plugin-sdk run build && tsc --project tsconfig.json && cp src/policy/regex-eval-worker.mjs dist/policy/",
     "dev": "node scripts/dev.mjs mastyf-ai-configs/testbed-memory.json",
     "dev:thinking": "node scripts/dev.mjs mastyf-ai-configs/testbed-thinking.json",
     "dev:build": "pnpm build && node scripts/dev.mjs mastyf-ai-configs/testbed-memory.json",
@@ -144,6 +152,9 @@
     "cloud:migrate": "pnpm --filter @mastyf-ai/cloud run db:migrate",
     "cloud:migrate:prod": "./scripts/cloud-migrate-production.sh",
     "cloud:verify-prod": "./scripts/verify-pro-production.sh",
+    "cloud:domain": "./scripts/vercel-domain-setup.sh",
+    "cloud:deploy-prod": "./scripts/vercel-cloud-production.sh",
+    "cloud:deploy-now": "./scripts/vercel-deploy-now.sh",
     "publish:npm": "./scripts/publish-npm-all.sh",
     "cloud:register-pro-key": "node apps/cloud/scripts/register-pro-license.mjs",
     "eval:full": "ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY tsx corpus/run-eval.ts",

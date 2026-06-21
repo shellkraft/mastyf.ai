@@ -1,8 +1,11 @@
 /**
  * JWS-like HMAC attestation for MCP server certifications.
- * Uses MASTYF_AI_CERT_SIGNING_KEY (falls back to dev key when unset).
+ * Uses MASTYF_AI_CERT_SIGNING_KEY, persisted ~/.mastyf-ai/.cert-signing-key, or local dev fallback.
  */
-import { createHmac, timingSafeEqual } from 'crypto';
+import { createHmac, randomBytes, timingSafeEqual } from 'crypto';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { homedir } from 'node:os';
+import { dirname, join } from 'node:path';
 
 export interface CertAttestationPayload {
   serverName: string;
@@ -22,15 +25,50 @@ function fromB64url(input: string): string {
   return Buffer.from(input, 'base64url').toString('utf-8');
 }
 
+const LOCAL_DEV_FALLBACK_KEY = 'mastyf-ai-local-dev-cert-signing-do-not-use-in-prod';
+
+function certSigningKeyPath(): string {
+  const home = process.env['MASTYF_AI_HOME'] || join(homedir(), '.mastyf-ai');
+  return join(home, '.cert-signing-key');
+}
+
+function loadOrCreatePersistedKey(): string | null {
+  const path = certSigningKeyPath();
+  try {
+    if (existsSync(path)) {
+      const key = readFileSync(path, 'utf8').trim();
+      return key || null;
+    }
+    if (process.env['MASTYF_AI_STRICT_MODE'] === 'true' || process.env['MASTYF_AI_ENTERPRISE_MODE'] === 'true') {
+      return null;
+    }
+    const key = randomBytes(32).toString('hex');
+    mkdirSync(dirname(path), { recursive: true });
+    writeFileSync(path, `${key}\n`, { mode: 0o600 });
+    return key;
+  } catch {
+    return null;
+  }
+}
+
 export function getCertSigningKey(): string {
-  const key = process.env['MASTYF_AI_CERT_SIGNING_KEY'];
-  if (!key) {
+  const fromEnv = process.env['MASTYF_AI_CERT_SIGNING_KEY']?.trim();
+  if (fromEnv) return fromEnv;
+
+  const persisted = loadOrCreatePersistedKey();
+  if (persisted) {
+    process.env['MASTYF_AI_CERT_SIGNING_KEY'] = persisted;
+    return persisted;
+  }
+
+  if (process.env['MASTYF_AI_STRICT_MODE'] === 'true' || process.env['MASTYF_AI_ENTERPRISE_MODE'] === 'true') {
     throw new Error(
       'MASTYF_AI_CERT_SIGNING_KEY environment variable is required for certification signing. ' +
       'Set a cryptographically random secret (e.g., openssl rand -hex 32).',
     );
   }
-  return key;
+
+  return LOCAL_DEV_FALLBACK_KEY;
 }
 
 export function signCertAttestation(payload: CertAttestationPayload): string {

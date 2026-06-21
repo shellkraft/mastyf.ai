@@ -630,9 +630,20 @@ export async function handleRoadmapApiRoutes(params: {
 
   if (url === '/api/agentic/plan-compliance/audit' && method === 'GET') {
     setCors();
-    const { runPlanComplianceAudit } = await import('../agentic/plan-compliance-audit.js');
-    const report = await runPlanComplianceAudit();
-    writeJson(res, 200, report);
+    try {
+      const { runPlanComplianceAudit } = await import('../agentic/plan-compliance-audit.js');
+      const report = await runPlanComplianceAudit();
+      writeJson(res, 200, report);
+    } catch (err: unknown) {
+      writeJson(res, 500, {
+        error: err instanceof Error ? err.message : String(err),
+        overallScore: 0,
+        productionReady: false,
+        modules: [],
+        generatedAt: new Date().toISOString(),
+        summary: 'Plan compliance audit failed',
+      });
+    }
     return true;
   }
 

@@ -1,6 +1,7 @@
 'use client';
 
 import type { QuarantinePolicyDetail } from '@/lib/mastyf-ai-api';
+import { formatEnforcementStatus } from '@/lib/quarantine-messages';
 
 type Props = {
   open: boolean;
@@ -120,7 +121,7 @@ export function QuarantinePolicyDrawer({ open, loading, detail, error, onClose }
               {detail.quarantine.enforcementStatus ? (
                 <>
                   <dt>Enforcement</dt>
-                  <dd>{detail.quarantine.enforcementStatus}</dd>
+                  <dd>{formatEnforcementStatus(detail.quarantine.enforcementStatus)}</dd>
                 </>
               ) : null}
               {detail.quarantine.enforcementDetail ? (

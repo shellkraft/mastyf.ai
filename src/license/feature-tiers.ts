@@ -1,8 +1,7 @@
 /**
- * Open-core feature tiers — Community (free on npm) vs Pro (paid license).
+ * Feature tiers — MIT open source by default; optional cloud license enforcement.
  */
 
-import { Logger } from '../utils/logger.js';
 import { resolveProCheckoutUrl } from './pro-checkout-url.js';
 
 export const PRO_FEATURES = [
@@ -25,22 +24,16 @@ export type ProFeature = (typeof PRO_FEATURES)[number];
 
 const PRO_FEATURE_SET = new Set<string>(PRO_FEATURES);
 
-/** Community tier — always available without a license. */
-export const COMMUNITY_FEATURES = ['proxy', 'cli', 'policy_local'] as const;
+/** Always-on community features (also included in PRO_FEATURES for telemetry). */
+export const COMMUNITY_FEATURES = [
+  'proxy',
+  'cli',
+  'policy_local',
+  ...PRO_FEATURES,
+] as const;
 
-let warnedOpenCoreFalse = false;
-
-/** v3+: Pro gates always apply. MASTYF_AI_OPEN_CORE=false is ignored (use a valid MASTYF_AI_LICENSE_KEY for local development). */
+/** Open-source edition — feature gating disabled unless MASTYF_AI_REQUIRE_LICENSE=true. */
 export function isOpenCoreEnabled(): boolean {
-  if (process.env['MASTYF_AI_OPEN_CORE'] === 'false') {
-    if (!warnedOpenCoreFalse) {
-      warnedOpenCoreFalse = true;
-      Logger.warn(
-        '[license] MASTYF_AI_OPEN_CORE=false is deprecated in v3.0 — Pro gates remain active. ' +
-          'For local development, set MASTYF_AI_LICENSE_KEY and MASTYF_AI_CONTROL_PLANE_URL (see docs/PRO_SETUP.md)',
-      );
-    }
-  }
   return true;
 }
 
@@ -73,6 +66,7 @@ export function assertEnterpriseLicensePosture(): void {
 /** isDevUnlockAllowed removed in v3.2.3 — use a valid MASTYF_AI_LICENSE_KEY for local development. */
 export const isDevUnlockAllowed = () => false;
 
+/** Classifier only — does not gate access when license enforcement is off. */
 export function isProFeature(feature: string): boolean {
   return PRO_FEATURE_SET.has(feature);
 }

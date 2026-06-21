@@ -95,11 +95,11 @@ export function AnalyticsDashboardPanel({ refreshKey = 0, wsConnected = false }:
   }, [drift.caveat.confidence, drift.changeDetected]);
 
   return (
-    <section className="analytics-dashboard" aria-label="MCP Mastyf AI Analytics">
+    <section className="analytics-dashboard" aria-label="mastyf.ai Analytics">
       <header className="analytics-dashboard-header">
         <div className="analytics-dashboard-title-row">
           <Activity size={22} className="analytics-dashboard-icon" aria-hidden />
-          <h2>MCP Mastyf AI Analytics</h2>
+          <h2>mastyf.ai Analytics</h2>
           <span className={`analytics-live-badge ${wsConnected ? 'live' : ''}`}>
             <span className="analytics-live-dot" aria-hidden />
             {wsConnected ? 'Live — WebSocket connected' : 'Polling'}

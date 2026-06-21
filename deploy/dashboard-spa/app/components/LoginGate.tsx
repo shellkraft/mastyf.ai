@@ -11,6 +11,7 @@ import {
   type AuthStatus,
 } from '@/lib/mastyf-ai-api';
 import { Button } from './ui/Button';
+import { BrandLogo } from './ui/BrandLogo';
 
 type Props = {
   children: ReactNode;
@@ -83,8 +84,10 @@ export function LoginGate({ children, onAuthenticated }: Props) {
       <div className="shell" style={{ alignItems: 'center', justifyContent: 'center' }}>
         <div className="card" style={{ maxWidth: 400, width: '100%', margin: '0 var(--space-4)' }}>
           <div className="card-body">
-            <div className="sidebar-logo" style={{ margin: '0 auto 16px' }}>G</div>
-            <h2 className="card-title" style={{ textAlign: 'center', marginBottom: 4 }}>MCP Guardian</h2>
+            <div style={{ margin: '0 auto 16px', width: 52 }}>
+              <BrandLogo size={52} />
+            </div>
+            <h2 className="card-title" style={{ textAlign: 'center', marginBottom: 4 }}>mastyf.ai</h2>
             <p className="text-sm text-muted" style={{ textAlign: 'center', marginBottom: 20 }}>
               Dashboard authentication required
             </p>

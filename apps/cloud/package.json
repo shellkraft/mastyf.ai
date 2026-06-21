@@ -10,11 +10,13 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "db:migrate": "node scripts/migrate.mjs",
+    "oauth:setup": "node scripts/setup-github-oauth.mjs",
     "sync:default-policy": "node scripts/sync-default-policy-embed.mjs",
     "prebuild": "node scripts/sync-default-policy-embed.mjs"
   },
   "dependencies": {
     "@auth/drizzle-adapter": "^1.7.4",
+    "@mastyf-ai/server": "link:../../",
     "@vercel/analytics": "^2.0.1",
     "bcryptjs": "^2.4.3",
     "drizzle-orm": "^0.45.2",

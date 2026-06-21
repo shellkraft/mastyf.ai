@@ -18,7 +18,7 @@ type Props = {
 
 export function CloudControlPlaneModal({ open, onClose, onConnected, onAction }: Props) {
   const [status, setStatus] = useState<SetupCloudStatus | null>(null);
-  const [url, setUrl] = useState('https://mastyf-ai-cloud.vercel.app');
+  const [url, setUrl] = useState('https://www.mastyf.ai');
   const [ssoEnabled, setSsoEnabled] = useState(true);
   const [strictness, setStrictness] = useState(85);
   const [keyRotation, setKeyRotation] = useState(false);

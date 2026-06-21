@@ -20,12 +20,18 @@
  *   F  (0-19):   Unsafe
  */
 
+import {
+  computeTrustGrade,
+  trustGradeColor,
+  type TrustGrade,
+} from './trust-badge-grade.js';
+
 export interface TrustScore {
   serverName: string;
   /** Overall score 0-100 */
   overallScore: number;
   /** Letter grade */
-  grade: 'A+' | 'A' | 'B' | 'C' | 'D' | 'F';
+  grade: TrustGrade;
   /** Per-category breakdowns */
   categories: ScoreCategory[];
   /** When this score was computed */
@@ -301,35 +307,21 @@ export class MastyfAiScore {
   }
 
   /** Compute letter grade. */
-  private computeGrade(score: number): TrustScore['grade'] {
-    if (score >= 90) return 'A+';
-    if (score >= 80) return 'A';
-    if (score >= 60) return 'B';
-    if (score >= 40) return 'C';
-    if (score >= 20) return 'D';
-    return 'F';
+  private computeGrade(score: number): TrustGrade {
+    return computeTrustGrade(score);
   }
 
   /** Compute badge. */
-  private computeBadge(grade: TrustScore['grade']): TrustBadge {
-    const colors: Record<string, string> = {
-      'A+': '#00C853',
-      'A': '#64DD17',
-      'B': '#FFD600',
-      'C': '#FF9100',
-      'D': '#FF3D00',
-      'F': '#D50000',
-    };
-
+  private computeBadge(grade: TrustGrade): TrustBadge {
     return {
       grade,
-      color: colors[grade] || '#999',
+      color: trustGradeColor(grade),
       text: `MCP Mastyf AI Score: ${grade}`,
     };
   }
 
   /** Generate improvement actions. */
-  private generateImprovements(categories: ScoreCategory[], grade: TrustScore['grade']): ImprovementAction[] {
+  private generateImprovements(categories: ScoreCategory[], grade: TrustGrade): ImprovementAction[] {
     const actions: ImprovementAction[] = [];
 
     for (const cat of categories) {

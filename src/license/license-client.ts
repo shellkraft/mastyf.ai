@@ -97,6 +97,8 @@ export class LicenseClient {
 
   isLicensed(): boolean {
     if (isCiLicenseBypass() || isCiTokenCached()) return true;
+    // Open source: all features unlocked unless cloud license enforcement is on.
+    if (!isLicenseEnforcementEnabled()) return true;
     if (!this.isEnabled()) return false;
     if (this.state?.licensed) return true;
     if (this.lastGoodState && this.isWithinGrace()) return true;
@@ -107,9 +109,11 @@ export class LicenseClient {
     return licenseTier(this.isLicensed());
   }
 
-  hasFeature(feature: string): boolean {
+  hasFeature(_feature: string): boolean {
     if (isCiLicenseBypass() || isCiTokenCached()) return true;
-    if (!isProFeature(feature)) return true;
+    // Open source (default): every feature is available without a license key.
+    if (!isLicenseEnforcementEnabled()) return true;
+    if (!isProFeature(_feature)) return true;
     if (!isOpenCoreEnabled()) return false;
     return this.isLicensed();
   }

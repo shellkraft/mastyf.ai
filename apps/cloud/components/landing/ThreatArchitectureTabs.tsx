@@ -2,6 +2,7 @@
 
 import Image from 'next/image';
 import { useState } from 'react';
+import { SITE_NAME } from '@/lib/product-links';
 import {
   AUTO_RESEARCH_STAGES,
   THREAT_LAB_STAGES,
@@ -21,21 +22,21 @@ const FLOWS: {
 }[] = [
   {
     id: 'threat-lab',
-    title: 'LLM Threat Discovery Architecture',
+    title: `${SITE_NAME} — LLM Threat Discovery Architecture`,
     subtitle: 'Human-in-the-loop discovery — LLM proposes, you approve before policy changes.',
     image: '/assets/llm-threat-discovery-architecture.png',
     imageAlt:
-      'LLM Threat Discovery pipeline: detection sources, Ollama LLM, validation gates, signed manifest, human accept',
+      'mastyf.ai LLM Threat Discovery pipeline: detection sources, Ollama LLM, validation gates, signed manifest, human accept',
     stages: THREAT_LAB_STAGES,
     badge: 'Threat Lab',
   },
   {
     id: 'auto-research',
-    title: 'Self-Sustaining Threat Research Architecture',
+    title: `${SITE_NAME}: Self-Sustaining Threat Research Architecture`,
     subtitle: 'Continuous red-team loop — live proxy traffic feeds new adversarial fixtures 24/7.',
     image: '/assets/auto-threat-research-architecture.png',
     imageAlt:
-      'Auto Threat Research pipeline: live detections, debounced queue, LLM research, taxonomy, adv fixture write',
+      'mastyf.ai Auto Threat Research pipeline: live detections, debounced queue, LLM research, taxonomy, adv fixture write',
     stages: AUTO_RESEARCH_STAGES,
     badge: 'Auto Research',
   },
@@ -67,7 +68,7 @@ export function ThreatArchitectureTabs() {
             onClick={() => pickFlow(f.id)}
           >
             <span className="landing-threat-tab-badge">{f.badge}</span>
-            {f.title.replace(' Architecture', '')}
+            {f.id === 'threat-lab' ? 'LLM Threat Discovery' : 'Self-Sustaining Threat Research'}
           </button>
         ))}
       </div>

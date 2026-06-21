@@ -602,6 +602,47 @@ fleetCmd
     process.exit(await runFleetStatus(opts));
   });
 
+const certifyCmd = program.command('certify').description('MCP security certification and public badge publish');
+
+certifyCmd
+  .command('publish')
+  .description('Scan server, compute trust score, and publish badge to MCP Mastyf AI Cloud')
+  .requiredOption('--server <name>', 'MCP server name from config')
+  .requiredOption('--package <npm>', 'npm package name (e.g. @scope/mcp-server)')
+  .requiredOption('--pkg-version <semver>', 'Package version')
+  .option('--cloud-url <url>', 'Cloud base URL (default: MASTYF_AI_CLOUD_URL or mastyf-ai-cloud.vercel.app)')
+  .option('--api-key <key>', 'Cloud API key (default: MASTYF_AI_CLOUD_API_KEY)')
+  .option('--config <path>', 'MCP config path')
+  .option('--db <path>', 'History DB path')
+  .option('--json', 'Emit full JSON result')
+  .action(async (opts: {
+    server: string;
+    package: string;
+    pkgVersion: string;
+    cloudUrl?: string;
+    apiKey?: string;
+    config?: string;
+    db?: string;
+    json?: boolean;
+  }) => {
+    try {
+      const { runCertifyPublishCli } = await import('./cli/certify-cmd.js');
+      process.exit(await runCertifyPublishCli({
+        server: opts.server,
+        package: opts.package,
+        version: opts.pkgVersion,
+        cloudUrl: opts.cloudUrl,
+        apiKey: opts.apiKey,
+        config: opts.config,
+        db: opts.db,
+        json: opts.json,
+      }));
+    } catch (err: unknown) {
+      console.error(chalk.red((err as Error).message));
+      process.exit(1);
+    }
+  });
+
 const roadmapCmd = program.command('roadmap').description('Industry-standard roadmap utilities (A1–C5)');
 
 roadmapCmd
@@ -745,6 +786,9 @@ program
   .option('--dry-run', 'Simulate policy against historical call_records without activating the proxy')
   .option('--gateway', 'Shared ingress: SSE/WebSocket only (requires MASTYF_AI_MULTI_TENANT_ENABLED)', false)
   .action(async (opts: ProxyOptions) => {
+    const { applyProxyRuntimeDefaults } = await import('./utils/start-env.js');
+    applyProxyRuntimeDefaults();
+
     const paths = opts.config ? [opts.config] : ConfigParser.findConfigPaths();
     if (paths.length === 0) { console.error(chalk.red('No MCP config files found. Use --config to specify a path.')); process.exit(1); }
 
@@ -1014,7 +1058,32 @@ program
     if (isAiLearningEnabled()) {
       const { initializeAiEngine } = await import('./ai/suggestion-engine.js');
       initializeAiEngine(db, servers)
-        .then(() => void rewireDashboardWs())
+        .then(async () => {
+          await rewireDashboardWs();
+          try {
+            const { maybeRunLearningWarmup } = await import('./ai/learning-warmup.js');
+            const { resolveCliTenantId } = await import('./tenant/resolve-tenant.js');
+            const warmup = await maybeRunLearningWarmup({
+              db,
+              servers,
+              policyEngine: policyEngine ?? null,
+              tenantId: resolveCliTenantId({}),
+            });
+            if (warmup.seeded > 0) {
+              console.error(
+                chalk.dim(
+                  `[learning-warmup] ${warmup.seeded} corpus samples → ${warmup.semanticRecords} semantic audit(s)`,
+                ),
+              );
+            }
+          } catch (err: unknown) {
+            console.error(
+              chalk.yellow(
+                `Learning warmup warning: ${err instanceof Error ? err.message : String(err)}`,
+              ),
+            );
+          }
+        })
         .catch((err: any) => {
           console.error(chalk.yellow(`AI learning engine warning: ${err instanceof Error ? err.message : String(err)}`));
         });

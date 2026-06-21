@@ -15,7 +15,7 @@ import { PolicyWatcher } from '../policy/policy-watcher.js';
 import type { McpServerConfig } from '../types.js';
 import { PricingClient } from '../clients/pricing-client.js';
 import { Logger } from '../utils/logger.js';
-import { writeFileSync, mkdirSync, existsSync } from 'fs';
+import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
 import { dirname } from 'path';
 import { resolveAiPendingSuggestionsPath, resolveAiReportPath } from './ai-paths.js';
 import { broadcastDashboardEvent } from '../utils/dashboard-events.js';
@@ -560,6 +560,57 @@ let globalEngine: SuggestionEngine | null = null;
 /** Get the running AI engine instance */
 export function getAiEngine(): SuggestionEngine | null {
   return globalEngine;
+}
+
+/** Lazy-init AI engine for dashboard-only or late-bound DB (idempotent). */
+export async function ensureAiEngineInitialized(
+  historyDb: unknown,
+  servers?: McpServerConfig[],
+): Promise<SuggestionEngine | null> {
+  if (!isAiLearningEnabled()) return null;
+  if (globalEngine) return globalEngine;
+
+  const db = historyDb as HistoryDatabase;
+  let resolved = servers;
+  if (!resolved?.length) {
+    const names = await getAllActiveServerNames(db);
+    resolved = names.length
+      ? serversFromNames(names)
+      : [{ name: 'mastyf-dashboard', transport: 'stdio' }];
+  }
+  return initializeAiEngine(db, resolved);
+}
+
+/** Read persisted pending suggestions (fast — no learning cycle). */
+export function loadPendingSuggestions(tenantId?: string): Array<{
+  id: string;
+  ruleName?: string;
+  confidence?: number;
+  reason?: string;
+  source?: string;
+  rule?: PolicyRule;
+  estimatedSavings?: number;
+  autopilot?: Record<string, unknown>;
+}> {
+  try {
+    const path = resolveAiPendingSuggestionsPath(tenantId);
+    if (!existsSync(path)) return [];
+    const body = JSON.parse(readFileSync(path, 'utf-8')) as {
+      suggestions?: Array<{
+        id: string;
+        ruleName?: string;
+        confidence?: number;
+        reason?: string;
+        source?: string;
+        rule?: PolicyRule;
+        estimatedSavings?: number;
+        autopilot?: Record<string, unknown>;
+      }>;
+    };
+    return body.suggestions ?? [];
+  } catch {
+    return [];
+  }
 }
 
 /** Initialize and start the AI engine with live data */

@@ -1,48 +1,76 @@
 'use client';
 
-import { POST_SIGNIN_PATH } from '@/lib/github-links';
+import { GITHUB_DEFAULT_BRANCH, GITHUB_REPO_URL } from '@/lib/github-links';
+import { DEV_AUTH_PROVIDER_ID } from '@/lib/oauth-providers';
+import { NPM_PACKAGE_URL, NPM_PRODUCT_NAME, SITE_NAME } from '@/lib/product-links';
 import { signIn } from 'next-auth/react';
+
+const OAUTH_SETUP_DOC = `${GITHUB_REPO_URL}/blob/${GITHUB_DEFAULT_BRANCH}/apps/cloud/docs/OAUTH_CLOUD_SETUP.md`;
 
 type Props = {
   callbackUrl?: string;
   googleEnabled?: boolean;
   githubEnabled?: boolean;
+  devEnabled?: boolean;
+  /** True when running locally without OAuth env vars — show setup hint for developers. */
+  devSetupNeeded?: boolean;
 };
 
 export function SignInButtons({
-  callbackUrl = POST_SIGNIN_PATH,
+  callbackUrl = '/dashboard',
   googleEnabled = false,
   githubEnabled = false,
+  devEnabled = false,
+  devSetupNeeded = false,
 }: Props) {
-  if (!googleEnabled && !githubEnabled) {
+  const anyProvider = googleEnabled || githubEnabled || devEnabled;
+
+  if (!anyProvider) {
     return (
-      <section className="card">
-        <p className="muted">
-          Cloud sign-in is not configured yet. The operator must add Google and/or GitHub OAuth
-          credentials to Vercel. See{' '}
-          <a href="https://github.com/mastyf-ai/mastyf-ai/blob/master/docs/OAUTH_CLOUD_SETUP.md">
-            docs/OAUTH_CLOUD_SETUP.md
+      <>
+        <div className="login-no-auth">
+          <p>
+            <strong>Cloud sign-in is not available right now.</strong> You can still use{' '}
+            <a href="/certified">security scores</a> and trust badges without an account.
+          </p>
+          {devSetupNeeded ? (
+            <p>
+              <strong>Local development:</strong> run{' '}
+              <code>pnpm --filter @mastyf-ai/cloud oauth:setup</code> or add GitHub/Google OAuth to{' '}
+              <code>apps/cloud/.env.local</code>. See the{' '}
+              <a href={OAUTH_SETUP_DOC}>OAuth setup guide</a>.
+            </p>
+          ) : (
+            <p>
+              The cloud console requires Google or GitHub sign-in once OAuth is configured on this
+              deployment.
+            </p>
+          )}
+        </div>
+        <p className="login-alt muted">
+          Self-hosting? Clone{' '}
+          <a href={GITHUB_REPO_URL} rel="noopener noreferrer">
+            {SITE_NAME} on GitHub
+          </a>{' '}
+          or install{' '}
+          <a href={NPM_PACKAGE_URL} rel="noopener noreferrer">
+            {NPM_PRODUCT_NAME} on npm
           </a>
           .
         </p>
-        <p className="muted" style={{ marginTop: '0.75rem', fontSize: '0.875rem' }}>
-          Pro license validation does not require sign-in — use{' '}
-          <code>MASTYF_AI_LICENSE_KEY</code> with{' '}
-          <code>MASTYF_AI_CONTROL_PLANE_URL=https://mastyf-ai-cloud.vercel.app</code>.
-        </p>
-      </section>
+      </>
     );
   }
 
   return (
     <div className="signin-buttons">
-      {googleEnabled ? (
+      {devEnabled ? (
         <button
           type="button"
-          className="btn btn-google"
-          onClick={() => signIn('google', { callbackUrl })}
+          className="btn btn-primary"
+          onClick={() => signIn(DEV_AUTH_PROVIDER_ID, { callbackUrl })}
         >
-          Continue with Google
+          Continue as local dev user
         </button>
       ) : null}
       {githubEnabled ? (
@@ -53,6 +81,21 @@ export function SignInButtons({
         >
           Continue with GitHub
         </button>
+      ) : null}
+      {googleEnabled ? (
+        <button
+          type="button"
+          className="btn btn-google"
+          onClick={() => signIn('google', { callbackUrl })}
+        >
+          Continue with Google
+        </button>
+      ) : null}
+      {devEnabled && !githubEnabled && !googleEnabled ? (
+        <p className="muted" style={{ fontSize: '0.85rem', margin: '0.5rem 0 0', textAlign: 'left' }}>
+          Dev-only sign-in (<code>AUTH_DEV_LOGIN=true</code>). For real OAuth, run{' '}
+          <code>pnpm --filter @mastyf-ai/cloud oauth:setup</code>.
+        </p>
       ) : null}
     </div>
   );

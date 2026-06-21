@@ -17,6 +17,7 @@ describe('open-core feature tiers', () => {
     resetLicenseClientForTests();
     delete process.env.MASTYF_AI_CI_BYPASS_LICENSE;
     delete process.env.MASTYF_AI_DEV_UNLOCK_ALL;
+    delete process.env.MASTYF_AI_REQUIRE_LICENSE;
   });
 
   afterEach(() => {
@@ -24,35 +25,25 @@ describe('open-core feature tiers', () => {
     resetLicenseClientForTests();
   });
 
-  it('enables open-core by default (v3+ always gates Pro)', () => {
-    delete process.env.MASTYF_AI_OPEN_CORE;
+  it('is open source by default', () => {
     expect(isOpenCoreEnabled()).toBe(true);
   });
 
-  it('ignores MASTYF_AI_OPEN_CORE=false — gates remain active', () => {
-    process.env.MASTYF_AI_OPEN_CORE = 'false';
-    expect(isOpenCoreEnabled()).toBe(true);
-  });
-
-  it('dev unlock always returns false (removed in v3.2.3)', () => {
+  it('dev unlock always returns false', () => {
     process.env.NODE_ENV = 'development';
     process.env.MASTYF_AI_DEV_UNLOCK_ALL = 'true';
     expect(isDevUnlockAllowed()).toBe(false);
-    process.env.NODE_ENV = 'production';
-    expect(isDevUnlockAllowed()).toBe(false);
   });
 
-  it('classifies swarm and proxy correctly', () => {
+  it('classifies feature names for telemetry', () => {
     expect(isProFeature('swarm')).toBe(true);
     expect(isProFeature('proxy')).toBe(false);
     expect(allProFeatureNames().length).toBeGreaterThan(5);
   });
 
-  it('blocks Pro features without license key when open-core is on', () => {
+  it('unlocks all features without license key (open source)', () => {
     delete process.env.MASTYF_AI_CONTROL_PLANE_URL;
     delete process.env.MASTYF_AI_LICENSE_KEY;
-    delete process.env.MASTYF_AI_DEV_UNLOCK_ALL;
-    process.env.MASTYF_AI_OPEN_CORE = 'true';
 
     const client = new LicenseClient({
       requireLicense: false,
@@ -60,15 +51,13 @@ describe('open-core feature tiers', () => {
       graceSeconds: 900,
     });
 
-    expect(client.getTier()).toBe('community');
-    expect(client.isLicensed()).toBe(false);
-    expect(client.hasFeature('swarm')).toBe(false);
-    expect(client.hasFeature('dashboard')).toBe(false);
+    expect(client.isLicensed()).toBe(true);
+    expect(client.hasFeature('swarm')).toBe(true);
+    expect(client.hasFeature('dashboard')).toBe(true);
     expect(client.hasFeature('proxy')).toBe(true);
   });
 
   it('allows Pro features when licensed via control plane', async () => {
-    process.env.MASTYF_AI_OPEN_CORE = 'true';
     const fetchFn = vi.fn().mockResolvedValue({
       ok: true,
       json: async () => ({

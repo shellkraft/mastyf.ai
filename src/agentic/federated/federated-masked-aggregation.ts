@@ -2,17 +2,50 @@
  * B3 — Pairwise-masked gradient aggregation (MPC-lite secure FedAvg analog).
  * Masks cancel when all participant gradients are summed; server never sees raw local gradients.
  */
-import { createHmac } from 'crypto';
+import { createHmac, randomBytes } from 'crypto';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { homedir } from 'node:os';
+import { dirname, join } from 'node:path';
+
+const LOCAL_DEV_MPC_SECRET = 'mastyf-ai-local-dev-mpc-secret-do-not-use-in-prod';
+
+function mpcSecretPath(): string {
+  const home = process.env['MASTYF_AI_HOME'] || join(homedir(), '.mastyf-ai');
+  return join(home, '.federated-mpc-secret');
+}
 
 function getMpcSecret(): string {
-  const secret = process.env['MASTYF_AI_FEDERATED_MPC_SECRET'];
-  if (!secret) {
+  const fromEnv = process.env['MASTYF_AI_FEDERATED_MPC_SECRET']?.trim();
+  if (fromEnv) return fromEnv;
+
+  const path = mpcSecretPath();
+  try {
+    if (existsSync(path)) {
+      const secret = readFileSync(path, 'utf8').trim();
+      if (secret) {
+        process.env['MASTYF_AI_FEDERATED_MPC_SECRET'] = secret;
+        return secret;
+      }
+    }
+    if (process.env['MASTYF_AI_STRICT_MODE'] !== 'true' && process.env['MASTYF_AI_ENTERPRISE_MODE'] !== 'true') {
+      const secret = randomBytes(32).toString('hex');
+      mkdirSync(dirname(path), { recursive: true });
+      writeFileSync(path, `${secret}\n`, { mode: 0o600 });
+      process.env['MASTYF_AI_FEDERATED_MPC_SECRET'] = secret;
+      return secret;
+    }
+  } catch {
+    /* fall through */
+  }
+
+  if (process.env['MASTYF_AI_STRICT_MODE'] === 'true' || process.env['MASTYF_AI_ENTERPRISE_MODE'] === 'true') {
     throw new Error(
       'MASTYF_AI_FEDERATED_MPC_SECRET environment variable is required for federated MPC masking. ' +
       'Set a cryptographically random secret (e.g., openssl rand -hex 32).',
     );
   }
-  return secret;
+
+  return LOCAL_DEV_MPC_SECRET;
 }
 
 function maskVector(participantId: string, peerId: string, roundId: string, dim: number, sign: 1 | -1): number[] {

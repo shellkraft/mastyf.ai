@@ -166,7 +166,7 @@ export const HELP_TOPICS: HelpTopic[] = [
   },
   {
     id: 'live-analytics',
-    title: 'MCP Mastyf AI Analytics',
+    title: 'mastyf.ai Analytics',
     category: 'Operations',
     what: 'Live traffic, cost, model usage, and provider spend in one dashboard with WebSocket refresh.',
     how: [

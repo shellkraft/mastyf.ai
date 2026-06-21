@@ -8,13 +8,13 @@ import {
   isProFeature,
   type ProFeature,
 } from './feature-tiers.js';
-import { getLicenseClient, loadLicenseClientConfig } from './license-client.js';
+import { getLicenseClient, isLicenseEnforcementEnabled, loadLicenseClientConfig } from './license-client.js';
 import { isCiTokenCached, verifyCiToken } from './ci-token.js';
+import { defaultControlPlaneUrl } from '../constants/cloud-url.js';
 
 export function formatProRequiredMessage(feature: string): string {
   const checkout = getProCheckoutUrl();
-  const controlPlane =
-    process.env['MASTYF_AI_CONTROL_PLANE_URL'] ?? 'https://mastyf-ai-cloud.vercel.app';
+  const controlPlane = defaultControlPlaneUrl();
   return [
     `MCP Mastyf AI Pro required for feature: ${feature}`,
     '',
@@ -31,6 +31,7 @@ export function formatProRequiredMessage(feature: string): string {
 }
 
 export async function ensureProFeature(feature: ProFeature | string): Promise<void> {
+  if (!isLicenseEnforcementEnabled()) return;
   assertEnterpriseLicensePosture();
   if (isCiLicenseBypass() || isCiTokenCached()) return;
 
@@ -59,6 +60,7 @@ export async function exitUnlessProFeature(feature: ProFeature | string): Promis
 
 /** Sync check after license client has been started (e.g. dashboard already refreshed). */
 export function assertProFeatureStarted(feature: ProFeature | string): void {
+  if (!isLicenseEnforcementEnabled()) return;
   assertEnterpriseLicensePosture();
   if (isCiLicenseBypass() || isCiTokenCached()) return;
   const name = String(feature);
@@ -80,6 +82,7 @@ export class ProLicenseRequiredError extends Error {
 
 /** CLI entry: node dist/license/check-pro.js <feature> */
 export async function runCheckProCli(argv: string[] = process.argv.slice(2)): Promise<number> {
+  if (!isLicenseEnforcementEnabled()) return 0;
   const feature = argv[0] || 'swarm';
   try {
     assertEnterpriseLicensePosture();

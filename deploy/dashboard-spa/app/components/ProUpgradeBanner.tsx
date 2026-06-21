@@ -20,7 +20,7 @@ export function ProUpgradeBanner({ authStatus }: Props) {
         {' '}
         — Install and proxy are free on npm. Unlock dashboard, security swarm, multi-tenant, and
         semantic audit with{' '}
-        <strong>MCP Mastyf AI Pro</strong> ($4.99 lifetime).
+        <strong>mastyf.ai Pro</strong> ($4.99 lifetime).
       </span>
       {upgradeUrl ? (
         <a className="pro-upgrade-link" href={upgradeUrl} target="_blank" rel="noopener noreferrer">

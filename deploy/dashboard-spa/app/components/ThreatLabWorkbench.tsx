@@ -107,18 +107,23 @@ export function ThreatLabWorkbench({
   }, [conversion.caveat.confidence, conversion.conversionRatePct]);
 
   const onAccept = async (id: string) => {
-    const ok = await acceptThreatLabCandidate(id);
-    if (ok) {
+    const res = await acceptThreatLabCandidate(id);
+    if (res.ok) {
       setSelected(null);
       onRefresh?.();
+      onRunStarted?.(res.ruleName ? `Accepted — applied ${res.ruleName}` : `Accepted ${id}`);
+    } else {
+      onRunStarted?.(res.error || `Accept failed for ${id}`);
     }
   };
 
   const onReject = async (id: string) => {
-    const ok = await rejectThreatLabCandidate(id);
-    if (ok) {
+    const res = await rejectThreatLabCandidate(id);
+    if (res.ok) {
       setSelected(null);
       onRefresh?.();
+    } else {
+      onRunStarted?.(res.error || `Reject failed for ${id}`);
     }
   };
 

@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { HttpProxyServer } from '../../src/proxy/http-proxy-server.js';
 import { PolicyEngine } from '../../src/policy/policy-engine.js';
+import { inspectToolResponse } from '../../src/proxy/response-inspection.js';
 import { injectRotatedSessionIntoResult } from '../../src/utils/mcp-session-meta.js';
 
 describe('HttpProxyServer response gate', () => {
@@ -20,16 +20,23 @@ describe('HttpProxyServer response gate', () => {
       version: '1.0',
       policy: { mode: 'block', default_action: 'block', rules: [] },
     });
-    const proxy = new HttpProxyServer('http://127.0.0.1:9', 'http-gate', policy);
 
     const msg = {
       jsonrpc: '2.0',
       id: 42,
       result: { note: 'patient ssn 123-45-6789' },
     };
-    const inspected = await (proxy as any).inspectToolResponse('read_file', msg, 42);
-    expect(inspected.blocked?.error?.code).toBe(-32002);
-    expect(String(inspected.blocked?.error?.message)).toContain('blocked');
+    const inspected = await inspectToolResponse({
+      response: msg,
+      toolName: 'read_file',
+      serverName: 'http-gate',
+      requestId: 42,
+      policyEngine: policy,
+      transportLabel: 'http-proxy',
+    });
+    expect(inspected.blocked).toBe(true);
+    expect(inspected.blockResponse?.error?.code).toBe(-32002);
+    expect(String(inspected.blockResponse?.error?.message)).toContain('blocked');
   });
 
   it('redacts tool result in redact mode', async () => {
@@ -38,15 +45,22 @@ describe('HttpProxyServer response gate', () => {
       version: '1.0',
       policy: { mode: 'block', default_action: 'block', rules: [] },
     });
-    const proxy = new HttpProxyServer('http://127.0.0.1:9', 'http-redact', policy);
 
     const msg = {
       jsonrpc: '2.0',
       id: 7,
       result: { note: 'patient ssn 123-45-6789' },
     };
-    const inspected = await (proxy as any).inspectToolResponse('read_file', msg, 7);
-    expect(inspected.blocked).toBeNull();
+    const inspected = await inspectToolResponse({
+      response: msg,
+      toolName: 'read_file',
+      serverName: 'http-redact',
+      requestId: 7,
+      policyEngine: policy,
+      transportLabel: 'http-proxy',
+    });
+    expect(inspected.blocked).toBe(false);
+    expect(inspected.redacted).toBe(true);
     expect(inspected.redactionReasons?.length).toBeGreaterThan(0);
     expect(JSON.stringify(msg.result)).not.toContain('123-45-6789');
   });

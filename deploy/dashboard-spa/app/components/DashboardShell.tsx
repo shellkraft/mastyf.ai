@@ -1,3 +1,5 @@
+import { BrandLogo } from './ui/BrandLogo';
+
 type Props = {
   status?: string;
   statusIsError?: boolean;
@@ -8,7 +10,9 @@ export function DashboardShell({ status = 'Loading…', statusIsError = false }:
     <div className="shell" style={{ alignItems: 'center', justifyContent: 'center' }}>
       <div style={{ textAlign: 'center', padding: 48 }}>
         <div className="card" style={{ padding: 32, maxWidth: 400, margin: '0 auto' }}>
-          <div className="sidebar-logo" style={{ margin: '0 auto 16px' }}>G</div>
+          <div style={{ margin: '0 auto 16px', width: 52 }}>
+            <BrandLogo size={52} />
+          </div>
           <p className={`text-sm ${statusIsError ? 'text-danger' : 'text-muted'}`}>
             {status}
           </p>

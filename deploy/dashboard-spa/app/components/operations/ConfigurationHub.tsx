@@ -250,7 +250,7 @@ export function ConfigurationHub({ view, roles, tenantLocked = false, onAction, 
             )}
           </Card>
 
-          <Card title="Cloud Connection" subtitle="Connect to Mastyf AI control plane">
+          <Card title="Cloud Connection" subtitle="Connect to the mastyf.ai control plane">
             <div className="cloud-connection" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               <div className="flex items-center gap-2">
                 <Cloud size={18} />
@@ -276,7 +276,7 @@ export function ConfigurationHub({ view, roles, tenantLocked = false, onAction, 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   <label className="text-sm" style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                     Control Plane URL
-                    <input type="url" className="input" value={cloudUrl} onChange={(e) => setCloudUrl(e.target.value)} placeholder="https://cloud.mastyf.ai" style={{ width: '100%' }} />
+                    <input type="url" className="input" value={cloudUrl} onChange={(e) => setCloudUrl(e.target.value)} placeholder="https://www.mastyf.ai" style={{ width: '100%' }} />
                   </label>
                   <label className="flex items-center gap-2 text-sm">
                     <input type="checkbox" checked={ssoEnabled} onChange={(e) => setSsoEnabled(e.target.checked)} />

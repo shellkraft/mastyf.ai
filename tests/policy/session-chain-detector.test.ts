@@ -70,4 +70,24 @@ describe('session-chain-detector', () => {
     expect(decision?.action).toBe('block');
     expect(decision?.rule).toBe('session-chain-detector');
   });
+
+  it('does not treat benign list_directory as a sensitive read in chain detection', () => {
+    resetSessionFlowStore();
+    const sessionKey = 'default:test:agent-1';
+    appendFlowEventSync(sessionKey, {
+      toolName: 'list_directory',
+      sensitiveRead: false,
+      dataAccess: true,
+      at: Date.now() - 2000,
+    });
+    appendFlowEventSync(sessionKey, {
+      toolName: 'read_text_file',
+      sensitiveRead: false,
+      dataAccess: true,
+      at: Date.now() - 1000,
+    });
+
+    const decision = evaluateSessionChainGuard(ctx('list_directory', { path: 'docs' }));
+    expect(decision).toBeNull();
+  });
 });

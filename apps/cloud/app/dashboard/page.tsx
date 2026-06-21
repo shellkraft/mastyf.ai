@@ -1,7 +1,7 @@
 import { CloudConsoleBanner } from '@/components/CloudConsoleBanner';
-import { GitHubGettingStarted } from '@/components/GitHubGettingStarted';
 import { auth } from '@/lib/auth';
 import { getUserOrg } from '@/lib/org-context';
+import { CLOUD_NAME, NPM_PRODUCT_NAME, SITE_NAME } from '@/lib/product-links';
 import Link from 'next/link';
 
 function appUrl(): string {
@@ -16,48 +16,71 @@ export default async function DashboardPage() {
   const ctx = await getUserOrg(session!.user!.id);
   if (!ctx) return null;
 
-  const envBlock = `# MCP Mastyf AI — connect your self-hosted instance (optional cloud policy / advanced SSO)
-MASTYF_AI_MULTI_TENANT_ENABLED=true
+  const envBlock = `# ${SITE_NAME} Cloud — your tenant
 MASTYF_AI_TENANT_ID=${ctx.org.slug}
 MASTYF_AI_CONTROL_PLANE_URL=${appUrl()}
-# Copy AUTH_SECRET from Vercel (mastyf-ai-cloud → Settings → Environment Variables):
-MASTYF_AI_CLOUD_JWT_SECRET=<paste-cloud-AUTH_SECRET>
-DASHBOARD_JWT_SECRET=<same-as-MASTYF_AI_CLOUD_JWT_SECRET>
-# Optional — Pro license / policy API:
-# MASTYF_AI_LICENSE_KEY=<gcp_...-from-settings>
-# Policy file path on your Mastyf AI host:
-# policy-templates/tenants/${ctx.org.slug}/policy.yaml
+# Create or rotate in Settings → API keys:
+MASTYF_AI_CLOUD_API_KEY=<your-api-key>
 
-# Pull policy via API (optional automation):
+# Pull policy from ${SITE_NAME} Cloud:
 # curl -H "Authorization: Bearer <api-key>" ${appUrl()}/api/v1/policy
 `;
 
   return (
     <main className="container">
+      <CloudConsoleBanner />
+
       <h1>{ctx.org.name}</h1>
       <p className="muted">
-        Tenant ID: <code>{ctx.org.slug}</code>
+        {CLOUD_NAME} tenant · ID <code>{ctx.org.slug}</code>
       </p>
 
       <div className="card">
-        <h2>Connect self-hosted MastyfAi</h2>
+        <h2>Your {SITE_NAME} setup</h2>
         <p className="muted">
-          Copy these settings into your Helm values, docker-compose, or .env. Download policy YAML
-          from the Policy page or sync via the API. Mastyf AI is fully open source — no subscription
-          required.
+          This console is {SITE_NAME} — manage policy, API keys, and fleet settings here. No local
+          install required. Copy your tenant details below for API automation and badge embeds.
         </p>
         <pre className="env-block">{envBlock}</pre>
         <div className="actions">
-          <Link href="/dashboard/policy" className="btn">
+          <Link href="/dashboard/policy" className="btn btn-primary">
             Edit policy
           </Link>
           <Link href="/dashboard/settings" className="btn">
             API keys
           </Link>
+          <Link href="/certified" className="btn">
+            Security scores
+          </Link>
         </div>
       </div>
 
-      <GitHubGettingStarted />
+      <div className="card" style={{ marginTop: '1.25rem' }}>
+        <h2>Quick links</h2>
+        <ul className="pro-features" style={{ marginBottom: 0 }}>
+          <li>
+            <Link href="/certified">Look up MCP package scores</Link> — public 0–100 trust badges
+          </li>
+          <li>
+            <Link href="/dashboard/policy">Policy YAML</Link> — edit and download tenant policy
+          </li>
+          <li>
+            <Link href="/dashboard/fleet">Fleet</Link> — see linked self-hosted instances (if any)
+          </li>
+        </ul>
+      </div>
+
+      <div className="card" style={{ marginTop: '1.25rem', borderColor: 'rgba(34, 197, 94, 0.25)' }}>
+        <h2>Optional: link {NPM_PRODUCT_NAME}</h2>
+        <p className="muted">
+          Running the open-source {NPM_PRODUCT_NAME} proxy on your own servers? Connect it to this{' '}
+          {SITE_NAME} tenant to sync policy and use SSO into the local ops dashboard. You do not need
+          this for scores, badges, or cloud policy editing.
+        </p>
+        <Link href="/dashboard/connect" className="btn">
+          Link self-hosted {NPM_PRODUCT_NAME} →
+        </Link>
+      </div>
     </main>
   );
 }

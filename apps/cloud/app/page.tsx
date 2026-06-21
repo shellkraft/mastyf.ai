@@ -1,33 +1,29 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { auth } from '@/lib/auth';
-import { GITHUB_REPO_URL, GITHUB_README_URL } from '@/lib/github-links';
-import { resolveProCheckoutUrl } from '@/lib/pro-checkout-url';
+import { GITHUB_REPO_URL } from '@/lib/github-links';
 import {
-  COMPARISON_ROWS,
-  EVIDENCE_ROWS,
-  FEATURES,
+  DETECTION_LAYERS,
+  FOUNDATION_POINTS,
+  HOW_IT_WORKS,
   HERO_STATS,
+  NPM_INSTALL_CMD,
+  NPM_PACKAGE_NAME,
   NPM_PACKAGE_URL,
+  NPM_PRODUCT_NAME,
+  PLATFORM_FEATURES,
   PROBLEM_BULLETS,
-  SOLUTION_PILLARS,
+  SITE_NAME,
   SWARM_AGENTS,
-  TARGET_SEGMENTS,
-  USP_ITEMS,
 } from '@/components/landing/stats';
 import { ThreatArchitectureTabs } from '@/components/landing/ThreatArchitectureTabs';
+import { BadgeLookupWidget } from '@/components/BadgeLookupWidget';
 import './landing.css';
-
-const PRO_CHECKOUT_URL = resolveProCheckoutUrl();
+import './certified/certified.css';
+import './certified/socket-certified.css';
 
 const CI_AGENTS = SWARM_AGENTS.filter((a) => a.track === 'CI');
 const RUNTIME_AGENTS = SWARM_AGENTS.filter((a) => a.track === 'Runtime');
-
-function trustClass(trust: string): string {
-  if (trust === 'CI-gated') return 'landing-trust landing-trust-ci';
-  if (trust === 'Synthetic') return 'landing-trust landing-trust-synth';
-  return 'landing-trust landing-trust-eval';
-}
 
 export default async function HomePage() {
   const session = await auth();
@@ -36,23 +32,21 @@ export default async function HomePage() {
     <div className="landing">
       <nav className="landing-nav">
         <Link href="/" className="brand">
-          MCP <span>MastyfAi</span>
+          <Image src="/logo.jpeg" alt="" width={28} height={28} className="landing-brand-logo" />
+          <strong>mastyf.ai</strong>
         </Link>
         <div className="landing-nav-links">
-          <a href={NPM_PACKAGE_URL} rel="noopener noreferrer">
-            npm
-          </a>
-          <a href="#problem">Why MCP security</a>
-          <a href="#swarm">Security Swarm</a>
-          <a href="#threat-research">Threat research</a>
-          <a href="#usp">Why MastyfAi</a>
-          <a href="#evidence">Evidence</a>
-          <a href="#pricing">Pricing</a>
+          <a href="#product">Product</a>
+          <Link href="/certified">Security scores</Link>
+          <a href="#how">How it works</a>
+          <a href="#architecture">Architecture</a>
+          <a href="#foundation">{NPM_PRODUCT_NAME}</a>
           <Link href="/dashboard">Cloud console</Link>
+          <a href={GITHUB_REPO_URL} rel="noopener noreferrer">
+            GitHub
+          </a>
           {session ? (
-            <a href={GITHUB_REPO_URL} rel="noopener noreferrer">
-              GitHub
-            </a>
+            <Link href="/dashboard">Dashboard</Link>
           ) : (
             <Link href="/login">Sign in</Link>
           )}
@@ -62,181 +56,142 @@ export default async function HomePage() {
       <div className="landing-wrap">
         <header className="landing-hero" id="top">
           <div className="landing-eyebrow">
-            <span className="landing-pill landing-pill-accent">The MCP security category leader</span>
-            <span className="landing-pill landing-pill-success">11k+ npm downloads / month</span>
-            <span className="landing-pill landing-pill-warn">557+ adversarial fixtures</span>
-            <span className="landing-pill">Self-improving Security Swarm</span>
+            <span className="landing-pill landing-pill-accent">MCP security platform</span>
+            <span className="landing-pill">Free to use</span>
           </div>
-          <h1>Stop AI agents from becoming your next breach vector</h1>
+          <h1>Know which MCP servers are safe to trust</h1>
           <p className="lead">
-            MCP Mastyf AI is the security proxy between AI agents and MCP servers — inspecting every{' '}
-            <code>tools/call</code> and tool response in real time, enforcing YAML policy, and running a
-            closed-loop <strong style={{ color: 'var(--text)' }}>Security Swarm</strong> that red-teams
-            itself faster than attackers evolve.
+            <strong>{SITE_NAME}</strong> scores MCP packages, hosts public trust badges, and gives you a
+            free cloud console to manage policy — so teams can ship AI agents without guessing which tools
+            are safe.
+          </p>
+          <p className="landing-hero-sub">
+            Built on <strong>{NPM_PRODUCT_NAME}</strong>, the open-source MCP security proxy on npm.{' '}
+            {SITE_NAME} is the platform; {NPM_PRODUCT_NAME} is the engine underneath.
           </p>
           <div className="landing-hero-cta">
+            <Link href="/certified" className="btn btn-primary">
+              Look up a package
+            </Link>
             {session ? (
-              <>
-                <a href={GITHUB_REPO_URL} className="btn btn-primary" rel="noopener noreferrer">
-                  Get started on GitHub
-                </a>
-                <Link href="/dashboard" className="btn">
-                  Cloud console
-                </Link>
-              </>
+              <Link href="/dashboard" className="btn">
+                Cloud console
+              </Link>
             ) : (
-              <>
-                <Link href="/login" className="btn btn-primary">
-                  Sign in free
-                </Link>
-                <a href={GITHUB_REPO_URL} className="btn" rel="noopener noreferrer">
-                  View on GitHub
-                </a>
-              </>
+              <Link href="/login" className="btn">
+                Sign in free
+              </Link>
             )}
-            <a
-              href={NPM_PACKAGE_URL}
-              className="btn"
-              rel="noopener noreferrer"
-              style={{ borderColor: 'rgba(34, 197, 94, 0.45)' }}
-            >
-              Install from npm
-            </a>
-            <a
-              href={PRO_CHECKOUT_URL}
-              className="btn"
-              rel="noopener noreferrer"
-              style={{ borderColor: 'rgba(59, 130, 246, 0.5)' }}
-            >
-              Buy Pro — $4.99
+            <a href={GITHUB_REPO_URL} className="btn" rel="noopener noreferrer">
+              View source on GitHub
             </a>
           </div>
-          <p className="muted" style={{ fontSize: '0.85rem', marginTop: '0.75rem' }}>
-            <a href={NPM_PACKAGE_URL} rel="noopener noreferrer">
-              @mastyf-ai/server
-            </a>
-            {' · '}
-            11k+ downloads/month · Works with Cursor, Cline, Claude Code
-          </p>
         </header>
 
-        <section className="landing-stats" aria-label="Key metrics">
-          {HERO_STATS.map((s) => {
-            const isNpm = s.label.includes('npm');
-            const inner = (
-              <>
-                <div className="landing-stat-value">{s.value}</div>
-                <div className="landing-stat-label">{s.label}</div>
-                <div className="landing-stat-detail">{s.detail}</div>
-              </>
-            );
-            return isNpm ? (
-              <a
-                key={s.label}
-                href={NPM_PACKAGE_URL}
-                className="landing-stat landing-stat-link"
-                rel="noopener noreferrer"
-              >
-                {inner}
-              </a>
-            ) : (
-              <article key={s.label} className="landing-stat">
-                {inner}
-              </article>
-            );
-          })}
+        <section className="landing-stats" aria-label="At a glance">
+          {HERO_STATS.map((s) => (
+            <article key={s.label} className="landing-stat">
+              <div className="landing-stat-value">{s.value}</div>
+              <div className="landing-stat-label">{s.label}</div>
+              <div className="landing-stat-detail">{s.detail}</div>
+            </article>
+          ))}
         </section>
 
-        <section className="landing-section landing-problem" id="problem">
+        <section className="landing-section" id="product">
           <div className="landing-section-header">
-            <h2>The attack surface nobody is watching</h2>
+            <h2>What is {SITE_NAME}?</h2>
             <p>
-              Claude, GPT-4, and enterprise agents are wired to real systems through MCP — faster than
-              security teams can respond. One compromised session looks like a legitimate user.
+              A website and cloud platform for MCP security — not an npm package. Look up scores here,
+              manage policy in the console, and embed badges in your docs.
             </p>
           </div>
-          <ul className="landing-problem-list">
-            {PROBLEM_BULLETS.map((b) => (
-              <li key={b}>{b}</li>
-            ))}
-          </ul>
-          <div className="landing-solution-grid">
-            {SOLUTION_PILLARS.map((p) => (
-              <article key={p.title} className="landing-solution-card">
-                <h3>{p.title}</h3>
-                <p>{p.body}</p>
+          <div className="landing-product-grid">
+            {PLATFORM_FEATURES.map((f) => (
+              <article key={f.title} className="landing-product-card">
+                <h3>{f.title}</h3>
+                <p>{f.body}</p>
+                <Link href={f.href} className="landing-product-link">
+                  {f.cta} →
+                </Link>
               </article>
             ))}
           </div>
         </section>
 
-        <section className="landing-section landing-npm" id="npm">
+        <section className="landing-badge socket-style" id="scores">
           <div className="landing-section-header">
-            <h2>Trusted on npm</h2>
+            <h2 className="landing-brand-heading">
+              <Image src="/logo.jpeg" alt="" width={36} height={36} className="landing-brand-logo" />
+              <span>
+                {SITE_NAME} <span className="landing-brand-sub">security score</span>
+              </span>
+            </h2>
             <p>
-              Install globally with{' '}
-              <code>npm install -g @mastyf-ai/server</code> — MIT licensed, TypeScript 5.4, MCP SDK
-              1.25. Over <strong>10,000 monthly downloads</strong> on{' '}
-              <a href={NPM_PACKAGE_URL} rel="noopener noreferrer">
-                npmjs.com
-              </a>
-              .
+              Try it now — enter any npm MCP package name. You get a score, grade, and fix suggestions
+              without signing up.
             </p>
           </div>
-          <div className="landing-npm-grid">
-            <figure className="landing-npm-shot">
-              <Image
-                src="/assets/npm-package-screenshot.png"
-                alt="npm registry page for @mastyf-ai/server showing 11k/month downloads badge, v2.9.6, MIT license, and MCP Mastyf AI readme"
-                width={1200}
-                height={520}
-                style={{ width: '100%', height: 'auto' }}
-              />
-              <figcaption className="landing-arch-caption">
-                Live npm registry —{' '}
-                <a href={NPM_PACKAGE_URL} rel="noopener noreferrer">
-                  @mastyf-ai/server
-                </a>
-              </figcaption>
-            </figure>
-            <div className="landing-npm-badges">
-              <a
-                href={NPM_PACKAGE_URL}
-                rel="noopener noreferrer"
-                className="landing-npm-badge"
-              >
-                <span className="landing-npm-badge-label">Downloads</span>
-                <span className="landing-npm-badge-value">11k / month</span>
-              </a>
-              <a
-                href={NPM_PACKAGE_URL}
-                rel="noopener noreferrer"
-                className="landing-npm-badge"
-              >
-                <span className="landing-npm-badge-label">Package</span>
-                <span className="landing-npm-badge-value">@mastyf-ai/server</span>
-              </a>
-              <div className="landing-npm-badge landing-npm-badge-static">
-                <span className="landing-npm-badge-label">License</span>
-                <span className="landing-npm-badge-value">MIT</span>
-              </div>
-              <div className="landing-npm-badge landing-npm-badge-static">
-                <span className="landing-npm-badge-label">MCP SDK</span>
-                <span className="landing-npm-badge-value">1.25</span>
-              </div>
-              <a href={NPM_PACKAGE_URL} className="btn btn-primary" rel="noopener noreferrer">
-                View on npm
-              </a>
-              <p className="muted" style={{ fontSize: '0.8rem', margin: 0 }}>
-                <code>npm install -g @mastyf-ai/server</code>
-              </p>
+          <div className="landing-badge-grid">
+            <BadgeLookupWidget variant="hero" />
+          </div>
+          <div className="landing-how-inline">
+            <div className="landing-how-inline-item">
+              <strong>Static scan</strong>
+              <span>CVE, supply chain, and registry signals — instant.</span>
+            </div>
+            <div className="landing-how-inline-item">
+              <strong>Deep scan</strong>
+              <span>Optional live probe for tool and auth signals.</span>
+            </div>
+            <div className="landing-how-inline-item">
+              <strong>Embed</strong>
+              <span>Copy badge markdown into your README.</span>
             </div>
           </div>
         </section>
 
-        <section className="landing-section" id="swarm">
+        <section className="landing-section" id="how">
           <div className="landing-section-header">
-            <h2>Security Swarm — agentic architecture</h2>
+            <h2>How it works</h2>
+            <p>Three steps — no jargon required.</p>
+          </div>
+          <ol className="landing-steps">
+            {HOW_IT_WORKS.map((step) => (
+              <li key={step.step} className="landing-step-card">
+                <span className="landing-step-num">{step.step}</span>
+                <div>
+                  <h3>{step.title}</h3>
+                  <p>{step.body}</p>
+                </div>
+              </li>
+            ))}
+          </ol>
+        </section>
+
+        <section className="landing-section landing-problem" id="problem">
+          <div className="landing-section-header">
+            <h2>Why this matters</h2>
+            <p>MCP connects AI agents to real systems. Security teams need visibility before production.</p>
+          </div>
+          <ul className="landing-problem-list landing-problem-list-simple">
+            {PROBLEM_BULLETS.map((b) => (
+              <li key={b}>{b}</li>
+            ))}
+          </ul>
+        </section>
+
+        <section className="landing-section" id="architecture">
+          <div className="landing-section-header">
+            <h2>How {SITE_NAME} detects threats</h2>
+            <p>
+              Scores and badges on this site are powered by the same engine as {NPM_PRODUCT_NAME} — a
+              closed-loop Security Swarm that red-teams itself in CI and at runtime.
+            </p>
+          </div>
+
+          <div className="landing-section-header" id="swarm">
+            <h3 className="landing-subsection-title">Security Swarm</h3>
             <p>
               Two tracks: <strong>CI</strong> validates policy before merge; <strong>runtime</strong>{' '}
               learns from live proxy blocks. Solo analyze adds live MCP probes and dashboard reports.
@@ -245,19 +200,15 @@ export default async function HomePage() {
           <figure className="landing-arch">
             <Image
               src="/assets/security-swarm-architecture.png"
-              alt="Security Swarm diagram: CI agents Scout through Report, runtime BlockGuard through Calibrator, connected to MCP proxy and dashboard"
+              alt="mastyf.ai Security Swarm diagram: CI agents Scout through Report, runtime BlockGuard through Calibrator, connected to MCP proxy and dashboard"
               width={1400}
               height={900}
               priority
               style={{ width: '100%', height: 'auto' }}
             />
             <figcaption className="landing-arch-caption">
-              Closed-loop workflow from the{' '}
-              <a href={GITHUB_README_URL} rel="noopener noreferrer">
-                MCP Mastyf AI README
-              </a>
-              : corpus regression, evasion probes, parity checks, and instant attack learning on the
-              hot path.
+              {SITE_NAME} Security Swarm — corpus regression, evasion probes, parity checks, and instant
+              attack learning on the hot path. Powered by {NPM_PRODUCT_NAME}.
             </figcaption>
           </figure>
           <div className="landing-tracks">
@@ -284,288 +235,114 @@ export default async function HomePage() {
               </ul>
             </div>
           </div>
-        </section>
 
-        <section className="landing-section">
-          <div className="landing-section-header">
-            <h2>Three-layer detection engine</h2>
+          <div className="landing-section-header" style={{ marginTop: '3rem' }}>
+            <h3 className="landing-subsection-title">Three-layer detection</h3>
             <p>Regex triage → schema validation → optional semantic LLM with circuit breaker and local fallback.</p>
           </div>
           <div className="landing-detection">
-            <div className="landing-layer">
-              <div className="landing-layer-num">1</div>
-              <h3>Regex triage</h3>
-              <p>TR39 confusables offline, chaining patterns, fast block on obvious injection and exfil paths.</p>
-            </div>
-            <div className="landing-layer">
-              <div className="landing-layer-num">2</div>
-              <h3>Schema analysis</h3>
-              <p>Ajv validation, recursive depth limits, maxLength — catch malformed or oversized tool payloads.</p>
-            </div>
-            <div className="landing-layer">
-              <div className="landing-layer-num">3</div>
-              <h3>Semantic (Pro)</h3>
-              <p>Async tier-2 LLM audit, 10/min cap, 24h cache, Ollama/local fallback when API exhausted.</p>
-            </div>
+            {DETECTION_LAYERS.map((layer, i) => (
+              <div key={layer.title} className="landing-layer">
+                <div className="landing-layer-num">{i + 1}</div>
+                <h3>{layer.title}</h3>
+                <p>{layer.body}</p>
+              </div>
+            ))}
           </div>
-        </section>
 
-        <section className="landing-section" id="threat-research">
-          <div className="landing-section-header">
-            <h2>LLM-powered threat discovery — two architectures</h2>
+          <div className="landing-section-header" id="threat-research" style={{ marginTop: '3rem' }}>
+            <h3 className="landing-subsection-title">LLM threat discovery</h3>
             <p>
-              Pro-tier pipelines that turn live blocks and swarm bypasses into new adversarial fixtures.
+              Open-source pipelines turn live blocks and swarm bypasses into new adversarial fixtures.
               Human review for policy changes; autonomous corpus growth for regression.
             </p>
           </div>
           <ThreatArchitectureTabs />
         </section>
 
-        <section className="landing-section" id="usp">
+        <section className="landing-section landing-foundation" id="foundation">
           <div className="landing-section-header">
-            <h2>Why teams choose MCP MastyfAi</h2>
+            <span className="landing-foundation-label">Under the hood</span>
+            <h2>Built on {NPM_PRODUCT_NAME}</h2>
             <p>
-              No purpose-built MCP security competitor exists. Generic API gateways don&apos;t understand
-              agent behavior — and brittle custom middleware breaks on every SDK update.
+              {SITE_NAME} is not published to npm. The runtime proxy that powers our detection is{' '}
+              <strong>{NPM_PRODUCT_NAME}</strong> — MIT licensed, 11k+ monthly downloads, installable
+              separately when you want self-hosted enforcement.
             </p>
           </div>
-          <div className="landing-usp-grid">
-            {USP_ITEMS.map((u) => (
-              <article key={u.title} className="landing-usp-card">
-                <div className="landing-usp-icon" aria-hidden>
-                  ✓
-                </div>
-                <h3>{u.title}</h3>
-                <p>{u.body}</p>
+          <div className="landing-foundation-grid">
+            {FOUNDATION_POINTS.map((p) => (
+              <article key={p.title} className="landing-foundation-card">
+                <h3>{p.title}</h3>
+                <p>{p.body}</p>
               </article>
             ))}
           </div>
-          <div className="card landing-compare" style={{ overflowX: 'auto', padding: 0, marginTop: '2rem' }}>
-            <table className="landing-evidence landing-compare-table">
-              <thead>
-                <tr>
-                  <th>Capability</th>
-                  <th>MCP MastyfAi</th>
-                  <th>Generic gateway / DIY</th>
-                </tr>
-              </thead>
-              <tbody>
-                {COMPARISON_ROWS.map((row) => (
-                  <tr key={row.capability}>
-                    <td>{row.capability}</td>
-                    <td>
-                      <span className="landing-compare-yes">{row['mastyf-ai']}</span>
-                    </td>
-                    <td>
-                      <span className="landing-compare-no">{row.generic}</span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </section>
-
-        <section className="landing-section">
-          <div className="landing-section-header">
-            <h2>Built for teams shipping agents to production</h2>
-            <p>
-              CISO and VP Engineering buyers · platform / AI infra deployers · Kubernetes + Postgres +
-              OIDC already in place.
-            </p>
-          </div>
-          <div className="landing-target-grid">
-            {TARGET_SEGMENTS.map((t) => (
-              <article key={t.title} className="landing-target-card">
-                <h3>{t.title}</h3>
-                <p>{t.body}</p>
-              </article>
-            ))}
-          </div>
-        </section>
-
-        <section className="landing-section">
-          <div className="landing-section-header">
-            <h2>Built for production MCP fleets</h2>
-            <p>Self-hosted open source with optional cloud control plane and lifetime Pro license.</p>
-          </div>
-          <div className="landing-features">
-            {FEATURES.map((f) => (
-              <article key={f.title} className="landing-feature">
-                <h3>{f.title}</h3>
-                <p>{f.body}</p>
-              </article>
-            ))}
-          </div>
-        </section>
-
-        <section className="landing-section" id="evidence">
-          <div className="landing-section-header">
-            <h2>Proven under attack</h2>
-            <p>
-              Four evidence layers in the repo — use CI-gated harness numbers for procurement; synthetic
-              sims are labeled explicitly.
-            </p>
-          </div>
-          <div className="card" style={{ overflowX: 'auto', padding: 0 }}>
-            <table className="landing-evidence">
-              <thead>
-                <tr>
-                  <th>Suite</th>
-                  <th>Result</th>
-                  <th>Trust</th>
-                </tr>
-              </thead>
-              <tbody>
-                {EVIDENCE_ROWS.map((row) => (
-                  <tr key={row.suite}>
-                    <td>{row.suite}</td>
-                    <td>{row.result}</td>
-                    <td>
-                      <span className={trustClass(row.trust)}>{row.trust}</span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <p className="muted" style={{ textAlign: 'center', marginTop: '1rem', fontSize: '0.8rem' }}>
-            Full reports:{' '}
-            <a href={`${GITHUB_REPO_URL}/tree/master/reports/adversarial-harness`} rel="noopener noreferrer">
-              adversarial-harness
-            </a>
-            {' · '}
-            <a href={`${GITHUB_REPO_URL}/tree/master/reports/enterprise-attack-sim`} rel="noopener noreferrer">
-              enterprise-attack-sim
-            </a>
-          </p>
-        </section>
-
-        <section className="landing-section landing-journey">
-          <div className="landing-journey-inner card">
+          <div className="landing-foundation-cta card">
             <div>
-              <h2>Post-MVP. Pilot-validated. Category-defining.</h2>
-              <p>
-                330 enterprise attack simulations · 93.3% block rate · 38ms average detection · zero false
-                positives. Open-source core on npm; Pro unlocks Security Swarm, threat research pipelines,
-                and fleet dashboard. AI agent security is the next major enterprise category — MCP MastyfAi
-                is built to define it.
+              <h3>Want the proxy on your own servers?</h3>
+              <p className="muted">
+                Install {NPM_PRODUCT_NAME} from npm. Use {SITE_NAME} when you want scores, badges, and
+                cloud policy — use {NPM_PRODUCT_NAME} when you want a local gateway in front of your MCP
+                servers.
               </p>
+              <code className="landing-install-cmd">{NPM_INSTALL_CMD}</code>
             </div>
-            <div className="landing-journey-cta">
+            <div className="landing-foundation-actions">
               <a href={NPM_PACKAGE_URL} className="btn btn-primary" rel="noopener noreferrer">
-                Install free on npm
+                {NPM_PACKAGE_NAME} on npm
               </a>
-              <a href={PRO_CHECKOUT_URL} className="btn" rel="noopener noreferrer">
-                Buy Pro — $4.99 lifetime
+              <a href={GITHUB_REPO_URL} className="btn" rel="noopener noreferrer">
+                {SITE_NAME} on GitHub
               </a>
             </div>
           </div>
         </section>
 
-        <section className="landing-pricing" id="pricing">
-          <div className="landing-section-header">
-            <h2>Community &amp; Pro</h2>
-            <p>
-              npm install is always free (MIT). Pro unlocks dashboard, Security Swarm CLI, fleet, AI
-              learning, and multi-tenant JWT — validated against this control plane.
-            </p>
-          </div>
-          <div className="pricing-grid">
-            <section className="price-card">
-              <div className="badge badge-muted">Community</div>
-              <div className="amount">Free</div>
-              <div className="period">MIT open source</div>
-              <p className="muted" style={{ marginTop: '1rem' }}>
-                Proxy, CLI, local YAML policy, adversarial harness, and corpus eval — no license key.
-                Sign in here to optionally manage cloud policy snippets and API keys.
+        <section className="landing-section landing-cloud" id="cloud">
+          <div className="landing-cloud-inner card">
+            <div>
+              <h2>Cloud console</h2>
+              <p className="muted">
+                Sign in with Google or GitHub to edit policy YAML, copy tenant env snippets, rotate API
+                keys, and optionally SSO into a self-hosted {NPM_PRODUCT_NAME} dashboard. Free — no credit
+                card.
               </p>
+            </div>
+            <div className="landing-cloud-actions">
               {session ? (
-                <>
-                  <a
-                    href={GITHUB_REPO_URL}
-                    className="btn btn-primary"
-                    style={{ display: 'block' }}
-                    rel="noopener noreferrer"
-                  >
-                    Get started on GitHub
-                  </a>
-                  <Link href="/dashboard" className="btn" style={{ display: 'block', marginTop: '0.5rem' }}>
-                    Cloud console
-                  </Link>
-                </>
+                <Link href="/dashboard" className="btn btn-primary">
+                  Go to dashboard
+                </Link>
               ) : (
-                <>
-                  <Link href="/login" className="btn btn-primary" style={{ display: 'block' }}>
-                    Sign in (free)
-                  </Link>
-                  <a
-                    href={NPM_PACKAGE_URL}
-                    className="btn"
-                    style={{ display: 'block', marginTop: '0.5rem' }}
-                    rel="noopener noreferrer"
-                  >
-                    Install from npm
-                  </a>
-                </>
+                <Link href="/login" className="btn btn-primary">
+                  Sign in free
+                </Link>
               )}
-            </section>
-
-            <section className="price-card price-card-pro">
-              <div className="badge badge-active">Pro</div>
-              <div className="amount">$4.99</div>
-              <div className="period">Lifetime · one-time</div>
-              <p className="muted" style={{ marginTop: '1rem' }}>
-                Lifetime license for self-hosted Pro: Security Swarm CLI, live dashboard, WebSocket feed,
-                AI learning, fleet TUI, semantic async, multi-tenant bindings.
-              </p>
-              <ul className="pro-features">
-                <li>License key by email + fixed control plane URL</li>
-                <li>Self-hosted — your data stays on your infrastructure</li>
-                <li>v3.0+ enforced on swarm CLI; pinned older npm tags unchanged</li>
-              </ul>
-              <a
-                href={PRO_CHECKOUT_URL}
-                className="btn btn-primary"
-                style={{ display: 'block' }}
-                rel="noopener noreferrer"
-              >
-                Buy Pro — $4.99
-              </a>
-              <Link
-                href="https://github.com/mastyf-ai/mastyf-ai/blob/master/docs/PRO_SETUP.md"
-                className="btn"
-              >
-                Pro setup guide
+              <Link href="/dashboard/connect" className="btn">
+                Connect self-hosted proxy
               </Link>
-            </section>
+            </div>
           </div>
-        </section>
-
-        <section className="card">
-          <h2>Cloud control plane (optional)</h2>
-          <p className="muted">
-            This site validates <code>MASTYF_AI_LICENSE_KEY</code> at{' '}
-            <code>GET /api/v1/license</code>. Free sign-in with Google or GitHub sends you to the
-            repo to install MastyfAi; use the{' '}
-            <Link href="/dashboard">cloud console</Link> for policy YAML, tenant env snippets, API key
-            rotation, and SSO launch into a running self-hosted dashboard.
-          </p>
-          <p className="muted" style={{ marginTop: '0.75rem' }}>
-            <strong>Control plane URL (all buyers):</strong>{' '}
-            <code>https://mastyf-ai-cloud.vercel.app</code>
-          </p>
         </section>
 
         <footer className="landing-footer">
+          <div className="landing-footer-brand">
+            <Image src="/logo.jpeg" alt="" width={24} height={24} className="landing-brand-logo" />
+            <span>{SITE_NAME}</span>
+          </div>
+          <p className="landing-footer-tagline muted">
+            MCP security scores and cloud console · Powered by {NPM_PRODUCT_NAME} on npm
+          </p>
           <div className="footer-links">
             <Link href="/terms">Terms</Link>
             <Link href="/privacy">Privacy</Link>
+            <Link href="/certified">Security scores</Link>
             <a href={GITHUB_REPO_URL} rel="noopener noreferrer">
               GitHub
             </a>
             <a href={NPM_PACKAGE_URL} rel="noopener noreferrer">
-              npm @mastyf-ai/server
+              npm · {NPM_PACKAGE_NAME}
             </a>
           </div>
         </footer>

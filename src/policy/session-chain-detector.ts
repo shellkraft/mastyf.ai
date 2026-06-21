@@ -147,7 +147,9 @@ export function detectChainPatterns(graph: SessionChainGraph): ChainPatternMatch
   for (let i = 0; i < nodes.length - 1; i++) {
     for (let j = i + 1; j < nodes.length; j++) {
       const slice = nodes.slice(i, j + 1);
-      const hasRead = slice.some((n) => n.sensitiveRead || READ_TOOLS.has(n.toolName));
+      // Only count confirmed sensitive reads — treating every list/read tool as "read"
+      // causes multi-step-staging false positives when benign calls follow attack traffic.
+      const hasRead = slice.some((n) => n.sensitiveRead);
       const hasEncode = slice.some((n) => n.encodeHint);
       const hasExfil = slice.some((n) => n.exfilHint);
 

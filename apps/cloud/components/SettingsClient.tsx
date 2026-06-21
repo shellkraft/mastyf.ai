@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { NPM_PRODUCT_NAME, SITE_NAME } from '@/lib/product-links';
 
 export function SettingsClient({ orgName }: { orgName: string }) {
   const [rotating, setRotating] = useState(false);
@@ -33,8 +34,9 @@ export function SettingsClient({ orgName }: { orgName: string }) {
 
       <h2 style={{ marginTop: '1.5rem' }}>API keys</h2>
       <p className="muted">
-        Use this key as <code>DASHBOARD_API_KEY</code> on your self-hosted Mastyf AI and for{' '}
-        <code>/api/v1/*</code> automation. Keys are shown only once when created or rotated.
+        Use this key for {SITE_NAME} Cloud <code>/api/v1/*</code> automation (policy sync, fleet
+        heartbeat). If you link a self-hosted {NPM_PRODUCT_NAME} proxy, set it as{' '}
+        <code>MASTYF_AI_CLOUD_API_KEY</code> on that host. Keys are shown only once when rotated.
       </p>
       <button type="button" className="btn btn-primary" onClick={onRotate} disabled={rotating}>
         {rotating ? 'Rotating…' : 'Rotate API key'}

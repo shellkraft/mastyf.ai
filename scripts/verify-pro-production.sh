@@ -3,7 +3,7 @@
 # Full Pro E2E still needs a Lemon Squeezy test checkout + webhook secret.
 set -euo pipefail
 
-APP_URL="${APP_URL:-https://mastyf-ai-cloud.vercel.app}"
+APP_URL="${APP_URL:-https://www.mastyf.ai}"
 FAIL=0
 
 check() {

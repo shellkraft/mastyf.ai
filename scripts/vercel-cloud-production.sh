@@ -2,14 +2,17 @@
 # Configure mastyf-ai-cloud on Vercel and trigger production redeploy.
 # Requires: VERCEL_TOKEN from https://vercel.com/account/tokens (mastyf-ai-gmailcom account)
 # Optional: DATABASE_URL, LEMONSQUEEZY_WEBHOOK_SECRET, AUTH_SECRET (generated if unset)
+#
+# Production URL defaults to https://www.mastyf.ai — override with APP_URL if needed.
+# Run ./scripts/vercel-domain-setup.sh first to attach the custom domain.
 
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 CLOUD="$ROOT/apps/cloud"
-SCOPE="mastyf-ai-gmailcoms-projects"
-PROJECT="mastyf-ai-cloud"
-APP_URL="https://mastyf-ai-cloud.vercel.app"
+SCOPE="${VERCEL_SCOPE:-mastyf-ai-gmailcoms-projects}"
+PROJECT="${VERCEL_PROJECT:-mastyf-ai-cloud}"
+APP_URL="${APP_URL:-https://www.mastyf.ai}"
 CHECKOUT_URL="https://mastyf-ai.lemonsqueezy.com/checkout/buy/f725abfe-93c0-4bd7-8add-d15af13958fb"
 VERCEL_CLI="${VERCEL_CLI:-npx vercel@48}"
 
@@ -48,6 +51,8 @@ add_env AUTH_SECRET "$AUTH_SECRET"
 add_env LICENSE_JWT_SECRET "$LICENSE_JWT_SECRET"
 add_env AUTH_URL "$APP_URL"
 add_env NEXT_PUBLIC_APP_URL "$APP_URL"
+add_env NEXT_PUBLIC_CLOUD_URL "$APP_URL"
+add_env MASTYF_AI_CLOUD_PUBLIC_URL "$APP_URL"
 add_env NEXT_PUBLIC_PRO_CHECKOUT_URL "$CHECKOUT_URL"
 
 if [[ -n "${LEMONSQUEEZY_WEBHOOK_SECRET:-}" ]]; then
@@ -60,6 +65,16 @@ if [[ -n "${LEMONSQUEEZY_STORE_ID:-}" ]]; then
   add_env LEMONSQUEEZY_STORE_ID "$LEMONSQUEEZY_STORE_ID"
 fi
 
+if [[ -n "${AUTH_GITHUB_ID:-}" && -n "${AUTH_GITHUB_SECRET:-}" ]]; then
+  add_env AUTH_GITHUB_ID "$AUTH_GITHUB_ID"
+  add_env AUTH_GITHUB_SECRET "$AUTH_GITHUB_SECRET"
+fi
+
+if [[ -n "${AUTH_GOOGLE_ID:-}" && -n "${AUTH_GOOGLE_SECRET:-}" ]]; then
+  add_env AUTH_GOOGLE_ID "$AUTH_GOOGLE_ID"
+  add_env AUTH_GOOGLE_SECRET "$AUTH_GOOGLE_SECRET"
+fi
+
 echo "Deploying production from monorepo root (Vercel Root Directory = apps/cloud)..."
 cd "$ROOT"
 rm -rf .vercel
@@ -68,6 +83,9 @@ $VERCEL_CLI deploy --prod --yes --token "$VERCEL_TOKEN" --scope "$SCOPE"
 
 echo ""
 echo "Done. Production URL: $APP_URL"
+echo "Vercel preview: https://mastyf-ai-cloud.vercel.app (still works as alias)"
 echo "AUTH_SECRET (save for license hashing + local register-pro-key): $AUTH_SECRET"
 echo "Lemon Squeezy webhook: ${APP_URL}/api/webhooks/lemonsqueezy"
 echo "License test: curl -H 'Authorization: Bearer YOUR-KEY' ${APP_URL}/api/v1/license"
+echo ""
+echo "Verify: APP_URL=$APP_URL pnpm cloud:verify-prod"

@@ -32,8 +32,6 @@ import {
 import { broadcastDashboardEvent, emitFlowStep } from '../utils/dashboard-events.js';
 import type { CallContext, PolicyDecision } from '../policy/policy-types.js';
 import { routeSemanticModelForTenant } from './tenant-semantic-model.js';
-import { isOpenCoreEnabled } from '../license/feature-tiers.js';
-import { getLicenseClient } from '../license/license-client.js';
 import {
   getEstimatedSemanticCostUsd,
   isTenantDailyBudgetExceeded,
@@ -179,10 +177,6 @@ function getLlm(tenantId?: string): LlmAssistant {
 
 /** Enqueue async semantic audit (debounced batch drain). Never blocks the caller. */
 export function enqueueSemanticAudit(job: SemanticAuditJob): void {
-  if (isOpenCoreEnabled() && !getLicenseClient().hasFeature('semantic_async')) {
-    reportSemanticAuditSkipped('license', job.tenantId);
-    return;
-  }
   if (!isSemanticAsyncEnabled(job.tenantId)) return;
 
   const budget = isTenantDailyBudgetExceeded(job.tenantId, getEstimatedSemanticCostUsd());

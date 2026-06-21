@@ -1,6 +1,7 @@
 'use client';
 
 import { NAV_SECTIONS, WORKSPACE_CONFIG, DEFAULT_VIEW, type WorkspaceId } from '@/lib/workspace-nav';
+import { BrandLogo } from '../ui/BrandLogo';
 
 interface SidebarProps {
   activeWorkspace: WorkspaceId;
@@ -29,9 +30,7 @@ export function Sidebar({ activeWorkspace, onNavigate, unreadItems }: SidebarPro
   return (
     <aside className="sidebar">
       <div className="sidebar-header">
-        <div className="sidebar-logo">
-          <img src="/dashboard-spa/logo.jpeg" alt="mastyf.ai" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
-        </div>
+        <BrandLogo />
         <div className="sidebar-brand">
           <span className="sidebar-brand-name">mastyf.ai</span>
           <span className="sidebar-brand-version">Enterprise</span>

@@ -78,20 +78,16 @@ describe('windows-paths', () => {
   describe('mastyf-ai-proxy.ps1 on disk', () => {
     const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 
-    it('exists at repo root with try/catch and arg forwarding', () => {
-      const rootScript = path.join(repoRoot, 'mastyf-ai-proxy.ps1');
+    it('exists under scripts/ with try/catch and arg forwarding', () => {
       const scriptsScript = path.join(repoRoot, 'scripts', 'mastyf-ai-proxy.ps1');
-      expect(fs.existsSync(rootScript)).toBe(true);
       expect(fs.existsSync(scriptsScript)).toBe(true);
 
-      for (const scriptPath of [rootScript, scriptsScript]) {
-        const content = fs.readFileSync(scriptPath, 'utf-8');
-        expect(content).toMatch(/ValueFromRemainingArguments/);
-        expect(content).toMatch(/& \$nodeExe @argList/);
-        expect(content).toMatch(/try \{/);
-        expect(content).toMatch(/MASTYF_AI_DB_PATH/);
-        expect(content).toMatch(/DASHBOARD_ENABLED/);
-      }
+      const content = fs.readFileSync(scriptsScript, 'utf-8');
+      expect(content).toMatch(/ValueFromRemainingArguments/);
+      expect(content).toMatch(/& \$nodeExe @argList/);
+      expect(content).toMatch(/try \{/);
+      expect(content).toMatch(/MASTYF_AI_DB_PATH/);
+      expect(content).toMatch(/DASHBOARD_ENABLED/);
     });
   });
 });

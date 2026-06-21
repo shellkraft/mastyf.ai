@@ -13,6 +13,7 @@ import {
   type SecurityMonitorQuarantineRecord,
 } from '@/lib/mastyf-ai-api';
 import { hasPermission } from '@/lib/dashboard-roles';
+import { formatEnforcementStatus } from '@/lib/quarantine-messages';
 import { DataTablePro, type Column } from '../dashboard/DataTablePro';
 import { QuarantinePolicyDrawer } from './QuarantinePolicyDrawer';
 
@@ -85,7 +86,7 @@ export function QuarantinedIntelPanel({ roles, onAction }: Props) {
       onAction?.('Requires operator role');
       return;
     }
-    if (!window.confirm(`Restore ${id} to active catalog? This does not rollback applied policy rules.`)) return;
+    if (!window.confirm(`Restore ${id} to active catalog? This does not remove any YAML policy rules that were applied.`)) return;
     setBusyId(`intel:${id}`);
     const res = await restoreThreatIntel(id);
     if (res.ok) {
@@ -103,17 +104,23 @@ export function QuarantinedIntelPanel({ roles, onAction }: Props) {
       onAction?.('Requires operator role');
       return;
     }
-    if (!window.confirm(`Restore ${displayId} to Threat Monitor?`)) return;
+    if (
+      !window.confirm(
+        `Restore ${displayId} to the active Threat Monitor list?\n\nThe threat will reappear in Posture Overview → Active Threats.`,
+      )
+    ) {
+      return;
+    }
     const removeRule = window.confirm(
-      `Also remove the applied quarantine policy rule for ${displayId}?\n\nChoose OK to remove rule, Cancel to keep rule.`,
+      `Remove the quarantine policy rule from your YAML policy file?\n\n• OK — restore alert AND delete the quarantine-* rule from policy\n• Cancel — restore alert only (keep the hardening rule)`,
     );
     setBusyId(`monitor:${threatKey}`);
     const res = await restoreSecurityThreat(threatKey, { removeRule });
     if (res.ok) {
       onAction?.(
         removeRule
-          ? `Restored ${displayId} and ${res.removedRule ? 'removed' : 'could not remove'} quarantine rule`
-          : `Restored ${displayId} to Threat Monitor (kept policy rule)`,
+          ? `Restored ${displayId}. Policy rule ${res.removedRule ? 'removed' : 'was not found in policy (may already be gone)'}`
+          : `Restored ${displayId} to Threat Monitor. Quarantine YAML rule was kept in policy.`,
       );
       setPolicyOpen(false);
       await load();
@@ -185,6 +192,16 @@ export function QuarantinedIntelPanel({ roles, onAction }: Props) {
     { key: 'type', header: 'Type', render: (r) => r.type },
     { key: 'source', header: 'Source', render: (r) => r.source },
     { key: 'severity', header: 'Severity', render: (r) => r.severity.toUpperCase() },
+    {
+      key: 'enforcement',
+      header: 'Enforcement',
+      render: (r) => formatEnforcementStatus(r.enforcementStatus),
+    },
+    {
+      key: 'rule',
+      header: 'Applied rule',
+      render: (r) => (r.appliedRuleName ? <code>{r.appliedRuleName}</code> : '—'),
+    },
     { key: 'at', header: 'Quarantined at', render: (r) => formatTs(r.quarantinedAt), sortValue: (r) => r.quarantinedAt },
     { key: 'operator', header: 'Operator', render: (r) => r.operator || '—' },
     policyColumnMonitor,

@@ -31,24 +31,25 @@ describe('LicenseClient', () => {
     expect(isLicenseEnforcementEnabled()).toBe(false);
   });
 
-  it('does not unlock Pro when MASTYF_AI_OPEN_CORE=false (v3)', () => {
+  it('unlocks all features without enforcement (open source)', () => {
     delete process.env.MASTYF_AI_LICENSE_KEY;
     delete process.env.MASTYF_AI_CONTROL_PLANE_URL;
     delete process.env.MASTYF_AI_DEV_UNLOCK_ALL;
-    process.env.MASTYF_AI_OPEN_CORE = 'false';
+    delete process.env.MASTYF_AI_REQUIRE_LICENSE;
 
     const client = new LicenseClient({
       requireLicense: false,
       refreshSeconds: 300,
       graceSeconds: 900,
     });
-    expect(client.isLicensed()).toBe(false);
-    expect(client.hasFeature('swarm')).toBe(false);
+    expect(client.isLicensed()).toBe(true);
+    expect(client.hasFeature('swarm')).toBe(true);
   });
 
   it('does NOT unlock Pro features with dev unlock (removed in v3.2.3)', () => {
     process.env.NODE_ENV = 'development';
     process.env.MASTYF_AI_DEV_UNLOCK_ALL = 'true';
+    process.env.MASTYF_AI_REQUIRE_LICENSE = 'true';
 
     const client = new LicenseClient({
       requireLicense: false,

@@ -14,7 +14,7 @@ export function useAgenticDashboard(refreshKey = 0, pollMs = 0) {
     setLoading(true);
     const summary = await fetchAgenticDashboard(timeWindow);
     if (!summary) {
-      setError('Could not reach agentic dashboard API — is Mastyf AI proxy running on port 4000?');
+      setError('Could not reach agentic dashboard API — is the mastyf.ai proxy running on port 4000?');
       setData(null);
     } else {
       setError(summary.emptyReason ?? summary.error ?? null);

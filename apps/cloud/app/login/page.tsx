@@ -1,16 +1,18 @@
+import Image from 'next/image';
 import Link from 'next/link';
 import { SignInButtons } from '@/components/SignInButtons';
 import { auth } from '@/lib/auth';
-import { POST_SIGNIN_PATH } from '@/lib/github-links';
+import { CLOUD_NAME, SITE_NAME } from '@/lib/product-links';
 import { oauthProviderStatus } from '@/lib/oauth-providers';
 import { redirect } from 'next/navigation';
+import './login.css';
 
 type Props = {
   searchParams: Promise<{ callbackUrl?: string; error?: string }>;
 };
 
 const ERROR_MESSAGES: Record<string, string> = {
-  Configuration: 'OAuth is misconfigured. Check Vercel environment variables.',
+  Configuration: 'OAuth is misconfigured. Check environment variables on this deployment.',
   AccessDenied: 'Access was denied. Try another account or contact support.',
   Verification: 'Sign-in link expired. Try again.',
   OAuthAccountNotLinked:
@@ -26,7 +28,7 @@ const ERROR_MESSAGES: Record<string, string> = {
 export default async function LoginPage({ searchParams }: Props) {
   const session = await auth();
   const params = await searchParams;
-  let callbackUrl = params.callbackUrl ?? POST_SIGNIN_PATH;
+  let callbackUrl = params.callbackUrl ?? '/dashboard';
   try {
     const parsed = new URL(callbackUrl, 'http://local');
     if (parsed.pathname.startsWith('/')) {
@@ -45,31 +47,60 @@ export default async function LoginPage({ searchParams }: Props) {
   }
 
   const oauth = oauthProviderStatus();
+  const oauthReady = oauth.google || oauth.github || oauth.dev;
+  const devSetupNeeded = process.env.NODE_ENV === 'development' && !oauth.github && !oauth.google;
 
   return (
-    <main className="container">
-      <section className="hero">
-        <h1>Sign in</h1>
-        <p className="muted">Use Google or GitHub to access MCP Mastyf AI Cloud.</p>
-      </section>
-      {errorMessage ? (
-        <p className="alert alert-warn" role="alert">
-          {errorMessage}
-          {errorCode ? (
-            <span className="muted" style={{ display: 'block', marginTop: '0.5rem', fontSize: '0.8rem' }}>
-              Code: {errorCode}
-            </span>
-          ) : null}
+    <main className="login-page">
+      <Link href="/" className="login-back">
+        ← {SITE_NAME}
+      </Link>
+
+      <div className="login-card">
+        <Link href="/" className="login-brand">
+          <Image src="/logo.jpeg" alt="" width={32} height={32} style={{ borderRadius: 6 }} />
+          <strong>{SITE_NAME}</strong>
+        </Link>
+
+        <h1>Sign in to {CLOUD_NAME}</h1>
+        <p className="login-lead">
+          {oauth.github || oauth.google
+            ? 'Use Google or GitHub to manage policy, API keys, and fleet settings.'
+            : oauth.dev
+              ? 'Local dev mode — use the dev account below, or add GitHub OAuth for real sign-in.'
+              : 'Free cloud console for MCP policy and fleet management.'}
         </p>
-      ) : null}
-      <SignInButtons
-        callbackUrl={callbackUrl}
-        googleEnabled={oauth.google}
-        githubEnabled={oauth.github}
-      />
-      <p className="footer-links">
-        <Link href="/">Back to home</Link>
-      </p>
+
+        {errorMessage ? (
+          <p className="alert alert-warn" role="alert" style={{ textAlign: 'left', marginBottom: '1rem' }}>
+            {errorMessage}
+            {errorCode ? (
+              <span className="muted" style={{ display: 'block', marginTop: '0.5rem', fontSize: '0.8rem' }}>
+                Code: {errorCode}
+              </span>
+            ) : null}
+          </p>
+        ) : null}
+
+        <SignInButtons
+          callbackUrl={callbackUrl}
+          googleEnabled={oauth.google}
+          githubEnabled={oauth.github}
+          devEnabled={oauth.dev}
+          devSetupNeeded={devSetupNeeded}
+        />
+
+        {oauthReady ? (
+          <p className="login-alt muted">
+            No account needed for{' '}
+            <Link href="/certified">security scores</Link>.
+          </p>
+        ) : null}
+
+        <p className="login-footer-links">
+          <Link href="/">Back to home</Link>
+        </p>
+      </div>
     </main>
   );
 }

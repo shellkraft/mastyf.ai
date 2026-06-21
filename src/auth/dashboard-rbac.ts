@@ -148,6 +148,13 @@ export function permissionForRoute(method: string, url: string): DashboardRouteP
   if (path.startsWith('/api/learning/')) return m === 'GET' ? 'ai' : 'ai';
   if (path.startsWith('/api/security-swarm/')) {
     if (path === '/api/security-swarm/run' && m === 'POST') return 'policy_test';
+    if (
+      (path === '/api/security-swarm/threat-lab-candidates/accept'
+        || path === '/api/security-swarm/threat-lab-candidates/reject')
+      && m === 'POST'
+    ) {
+      return 'policy_mutate';
+    }
     return m === 'GET' ? 'read' : null;
   }
   if (path === '/api/audit' || path === '/api/audit/heatmap' || path.startsWith('/api/audit?')) {

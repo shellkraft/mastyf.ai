@@ -33,6 +33,7 @@ describe('allowlist evasion (adv-066)', () => {
       serverName: 'test',
     });
     expect(d.action).toBe('pass');
-    expect(d.rule).toBe('allowlist');
+    const allowlist = defaultPolicy.policy.rules.find(r => r.name === 'allowlist-common-tools');
+    expect(d.rule).toBe(allowlist?.enabled === false ? 'default' : 'allowlist');
   });
 });

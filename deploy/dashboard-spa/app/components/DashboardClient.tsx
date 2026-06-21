@@ -257,7 +257,7 @@ export function DashboardClient() {
                 <div className="banner banner-warning" role="status">
                   <div className="banner-content">
                     <div className="banner-title">API Unreachable</div>
-                    <div>MCP Guardian API not reachable. Ensure the proxy is running on port 4000 with DASHBOARD_ENABLED=true.</div>
+                    <div>mastyf.ai API not reachable. Ensure the proxy is running on port 4000 with DASHBOARD_ENABLED=true.</div>
                   </div>
                 </div>
               )}

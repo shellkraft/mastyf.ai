@@ -105,7 +105,7 @@ export function ProtectionWorkspace({
   return (
     <>
       <section className="briefing-hero">
-        <h2>Mastyf AI Autopilot — your MCP protection</h2>
+        <h2>mastyf.ai Autopilot — your MCP protection</h2>
         <p className="briefing-hero-lead">
           Realtime blocking, autonomous threat learning, and scheduled digests.
         </p>

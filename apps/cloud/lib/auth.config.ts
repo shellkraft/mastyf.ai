@@ -1,5 +1,6 @@
 import type { NextAuthConfig } from 'next-auth';
-import { configuredOAuthProviders } from './oauth-providers';
+import { ensureAuthUser } from './ensure-auth-user';
+import { configuredOAuthProviders, DEV_AUTH_PROVIDER_ID } from './oauth-providers';
 
 export const authConfig = {
   providers: configuredOAuthProviders(),
@@ -8,6 +9,18 @@ export const authConfig = {
   // JWT sessions: same token in middleware (edge) and server components (adapter still stores users/accounts).
   session: { strategy: 'jwt', maxAge: 30 * 24 * 60 * 60 },
   callbacks: {
+    async signIn({ user, account }) {
+      if (!user?.id) return false;
+      if (account?.provider === DEV_AUTH_PROVIDER_ID || account?.provider === 'github' || account?.provider === 'google') {
+        await ensureAuthUser({
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          image: user.image,
+        });
+      }
+      return true;
+    },
     async jwt({ token, user }) {
       if (user?.id) {
         token.sub = user.id;

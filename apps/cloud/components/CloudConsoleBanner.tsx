@@ -1,18 +1,18 @@
 import Link from 'next/link';
+import { CLOUD_NAME, NPM_PRODUCT_NAME, SITE_NAME } from '@/lib/product-links';
 
-/** Clarifies that /dashboard is the cloud console — no self-hosted Mastyf AI required. */
+/** Clarifies that /dashboard is the mastyf.ai cloud console. */
 export function CloudConsoleBanner() {
   return (
     <div className="card" style={{ marginBottom: '1.5rem', borderColor: 'var(--accent, #3b82f6)' }}>
-      <h2 style={{ marginTop: 0 }}>Cloud console</h2>
+      <h2 style={{ marginTop: 0 }}>{CLOUD_NAME}</h2>
       <p className="muted" style={{ marginBottom: '0.75rem' }}>
-        You are signed in to MCP Mastyf AI Cloud. Edit policy, copy your tenant env snippet, and manage
-        API keys here — no local Mastyf AI process required.
+        You are signed in to <strong>{SITE_NAME}</strong>. Edit policy, copy your tenant snippet, and
+        manage API keys here — all in the browser, no install required.
       </p>
       <p className="muted" style={{ marginBottom: 0, fontSize: '0.9rem' }}>
-        To run the proxy and ops dashboard on your own machine, use{' '}
-        <strong>Get started on GitHub</strong> on the homepage. Optional SSO into a running
-        self-hosted instance: <Link href="/dashboard/connect">Connect self-hosted MastyfAi</Link>.
+        Optional: link a self-hosted <strong>{NPM_PRODUCT_NAME}</strong> proxy to sync policy and SSO.{' '}
+        <Link href="/dashboard/connect">Link proxy →</Link>
       </p>
     </div>
   );

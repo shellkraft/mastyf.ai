@@ -40,6 +40,7 @@ import {
   isOpenCoreEnabled,
 } from '../license/feature-tiers.js';
 import { isCiTokenCached } from '../license/ci-token.js';
+import { DEFAULT_CLOUD_CONSOLE_URL } from '../constants/cloud-url.js';
 import { mapCloudRoles, verifyCloudSessionToken } from '../license/cloud-session.js';
 import {
   getAllActiveServerNames,
@@ -281,12 +282,28 @@ type DashboardHandle = {
 
 let activeDashboard: DashboardHandle | null = null;
 
+let dashboardAiEnginePromise: Promise<void> | null = null;
+
+function touchDashboardAiEngine(): Promise<void> {
+  if (!runtimeHistoryDb) return Promise.resolve();
+  if (!dashboardAiEnginePromise) {
+    dashboardAiEnginePromise = (async () => {
+      const { ensureAiEngineInitialized } = await import('../ai/suggestion-engine.js');
+      await ensureAiEngineInitialized(runtimeHistoryDb);
+    })().catch(() => {}).finally(() => {
+      dashboardAiEnginePromise = null;
+    });
+  }
+  return dashboardAiEnginePromise;
+}
+
 export function setDashboardDataSource(historyDb: any): void {
   runtimeHistoryDb = historyDb;
   const handle = activeDashboard;
   if (handle?.ws) {
     wireDashboardWsProviders(handle.ws, historyDb);
   }
+  void touchDashboardAiEngine();
 }
 
 function parseRegionParam(q: URLSearchParams): string | undefined {
@@ -519,8 +536,9 @@ export async function startDashboardServer(
   ): void {
     if (prefersHtml(req)) {
       const safe = message.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      const consoleUrl = `${DEFAULT_CLOUD_CONSOLE_URL}/dashboard`;
       res.writeHead(status, { 'Content-Type': 'text/html; charset=utf-8' });
-      res.end(`<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"/><title>Cloud SSO</title></head><body style="font-family:system-ui,sans-serif;max-width:40rem;margin:2rem auto;padding:0 1rem"><h1>Cloud sign-in failed</h1><p>${safe}</p><p><a href="/">Back to dashboard</a> · <a href="https://mastyf-ai-cloud.vercel.app/dashboard">Cloud console</a></p></body></html>`);
+      res.end(`<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"/><title>Cloud SSO</title></head><body style="font-family:system-ui,sans-serif;max-width:40rem;margin:2rem auto;padding:0 1rem"><h1>Cloud sign-in failed</h1><p>${safe}</p><p><a href="/">Back to dashboard</a> · <a href="${consoleUrl}">Cloud console</a></p></body></html>`);
       return;
     }
     writeJson(res, status, { error: message });
@@ -727,7 +745,7 @@ export async function startDashboardServer(
             req,
             res,
             503,
-            'Set DASHBOARD_JWT_SECRET or MASTYF_AI_CLOUD_JWT_SECRET on this Mastyf AI host (same value as cloud AUTH_SECRET). The cloud console at mastyf-ai-cloud.vercel.app does not need this — only self-hosted SSO.',
+            `Set DASHBOARD_JWT_SECRET or MASTYF_AI_CLOUD_JWT_SECRET on this Mastyf AI host (same value as cloud AUTH_SECRET). The cloud console at ${DEFAULT_CLOUD_CONSOLE_URL} does not need this — only self-hosted SSO.`,
           );
           return;
         }
@@ -738,7 +756,7 @@ export async function startDashboardServer(
             req,
             res,
             503,
-            'MASTYF_AI_CONTROL_PLANE_URL not configured (set to https://mastyf-ai-cloud.vercel.app)',
+            `MASTYF_AI_CONTROL_PLANE_URL not configured (set to ${DEFAULT_CLOUD_CONSOLE_URL})`,
           );
           return;
         }
@@ -1713,16 +1731,21 @@ export async function startDashboardServer(
           writeJson(res, 503, { error: 'AI learning disabled. Set MASTYF_AI_AI_ENABLED=false to disable.' });
           return;
         }
+        await touchDashboardAiEngine();
+      }
+
+      if (url.startsWith('/api/learning/')) {
+        await touchDashboardAiEngine();
       }
 
       if (url === '/api/ai/suggestions' && method === 'GET') {
         setCors();
         try {
-          const { getAiEngine } = await import('../ai/suggestion-engine.js');
+          const { getAiEngine, loadPendingSuggestions } = await import('../ai/suggestion-engine.js');
+          const pending = loadPendingSuggestions(requestTenantId);
           const engine = getAiEngine();
-          if (engine) {
-            const report = await engine.generateReport();
-            writeJson(res, 200, available({ suggestions: (report as any)?.suggestions || [], report }));
+          if (pending.length > 0 || engine) {
+            writeJson(res, 200, available({ suggestions: pending, report: null }));
             return;
           }
         } catch { /* fall through */ }
@@ -1802,6 +1825,7 @@ export async function startDashboardServer(
       if (url === '/api/ai/state' && method === 'GET') {
         setCors();
         try {
+          await touchDashboardAiEngine();
           const { getAiEngine } = await import('../ai/suggestion-engine.js');
           const engine = getAiEngine();
           if (engine) {
@@ -1836,7 +1860,7 @@ export async function startDashboardServer(
             return;
           }
         } catch { }
-        writeJson(res, 200, unavailable({ initialized: false, state: null }, 'No AI learning state yet — proxy blocks populate learning'));
+        writeJson(res, 200, unavailable({ initialized: false, state: null }, 'No AI learning state yet — restart proxy or wait for learning warmup'));
         return;
       }
 
@@ -3278,8 +3302,8 @@ export async function startDashboardServer(
                 : defaultTenantRecords > 0
                   ? `No records for tenant "${requestTenantId}" — ${defaultTenantRecords} exist under "default". Switch tenant in the dashboard header.`
                   : asyncEnabled
-                    ? 'No semantic audit records yet — route MCP tool calls through the Mastyf AI proxy.'
-                    : 'Enable MASTYF_AI_LLM_ENABLED=true and MASTYF_AI_SEMANTIC_ASYNC=true on the proxy, then route MCP traffic through Mastyf AI.',
+                    ? 'No semantic audit records yet — learning warmup runs on proxy start, or route live MCP tool calls through the proxy.'
+                    : 'Enable MASTYF_AI_SEMANTIC_ASYNC=true on the proxy (default when MASTYF_AI_LLM_ENABLED=true).',
           },
         });
         return;
@@ -3616,27 +3640,49 @@ export async function startDashboardServer(
       if (url === '/api/security-swarm/threat-lab-candidates/accept' && method === 'POST') {
         setCors();
         const body = await readBody(req);
-        const id = String(body.id || '');
+        const id = String(body.id || '').trim();
+        if (!id) {
+          writeJson(res, 400, { ok: false, error: 'id required' });
+          return;
+        }
         const { readThreatLabCandidates, markThreatLabCandidate } = await import('./swarm-artifacts.js');
         const data = readThreatLabCandidates(requestTenantId);
         const candidate = data?.candidates?.find((c: { id: string }) => c.id === id);
-        if (!candidate?.policyRule) {
-          writeJson(res, 404, { error: 'Threat Lab candidate not found' });
+        if (!candidate) {
+          writeJson(res, 404, { ok: false, error: 'Threat Lab candidate not found' });
+          return;
+        }
+        const policyRule = candidate.policyRule as import('../policy/policy-types.js').PolicyRule | undefined;
+        if (!policyRule?.name) {
+          writeJson(res, 400, {
+            ok: false,
+            error: 'Candidate has no policyRule — re-run Threat Lab or pick a candidate with a generated rule',
+          });
           return;
         }
         const { applySuggestionToPolicy } = await import('../ai/policy-applier.js');
-        const policyPath = process.env.MASTYF_AI_POLICY_PATH || join(REPO_ROOT, 'default-policy.yaml');
+        const policyPath = process.env['MASTYF_AI_POLICY_PATH'] || join(REPO_ROOT, 'default-policy.yaml');
         const result = await applySuggestionToPolicy(
-          candidate.policyRule as unknown as import('../policy/policy-types.js').PolicyRule,
+          policyRule,
           policyPath,
-          null,
+          policyWatcher ?? null,
+          { tenantId: requestTenantId },
         );
-        if (!result.applied) {
-          writeJson(res, 400, { error: result.reason ?? 'apply_failed', simulationSummary: result.simulationSummary });
+        if (!result.applied && result.reason !== 'duplicate') {
+          writeJson(res, 400, {
+            ok: false,
+            error: result.reason ?? 'apply_failed',
+            simulationSummary: result.simulationSummary,
+          });
           return;
         }
         markThreatLabCandidate(requestTenantId, id, 'accepted');
-        writeJson(res, 200, { status: 'accepted', id, ruleName: candidate.policyRule.name });
+        writeJson(res, 200, {
+          ok: true,
+          status: result.reason === 'duplicate' ? 'already_present' : 'accepted',
+          id,
+          ruleName: policyRule.name,
+        });
         return;
       }
       if (url === '/api/security-swarm/threat-lab-candidates/reject' && method === 'POST') {
