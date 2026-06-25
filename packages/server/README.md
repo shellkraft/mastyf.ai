@@ -332,6 +332,22 @@ docker run -v $(pwd)/mcp.json:/etc/mastyf-ai/config.json \
 | `MASTYF_AI_DB_PATH` | `~/.mastyf-ai/history.db` | SQLite database path |
 | `MASTYF_AI_SECRET_ALLOWLIST` | — | Comma-separated safe high-entropy strings |
 | `MASTYF_AI_MAX_PAYLOAD_BYTES` | `10485760` (10 MB) | Max JSON-RPC payload size |
+| `MASTYF_AI_HTTP_MAX_BODY_BYTES` | `10485760` (10 MB) | Alias for HTTP proxy body cap |
+| `MASTYF_AI_UPSTREAM_TIMEOUT_MS` | `30000` | Upstream MCP HTTP relay timeout |
+| `MASTYF_AI_TLS_CERT_PATH` | — | Inbound TLS cert for `createHttpProxy` listener |
+| `MASTYF_AI_TLS_KEY_PATH` | — | Inbound TLS key for `createHttpProxy` listener |
+| `MASTYF_AI_AUTH_ISSUER` | — | OIDC issuer for lightweight HTTP proxy OAuth bridge |
+| `MASTYF_AI_AUTH_AUDIENCE` | — | Expected JWT audience for HTTP proxy OAuth bridge |
+| `MASTYF_AI_AUTH_REQUIRED` | `false` | Fail-closed auth on HTTP proxy (`401` without token) |
+
+### Lightweight HTTP proxy (`createHttpProxy`)
+
+[`packages/server/src/http-proxy.ts`](packages/server/src/http-proxy.ts) is a transparent MCP-over-HTTP relay with policy evaluation and token counting. It enforces bounded request/response bodies, upstream timeouts, correct HTTPS port selection (`443`/`80`), optional inbound TLS, and injectable OAuth via [`src/proxy/create-http-proxy-bridge.ts`](../../src/proxy/create-http-proxy-bridge.ts).
+
+**Production deployments** needing DPoP, session rotation, rug-pull detection, and response gates should use [`HttpProxyServer`](../../src/proxy/http-proxy-server.ts) instead.
+
+When `MASTYF_AI_AUTH_REQUIRED=true`, unauthenticated callers receive **401**. Invalid tokens receive **403**. Oversized bodies receive **413**. Slow upstreams receive **504**.
+
 | `MASTYF_AI_SECRET_PROVIDER` | `env` | Secret backend: `env`, `hashicorp-vault`, `aws-secrets-manager` |
 | `MASTYF_AI_ALLOW_MODE_OVERRIDE` | `false` | Allow CLI `--blocking-mode` to override policy file mode |
 | `MASTYF_AI_STRICT_MODE` | `false` | Exit on Redis-not-configured in multi-replica/K8s |

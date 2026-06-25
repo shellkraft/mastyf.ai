@@ -64,8 +64,8 @@
     "cost-tracking"
   ],
   "scripts": {
-    "build": "pnpm --filter @mastyf-ai/plugin-sdk run build && tsc --project tsconfig.json && mkdir -p dist/database/migrations dist/policy && cp src/database/migrations/*.sql dist/database/migrations/ && cp src/policy/regex-eval-worker.mjs dist/policy/ && turbo run build",
-    "build:mastyf-ai": "pnpm --filter @mastyf-ai/plugin-sdk run build && tsc --project tsconfig.json && cp src/policy/regex-eval-worker.mjs dist/policy/",
+    "build": "pnpm --filter @mastyf-ai/plugin-sdk run build && pnpm --filter @mastyf-ai/mcp-server run build && tsc --project tsconfig.json && mkdir -p dist/database/migrations dist/policy && cp src/database/migrations/*.sql dist/database/migrations/ && cp src/policy/regex-eval-worker.mjs dist/policy/ && turbo run build",
+    "build:mastyf-ai": "pnpm --filter @mastyf-ai/plugin-sdk run build && pnpm --filter @mastyf-ai/mcp-server run build && tsc --project tsconfig.json && cp src/policy/regex-eval-worker.mjs dist/policy/",
     "dev": "node scripts/dev.mjs mastyf-ai-configs/testbed-memory.json",
     "dev:thinking": "node scripts/dev.mjs mastyf-ai-configs/testbed-thinking.json",
     "dev:build": "pnpm build && node scripts/dev.mjs mastyf-ai-configs/testbed-memory.json",
@@ -179,6 +179,7 @@
   },
   "dependencies": {
     "@mastyf-ai/core": "workspace:^4.1.7",
+    "@mastyf-ai/mcp-server": "workspace:^4.1.7",
     "@mastyf-ai/plugin-sdk": "workspace:^4.1.7",
     "@modelcontextprotocol/sdk": "^1.25.2",
     "@opentelemetry/api": "^1.9.1",

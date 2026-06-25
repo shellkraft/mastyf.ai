@@ -5,141 +5,198 @@
  * payloads, runs token counting and policy evaluation, then forwards to the target.
  */
 import * as http from 'http';
-import { URL } from 'url';
+import * as https from 'https';
+import type { Agent } from 'https';
+import type { HttpProxyAuthValidator } from './http-proxy-auth.js';
+import { runHttpProxyAuthGate, sendAuthGateFailure } from './http-proxy-auth.js';
+import {
+  getMaxBodyBytes,
+  getUpstreamTimeoutMs,
+  loadInboundTlsFromEnv,
+  readRequestBodyWithLimit,
+  relayToUpstream,
+} from './http-proxy-utils.js';
 
-// Lightweight injection-compatible interfaces (no runtime dependency on core)
 interface TokenCounterLike { count(text: string): number; }
 interface PolicyEngineLike { evaluate(c: any): { action: string; rule: string; reason: string }; }
 interface DatabaseLike { addCallRecord(r: any): Promise<void>; }
+
+export interface CreateHttpProxyOptions {
+  authValidator?: HttpProxyAuthValidator | null;
+  maxBodyBytes?: number;
+  upstreamTimeoutMs?: number;
+  tls?: { cert: Buffer | string; key: Buffer | string };
+  upstreamAgent?: Agent;
+}
 
 export function createHttpProxy(
   targetUrl: string,
   policyEngine: PolicyEngineLike | null,
   db: DatabaseLike,
   tokenCounter: TokenCounterLike,
-): http.Server {
+  options: CreateHttpProxyOptions = {},
+): http.Server | https.Server {
   const target = targetUrl.replace(/\/$/, '');
+  const maxBodyBytes = options.maxBodyBytes ?? getMaxBodyBytes();
+  const upstreamTimeoutMs = options.upstreamTimeoutMs ?? getUpstreamTimeoutMs();
+  const authValidator = options.authValidator ?? null;
+  const upstreamAgent = options.upstreamAgent;
+  const inboundTls = options.tls ?? loadInboundTlsFromEnv();
 
-  const server = http.createServer(async (clientReq, clientRes) => {
+  const handler = async (clientReq: http.IncomingMessage, clientRes: http.ServerResponse) => {
     const start = Date.now();
-    // Only intercept POST (tools/call)
+
+    if (authValidator) {
+      const authResult = await runHttpProxyAuthGate(clientReq, authValidator);
+      if (!authResult.ok) {
+        sendAuthGateFailure(clientRes, authResult);
+        return;
+      }
+    }
+
+    const buildUpstreamUrl = () => new URL(target + (clientReq.url ?? '/'));
+
+    const forwardHeaders = (upstream: URL, extra?: Record<string, string>) => ({
+      ...clientReq.headers,
+      host: upstream.hostname,
+      ...extra,
+    });
+
     if (clientReq.method !== 'POST') {
-      const upstream = new URL(target + (clientReq.url ?? '/'));
-      const opts: http.RequestOptions = {
-        hostname: upstream.hostname, port: upstream.port || 80,
-        path: upstream.pathname + upstream.search, method: clientReq.method,
-        headers: { ...clientReq.headers, host: upstream.hostname },
-      };
-      const upstreamReq = http.request(opts, upstreamRes => {
-        clientRes.writeHead(upstreamRes.statusCode ?? 200, upstreamRes.headers);
-        upstreamRes.pipe(clientRes);
+      relayToUpstream({
+        upstream: buildUpstreamUrl(),
+        method: clientReq.method || 'GET',
+        headers: forwardHeaders(buildUpstreamUrl()),
+        clientRes,
+        clientReq,
+        timeoutMs: upstreamTimeoutMs,
+        agent: upstreamAgent,
       });
-      upstreamReq.on('error', () => { if (!clientRes.headersSent) clientRes.writeHead(502).end(); });
-      clientReq.pipe(upstreamReq);
       return;
     }
 
-    // Buffer body
-    const chunks: Buffer[] = [];
-    for await (const chunk of clientReq) chunks.push(chunk as Buffer);
-    const rawBody = Buffer.concat(chunks).toString();
+    const bodyResult = await readRequestBodyWithLimit(clientReq, maxBodyBytes);
+    if (!bodyResult.ok) {
+      clientRes.writeHead(413, { 'Content-Type': 'application/json' });
+      clientRes.end(JSON.stringify({
+        error: 'Request body too large',
+        limit: bodyResult.limit,
+        bytes: bodyResult.bytes,
+      }));
+      return;
+    }
+    const rawBody = bodyResult.body;
 
     let parsed: any;
-    try { parsed = JSON.parse(rawBody);     } catch {
-      // Not JSON — forward with original method
-      const upstream = new URL(target + (clientReq.url ?? '/'));
-      const opts: http.RequestOptions = {
-        hostname: upstream.hostname, port: upstream.port || 80,
-        path: upstream.pathname + upstream.search, method: clientReq.method || 'POST',
-        headers: { ...clientReq.headers, host: upstream.hostname, 'content-length': String(rawBody.length) },
-      };
-      const upstreamReq = http.request(opts, upstreamRes => {
-        clientRes.writeHead(upstreamRes.statusCode ?? 200, upstreamRes.headers);
-        upstreamRes.pipe(clientRes);
+    try {
+      parsed = JSON.parse(rawBody);
+    } catch {
+      const upstream = buildUpstreamUrl();
+      relayToUpstream({
+        upstream,
+        method: clientReq.method || 'POST',
+        headers: forwardHeaders(upstream, { 'content-length': String(Buffer.byteLength(rawBody)) }),
+        body: rawBody,
+        clientRes,
+        timeoutMs: upstreamTimeoutMs,
+        agent: upstreamAgent,
       });
-      upstreamReq.on('error', () => { if (!clientRes.headersSent) clientRes.writeHead(502).end(); });
-      upstreamReq.write(rawBody);
-      upstreamReq.end();
       return;
     }
 
-    // tools/call
     if (parsed.method === 'tools/call') {
       const toolName = parsed.params?.name || 'unknown';
       const inputTokens = tokenCounter.count(rawBody);
 
-      // Policy check
       if (policyEngine) {
         const policyResult = policyEngine.evaluate({
-          toolName, arguments: parsed.params?.arguments || {},
-          serverName: target, requestTokens: inputTokens,
+          toolName,
+          arguments: parsed.params?.arguments || {},
+          serverName: target,
+          requestTokens: inputTokens,
           timestamp: new Date().toISOString(),
         });
         if (policyResult.action === 'block') {
           clientRes.writeHead(403, { 'Content-Type': 'application/json' });
           clientRes.end(JSON.stringify({
-            jsonrpc: '2.0', id: parsed.id,
-            error: { code: -32000, message: `Blocked: ${policyResult.reason}`, data: { rule: policyResult.rule } },
+            jsonrpc: '2.0',
+            id: parsed.id,
+            error: {
+              code: -32000,
+              message: `Blocked: ${policyResult.reason}`,
+              data: { rule: policyResult.rule },
+            },
           }));
           return;
         }
       }
 
-      // Forward
-      const upstream = new URL(target + (clientReq.url ?? '/'));
-      const opts: http.RequestOptions = {
-        hostname: upstream.hostname, port: upstream.port || 80,
-        path: upstream.pathname + upstream.search, method: 'POST',
-        headers: { ...clientReq.headers, host: upstream.hostname, 'content-length': String(rawBody.length) },
-      };
-      const upstreamReq = http.request(opts, async (upstreamRes) => {
-        const respChunks: Buffer[] = [];
-        upstreamRes.on('data', (chunk: Buffer) => respChunks.push(chunk));
-        upstreamRes.on('end', async () => {
-          const responseBody = Buffer.concat(respChunks).toString();
+      const upstream = buildUpstreamUrl();
+      relayToUpstream({
+        upstream,
+        method: 'POST',
+        headers: forwardHeaders(upstream, { 'content-length': String(Buffer.byteLength(rawBody)) }),
+        body: rawBody,
+        clientRes,
+        timeoutMs: upstreamTimeoutMs,
+        agent: upstreamAgent,
+        maxResponseBytes: maxBodyBytes,
+        onBufferedResponse: async (responseBody, upstreamRes) => {
           let outputTokens = 0;
           try {
             const responseJson = JSON.parse(responseBody);
             if (responseJson.result?.content) {
               outputTokens = tokenCounter.count(
-                (responseJson.result.content as any[]).map(c => c.text || '').join('')
+                (responseJson.result.content as any[]).map((c) => c.text || '').join(''),
               );
             }
-          } catch { outputTokens = Math.round(responseBody.length * 0.25); }
+          } catch {
+            outputTokens = Math.round(responseBody.length * 0.25);
+          }
 
-          clientRes.writeHead(upstreamRes.statusCode ?? 200, upstreamRes.headers);
-          clientRes.end(responseBody);
+          if (!clientRes.headersSent) {
+            clientRes.writeHead(upstreamRes.statusCode ?? 200, upstreamRes.headers);
+            clientRes.end(responseBody);
+          }
 
           try {
             await db.addCallRecord({
-              serverName: target, toolName,
-              requestTokens: inputTokens, responseTokens: outputTokens,
-              totalTokens: inputTokens + outputTokens, durationMs: Date.now() - start,
+              serverName: target,
+              toolName,
+              requestTokens: inputTokens,
+              responseTokens: outputTokens,
+              totalTokens: inputTokens + outputTokens,
+              durationMs: Date.now() - start,
               timestamp: new Date().toISOString(),
             });
-          } catch { /* DB log failure is non-fatal */ }
-        });
+          } catch {
+            /* DB log failure is non-fatal */
+          }
+        },
       });
-      upstreamReq.on('error', () => { if (!clientRes.headersSent) clientRes.writeHead(502).end(); });
-      upstreamReq.write(rawBody);
-      upstreamReq.end();
-    } else {
-      // Forward non-tools/call — preserve client HTTP method
-      const upstream = new URL(target + (clientReq.url ?? '/'));
-      const opts: http.RequestOptions = {
-        hostname: upstream.hostname, port: upstream.port || 80,
-        path: upstream.pathname + upstream.search, method: clientReq.method || 'POST',
-        headers: { ...clientReq.headers, host: upstream.hostname, 'content-length': String(rawBody.length) },
-      };
-      const upstreamReq = http.request(opts, upstreamRes => {
-        clientRes.writeHead(upstreamRes.statusCode ?? 200, upstreamRes.headers);
-        upstreamRes.pipe(clientRes);
-      });
-      upstreamReq.on('error', () => { if (!clientRes.headersSent) clientRes.writeHead(502).end(); });
-      upstreamReq.write(rawBody);
-      upstreamReq.end();
+      return;
     }
-  });
 
-  return server;
+    const upstream = buildUpstreamUrl();
+    relayToUpstream({
+      upstream,
+      method: clientReq.method || 'POST',
+      headers: forwardHeaders(upstream, { 'content-length': String(Buffer.byteLength(rawBody)) }),
+      body: rawBody,
+      clientRes,
+      timeoutMs: upstreamTimeoutMs,
+      agent: upstreamAgent,
+    });
+  };
+
+  if (inboundTls) {
+    return https.createServer(
+      { cert: inboundTls.cert, key: inboundTls.key },
+      handler,
+    );
+  }
+
+  return http.createServer(handler);
 }
+
+export type { HttpProxyAuthValidator } from './http-proxy-auth.js';

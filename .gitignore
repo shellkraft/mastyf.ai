@@ -34,6 +34,15 @@ assets/ml/prompt-injection/onnx/*.onnx
 .venv/
 .package.prepack-backup.json
 scripts/.agent-proxy-config.json
+# Runtime auto-threat-research fixtures beyond committed corpus (adv-425+)
+/adversarial-harness/fixtures/custom-attacks/adv-42[5-9].json
+/adversarial-harness/fixtures/custom-attacks/adv-43[0-9].json
+/adversarial-harness/fixtures/custom-attacks/adv-[5-9][0-9][0-9].json
+# Accidental tsc output in package src trees
+packages/server/src/**/*.js
+packages/server/src/**/*.d.ts
+packages/server/src/**/*.js.map
+packages/server/src/**/*.d.ts.map
 scenarios/real-life/output/
 reports/tenants/
 reports/.mastyf-ai-home/

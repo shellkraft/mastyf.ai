@@ -1,11 +1,12 @@
 {
-  "name": "@mastyf-ai/server",
+  "name": "@mastyf-ai/mcp-server",
   "version": "4.1.7",
-  "description": "Runtime security, cost governance, and health monitoring proxy for MCP infrastructure",
+  "description": "Standalone MCP scan server and HTTP proxy helpers for the Mastyf AI monorepo",
   "type": "module",
   "main": "./dist/index.js",
-  "bin": {
-    "mastyf-ai": "./dist/cli.js"
+  "exports": {
+    ".": "./dist/index.js",
+    "./http-proxy": "./dist/http-proxy.js"
   },
   "scripts": {
     "build": "tsc",

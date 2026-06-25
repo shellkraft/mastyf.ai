@@ -16,7 +16,7 @@
   },
   "dependencies": {
     "@mastyf-ai/core": "workspace:^4.1.7",
-    "@mastyf-ai/server": "workspace:^4.1.7"
+    "@mastyf-ai/mcp-server": "workspace:^4.1.7"
   },
   "devDependencies": {
     "typescript": "^5.4.0",

@@ -1,0 +1,181 @@
+import * as http from 'http';
+import * as https from 'https';
+import type { IncomingMessage, ServerResponse } from 'http';
+import { readFileSync } from 'fs';
+
+const DEFAULT_MAX_BODY = 10 * 1024 * 1024;
+const DEFAULT_UPSTREAM_TIMEOUT_MS = 30_000;
+
+export function getMaxBodyBytes(): number {
+  const raw =
+    process.env['MASTYF_AI_MAX_PAYLOAD_BYTES'] ??
+    process.env['MASTYF_AI_HTTP_MAX_BODY_BYTES'];
+  if (raw !== undefined && raw !== '') {
+    const n = parseInt(raw, 10);
+    if (Number.isFinite(n) && n > 0) return n;
+  }
+  return DEFAULT_MAX_BODY;
+}
+
+export function getUpstreamTimeoutMs(): number {
+  const raw = process.env['MASTYF_AI_UPSTREAM_TIMEOUT_MS'];
+  if (raw == null || raw === '') return DEFAULT_UPSTREAM_TIMEOUT_MS;
+  const n = parseInt(raw, 10);
+  return Number.isFinite(n) && n > 0 ? n : DEFAULT_UPSTREAM_TIMEOUT_MS;
+}
+
+export function resolveUpstreamPort(url: URL): number {
+  if (url.port) return parseInt(url.port, 10);
+  return url.protocol === 'https:' ? 443 : 80;
+}
+
+export type ReadBodyResult =
+  | { ok: true; body: string }
+  | { ok: false; tooLarge: true; bytes: number; limit: number };
+
+export async function readRequestBodyWithLimit(
+  req: IncomingMessage,
+  maxBytes = getMaxBodyBytes(),
+): Promise<ReadBodyResult> {
+  const chunks: Buffer[] = [];
+  let total = 0;
+  for await (const chunk of req) {
+    const buf = chunk as Buffer;
+    total += buf.length;
+    if (total > maxBytes) {
+      return { ok: false, tooLarge: true, bytes: total, limit: maxBytes };
+    }
+    chunks.push(buf);
+  }
+  return { ok: true, body: Buffer.concat(chunks).toString('utf8') };
+}
+
+export function loadInboundTlsFromEnv():
+  | { cert: Buffer; key: Buffer }
+  | null {
+  const certPath = process.env['MASTYF_AI_TLS_CERT_PATH'];
+  const keyPath = process.env['MASTYF_AI_TLS_KEY_PATH'];
+  if (!certPath || !keyPath) return null;
+  return {
+    cert: readFileSync(certPath),
+    key: readFileSync(keyPath),
+  };
+}
+
+export interface RelayToUpstreamOptions {
+  upstream: URL;
+  method: string;
+  headers: http.OutgoingHttpHeaders;
+  clientRes: ServerResponse;
+  timeoutMs: number;
+  agent?: https.Agent;
+  /** When set, write this body to upstream. Otherwise pipe `clientReq`. */
+  body?: string;
+  clientReq?: IncomingMessage;
+  /** When set, buffer upstream response up to this many bytes. */
+  maxResponseBytes?: number;
+  onBufferedResponse?: (
+    responseBody: string,
+    upstreamRes: IncomingMessage,
+  ) => void | Promise<void>;
+}
+
+function requestUpstream(
+  upstream: URL,
+  opts: Omit<RelayToUpstreamOptions, 'upstream' | 'clientRes' | 'onBufferedResponse' | 'maxResponseBytes'>,
+): http.ClientRequest {
+  const isHttps = upstream.protocol === 'https:';
+  const requestFn = isHttps ? https.request : http.request;
+  const reqOpts: https.RequestOptions = {
+    hostname: upstream.hostname,
+    port: resolveUpstreamPort(upstream),
+    path: upstream.pathname + upstream.search,
+    method: opts.method,
+    headers: opts.headers,
+    timeout: opts.timeoutMs,
+    agent: isHttps ? opts.agent : undefined,
+  };
+  return requestFn(reqOpts);
+}
+
+export function relayToUpstream(options: RelayToUpstreamOptions): void {
+  const {
+    upstream,
+    method,
+    headers,
+    clientRes,
+    timeoutMs,
+    agent,
+    body,
+    clientReq,
+    maxResponseBytes,
+    onBufferedResponse,
+  } = options;
+
+  const upstreamReq = requestUpstream(upstream, {
+    method,
+    headers,
+    timeoutMs,
+    agent,
+    body,
+    clientReq,
+  });
+
+  const failClient = (status: number, message?: string) => {
+    if (clientRes.headersSent) return;
+    if (message) {
+      clientRes.writeHead(status, { 'Content-Type': 'application/json' });
+      clientRes.end(JSON.stringify({ error: message }));
+    } else {
+      clientRes.writeHead(status).end();
+    }
+  };
+
+  upstreamReq.on('timeout', () => {
+    upstreamReq.destroy();
+    failClient(504, 'Upstream request timed out');
+  });
+
+  upstreamReq.on('error', () => {
+    failClient(502);
+  });
+
+  upstreamReq.on('response', (upstreamRes) => {
+    if (onBufferedResponse && maxResponseBytes != null) {
+      const respChunks: Buffer[] = [];
+      let respSize = 0;
+      upstreamRes.on('data', (chunk: Buffer) => {
+        respSize += chunk.length;
+        if (respSize > maxResponseBytes) {
+          upstreamRes.destroy();
+          failClient(413, 'Upstream response too large');
+          return;
+        }
+        respChunks.push(chunk);
+      });
+      upstreamRes.on('end', () => {
+        void (async () => {
+          const responseBody = Buffer.concat(respChunks).toString('utf8');
+          await onBufferedResponse(responseBody, upstreamRes);
+        })();
+      });
+      upstreamRes.on('error', () => failClient(502));
+      return;
+    }
+
+    clientRes.writeHead(upstreamRes.statusCode ?? 200, upstreamRes.headers);
+    upstreamRes.pipe(clientRes);
+    upstreamRes.on('error', () => {
+      if (!clientRes.headersSent) failClient(502);
+    });
+  });
+
+  if (body !== undefined) {
+    upstreamReq.write(body);
+    upstreamReq.end();
+  } else if (clientReq) {
+    clientReq.pipe(upstreamReq);
+  } else {
+    upstreamReq.end();
+  }
+}

@@ -69,7 +69,7 @@ function printReport(results: ServerScanResult[], verbose: boolean): void {
 
 async function main() {
   if (flags.mcp) {
-    const { startMcpServer } = await import("@mastyf-ai/server");
+    const { startMcpServer } = await import("@mastyf-ai/mcp-server");
     await startMcpServer();
     return;
   }
