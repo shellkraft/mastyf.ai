@@ -28,6 +28,17 @@ export async function bridgeSemanticAuditToSuggestion(
     return false;
   }
 
+  try {
+    const { promoteDiscoveryToCoreRules } = await import('./core-rule-promoter.js');
+    promoteDiscoveryToCoreRules(discovery, {
+      source: 'semantic-tp',
+      inputFingerprint: record.id,
+      confidence: discovery.confidence,
+    });
+  } catch {
+    /* non-fatal */
+  }
+
   return queuePendingAttackSuggestion(
     {
       rule: discovery.policyRule,

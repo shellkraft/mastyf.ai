@@ -39,6 +39,7 @@ const SECRET_KEYS = [
   'MCP_AUTH_JWT_SECRET',
   'JWT_SECRET',
   'ALERT_WEBHOOK_URL',
+  'MASTYF_AI_MANIFEST_SECRET',
 ];
 
 export async function bootstrapSecrets(): Promise<void> {
@@ -239,6 +240,8 @@ export function getExporterManager(): ExporterManager | null {
 }
 
 export async function shutdownEnterprise(): Promise<void> {
+  const { shutdownLearnedRules } = await import('../ai/learned-rules-init.js');
+  shutdownLearnedRules();
   mtlsWatcher?.stop();
   mtlsWatcher = null;
   const { stopDashboardTelemetry } = await import('./dashboard-telemetry.js');

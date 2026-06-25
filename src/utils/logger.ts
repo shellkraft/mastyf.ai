@@ -25,6 +25,7 @@ export const logger = pino(
       paths: [
         'req.headers.authorization',
         'req.headers["x-api-key"]',
+        'apiKey',
         '*.token', '*.apiKey', '*.password', '*.secret', '*.privateKey',
       ],
       censor: '[REDACTED]',

@@ -127,6 +127,17 @@ async function persistValidatedDiscoveryToAutoCorpus(
     recordHourlyWrite();
   }
 
+  try {
+    const { promoteDiscoveryToCoreRules } = await import('./core-rule-promoter.js');
+    promoteDiscoveryToCoreRules(normalized, {
+      source,
+      inputFingerprint: fp,
+      confidence: normalized.confidence,
+    });
+  } catch {
+    /* non-fatal */
+  }
+
   Logger.info(
     `[threat-research] auto-wrote ${written.advId} (${normalized.attackClass}, source=${source})`,
   );

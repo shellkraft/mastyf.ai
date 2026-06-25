@@ -5,7 +5,9 @@ import { walkStringLeaves } from '../policy/arg-leaf-walker.js';
 
 const SECRET_PATTERNS: RegExp[] = [
   /(?:api[_-]?key|secret|password|token|authorization)\s*[:=]\s*['"]?([^\s'"]{8,})/gi,
+  /\bsk-ant-[a-zA-Z0-9_-]{10,}\b/g,
   /\bsk-[a-zA-Z0-9]{20,}\b/g,
+  /\bghp_[a-zA-Z0-9]{20,}\b/g,
   /\bAKIA[0-9A-Z]{16}\b/g,
   /-----BEGIN [A-Z ]+-----[\s\S]+?-----END [A-Z ]+-----/g,
 ];

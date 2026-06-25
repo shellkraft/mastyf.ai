@@ -933,6 +933,8 @@ program
     }
 
     await bootstrapSecrets();
+    const { bootstrapLearnedRules } = await import('./ai/learned-rules-init.js');
+    bootstrapLearnedRules();
     const db = await createDatabase(process.env.MASTYF_AI_DB_PATH || undefined);
     await bootstrapCompliance(db);
     await bootstrapControlPlane(policyWatcher);
