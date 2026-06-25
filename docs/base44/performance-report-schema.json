@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "mastyf.ai Weekly Performance Report",
+  "type": "object",
+  "required": ["reportId", "period", "product", "trustApi", "proxy", "highlights", "risks", "nextWeekActions"],
+  "properties": {
+    "reportId": { "type": "string" },
+    "period": {
+      "type": "object",
+      "required": ["start", "end", "windowDays"],
+      "properties": {
+        "start": { "type": "string", "format": "date-time" },
+        "end": { "type": "string", "format": "date-time" },
+        "windowDays": { "type": "integer" }
+      }
+    },
+    "product": {
+      "type": "object",
+      "properties": {
+        "githubStars": { "type": ["integer", "null"] },
+        "githubForks": { "type": ["integer", "null"] },
+        "openIssues": { "type": ["integer", "null"] },
+        "productHuntUpvotes": { "type": ["integer", "null"] },
+        "organizationCount": { "type": ["integer", "null"] },
+        "userCount": { "type": ["integer", "null"] }
+      }
+    },
+    "trustApi": {
+      "type": "object",
+      "properties": {
+        "packagesScoredTotal": { "type": "integer" },
+        "packagesScoredInWindow": { "type": "integer" },
+        "gradeDistribution": { "type": "object", "additionalProperties": { "type": "integer" } },
+        "avgScore": { "type": ["number", "null"] }
+      }
+    },
+    "proxy": {
+      "type": "object",
+      "properties": {
+        "activeInstances": { "type": "integer" },
+        "totalToolCalls": { "type": "integer" },
+        "blockedCalls": { "type": "integer" },
+        "totalCostUsd": { "type": "number" },
+        "topBlockRules": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "rule": { "type": "string" },
+              "count": { "type": "integer" }
+            }
+          }
+        }
+      }
+    },
+    "highlights": { "type": "array", "items": { "type": "string" } },
+    "risks": { "type": "array", "items": { "type": "string" } },
+    "nextWeekActions": { "type": "array", "items": { "type": "string" } }
+  }
+}

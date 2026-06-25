@@ -1,0 +1,161 @@
+openapi: 3.0.3
+info:
+  title: mastyf.ai Cloud API
+  description: |
+    Public and authenticated endpoints for mastyf.ai trust scores, observatory data,
+    and performance reporting (Base44 Superagent / external integrations).
+  version: 1.0.0
+  contact:
+    name: mastyf.ai
+    url: https://mastyf-ai-cloud-jet.vercel.app
+servers:
+  - url: https://mastyf-ai-cloud-jet.vercel.app
+    description: Production
+  - url: http://localhost:3001
+    description: Local dev
+paths:
+  /api/v1/reports/performance:
+    get:
+      operationId: getPerformanceReport
+      summary: Aggregated performance snapshot for Base44 / ops agents
+      description: |
+        Returns trust API cache stats, cloud product counts, fleet/proxy aggregates,
+        and observatory health. Requires Bearer token (MASTYF_REPORTS_API_KEY or org API key).
+      parameters:
+        - name: window
+          in: query
+          description: Reporting window (e.g. 7d, 14d, 30)
+          schema:
+            type: string
+            default: 7d
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Performance report JSON
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PerformanceReport'
+        '401':
+          description: Unauthorized
+  /api/v1/observatory/snapshot:
+    get:
+      operationId: getObservatorySnapshot
+      summary: Public ecosystem observatory snapshot
+      responses:
+        '200':
+          description: Observatory metrics
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+  /api/v1/badge/{package}/json:
+    get:
+      operationId: getPackageTrustScore
+      summary: Live trust score JSON for an npm MCP package
+      parameters:
+        - name: package
+          in: path
+          required: true
+          description: URL-encoded package name (e.g. @playwright/mcp)
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Trust score payload
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  found:
+                    type: boolean
+                  packageName:
+                    type: string
+                  score:
+                    type: integer
+                  grade:
+                    type: string
+        '404':
+          description: Package not found
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+  schemas:
+    PerformanceReport:
+      type: object
+      properties:
+        reportId:
+          type: string
+          format: uuid
+        generatedAt:
+          type: string
+          format: date-time
+        period:
+          type: object
+          properties:
+            start:
+              type: string
+              format: date-time
+            end:
+              type: string
+              format: date-time
+            windowDays:
+              type: integer
+        product:
+          type: object
+          properties:
+            organizationCount:
+              type: integer
+            activeApiKeys:
+              type: integer
+            certificationCount:
+              type: integer
+            userCount:
+              type: integer
+        trustApi:
+          type: object
+          properties:
+            packagesScoredTotal:
+              type: integer
+            packagesScoredInWindow:
+              type: integer
+            gradeDistribution:
+              type: object
+              additionalProperties:
+                type: integer
+            avgScore:
+              type: number
+              nullable: true
+        proxy:
+          type: object
+          properties:
+            activeInstances:
+              type: integer
+            totalToolCalls:
+              type: integer
+            blockedCalls:
+              type: integer
+            totalCostUsd:
+              type: number
+            topBlockRules:
+              type: array
+              items:
+                type: object
+                properties:
+                  rule:
+                    type: string
+                  count:
+                    type: integer
+        highlights:
+          type: array
+          items:
+            type: string
+        risks:
+          type: array
+          items:
+            type: string

@@ -192,11 +192,14 @@ export async function bootstrapControlPlane(
   startInstanceRegistry(async () => {
     const { collectHeartbeatThreatSignatures } = await import('../utils/fleet-threat-signatures.js');
     const { collectFederatedThreatStats } = await import('../utils/federated-threat-radar.js');
-    const [threatSignatures, federatedStats] = await Promise.all([
+    const { collectProxyHeartbeatMetrics } = await import('../utils/heartbeat-proxy-metrics.js');
+    const [threatSignatures, federatedStats, proxyMetrics] = await Promise.all([
       collectHeartbeatThreatSignatures().catch(() => []),
       collectFederatedThreatStats().catch(() => null),
+      collectProxyHeartbeatMetrics().catch(() => ({})),
     ]);
     return {
+      ...proxyMetrics,
       threatSignatures,
       ...(federatedStats ? { federatedStats } : {}),
     };

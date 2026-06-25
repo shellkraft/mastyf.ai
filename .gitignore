@@ -13,7 +13,12 @@ dist/
 package-lock.json
 coverage/
 test-results/
-reports/
+/reports/
+docs/tutorials/videos/.promo-build/
+docs/tutorials/videos/mastyf-ai-promo.mp4
+apps/cloud/public/tutorials/mastyf-ai-promo.mp4
+docs/tutorials/videos/*.mp4
+apps/cloud/public/tutorials/*.mp4
 .turbo/
 .threat-state.json
 .ai-learning.json

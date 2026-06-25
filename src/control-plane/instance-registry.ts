@@ -9,6 +9,7 @@ export type HeartbeatMetrics = {
   totalRequests?: number;
   blockedRequests?: number;
   totalCostUsd?: number;
+  topBlockRules?: Array<{ rule: string; count: number }>;
   threatSignatures?: ThreatSignature[];
   federatedStats?: Record<string, unknown>;
 };
