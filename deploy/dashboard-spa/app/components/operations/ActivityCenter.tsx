@@ -28,11 +28,13 @@ import { Badge } from '@/app/components/ui/Badge';
 import { KpiCard } from '@/app/components/ui/KpiCard';
 import { EmptyState } from '@/app/components/ui/EmptyState';
 import { WorkspaceSubNav } from '@/app/components/ui/WorkspaceSubNav';
+import { AnalyticsDashboardPanel } from '@/app/components/analytics/AnalyticsDashboardPanel';
+import { EnterpriseInfrastructurePanel } from '@/app/components/operations/EnterpriseInfrastructurePanel';
 import type { FlowTimelineEntry } from '@/lib/flow-types';
 
 type Props = {
-  view: 'realtime' | 'audit';
-  onViewChange: (v: 'realtime' | 'audit') => void;
+  view: 'realtime' | 'audit' | 'analytics' | 'infrastructure';
+  onViewChange: (v: 'realtime' | 'audit' | 'analytics' | 'infrastructure') => void;
   roles?: string[];
   refreshKey: number;
   ws?: { entries: any[]; connected: boolean };
@@ -159,6 +161,8 @@ export function ActivityCenter({
   const subtabs = [
     { id: 'realtime' as const, label: 'Event Explorer' },
     { id: 'audit' as const, label: 'Audit Trail' },
+    { id: 'analytics' as const, label: 'Analytics' },
+    { id: 'infrastructure' as const, label: 'Infrastructure' },
   ];
 
   return (
@@ -166,7 +170,13 @@ export function ActivityCenter({
       <div className="page-header">
         <div>
           <h1>Activity Center</h1>
-          <p>Unified operational view — real-time agent activity and audit trail</p>
+          <p>
+            {view === 'analytics'
+              ? 'Usage analytics — traffic, cost, models, and drift signals'
+              : view === 'infrastructure'
+                ? 'Infrastructure charts — traffic, learning, semantic, and server probes'
+                : 'Unified operational view — real-time agent activity and audit trail'}
+          </p>
         </div>
       </div>
 
@@ -526,6 +536,14 @@ export function ActivityCenter({
             <button className="btn btn-ghost btn-sm" disabled={(auditPage + 1) * PAGE_SIZE >= events.length} onClick={() => setAuditPage(p => p + 1)}>Next ›</button>
           </div>
         </>
+      )}
+
+      {view === 'analytics' && (
+        <AnalyticsDashboardPanel refreshKey={refreshKey} wsConnected={!!ws?.connected} />
+      )}
+
+      {view === 'infrastructure' && (
+        <EnterpriseInfrastructurePanel refreshKey={refreshKey} />
       )}
     </section>
   );

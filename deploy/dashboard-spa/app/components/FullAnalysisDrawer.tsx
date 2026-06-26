@@ -7,6 +7,7 @@ import {
   type MastyfAiFullAnalysisResponse,
 } from '@/lib/mastyf-ai-api';
 import { useCurrentWindowDays } from './dashboard/DashboardWindowContext';
+import { formatWindowSubtitle } from '@/lib/format-dashboard-window';
 import { Button } from './ui/Button';
 import { Badge } from './ui/Badge';
 
@@ -63,7 +64,7 @@ function renderMarkdownSimple(md: string): ReactNode {
 }
 
 export function FullAnalysisDrawer({ open, onClose, proxyOnline }: Props) {
-  const { windowDays } = useCurrentWindowDays();
+  const { windowParam, windowLabel } = useCurrentWindowDays();
   const [analysis, setAnalysis] = useState<MastyfAiFullAnalysisResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -80,7 +81,7 @@ export function FullAnalysisDrawer({ open, onClose, proxyOnline }: Props) {
     setLoading(true);
     setError('');
     try {
-      const { analysis: data, error: apiError } = await fetchFullAnalysis(windowDays, useLlm);
+      const { analysis: data, error: apiError } = await fetchFullAnalysis(windowParam, useLlm);
       if (!data) {
         setAnalysis(null);
         setError(
@@ -96,7 +97,7 @@ export function FullAnalysisDrawer({ open, onClose, proxyOnline }: Props) {
     } finally {
       setLoading(false);
     }
-  }, [open, windowDays, useLlm, proxyOnline]);
+  }, [open, windowParam, useLlm, proxyOnline]);
 
   useEffect(() => {
     if (open) void load();
@@ -110,7 +111,8 @@ export function FullAnalysisDrawer({ open, onClose, proxyOnline }: Props) {
   const onDownload = async () => {
     setExporting(true);
     try {
-      await downloadFullAnalysis(windowDays, useLlm);
+      const res = await downloadFullAnalysis(windowParam, useLlm);
+      if (!res.ok) setError(res.error || 'Download failed');
     } finally {
       setExporting(false);
     }
@@ -125,7 +127,7 @@ export function FullAnalysisDrawer({ open, onClose, proxyOnline }: Props) {
           <div>
             <h3 id="full-analysis-title">Full analysis (plain English)</h3>
             <p className="muted" style={{ margin: 0 }}>
-              {windowDays}-day window · {useLlm ? 'Ollama narrative when available' : 'measured facts only'}
+              {formatWindowSubtitle(windowLabel)} · {useLlm ? 'Ollama narrative when available' : 'measured facts only'}
             </p>
           </div>
           <button type="button" className="drawer-close" onClick={onClose} aria-label="Close">

@@ -23,6 +23,7 @@ import {
 } from '@/lib/mastyf-ai-api';
 import { InfrastructureVisualsPanel } from './InfrastructureVisualsPanel';
 import { PlainEnglishReportView } from './PlainEnglishReportView';
+import { formatWindowSubtitle } from '@/lib/format-dashboard-window';
 type Props = {
   refreshKey?: number;
   showReport?: boolean;
@@ -152,7 +153,7 @@ export function SwarmResultsView({
 
       {!loading && traffic?.hasData && (traffic.servers?.length ?? 0) > 0 ? (
         <div className="traffic-summary-block">
-          <h4>Your traffic (last {traffic.windowDays ?? 7} days)</h4>
+          <h4>Your traffic ({formatWindowSubtitle(traffic.windowDays ?? '7d')})</h4>
           <table className="data-table compact">
             <thead>
               <tr>

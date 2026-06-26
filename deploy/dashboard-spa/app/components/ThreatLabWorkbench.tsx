@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   acceptThreatLabCandidate,
-  fetchThreatDiscoveryStatus,
   rejectThreatLabCandidate,
   runThreatLab,
   trackAdvancedAnalyticsEvent,
@@ -139,28 +138,6 @@ export function ThreatLabWorkbench({
             : 'Threat Lab started (reactive)',
         );
         onRefresh?.();
-        for (let i = 0; i < 45; i++) {
-          await new Promise((r) => setTimeout(r, 2000));
-          onRefresh?.();
-          const { status } = await fetchThreatDiscoveryStatus();
-          const job = status?.jobs?.threatLab;
-          if (job && job.state !== 'running') {
-            if (job.state === 'failed') {
-              onRunStarted?.(job.error || 'Threat Lab job failed — see Overview job log');
-            } else {
-              const n = status?.threatLab.manifest?.candidates?.length ?? 0;
-              const note = status?.threatLab.manifest?.runNote || status?.threatLab.manifest?.skipped;
-              onRunStarted?.(
-                n > 0
-                  ? `Threat Lab finished: ${n} candidate(s) ready for review`
-                  : note
-                    ? `Threat Lab finished with 0 candidates — ${note}`
-                    : 'Threat Lab finished with 0 candidates — label semantic true positives or run Security Swarm for bypasses',
-              );
-            }
-            break;
-          }
-        }
       } else {
         onRunStarted?.(res.error || 'Threat Lab failed to start');
       }

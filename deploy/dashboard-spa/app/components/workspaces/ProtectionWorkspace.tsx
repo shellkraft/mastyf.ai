@@ -1,5 +1,7 @@
 'use client';
 
+/** @deprecated Unmounted — use SecurityOperationsCenter + PlatformIntegrationsPanel. See `_archive/README.md`. */
+
 import { useCallback, useEffect, useState } from 'react';
 import {
   fetchAutopilotStatus,

@@ -30,7 +30,7 @@ vi.mock('../../src/ai/semantic-audit-store.js', async (importOriginal) => {
   };
 });
 
-import { runTribunalDebate, runTribunalForQueue } from '../../src/ai/swarm-debate-tribunal.js';
+import { peekTribunalQueue, runTribunalDebate, runTribunalForQueue } from '../../src/ai/swarm-debate-tribunal.js';
 
 const mockRecord: StoredSemanticAudit = {
   id: 'trib-1',
@@ -49,6 +49,12 @@ const mockRecord: StoredSemanticAudit = {
 };
 
 describe('swarm-debate-tribunal', () => {
+  it('peeks tribunal queue without debating', async () => {
+    const peek = await peekTribunalQueue({ limit: 10 });
+    expect(peek.batchLimit).toBe(10);
+    expect(peek.eligibleTotal).toBeGreaterThanOrEqual(0);
+  });
+
   it('runs heuristic tribunal debate without LLM', async () => {
     const debate = await runTribunalDebate(mockRecord, { useLlm: false });
     expect(debate.arguments.length).toBe(3);

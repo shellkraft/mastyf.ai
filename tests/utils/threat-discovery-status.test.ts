@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { mkdirSync, writeFileSync, rmSync, existsSync } from 'fs';
+import { mkdirSync, writeFileSync, rmSync, existsSync, utimesSync } from 'fs';
 import { join } from 'path';
 import {
   buildThreatDiscoveryStatus,
@@ -101,6 +101,37 @@ describe('buildThreatDiscoveryStatus', () => {
     const status = await buildThreatDiscoveryStatus(TENANT);
     expect(status.threatLab.stats.total).toBe(0);
     expect(status.provenance.sessionActive).toBe(false);
+  });
+
+  it('reads auto corpus via ungated fallback when manifest predates latest job', async () => {
+    writeSessionJob();
+    writeFileSync(
+      join(TENANT_DIR, 'auto-corpus-manifest.json'),
+      JSON.stringify({
+        timestamp: new Date(Date.now() - 3600_000).toISOString(),
+        count: 1,
+        entries: [
+          {
+            advId: 'adv-ungated',
+            relPath: 'adversarial-harness/fixtures/custom-attacks/adv-ungated.json',
+            fingerprint: 'fp',
+            source: 'bypass',
+            attackClass: 'test',
+            hypothesis: 'h',
+            confidence: 0.9,
+            timestamp: new Date().toISOString(),
+            toolName: 'read_file',
+            category: 'test',
+          },
+        ],
+      }),
+    );
+    const old = (Date.now() - 3600_000) / 1000;
+    utimesSync(join(TENANT_DIR, 'auto-corpus-manifest.json'), old, old);
+
+    const status = await buildThreatDiscoveryStatus(TENANT);
+    expect(status.autoCorpus.stats.total).toBe(1);
+    expect(status.autoCorpus.manifest?.entries?.[0]?.advId).toBe('adv-ungated');
   });
 
   it('returns empty stats when no manifests exist', async () => {

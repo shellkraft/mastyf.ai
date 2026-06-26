@@ -1,8 +1,12 @@
 'use client';
 
 import { useState } from 'react';
-import type { TribunalReport } from '@/lib/mastyf-ai-api';
+import type { TribunalJobStatus, TribunalReport } from '@/lib/mastyf-ai-api';
 import { TRIBUNAL_BATCH_LIMIT } from '@/lib/tribunal-config';
+import { Card } from './ui/Card';
+import { Button } from './ui/Button';
+import { Badge } from './ui/Badge';
+import { EmptyState } from './ui/EmptyState';
 
 type DebateArgument = {
   persona?: string;
@@ -31,15 +35,15 @@ type TribunalDebate = {
 };
 
 const LABEL_COPY: Record<string, string> = {
-  true_positive: 'True positive — treat as a real threat',
-  false_positive: 'False positive — likely benign',
-  needs_review: 'Needs human review',
+  true_positive: 'True positive',
+  false_positive: 'False positive',
+  needs_review: 'Needs review',
 };
 
 const PERSONA_LABEL: Record<string, string> = {
   block_advocate: 'Block advocate',
   allow_advocate: 'Allow advocate',
-  auditor: 'Auditor (synthesis)',
+  auditor: 'Auditor',
 };
 
 function formatLabel(label: string | undefined): string {
@@ -47,8 +51,37 @@ function formatLabel(label: string | undefined): string {
   return LABEL_COPY[label] || label.replace(/_/g, ' ');
 }
 
+function verdictVariant(
+  label: string | undefined,
+): 'danger' | 'success' | 'warning' | 'neutral' {
+  if (label === 'true_positive') return 'danger';
+  if (label === 'false_positive') return 'success';
+  if (label === 'needs_review') return 'warning';
+  return 'neutral';
+}
+
+function jobBadgeVariant(state: TribunalJobStatus['state'] | undefined) {
+  if (state === 'done') return 'success' as const;
+  if (state === 'failed') return 'danger' as const;
+  if (state === 'running') return 'warning' as const;
+  return 'neutral' as const;
+}
+
+function formatTs(iso: string | null | undefined): string {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? iso : d.toLocaleString();
+}
+
 type Props = {
   tribunal: TribunalReport | null;
+  job?: TribunalJobStatus | null;
+  queue?: {
+    eligibleTotal: number;
+    remainingEligible: number;
+    nextBatchSize: number;
+    batchLimit: number;
+  } | null;
   onRunTribunal?: () => void;
   tribunalLoading?: boolean;
   onInvestigateRecord?: (recordId: string) => void;
@@ -56,6 +89,8 @@ type Props = {
 
 export function TribunalSummaryCard({
   tribunal,
+  job,
+  queue,
   onRunTribunal,
   tribunalLoading,
   onInvestigateRecord,
@@ -66,107 +101,147 @@ export function TribunalSummaryCard({
   const debates = (tribunal?.debates as TribunalDebate[]) ?? [];
   const debatedCount = tribunal?.debatedCount ?? debates.length;
   const autoLabels = tribunal?.autoLabelsApplied ?? 0;
-  const eligibleTotal = tribunal?.eligibleTotal ?? 0;
-  const remainingEligible = tribunal?.remainingEligible ?? 0;
+  const eligibleTotal = queue?.eligibleTotal ?? tribunal?.eligibleTotal ?? 0;
+  const remainingEligible = queue?.remainingEligible ?? tribunal?.remainingEligible ?? 0;
   const generatedAt = tribunal?.generatedAt ?? null;
   const quorumMet = tribunal?.quorumMet === true;
   const hasPriorRun = debates.length > 0 || Boolean(generatedAt);
-  const noMoreRemaining = hasPriorRun && remainingEligible === 0;
-  const runLabel = tribunalLoading
+  const isRunning = tribunalLoading || job?.state === 'running';
+  const noMoreRemaining = !isRunning && hasPriorRun && remainingEligible === 0 && eligibleTotal === 0;
+  const runLabel = isRunning
     ? 'Running…'
     : hasPriorRun && remainingEligible > 0
-      ? `Run next batch (up to ${TRIBUNAL_BATCH_LIMIT})`
-      : `Run tribunal (up to ${TRIBUNAL_BATCH_LIMIT})`;
+      ? `Next batch (${TRIBUNAL_BATCH_LIMIT})`
+      : `Run batch (${TRIBUNAL_BATCH_LIMIT})`;
+
+  const runButton = onRunTribunal ? (
+    <Button
+      variant="primary"
+      size="sm"
+      disabled={isRunning || noMoreRemaining}
+      loading={isRunning}
+      onClick={onRunTribunal}
+    >
+      {runLabel}
+    </Button>
+  ) : null;
 
   return (
-    <article className="enterprise-ai-card tribunal-summary-card">
-      <div className="tribunal-summary-head">
-        <div>
-          <h3>Swarm debate tribunal</h3>
-          <p className="hint">
-            Three agents (block, allow, auditor) debate uncertain semantic flags and recommend a label.
-          </p>
+    <Card
+      title="Semantic Tribunal"
+      subtitle="Multi-agent debate on uncertain semantic flags"
+      actions={runButton}
+    >
+      <div className="threat-job-row" style={{ marginBottom: 'var(--space-4)' }}>
+        <div className="threat-job-row-head">
+          <span className="font-medium text-sm">Batch status</span>
+          <Badge variant={jobBadgeVariant(job?.state)}>
+            {isRunning ? 'Running' : job?.state || 'idle'}
+          </Badge>
         </div>
-        {onRunTribunal ? (
-          <button
-            type="button"
-            className="primary btn-sm"
-            disabled={tribunalLoading || noMoreRemaining}
-            onClick={onRunTribunal}
-          >
-            {runLabel}
-          </button>
-        ) : null}
+        {isRunning ? (
+          <>
+            <p className="text-sm">
+              {job?.phaseLabel || 'Debating uncertain semantic flags'}
+              {job?.progressPct ? ` · ${job.progressPct}%` : ''}
+            </p>
+            <div className="threat-job-progress" aria-hidden>
+              <div
+                className="threat-job-progress-fill"
+                style={{ width: `${Math.max(job?.progressPct ?? 8, 8)}%` }}
+              />
+            </div>
+            {job?.logTail ? (
+              <pre className="threat-job-log text-xs text-muted">
+                {job.logTail.split('\n').slice(-1)[0]?.slice(0, 240)}
+              </pre>
+            ) : (
+              <p className="text-xs text-muted">Processing up to {TRIBUNAL_BATCH_LIMIT} debates…</p>
+            )}
+          </>
+        ) : job?.state === 'done' ? (
+          <p className="text-sm text-muted">
+            Finished {formatTs(job.finishedAt)}
+            {job.debatedCount != null ? ` · ${job.debatedCount} debated` : ''}
+            {job.remainingEligible != null ? ` · ${job.remainingEligible} remaining` : ''}
+          </p>
+        ) : job?.state === 'failed' ? (
+          <p className="text-sm" style={{ color: 'var(--danger)' }} role="alert">
+            Failed{job.finishedAt ? ` at ${formatTs(job.finishedAt)}` : ''}
+            {job.error ? `: ${job.error}` : ''}
+          </p>
+        ) : (
+          <p className="text-xs text-muted">
+            {eligibleTotal > 0
+              ? `${eligibleTotal} eligible · next batch up to ${queue?.nextBatchSize ?? TRIBUNAL_BATCH_LIMIT}`
+              : 'No uncertain unlabeled flags in queue'}
+          </p>
+        )}
       </div>
 
       {noMoreRemaining ? (
-        <p className="muted tribunal-queue-empty-hint">
-          No more uncertain unlabeled flags in queue — generate borderline traffic or adjust{' '}
-          <code>MASTYF_AI_SEMANTIC_MIN_CONFIDENCE</code>, then run tribunal again.
+        <p className="text-sm text-muted" style={{ marginBottom: 'var(--space-3)' }}>
+          Queue empty — route more borderline traffic through the proxy, then run another batch.
         </p>
       ) : null}
 
-      <p className="hint tribunal-how-toggle">
-        <button
-          type="button"
-          className="link-button"
-          onClick={() => setShowHowItWorks((v) => !v)}
-        >
-          {showHowItWorks ? 'Hide' : 'How does this work?'}
-        </button>
-      </p>
+      <div className="flex flex-wrap gap-3 text-sm" style={{ marginBottom: 'var(--space-4)' }}>
+        <span><span className="text-muted">Debated</span> <strong>{debatedCount}</strong></span>
+        <span><span className="text-muted">Eligible</span> <strong>{eligibleTotal}</strong></span>
+        <span><span className="text-muted">Remaining</span> <strong>{remainingEligible}</strong></span>
+        {autoLabels > 0 ? (
+          <span><span className="text-muted">Auto-labeled</span> <strong>{autoLabels}</strong></span>
+        ) : null}
+        {quorumMet ? <Badge variant="success">Quorum met</Badge> : null}
+      </div>
+
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={() => setShowHowItWorks((v) => !v)}
+        style={{ marginBottom: 'var(--space-3)' }}
+      >
+        {showHowItWorks ? 'Hide how it works' : 'How does this work?'}
+      </Button>
 
       {showHowItWorks ? (
-        <div className="tribunal-how-it-works">
-          <ol>
-            <li>
-              <strong>You do not create debates manually.</strong> Each click runs up to{' '}
-              <strong>{TRIBUNAL_BATCH_LIMIT}</strong> debates on the top <strong>unlabeled</strong> semantic
-              audits in the uncertain band (confidence near your threshold).
-            </li>
-            <li>
-              After labels are applied (manually or via <code>MASTYF_AI_TRIBUNAL_AUTO_LABEL=true</code>), use{' '}
-              <em>Run next batch</em> to debate the next highest-uncertainty items.
-            </li>
-            <li>
-              Each debate asks: <em>Was this MCP tool call actually malicious?</em> using proxy block
-              context + semantic categories.
-            </li>
-            <li>
-              <strong>Block advocate</strong> argues to block; <strong>allow advocate</strong> argues benign;
-              <strong> auditor</strong> recommends <code>true_positive</code>, <code>false_positive</code>,
-              or <code>needs_review</code>.
-            </li>
-            <li>
-              Requires semantic async audits — enable <code>MASTYF_AI_SEMANTIC_ASYNC</code> and route MCP
-              traffic through Mastyf AI first.
-            </li>
-          </ol>
+        <div
+          className="text-sm text-muted"
+          style={{
+            marginBottom: 'var(--space-4)',
+            padding: 'var(--space-3)',
+            borderRadius: 'var(--radius-md)',
+            background: 'var(--bg-muted)',
+            lineHeight: 'var(--leading-relaxed)',
+          }}
+        >
+          <p style={{ marginTop: 0 }}>
+            Each batch debates up to {TRIBUNAL_BATCH_LIMIT} unlabeled semantic audits in the uncertain
+            confidence band. Block, allow, and auditor personas recommend{' '}
+            <code className="text-xs">true_positive</code>, <code className="text-xs">false_positive</code>,
+            or <code className="text-xs">needs_review</code>.
+          </p>
+          <p style={{ marginBottom: 0 }}>
+            Requires semantic async audits and MCP traffic routed through Mastyf AI.
+          </p>
         </div>
       ) : null}
 
       {debates.length === 0 ? (
-        <p className="muted">
-          No debates in the last run.
-          {eligibleTotal > 0
-            ? ` ${eligibleTotal} eligible flag(s) in queue — run tribunal to start.`
-            : ' Generate semantic traffic or lower MASTYF_AI_SEMANTIC_MIN_CONFIDENCE to surface borderline flags.'}
-        </p>
+        <EmptyState
+          title="No debates yet"
+          message={
+            eligibleTotal > 0
+              ? `${eligibleTotal} eligible flag(s) in queue — run a batch to start.`
+              : 'Generate semantic traffic or lower MASTYF_AI_SEMANTIC_MIN_CONFIDENCE to surface borderline flags.'
+          }
+        />
       ) : (
         <>
-          <p className="hint tribunal-run-meta">
-            Last run: {generatedAt ? new Date(generatedAt).toLocaleString() : '—'}
-            {' · '}
-            {debatedCount} debated
-            {eligibleTotal > 0 ? ` · ${eligibleTotal} eligible` : ''}
-            {remainingEligible > 0
-              ? ` · ${remainingEligible} remaining for next batch`
-              : ' · queue empty'}
-            {autoLabels > 0 ? ` · ${autoLabels} auto-labeled` : ''}
-            {quorumMet ? ' · quorum met' : ''}
+          <p className="text-xs text-muted" style={{ marginBottom: 'var(--space-3)' }}>
+            Last run {generatedAt ? formatTs(generatedAt) : '—'}
           </p>
-
-          <ul className="tribunal-debate-list">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
             {debates.map((d) => {
               const id = String(d.recordId || d.toolName);
               const expanded = expandedId === id;
@@ -176,106 +251,119 @@ export function TribunalSummaryCard({
                 d.serverName,
                 d.toolName,
                 d.uncertaintyScore != null
-                  ? `uncertainty ${(d.uncertaintyScore * 100).toFixed(0)}%`
+                  ? `${(d.uncertaintyScore * 100).toFixed(0)}% uncertainty`
                   : null,
               ]
                 .filter(Boolean)
                 .join(' · ');
 
               return (
-                <li key={id} className="tribunal-debate-item">
-                  <div className="tribunal-debate-header">
-                    <div>
-                      <strong className="tribunal-debate-subject">Debate: {subjectLine || id}</strong>
-                      <p className="hint tribunal-debate-question">
-                        Question: Should this tool call be blocked as a threat?
+                <div
+                  key={id}
+                  style={{
+                    border: '1px solid var(--border)',
+                    borderRadius: 'var(--radius-lg)',
+                    padding: 'var(--space-4)',
+                  }}
+                >
+                  <div className="flex items-start justify-between gap-3" style={{ marginBottom: 'var(--space-2)' }}>
+                    <div style={{ minWidth: 0 }}>
+                      <p className="font-medium text-sm" style={{ margin: 0 }}>
+                        {subjectLine || id}
+                      </p>
+                      <p className="text-xs text-muted" style={{ margin: '4px 0 0' }}>
+                        Should this tool call be blocked as a threat?
                       </p>
                     </div>
-                    <span
-                      className={`badge tribunal-verdict-badge verdict-${d.verdict?.recommendedLabel || 'needs_review'}`}
-                    >
+                    <Badge variant={verdictVariant(d.verdict?.recommendedLabel)}>
                       {formatLabel(d.verdict?.recommendedLabel)}
-                    </span>
+                    </Badge>
                   </div>
 
-                  <dl className="tribunal-outcome-dl">
-                    <dt>Outcome</dt>
-                    <dd>
-                      {formatLabel(d.verdict?.recommendedLabel)}
-                      {d.verdict?.confidence != null
-                        ? ` (${(d.verdict.confidence * 100).toFixed(0)}% confidence)`
-                        : ''}
-                      {d.verdict?.unanimous ? ' · unanimous' : ' · split'}
-                      {d.autoLabelEligible ? ' · eligible for auto-label' : ''}
-                    </dd>
-                    {d.verdict?.dissent ? (
-                      <>
-                        <dt>Dissent</dt>
-                        <dd>{d.verdict.dissent}</dd>
-                      </>
-                    ) : null}
-                    {blockArg?.reasoning ? (
-                      <>
-                        <dt>Block case</dt>
-                        <dd>{blockArg.reasoning}</dd>
-                      </>
-                    ) : null}
-                    {allowArg?.reasoning ? (
-                      <>
-                        <dt>Allow case</dt>
-                        <dd>{allowArg.reasoning}</dd>
-                      </>
-                    ) : null}
-                  </dl>
+                  <p className="text-sm text-muted" style={{ margin: '0 0 var(--space-3)' }}>
+                    {formatLabel(d.verdict?.recommendedLabel)}
+                    {d.verdict?.confidence != null
+                      ? ` · ${(d.verdict.confidence * 100).toFixed(0)}% confidence`
+                      : ''}
+                    {d.verdict?.unanimous ? ' · unanimous' : ' · split'}
+                    {d.autoLabelEligible ? ' · auto-label eligible' : ''}
+                  </p>
 
-                  <div className="tribunal-debate-actions">
-                    <button
-                      type="button"
-                      className="secondary btn-sm"
+                  {blockArg?.reasoning ? (
+                    <p className="text-xs text-muted" style={{ margin: '0 0 var(--space-2)' }}>
+                      <strong>Block:</strong> {blockArg.reasoning}
+                    </p>
+                  ) : null}
+                  {allowArg?.reasoning ? (
+                    <p className="text-xs text-muted" style={{ margin: '0 0 var(--space-3)' }}>
+                      <strong>Allow:</strong> {allowArg.reasoning}
+                    </p>
+                  ) : null}
+
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      size="sm"
+                      variant="ghost"
                       onClick={() => setExpandedId(expanded ? null : id)}
                     >
-                      {expanded ? 'Hide arguments' : 'Show full arguments'}
-                    </button>
+                      {expanded ? 'Hide arguments' : 'Show arguments'}
+                    </Button>
                     {onInvestigateRecord && d.recordId ? (
-                      <button
-                        type="button"
-                        className="secondary btn-sm"
+                      <Button
+                        size="sm"
+                        variant="secondary"
                         onClick={() => onInvestigateRecord(d.recordId!)}
                       >
-                        Investigate session
-                      </button>
+                        Investigate
+                      </Button>
                     ) : null}
                   </div>
 
                   {expanded ? (
-                    <div className="tribunal-debate-expanded">
+                    <div style={{ marginTop: 'var(--space-3)' }}>
                       {(d.arguments || []).map((arg) => (
-                        <div key={arg.persona} className="tribunal-argument">
-                          <strong>
+                        <div
+                          key={arg.persona}
+                          className="text-sm"
+                          style={{
+                            marginBottom: 'var(--space-2)',
+                            padding: 'var(--space-2)',
+                            borderRadius: 'var(--radius-sm)',
+                            background: 'var(--bg-muted)',
+                          }}
+                        >
+                          <p className="font-medium" style={{ margin: '0 0 4px' }}>
                             {PERSONA_LABEL[arg.persona || ''] || arg.persona} ({arg.stance})
-                          </strong>
-                          <span className="hint">
                             {arg.confidence != null
-                              ? ` ${(arg.confidence * 100).toFixed(0)}%`
+                              ? ` · ${(arg.confidence * 100).toFixed(0)}%`
                               : ''}
-                          </span>
-                          <p>{arg.reasoning || '—'}</p>
+                          </p>
+                          <p className="text-muted" style={{ margin: 0 }}>
+                            {arg.reasoning || '—'}
+                          </p>
                         </div>
                       ))}
                       {d.transcript ? (
-                        <details className="tribunal-transcript-details">
-                          <summary>Raw transcript</summary>
-                          <pre className="threat-automation-log">{d.transcript}</pre>
+                        <details style={{ marginTop: 'var(--space-2)' }}>
+                          <summary className="text-xs text-muted" style={{ cursor: 'pointer' }}>
+                            Raw transcript
+                          </summary>
+                          <pre
+                            className="threat-job-log text-xs text-muted"
+                            style={{ marginTop: 'var(--space-2)' }}
+                          >
+                            {d.transcript}
+                          </pre>
                         </details>
                       ) : null}
                     </div>
                   ) : null}
-                </li>
+                </div>
               );
             })}
-          </ul>
+          </div>
         </>
       )}
-    </article>
+    </Card>
   );
 }

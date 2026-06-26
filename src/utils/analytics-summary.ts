@@ -23,6 +23,19 @@ export type AnalyticsTrafficPoint = {
   blocked: number;
 };
 
+export type AnalyticsLatencyPoint = {
+  bucket: string;
+  p50Ms: number;
+  p95Ms: number;
+};
+
+export type AnalyticsErrorRatePoint = {
+  bucket: string;
+  errorRatePct: number;
+  blocked: number;
+  requests: number;
+};
+
 export type AnalyticsCostPoint = {
   bucket: string;
   costUsd: number;
@@ -55,6 +68,8 @@ export type AnalyticsSummary = {
   budgetUsd: number | null;
   budgetUtilizationPct: number | null;
   trafficSeries: AnalyticsTrafficPoint[];
+  latencySeries: AnalyticsLatencyPoint[];
+  errorRateSeries: AnalyticsErrorRatePoint[];
   costSeries: AnalyticsCostPoint[];
   modelUsage: AnalyticsModelUsage[];
   providerCosts: AnalyticsProviderCost[];
@@ -126,6 +141,56 @@ function buildTrafficSeries(
     bucket: String(p.bucket),
     requests: Number(p.requests) || 0,
     blocked: Number(p.blocked) || 0,
+  }));
+}
+
+function percentile(sorted: number[], p: number): number {
+  if (!sorted.length) return 0;
+  const idx = Math.min(sorted.length - 1, Math.max(0, Math.ceil((p / 100) * sorted.length) - 1));
+  return sorted[idx];
+}
+
+function buildLatencySeries(
+  records: ProxyCallRecord[],
+  sinceMs: number,
+  endMs: number,
+  granularity: 'hour' | 'day',
+): AnalyticsLatencyPoint[] {
+  const buckets = generateTimeBuckets(sinceMs, endMs, granularity);
+  const latencies = new Map<string, number[]>();
+
+  for (const r of records) {
+    const ts = parseRecordTimestamp(r.timestamp);
+    if (!Number.isFinite(ts) || ts < sinceMs || ts > endMs) continue;
+    const key = bucketKey(ts, granularity);
+    const list = latencies.get(key) ?? [];
+    const ms = Number(r.durationMs);
+    if (Number.isFinite(ms) && ms >= 0) list.push(ms);
+    latencies.set(key, list);
+  }
+
+  return buckets.map((b) => {
+    const sorted = [...(latencies.get(b) ?? [])].sort((a, c) => a - c);
+    return {
+      bucket: b,
+      p50Ms: percentile(sorted, 50),
+      p95Ms: percentile(sorted, 95),
+    };
+  });
+}
+
+function buildErrorRateSeries(
+  records: ProxyCallRecord[],
+  sinceMs: number,
+  endMs: number,
+  granularity: 'hour' | 'day',
+): AnalyticsErrorRatePoint[] {
+  const traffic = buildTrafficSeries(records, sinceMs, endMs, granularity);
+  return traffic.map((p) => ({
+    bucket: p.bucket,
+    requests: p.requests,
+    blocked: p.blocked,
+    errorRatePct: p.requests > 0 ? Math.round((p.blocked / p.requests) * 1000) / 10 : 0,
   }));
 }
 
@@ -231,6 +296,8 @@ export async function buildAnalyticsSummary(
     budgetUsd: parseCostBudgetUsd(),
     budgetUtilizationPct: null,
     trafficSeries: [],
+    latencySeries: [],
+    errorRateSeries: [],
     costSeries: [],
     modelUsage: [],
     providerCosts: [],
@@ -283,6 +350,8 @@ export async function buildAnalyticsSummary(
     budgetUsd,
     budgetUtilizationPct,
     trafficSeries: buildTrafficSeries(records, startMs, endMs, granularity),
+    latencySeries: buildLatencySeries(records, startMs, endMs, granularity),
+    errorRateSeries: buildErrorRateSeries(records, startMs, endMs, granularity),
     costSeries: buildCostSeries(records, startMs, endMs),
     modelUsage: aggregateModelUsage(records),
     providerCosts: aggregateProviderCosts(records),

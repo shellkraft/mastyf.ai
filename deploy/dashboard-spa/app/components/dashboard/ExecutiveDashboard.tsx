@@ -1,6 +1,17 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import {
+  Area,
+  AreaChart,
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Legend,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts';
 import type {
   AggregateMetrics,
   ExecutiveSummaryResponse,
@@ -21,7 +32,19 @@ import {
 } from '@/lib/mastyf-ai-api';
 import { KpiCard } from '../ui/KpiCard';
 import { Badge, SeverityBadge } from '../ui/Badge';
+import { ChartPanel } from '../ui/ChartPanel';
 import { useCurrentWindowDays } from './DashboardWindowContext';
+import { useVisuals } from './VisualsProvider';
+import { KpiSparkline } from './KpiSparkline';
+import { formatWindowSubtitle } from '@/lib/format-dashboard-window';
+import { unavailableKpiSecondary, unavailableKpiValue } from '@/lib/dashboard-fetch-utils';
+import {
+  CHART_AXIS,
+  CHART_GRID,
+  CHART_SERIES,
+  CHART_TOOLTIP_STYLE,
+  formatAxisTime,
+} from '@/lib/chartTheme';
 
 interface ExecutiveDashboardProps {
   refreshKey: number;
@@ -38,18 +61,48 @@ export function ExecutiveDashboard({ refreshKey, onNavigateAdvanced }: Executive
   const [insights, setInsights] = useState<DashboardInsightsResponse | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const { windowDays } = useCurrentWindowDays();
+  const { windowParam, windowLabel, windowDays } = useCurrentWindowDays();
+  const { visuals, loading: visualsLoading } = useVisuals();
+  const granularity = windowDays <= 7 ? 'hour' : 'day';
+
+  const trafficChart = useMemo(
+    () =>
+      (visuals?.traffic?.hourly ?? []).map((h) => ({
+        label: formatAxisTime(h.hourStart, granularity),
+        passed: h.passed,
+        blocked: h.blocked,
+      })),
+    [visuals?.traffic?.hourly, granularity],
+  );
+
+  const trafficMeta = visuals?.meta
+    ? {
+        window: visuals.meta.window,
+        windowDays: visuals.windowDays,
+        generatedAt: visuals.meta.generatedAt ?? visuals.generatedAt,
+        recordCount: visuals.meta.recordCount,
+        sparse: visuals.meta.sparse,
+        emptyReason: visuals.meta.emptyReasons?.traffic,
+      }
+    : summary?.meta;
+
+  const topToolsChart = useMemo(
+    () => (summary?.topToolsByCalls ?? []).slice(0, 8).map((t) => ({ label: t.tool, calls: t.calls })),
+    [summary?.topToolsByCalls],
+  );
+
+  const spark = summary?.sparklines;
 
   const loadData = useCallback(async () => {
     setLoading(true);
     const [sum, met, heal, sec, cst, aud, ins] = await Promise.all([
-      fetchExecutiveSummary(windowDays).catch(() => null),
-      fetchAggregateMetrics(windowDays).catch(() => null),
+      fetchExecutiveSummary(windowParam).catch(() => null),
+      fetchAggregateMetrics(windowParam).catch(() => null),
       fetchHealth().catch(() => null),
       fetchSecurity().catch(() => null),
-      fetchCost(windowDays).catch(() => null),
-      fetchAudit({ windowDays, limit: 20 }).catch(() => null),
-      fetchDashboardInsights('overview', windowDays).catch(() => null),
+      fetchCost(windowParam).catch(() => null),
+      fetchAudit({ windowParam, limit: 20 }).catch(() => null),
+      fetchDashboardInsights('overview', windowParam).catch(() => null),
     ]);
     if (sum) setSummary(sum);
     if (met) setMetrics(met);
@@ -59,7 +112,7 @@ export function ExecutiveDashboard({ refreshKey, onNavigateAdvanced }: Executive
     if (aud) setAudit(aud);
     if (ins) setInsights(ins);
     setLoading(false);
-  }, [windowDays]);
+  }, [windowParam]);
 
   useEffect(() => {
     void loadData();
@@ -100,20 +153,28 @@ export function ExecutiveDashboard({ refreshKey, onNavigateAdvanced }: Executive
       <div className="kpi-grid">
         <KpiCard
           label="Total Requests"
-          value={totalRequests.toLocaleString()}
+          value={unavailableKpiValue(metrics ?? summary, totalRequests)}
           accent="info"
           delta={summary?.comparison?.totalRequests ? {
             value: `${Math.abs(summary.comparison.totalRequests.deltaPct || 0).toFixed(1)}%`,
             direction: summary.comparison.totalRequests.direction,
           } : undefined}
-          secondary={`${windowDays}d window`}
-        />
+          secondary={unavailableKpiSecondary(metrics ?? summary, formatWindowSubtitle(windowLabel))}
+        >
+          {spark?.totalCalls?.length ? (
+            <KpiSparkline data={spark.totalCalls} color={CHART_SERIES.accent} ariaLabel="Request trend" />
+          ) : null}
+        </KpiCard>
         <KpiCard
           label="Pass Rate"
           value={passRateVal != null ? `${passRateVal.toFixed(1)}%` : '—'}
           accent={passRateVal != null && passRateVal >= 95 ? 'success' : passRateVal != null && passRateVal >= 80 ? 'warning' : 'danger'}
           secondary={blockedRequests > 0 ? `${blockedRequests.toLocaleString()} blocked` : 'No blocks'}
-        />
+        >
+          {spark?.blocked?.length ? (
+            <KpiSparkline data={spark.blocked} color={CHART_SERIES.block} ariaLabel="Block trend" />
+          ) : null}
+        </KpiCard>
         <KpiCard
           label="Security Score"
           value={overallScore != null ? `${overallScore}/100` : '—'}
@@ -129,7 +190,11 @@ export function ExecutiveDashboard({ refreshKey, onNavigateAdvanced }: Executive
             direction: 'up',
           } : undefined}
           secondary={burnRate != null ? `$${burnRate.toFixed(3)}/hr burn rate` : undefined}
-        />
+        >
+          {spark?.costUsd?.length ? (
+            <KpiSparkline data={spark.costUsd} color={CHART_SERIES.cost} ariaLabel="Cost trend" />
+          ) : null}
+        </KpiCard>
         <KpiCard
           label="Active Servers"
           value={activeServers}
@@ -140,6 +205,46 @@ export function ExecutiveDashboard({ refreshKey, onNavigateAdvanced }: Executive
               : 'Health data pending'
           }
         />
+      </div>
+
+      <div className="grid grid-12" style={{ marginBottom: 'var(--space-5)' }}>
+        <div className="col-span-8">
+          <ChartPanel
+            title="Traffic Volume"
+            subtitle={formatWindowSubtitle(windowLabel)}
+            loading={visualsLoading && !visuals}
+            empty={!trafficChart.some((h) => h.passed + h.blocked > 0)}
+            emptyReason={trafficMeta?.emptyReason}
+            meta={trafficMeta}
+            sparse={trafficMeta?.sparse}
+          >
+            <AreaChart data={trafficChart}>
+              <CartesianGrid {...CHART_GRID} />
+              <XAxis dataKey="label" {...CHART_AXIS} interval="preserveStartEnd" />
+              <YAxis {...CHART_AXIS} />
+              <Tooltip contentStyle={CHART_TOOLTIP_STYLE} />
+              <Legend />
+              <Area type="monotone" dataKey="passed" name="Passed" stackId="t" stroke={CHART_SERIES.allow} fill={CHART_SERIES.allow} fillOpacity={0.5} />
+              <Area type="monotone" dataKey="blocked" name="Blocked" stackId="t" stroke={CHART_SERIES.block} fill={CHART_SERIES.block} fillOpacity={0.5} />
+            </AreaChart>
+          </ChartPanel>
+        </div>
+        <div className="col-span-4">
+          <ChartPanel
+            title="Top Tools"
+            subtitle="By call volume"
+            empty={topToolsChart.length === 0}
+            height={280}
+          >
+            <BarChart data={topToolsChart} layout="vertical">
+              <CartesianGrid {...CHART_GRID} />
+              <XAxis type="number" {...CHART_AXIS} />
+              <YAxis type="category" dataKey="label" width={100} {...CHART_AXIS} tick={{ fontSize: 10 }} />
+              <Tooltip contentStyle={CHART_TOOLTIP_STYLE} />
+              <Bar dataKey="calls" fill={CHART_SERIES.accent} name="Calls" />
+            </BarChart>
+          </ChartPanel>
+        </div>
       </div>
 
       {/* Main Grid */}

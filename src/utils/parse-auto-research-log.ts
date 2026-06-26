@@ -35,7 +35,8 @@ export function parseAutoResearchLogTail(logTail: string | null | undefined): Au
     .map((line) => line.trim())
     .filter(Boolean);
 
-  const summaryLine = [...lines].reverse().find((line) => WRITE_SUMMARY_RE.test(line)) || null;
+  const summaryLine =
+    [...lines].reverse().find((line) => WRITE_SUMMARY_RE.test(line) || line.includes('[auto-threat-research] wrote')) || null;
   const match = summaryLine ? summaryLine.match(WRITE_SUMMARY_RE) : null;
 
   const skips: AutoResearchBatchOutcome['skips'] = {

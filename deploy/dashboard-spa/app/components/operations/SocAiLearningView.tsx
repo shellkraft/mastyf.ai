@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   acceptSuggestion,
   fetchActiveLearningReport,
@@ -8,14 +8,13 @@ import {
   fetchAiState,
   fetchAiSuggestions,
   fetchSemanticOutcomes,
-  fetchTribunalReport,
   labelSemanticOutcome,
   rejectSuggestion,
   rollbackAiLearning,
   type AiSuggestion,
   type SemanticOutcome,
-  type TribunalReport,
 } from '@/lib/mastyf-ai-api';
+import { useTribunalBatch } from '@/lib/use-tribunal-batch';
 import { TRIBUNAL_BATCH_LIMIT } from '@/lib/tribunal-config';
 import { hasPermission } from '@/lib/dashboard-roles';
 import { Card } from '../ui/Card';
@@ -23,23 +22,22 @@ import { Button } from '../ui/Button';
 import { Badge } from '../ui/Badge';
 import { KpiCard } from '../ui/KpiCard';
 import { EmptyState } from '../ui/EmptyState';
+import { TribunalSummaryCard } from '../TribunalSummaryCard';
 import { IncidentInvestigatorDrawer } from '../IncidentInvestigatorDrawer';
+import { useDashboardWindow } from '../dashboard/DashboardWindowContext';
 
 type Props = {
   roles?: string[];
   refreshKey: number;
+  aiRefreshTick?: number;
   onAction?: (msg: string) => void;
+  onOpenThreatLab?: (ctx: import('../IncidentInvestigatorDrawer').ThreatLabContext) => void;
 };
 
-function formatTs(iso: string | null | undefined): string {
-  if (!iso) return '—';
-  const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? iso : d.toLocaleString();
-}
-
-export function SocAiLearningView({ roles = [], refreshKey, onAction }: Props) {
+export function SocAiLearningView({ roles = [], refreshKey, aiRefreshTick = 0, onAction, onOpenThreatLab }: Props) {
   const canAi = hasPermission(roles, 'ai');
   const canMutate = hasPermission(roles, 'policy_mutate');
+  const { windowParam } = useDashboardWindow();
   const [suggestions, setSuggestions] = useState<AiSuggestion[]>([]);
   const [semantic, setSemantic] = useState<SemanticOutcome[]>([]);
   const [semanticHint, setSemanticHint] = useState<string | null>(null);
@@ -48,11 +46,18 @@ export function SocAiLearningView({ roles = [], refreshKey, onAction }: Props) {
   const [aiInitialized, setAiInitialized] = useState(false);
   const [activeLearning, setActiveLearning] = useState<Record<string, unknown> | null>(null);
   const [abuseScores, setAbuseScores] = useState<Array<Record<string, unknown>>>([]);
-  const [tribunal, setTribunal] = useState<TribunalReport | null>(null);
-  const [tribunalLoading, setTribunalLoading] = useState(false);
   const [investigateId, setInvestigateId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState('');
+  const {
+    job: tribunalJob,
+    report: tribunal,
+    queue: tribunalQueue,
+    running: tribunalRunning,
+    refresh: refreshTribunal,
+    start: startTribunal,
+  } = useTribunalBatch(TRIBUNAL_BATCH_LIMIT, refreshKey);
+  const lastTribunalNoticeRef = useRef<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -66,20 +71,50 @@ export function SocAiLearningView({ roles = [], refreshKey, onAction }: Props) {
     setAiInitialized(!!st?.initialized);
     setEngineState(st?.state ?? null);
 
-    const [sug, al, abuse, trib] = await Promise.all([
+    const [sug, al, abuse] = await Promise.all([
       fetchAiSuggestions(),
       fetchActiveLearningReport(),
-      fetchAgentAbuseScores(7),
-      fetchTribunalReport(TRIBUNAL_BATCH_LIMIT),
+      fetchAgentAbuseScores(windowParam),
     ]);
     setSuggestions(sug);
     setActiveLearning(al);
     setAbuseScores((abuse?.scores as Array<Record<string, unknown>>) ?? []);
-    setTribunal(trib);
+    await refreshTribunal();
     setLoading(false);
-  }, []);
+  }, [refreshTribunal, windowParam]);
 
-  useEffect(() => { void load(); }, [load, refreshKey]);
+  useEffect(() => { void load(); }, [load, refreshKey, aiRefreshTick]);
+
+  const onRunTribunal = async () => {
+    if (!canAi || tribunalRunning) return;
+    const res = await startTribunal();
+    if (res.ok) {
+      onAction?.(
+        res.jobId
+          ? `Tribunal batch started — job ${res.jobId.slice(0, 8)}…`
+          : 'Tribunal batch started',
+      );
+    } else {
+      onAction?.(res.error || 'Failed to start tribunal batch');
+    }
+  };
+
+  useEffect(() => {
+    if (tribunalJob?.state !== 'done' && tribunalJob?.state !== 'failed') return;
+    if (!tribunalJob.finishedAt) return;
+    if (lastTribunalNoticeRef.current === tribunalJob.finishedAt) return;
+    lastTribunalNoticeRef.current = tribunalJob.finishedAt;
+    const n = tribunalJob.debatedCount ?? tribunal?.debatedCount ?? 0;
+    if (tribunalJob.state === 'failed') {
+      onAction?.(tribunalJob.error || 'Tribunal batch failed');
+      return;
+    }
+    onAction?.(
+      n > 0
+        ? `Tribunal complete: ${n} debate(s) · ${tribunalJob.remainingEligible ?? 0} remaining`
+        : 'Tribunal complete — no uncertain flags in queue',
+    );
+  }, [tribunalJob?.state, tribunalJob?.finishedAt]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const onAccept = async (s: AiSuggestion) => {
     if (!canMutate) { onAction?.('Requires operator role'); return; }
@@ -114,18 +149,6 @@ export function SocAiLearningView({ roles = [], refreshKey, onAction }: Props) {
     const res = await rollbackAiLearning();
     onAction?.(res.ok ? 'AI learning rolled back' : res.error || 'Rollback failed');
     if (res.ok) await load();
-  };
-
-  const onRunTribunal = async () => {
-    setTribunalLoading(true);
-    try {
-      const trib = await fetchTribunalReport(TRIBUNAL_BATCH_LIMIT);
-      setTribunal(trib);
-      const n = trib?.debatedCount ?? 0;
-      onAction?.(n > 0 ? `Tribunal: ${n} debate(s) completed` : 'Tribunal ran — no uncertain flags in queue');
-    } finally {
-      setTribunalLoading(false);
-    }
   };
 
   const reviewQueue = (activeLearning?.reviewQueue as Array<Record<string, unknown>>) || [];
@@ -207,15 +230,14 @@ export function SocAiLearningView({ roles = [], refreshKey, onAction }: Props) {
           </Card>
         </div>
         <div className="col-span-4">
-          <Card title="Semantic Tribunal" subtitle="Multi-agent debate on uncertain flags">
-            <p className="text-sm" style={{ marginBottom: 'var(--space-3)' }}>
-              Debated: <strong>{tribunal?.debatedCount ?? 0}</strong>
-              {tribunal?.remainingEligible != null ? ` · ${tribunal.remainingEligible} remaining` : ''}
-            </p>
-            <Button variant="secondary" size="sm" disabled={tribunalLoading || !canAi} onClick={() => void onRunTribunal()}>
-              {tribunalLoading ? 'Running…' : 'Run Tribunal Batch'}
-            </Button>
-          </Card>
+          <TribunalSummaryCard
+            tribunal={tribunal}
+            job={tribunalJob}
+            queue={tribunalQueue}
+            tribunalLoading={tribunalRunning}
+            onRunTribunal={canAi ? () => void onRunTribunal() : undefined}
+            onInvestigateRecord={canAi ? (id) => setInvestigateId(id) : undefined}
+          />
         </div>
       </div>
 
@@ -335,6 +357,7 @@ export function SocAiLearningView({ roles = [], refreshKey, onAction }: Props) {
         <IncidentInvestigatorDrawer
           triggerId={investigateId}
           onClose={() => setInvestigateId(null)}
+          onOpenThreatLab={onOpenThreatLab}
         />
       ) : null}
     </>

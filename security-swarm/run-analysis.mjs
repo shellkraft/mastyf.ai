@@ -34,6 +34,12 @@ const QUIET = process.argv.includes('--quiet');
 const RUN_CONTINUOUS = process.argv.includes('--continuous');
 const SKIP_CONTINUOUS = process.argv.includes('--skip-continuous') || process.env.MASTYF_AI_SWARM_SKIP_CONTINUOUS === 'true';
 
+/** Fast swarm = scout + build + vitest + corpus + node-tests + parity (parity alone allows 15 min). */
+const FAST_SWARM_GATES_TIMEOUT_MS = (() => {
+  const raw = parseInt(process.env.MASTYF_AI_SWARM_GATES_TIMEOUT_MS || '2100000', 10);
+  return Number.isFinite(raw) && raw > 0 ? raw : 2_100_000;
+})();
+
 const LIVE_JSON = join(REPO_ROOT, 'scenarios', 'real-life', 'output', 'live-filesystem-session.json');
 const VISUALS_SCRIPT = join(SWARM_DIR, 'scripts', 'generate-swarm-visuals.py');
 const CLI_DIST = join(REPO_ROOT, 'dist', 'cli.js');
@@ -231,11 +237,11 @@ async function main() {
       log(
         NIGHTLY
           ? 'Swarm gates (nightly): corpus + full adversarial harness — typically 30–60 min, output streams below…'
-          : 'Swarm gates (fast): corpus + harness parity — typically 3–5 min…',
+          : 'Swarm gates (fast): corpus + harness parity — typically 5–20 min on this machine…',
       );
       run('node', ['security-swarm/run.mjs', ...swarmArgs], {
         stepKey: 'security-swarm-gates',
-        timeoutMs: NIGHTLY ? 3_600_000 : 900_000,
+        timeoutMs: NIGHTLY ? 3_600_000 : FAST_SWARM_GATES_TIMEOUT_MS,
         env: {
           MASTYF_AI_POLICY_TIMING_ENVELOPE: 'false',
           MASTYF_AI_DISABLE_SEMANTIC: 'true',

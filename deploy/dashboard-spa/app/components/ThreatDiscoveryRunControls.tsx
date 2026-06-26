@@ -3,12 +3,14 @@
 import { useState } from 'react';
 import { runThreatLab, runAutoThreatResearch, type ThreatDiscoveryStatus } from '@/lib/mastyf-ai-api';
 import { hasPermission } from '@/lib/dashboard-roles';
+import { ThreatDiscoveryJobStatus } from './ThreatDiscoveryJobStatus';
 
 type Props = {
   roles?: string[];
   status: ThreatDiscoveryStatus | null;
   onRunStarted?: (msg: string) => void;
   onRefresh?: () => void;
+  onOptimisticStart?: (kind: 'threat-lab' | 'auto-research', jobId?: string) => void;
 };
 
 export function ThreatDiscoveryRunControls({
@@ -16,16 +18,25 @@ export function ThreatDiscoveryRunControls({
   status,
   onRunStarted,
   onRefresh,
+  onOptimisticStart,
 }: Props) {
   const canRun = hasPermission(roles, 'policy_test');
   const [mode, setMode] = useState<'reactive' | 'proactive'>('reactive');
   const [busy, setBusy] = useState<'threat-lab' | 'auto-research' | null>(null);
 
   const llmOk = status?.llm?.ok ?? false;
-  const tlJob = status?.jobs?.threatLab;
-  const arJob = status?.jobs?.autoResearch;
-  const tlRunning = tlJob?.state === 'running';
-  const arRunning = arJob?.state === 'running';
+  const threatLabJob = status?.jobs?.threatLab ?? null;
+  const autoResearchJob = status?.jobs?.autoResearch ?? null;
+  const tlRunning = threatLabJob?.state === 'running' || busy === 'threat-lab';
+  const arRunning = autoResearchJob?.state === 'running' || busy === 'auto-research';
+  const threatLabDoneDetail =
+    status?.threatLab.manifest?.count != null
+      ? `${status.threatLab.manifest.count} candidate(s)`
+      : undefined;
+  const autoResearchDoneDetail =
+    status?.autoCorpus.manifest?.count != null
+      ? `${status.autoCorpus.manifest.count} fixture(s)`
+      : undefined;
 
   const runTl = async () => {
     if (!canRun || tlRunning) return;
@@ -33,7 +44,12 @@ export function ThreatDiscoveryRunControls({
     try {
       const res = await runThreatLab(mode);
       if (res.ok) {
-        onRunStarted?.(`Threat Lab started (${mode})`);
+        onOptimisticStart?.('threat-lab', res.jobId);
+        onRunStarted?.(
+          res.jobId
+            ? `Threat Lab started (${mode}) — job ${res.jobId.slice(0, 8)}…`
+            : `Threat Lab started (${mode})`,
+        );
         onRefresh?.();
       } else {
         onRunStarted?.(res.error || 'Threat Lab failed to start');
@@ -49,7 +65,12 @@ export function ThreatDiscoveryRunControls({
     try {
       const res = await runAutoThreatResearch();
       if (res.ok) {
-        onRunStarted?.('Auto threat research started');
+        onOptimisticStart?.('auto-research', res.jobId);
+        onRunStarted?.(
+          res.jobId
+            ? `Auto Research started — job ${res.jobId.slice(0, 8)}…`
+            : 'Auto threat research started',
+        );
         onRefresh?.();
       } else {
         onRunStarted?.(res.error || 'Auto research failed to start');
@@ -61,6 +82,13 @@ export function ThreatDiscoveryRunControls({
 
   return (
     <div className="threat-run-controls">
+      <ThreatDiscoveryJobStatus
+        threatLabJob={threatLabJob}
+        autoResearchJob={autoResearchJob}
+        threatLabDoneDetail={threatLabDoneDetail}
+        autoResearchDoneDetail={autoResearchDoneDetail}
+      />
+
       <h4>Run discovery</h4>
       {!canRun ? (
         <p className="hint">Operator role required to trigger discovery jobs.</p>
@@ -85,17 +113,11 @@ export function ThreatDiscoveryRunControls({
           <button
             type="button"
             className="primary"
-            disabled={!canRun || !llmOk || tlRunning || busy === 'threat-lab'}
+            disabled={!canRun || !llmOk || tlRunning}
             onClick={() => void runTl()}
           >
-            {tlRunning || busy === 'threat-lab' ? 'Running…' : 'Run Threat Lab'}
+            {tlRunning ? 'Running…' : 'Run Threat Lab'}
           </button>
-          {tlJob && tlJob.state !== 'idle' ? (
-            <p className="hint job-status">
-              {tlJob.state}: {tlJob.phaseLabel || tlJob.phase}
-              {tlJob.logTail ? ` · ${tlJob.logTail.split('\n').slice(-1)[0]?.slice(0, 80)}` : ''}
-            </p>
-          ) : null}
         </div>
         <div className="threat-run-block">
           <p className="hint">
@@ -105,16 +127,11 @@ export function ThreatDiscoveryRunControls({
           <button
             type="button"
             className="secondary"
-            disabled={!canRun || !llmOk || arRunning || busy === 'auto-research'}
+            disabled={!canRun || !llmOk || arRunning}
             onClick={() => void runAr()}
           >
-            {arRunning || busy === 'auto-research' ? 'Running…' : 'Run Auto Research'}
+            {arRunning ? 'Running…' : 'Run Auto Research'}
           </button>
-          {arJob && arJob.state !== 'idle' ? (
-            <p className="hint job-status">
-              {arJob.state}: {arJob.phaseLabel || arJob.phase}
-            </p>
-          ) : null}
         </div>
       </div>
     </div>

@@ -4,12 +4,18 @@
  * after this dashboard process booted.
  */
 import { existsSync, readFileSync, statSync } from 'node:fs';
-import { join } from 'node:path';
+import { basename, join } from 'node:path';
 import { DEFAULT_TENANT_ID, validateTenantId } from '../tenant/resolve-tenant.js';
 import { LEGACY_SWARM_DIR, resolveTenantSwarmDir } from '../tenant/swarm-tenant-paths.js';
 
 const JOB_FILES = ['job.json', 'threat-lab-job.json', 'auto-research-job.json'] as const;
 const ARTIFACT_MTIME_GRACE_MS = 60_000;
+
+/** Cumulative audit manifests — not tied to the latest job output window. */
+const CUMULATIVE_TENANT_ARTIFACTS = new Set([
+  'auto-corpus-manifest.json',
+  'threat-lab-candidates.json',
+]);
 
 /** Set when dashboard-server (or tests) initialize the session clock. */
 export let dashboardSessionStartedMs = Date.now();
@@ -113,6 +119,9 @@ export function isSwarmArtifactVisibleForSession(
   if (isTenantSwarmPath(filePath, tid)) {
     const job = getLatestTenantJob(tid);
     if (!job) return false;
+    if (CUMULATIVE_TENANT_ARTIFACTS.has(basename(filePath))) {
+      return true;
+    }
     try {
       return statSync(filePath).mtimeMs >= job.startedAtMs - ARTIFACT_MTIME_GRACE_MS;
     } catch {

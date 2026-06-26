@@ -1,26 +1,25 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import {
   Bar,
   BarChart,
   CartesianGrid,
   Cell,
-  ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
 } from 'recharts';
-import { fetchVisualsLive, type HealthResponse, type VisualsData } from '@/lib/mastyf-ai-api';
+import type { HealthResponse } from '@/lib/mastyf-ai-api';
 import { CHART_AXIS, CHART_COLORS, CHART_GRID, CHART_TOOLTIP_STYLE } from '@/lib/chartTheme';
 import { KpiCard } from '@/app/components/ui/KpiCard';
 import { Card } from '@/app/components/ui/Card';
+import { ChartPanel } from '@/app/components/ui/ChartPanel';
 import { Badge } from '@/app/components/ui/Badge';
 import { EmptyState } from '@/app/components/ui/EmptyState';
 import { computeReliabilityRiskMetrics } from '@/lib/advanced-analytics';
 import { trackAdvancedAnalyticsEvent } from '@/lib/mastyf-ai-api';
-
-type ServerRow = NonNullable<HealthResponse['serverReports']>[number];
+import { useVisuals } from './VisualsProvider';
 
 type Props = {
   health: HealthResponse | null;
@@ -28,39 +27,49 @@ type Props = {
 };
 
 export function HealthReliabilityPanel({ health, refreshKey = 0 }: Props) {
-  const [visuals, setVisuals] = useState<VisualsData | null>(null);
+  const { visuals, loading: visualsLoading } = useVisuals();
 
-  const loadVisuals = useCallback(async () => {
-    const v = await fetchVisualsLive();
-    setVisuals(v.ok ? v.data : null);
-  }, []);
+  const byServer = visuals?.traffic?.byServer ?? [];
+  const reliability = computeReliabilityRiskMetrics(health, byServer);
 
   useEffect(() => {
-    void loadVisuals();
-  }, [loadVisuals, refreshKey]);
-
-  if (!health) {
-    return <EmptyState title="No health data" message="Connect proxy history database to see server health metrics." />;
-  }
-
-  const latencyChart = (visuals?.traffic?.byServer ?? []).map((s) => ({
-    name: s.serverName,
-    p50: s.latencyP50Ms ?? 0,
-    p95: s.latencyP95Ms ?? 0,
-  }));
-
-  const atRisk = health.atRisk || [];
-  const reliability = computeReliabilityRiskMetrics(health, visuals?.traffic?.byServer ?? []);
-  const servers = health.serverReports || [];
-
-  useEffect(() => {
+    if (!health) return;
     void trackAdvancedAnalyticsEvent({
       feature: 'reliability_risk_index',
       metric: 'index',
       confidence: reliability.caveat.confidence,
       value: reliability.index,
     });
-  }, [reliability.caveat.confidence, reliability.index]);
+  }, [health, reliability.caveat.confidence, reliability.index, refreshKey]);
+
+  if (!health) {
+    return <EmptyState title="No health data" message="Connect proxy history database to see server health metrics." />;
+  }
+
+  const latencyChart = byServer.map((s) => ({
+    name: s.serverName,
+    p50: s.latencyP50Ms ?? 0,
+    p95: s.latencyP95Ms ?? 0,
+  }));
+  const callVolumeChart = byServer.map((s) => ({
+    name: s.serverName,
+    calls: s.calls,
+    blocked: s.blocked,
+  }));
+
+  const trafficMeta = visuals?.meta
+    ? {
+        window: visuals.meta.window,
+        windowDays: visuals.windowDays,
+        generatedAt: visuals.meta.generatedAt ?? visuals.generatedAt,
+        recordCount: visuals.meta.recordCount,
+        sparse: visuals.meta.sparse,
+        emptyReason: visuals.meta.emptyReasons?.traffic,
+      }
+    : undefined;
+
+  const atRisk = health.atRisk || [];
+  const servers = health.serverReports || [];
 
   return (
     <div>
@@ -96,45 +105,66 @@ export function HealthReliabilityPanel({ health, refreshKey = 0 }: Props) {
 
       <div className="grid grid-12" style={{ marginBottom: 'var(--space-5)' }}>
         <div className="col-span-8">
-          <Card title="Latency Distribution" subtitle="p50 vs p95 — widening gap indicates tail latency issues">
-            {latencyChart.length === 0 ? (
-              <EmptyState title="No latency data" message="No traffic data available to compute latency distribution." />
-            ) : (
-              <ResponsiveContainer width="100%" height={280}>
-                <BarChart data={latencyChart}>
-                  <CartesianGrid {...CHART_GRID} />
-                  <XAxis dataKey="name" {...CHART_AXIS} />
-                  <YAxis {...CHART_AXIS} unit=" ms" />
-                  <Tooltip contentStyle={CHART_TOOLTIP_STYLE} />
-                  <Bar dataKey="p50" fill={CHART_COLORS[0]} name="p50" />
-                  <Bar dataKey="p95" fill={CHART_COLORS[3]} name="p95" />
-                </BarChart>
-              </ResponsiveContainer>
-            )}
-          </Card>
+          <ChartPanel
+            title="Latency Distribution"
+            subtitle="p50 vs p95 — widening gap indicates tail latency issues"
+            loading={visualsLoading && !visuals}
+            empty={latencyChart.length === 0}
+            emptyReason={trafficMeta?.emptyReason}
+            meta={trafficMeta}
+            sparse={trafficMeta?.sparse}
+          >
+            <BarChart data={latencyChart}>
+              <CartesianGrid {...CHART_GRID} />
+              <XAxis dataKey="name" {...CHART_AXIS} />
+              <YAxis {...CHART_AXIS} unit=" ms" />
+              <Tooltip contentStyle={CHART_TOOLTIP_STYLE} />
+              <Bar dataKey="p50" fill={CHART_COLORS[0]} name="p50" />
+              <Bar dataKey="p95" fill={CHART_COLORS[3]} name="p95" />
+            </BarChart>
+          </ChartPanel>
         </div>
         <div className="col-span-4">
-          <Card title="Success Rate" subtitle="Upstream tool call success percentage">
-            {servers.length === 0 ? (
-              <EmptyState title="No server data" message="No server reports available." />
-            ) : (
-              <ResponsiveContainer width="100%" height={280}>
-                <BarChart data={servers.map((h) => ({ name: h.name, rate: h.successRate ?? 0 }))}>
-                  <CartesianGrid {...CHART_GRID} />
-                  <XAxis dataKey="name" {...CHART_AXIS} />
-                  <YAxis domain={[0, 100]} {...CHART_AXIS} />
-                  <Tooltip contentStyle={CHART_TOOLTIP_STYLE} />
-                  <Bar dataKey="rate" name="Success %">
-                    {servers.map((h) => (
-                      <Cell key={h.name} fill={(h.successRate ?? 100) < 70 ? CHART_COLORS[2] : CHART_COLORS[1]} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            )}
-          </Card>
+          <ChartPanel
+            title="Success Rate"
+            subtitle="Upstream tool call success percentage"
+            empty={servers.length === 0}
+            height={280}
+          >
+            <BarChart data={servers.map((h) => ({ name: h.name, rate: h.successRate ?? 0 }))}>
+              <CartesianGrid {...CHART_GRID} />
+              <XAxis dataKey="name" {...CHART_AXIS} />
+              <YAxis domain={[0, 100]} {...CHART_AXIS} />
+              <Tooltip contentStyle={CHART_TOOLTIP_STYLE} />
+              <Bar dataKey="rate" name="Success %">
+                {servers.map((h) => (
+                  <Cell key={h.name} fill={(h.successRate ?? 100) < 70 ? CHART_COLORS[2] : CHART_COLORS[1]} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ChartPanel>
         </div>
       </div>
+
+      <ChartPanel
+        title="Call Volume by Server"
+        subtitle="Total proxy calls per upstream MCP server"
+        loading={visualsLoading && !visuals}
+        empty={callVolumeChart.length === 0 || !callVolumeChart.some((s) => s.calls > 0)}
+        emptyReason={trafficMeta?.emptyReason}
+        meta={trafficMeta}
+        sparse={trafficMeta?.sparse}
+        style={{ marginBottom: 'var(--space-5)' }}
+      >
+        <BarChart data={callVolumeChart}>
+          <CartesianGrid {...CHART_GRID} />
+          <XAxis dataKey="name" {...CHART_AXIS} />
+          <YAxis {...CHART_AXIS} />
+          <Tooltip contentStyle={CHART_TOOLTIP_STYLE} />
+          <Bar dataKey="calls" fill={CHART_COLORS[0]} name="Calls" />
+          <Bar dataKey="blocked" fill={CHART_COLORS[2]} name="Blocked" />
+        </BarChart>
+      </ChartPanel>
 
       <Card title="Server Health Details" subtitle="Latency, success rate, and circuit breaker state per upstream MCP server">
         <div className="table-wrap">

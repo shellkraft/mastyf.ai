@@ -62,6 +62,27 @@ describe('swarm-session', () => {
     expect(isSwarmArtifactVisibleForSession(artifact, TENANT)).toBe(true);
   });
 
+  it('exposes cumulative tenant manifests even when older than the latest job', () => {
+    const startedAt = new Date().toISOString();
+    writeFileSync(
+      join(TENANT_DIR, 'auto-research-job.json'),
+      JSON.stringify({ jobId: 'ar', state: 'done', startedAt }),
+    );
+    const manifest = join(TENANT_DIR, 'auto-corpus-manifest.json');
+    writeFileSync(
+      manifest,
+      JSON.stringify({
+        timestamp: new Date(Date.now() - 3600_000).toISOString(),
+        count: 1,
+        entries: [{ advId: 'adv-1', relPath: 'x', fingerprint: 'fp', source: 'bypass', confidence: 0.9, timestamp: new Date().toISOString(), toolName: 't', category: 'c' }],
+      }),
+    );
+    const old = (Date.now() - 3600_000) / 1000;
+    utimesSync(manifest, old, old);
+
+    expect(isSwarmArtifactVisibleForSession(manifest, TENANT)).toBe(true);
+  });
+
   it('exposes artifacts when job started in current session', () => {
     const startedAt = new Date().toISOString();
     writeFileSync(

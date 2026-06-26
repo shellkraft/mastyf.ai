@@ -51,7 +51,6 @@ import { CostIntelligenceCenter } from './operations/CostIntelligenceCenter';
 import { ServersFleetCenter } from './operations/ServersFleetCenter';
 import { ConfigurationHub } from './operations/ConfigurationHub';
 import { OperatorEnablementCenter } from './operations/OperatorEnablementCenter';
-import { GovernanceCenter } from './operations/GovernanceCenter';
 import { ComplianceCenter } from './operations/ComplianceCenter';
 
 import {
@@ -109,7 +108,7 @@ export function DashboardClient() {
 
   const ws = useDashboardWs(ready, sessionKey);
   const { toast } = useToast();
-  const { windowDays, windowLabel } = useCurrentWindowDays();
+  const { windowParam, windowLabel } = useCurrentWindowDays();
   const visualsPollMs = windowLabel === '1h' ? 10_000 : REST_POLL_MS;
 
   const onAction = useCallback((msg: string) => {
@@ -145,9 +144,9 @@ export function DashboardClient() {
     try {
       const [auditRes, metricsRes, costRes, secRes, healthRes, fleetRes, authRes] =
         await Promise.all([
-          fetchAudit({ windowDays, limit: 100, action: auditAction || undefined, server: auditServer || undefined }),
-          fetchAggregateMetrics(windowDays),
-          fetchCost(windowDays),
+          fetchAudit({ windowParam, limit: 100, action: auditAction || undefined, server: auditServer || undefined }),
+          fetchAggregateMetrics(windowParam),
+          fetchCost(windowParam),
           fetchSecurity(),
           fetchHealth(),
           fetchFleetInstances(),
@@ -171,7 +170,7 @@ export function DashboardClient() {
         setRefreshTick(t => t + 1);
       }
     } catch { pollFailuresRef.current += 1; if (pollFailuresRef.current >= POLL_FAILURES_BEFORE_DOWN) setApiUnreachable(true); }
-  }, [applyStatus, windowDays, auditAction, auditServer]);
+  }, [applyStatus, windowParam, auditAction, auditServer]);
 
   useEffect(() => {
     setReady(true);
@@ -299,6 +298,12 @@ export function DashboardClient() {
                   roles={roles}
                   refreshKey={refreshTick}
                   onAction={onAction}
+                  threatDiscoveryTick={ws.threatDiscoveryTick}
+                  aiRefreshTick={ws.aiRefreshTick}
+                  threatLabContext={threatLabContext}
+                  threatDiscoverySubTab={threatDiscoverySubTab}
+                  onClearThreatLabContext={() => setThreatLabContext(null)}
+                  onOpenThreatLab={openThreatLab}
                 />
               )}
 
@@ -359,6 +364,7 @@ export function DashboardClient() {
                   onViewChange={(v) => { setSettingsView(v); syncNavToUrl({ workspace: 'settings', view: v }); }}
                   roles={roles}
                   tenantLocked={!!authStatus?.tenantLocked}
+                  refreshKey={refreshTick}
                   onAction={onAction}
                   onGoToAgentFlow={() => navigate('activity', 'realtime')}
                 />

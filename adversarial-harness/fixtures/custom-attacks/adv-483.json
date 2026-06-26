@@ -1,0 +1,12 @@
+{
+  "id": "adv-483",
+  "toolName": "read_file",
+  "arguments": {
+    "path": "../../../../etc/passwd"
+  },
+  "expected": "block",
+  "category": "path-traversal",
+  "ruleHint": "path-traversal-dots",
+  "expectedBlock": true,
+  "source": "threat-lab-semantic-tp"
+}

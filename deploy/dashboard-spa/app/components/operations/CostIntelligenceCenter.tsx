@@ -2,18 +2,36 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
+  Area,
+  AreaChart,
+  CartesianGrid,
+  Legend,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts';
+import {
   fetchCost,
   fetchCostBreakdown,
   fetchCostRecommendations,
-  type CostBreakdownResponse,
   type CostRecommendation,
   type CostResponse,
+  type CostTimeseriesResponse,
 } from '@/lib/mastyf-ai-api';
-import { formatUsd } from '@/lib/chartTheme';
+import {
+  CHART_AXIS,
+  CHART_COLORS,
+  CHART_GRID,
+  CHART_TOOLTIP_STYLE,
+  formatAxisTime,
+  formatUsd,
+} from '@/lib/chartTheme';
 import { useCurrentWindowDays } from '@/app/components/dashboard/DashboardWindowContext';
+import { useVisuals } from '@/app/components/dashboard/VisualsProvider';
+import { formatWindowSubtitle } from '@/lib/format-dashboard-window';
 import { Badge } from '@/app/components/ui/Badge';
-import { Button } from '@/app/components/ui/Button';
 import { Card } from '@/app/components/ui/Card';
+import { ChartPanel } from '@/app/components/ui/ChartPanel';
 import { EmptyState } from '@/app/components/ui/EmptyState';
 import { KpiCard } from '@/app/components/ui/KpiCard';
 import { WorkspaceSubNav } from '@/app/components/ui/WorkspaceSubNav';
@@ -50,12 +68,38 @@ function inferSeverity(message: string): 'danger' | 'warning' | 'info' {
   return 'info';
 }
 
-function OverviewView({ cost, tools, recommendations, loading }: {
+function OverviewView({ cost, tools, recommendations, loading, costTimeseries, windowLabel, windowDays, visualsLoading }: {
   cost: CostResponse | null;
   tools: ToolEntry[];
   recommendations: CostRecommendation[];
   loading: boolean;
+  costTimeseries: CostTimeseriesResponse | null;
+  windowLabel: string;
+  windowDays: number;
+  visualsLoading: boolean;
 }) {
+  const granularity = windowDays <= 7 ? 'hour' : 'day';
+
+  const timeseries = useMemo(() => {
+    const pivoted = costTimeseries?.pivoted ?? [];
+    return pivoted.map((row) => ({
+      ...row,
+      bucket: formatAxisTime(String(row.bucket), granularity),
+    }));
+  }, [costTimeseries?.pivoted, granularity]);
+
+  const serverKeys = useMemo(() => {
+    const names = new Set<string>();
+    for (const row of costTimeseries?.pivoted ?? []) {
+      for (const key of Object.keys(row)) {
+        if (key !== 'bucket' && key !== 'total') names.add(key);
+      }
+    }
+    return [...names];
+  }, [costTimeseries?.pivoted]);
+
+  const costMeta = costTimeseries?.meta;
+  const costComparison = costTimeseries?.comparison?.totalCostUsd;
   const budgetPct = useMemo(() => {
     if (cost?.budgetUsd && cost.totalCost != null && cost.budgetUsd > 0) {
       return Math.min(100, (cost.totalCost / cost.budgetUsd) * 100);
@@ -103,7 +147,16 @@ function OverviewView({ cost, tools, recommendations, loading }: {
   return (
     <>
       <div className="kpi-grid">
-        <KpiCard label="Total Spend" value={cost.totalCost != null ? formatUsd(cost.totalCost) : '—'} accent="info" secondary={`${cost.windowDays ?? 7}d window`} />
+        <KpiCard
+          label="Total Spend"
+          value={cost.totalCost != null ? formatUsd(cost.totalCost) : '—'}
+          accent="info"
+          delta={costComparison ? {
+            value: `${Math.abs(costComparison.deltaPct ?? 0).toFixed(1)}%`,
+            direction: costComparison.direction,
+          } : undefined}
+          secondary={formatWindowSubtitle(windowLabel)}
+        />
         <KpiCard
           label="Burn Rate"
           value={cost.burnRatePerHour != null ? `${formatUsd(cost.burnRatePerHour)}/hr` : '—'}
@@ -117,6 +170,37 @@ function OverviewView({ cost, tools, recommendations, loading }: {
         />
         <KpiCard label="Pricing Model" value={cost.pricingModel ?? '—'} accent="neutral" />
       </div>
+
+      <ChartPanel
+        title="Spend Over Time"
+        subtitle="Cost stacked by MCP server (top 5 + Other)"
+        loading={visualsLoading && !costTimeseries}
+        empty={timeseries.length === 0}
+        emptyReason={costMeta?.emptyReason}
+        meta={costMeta}
+        sparse={costMeta?.sparse}
+        style={{ marginBottom: 'var(--space-4)' }}
+      >
+        <AreaChart data={timeseries}>
+          <CartesianGrid {...CHART_GRID} />
+          <XAxis dataKey="bucket" {...CHART_AXIS} interval="preserveStartEnd" />
+          <YAxis {...CHART_AXIS} tickFormatter={(v) => formatUsd(Number(v), 3)} />
+          <Tooltip contentStyle={CHART_TOOLTIP_STYLE} formatter={(v: number) => [formatUsd(v), 'Cost']} />
+          <Legend />
+          {serverKeys.map((srv, i) => (
+            <Area
+              key={srv}
+              type="monotone"
+              dataKey={srv}
+              stackId="cost"
+              stroke={CHART_COLORS[i % CHART_COLORS.length]}
+              fill={CHART_COLORS[i % CHART_COLORS.length]}
+              fillOpacity={0.5}
+              name={srv}
+            />
+          ))}
+        </AreaChart>
+      </ChartPanel>
 
       {budgetPct != null && cost.budgetUsd != null ? (
         <Card title="Budget Utilization" subtitle={`${cost.budgetUsd.toFixed(2)} budget`}>
@@ -436,7 +520,8 @@ function BudgetsView({ cost, loading }: { cost: CostResponse | null; loading: bo
 }
 
 export function CostIntelligenceCenter({ view, onViewChange, refreshKey, initialCost = null }: Props) {
-  const { windowDays } = useCurrentWindowDays();
+  const { windowParam, windowLabel, windowDays } = useCurrentWindowDays();
+  const { costTimeseries, loading: visualsLoading } = useVisuals();
   const [cost, setCost] = useState<CostResponse | null>(initialCost);
   const [tools, setTools] = useState<ToolEntry[]>([]);
   const [recommendations, setRecommendations] = useState<CostRecommendation[]>([]);
@@ -446,9 +531,9 @@ export function CostIntelligenceCenter({ view, onViewChange, refreshKey, initial
     setLoading(true);
     try {
       const [c, b, rec] = await Promise.all([
-        fetchCost(windowDays),
-        fetchCostBreakdown(windowDays),
-        fetchCostRecommendations(windowDays),
+        fetchCost(windowParam),
+        fetchCostBreakdown(windowParam),
+        fetchCostRecommendations(windowParam),
       ]);
       if (c) setCost(c);
       if (b?.tools) setTools(b.tools);
@@ -458,7 +543,7 @@ export function CostIntelligenceCenter({ view, onViewChange, refreshKey, initial
     } finally {
       setLoading(false);
     }
-  }, [windowDays]);
+  }, [windowParam]);
 
   useEffect(() => {
     void load();
@@ -482,7 +567,16 @@ export function CostIntelligenceCenter({ view, onViewChange, refreshKey, initial
       <WorkspaceSubNav tabs={VIEW_TABS} active={view} onChange={onViewChange} />
 
       {view === 'overview' ? (
-        <OverviewView cost={cost} tools={tools} recommendations={recommendations} loading={loading} />
+        <OverviewView
+          cost={cost}
+          tools={tools}
+          recommendations={recommendations}
+          loading={loading}
+          costTimeseries={costTimeseries}
+          windowLabel={windowLabel}
+          windowDays={windowDays}
+          visualsLoading={visualsLoading}
+        />
       ) : view === 'breakdown' ? (
         <BreakdownView tools={tools} loading={loading} />
       ) : (

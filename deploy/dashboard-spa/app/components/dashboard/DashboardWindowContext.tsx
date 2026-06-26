@@ -136,6 +136,8 @@ const WINDOW_OPTIONS: { value: DashboardWindow; short: string; label: string }[]
   { value: '90d', short: '90d', label: 'Last 90 days' },
 ];
 
+export { formatDashboardWindowLabel } from '@/lib/format-dashboard-window';
+
 export function DashboardWindowSelector() {
   const { window: w, setWindow } = useDashboardWindow();
   const [open, setOpen] = useState(false);

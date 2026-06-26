@@ -2080,6 +2080,54 @@ code {
   color: var(--brand-primary);
 }
 
+/* ── Threat discovery job status ─────────────────── */
+.threat-job-status-grid {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.threat-job-row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.threat-job-row-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.threat-job-progress {
+  height: 6px;
+  border-radius: var(--radius-full);
+  background: var(--bg-muted);
+  overflow: hidden;
+}
+
+.threat-job-progress-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: var(--warning);
+  transition: width 300ms ease;
+}
+
+.threat-job-log {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: var(--font-mono);
+}
+
+.threat-run-controls {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  margin-bottom: var(--space-4);
+}
+
 /* ── Legacy support ───────────────────────────────── */
 .ui-card { display: flex; flex-direction: column; background: var(--card-bg); border: 1px solid var(--card-border); border-radius: var(--radius-lg); }
 .ui-btn { display: inline-flex; align-items: center; justify-content: center; gap: var(--space-1); font-family: var(--font-sans); font-size: var(--text-sm); font-weight: var(--weight-medium); border: 1px solid transparent; border-radius: var(--radius-sm); cursor: pointer; transition: background 150ms ease, border-color 150ms ease, color 150ms ease; padding: var(--space-2) var(--space-3); line-height: 1.4; }

@@ -10,7 +10,7 @@ export type WorkspaceId =
   | 'settings'
   | 'help';
 
-export type ActivityView = 'realtime' | 'audit';
+export type ActivityView = 'realtime' | 'audit' | 'analytics' | 'infrastructure';
 export type SecurityView = 'overview' | 'threats' | 'intel' | 'swarm' | 'learning' | 'quarantine';
 export type PolicyView = 'rules' | 'editor' | 'test' | 'history';
 export type CostView = 'overview' | 'breakdown' | 'budgets';
@@ -37,6 +37,8 @@ export const WORKSPACE_CONFIG: Record<WorkspaceId, {
     views: [
       { id: 'realtime', label: 'Live Feed' },
       { id: 'audit', label: 'Audit Trail' },
+      { id: 'analytics', label: 'Analytics' },
+      { id: 'infrastructure', label: 'Infrastructure' },
     ],
   },
   security: {

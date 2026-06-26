@@ -21,8 +21,17 @@ import { getSharedThreatIntel } from '../../src/ai/threat-intel.js';
 import { loadSemanticAuditRecordsAsync } from '../../src/ai/semantic-audit-store.js';
 import { isCalibratorSeededRecord, semanticFlagMinConfidence, type BypassContext } from '../../src/ai/threat-lab.js';
 import { resolveSwarmOutputDir } from '../../src/tenant/swarm-tenant-paths.js';
+import {
+  appendThreatDiscoveryLog,
+  finishThreatDiscoveryJob,
+  patchThreatDiscoveryJob,
+} from '../../src/utils/threat-discovery-job-file.js';
 
 await exitUnlessProFeature('swarm');
+
+function log(msg: string): void {
+  appendThreatDiscoveryLog('auto-research', msg);
+}
 
 const REPO = process.cwd();
 const OUT_DIR = resolveSwarmOutputDir();
@@ -68,11 +77,28 @@ function collectBypasses(): BypassContext[] {
 }
 
 async function main(): Promise<void> {
+  patchThreatDiscoveryJob('auto-research', {
+    state: 'running',
+    phase: 'starting',
+    phaseLabel: 'Starting auto threat research',
+    progressPct: 10,
+    startedAt: new Date().toISOString(),
+    finishedAt: null,
+    exitCode: null,
+    error: null,
+    pid: process.pid,
+  });
+  log('[auto-threat-research] starting');
+
   if (!threatResearchAutoEnabled()) {
-    console.log(
+    log(
       '[auto-threat-research] disabled — set MASTYF_AI_THREAT_RESEARCH_AUTO=true and SWARM_THREAT_RESEARCH_AUTO=true',
     );
-    process.exit(0);
+    finishThreatDiscoveryJob('auto-research', {
+      ok: false,
+      error: 'Auto research disabled — set MASTYF_AI_THREAT_RESEARCH_AUTO=true on the proxy',
+    });
+    process.exit(1);
   }
 
   const max = parseInt(process.env.SWARM_THREAT_RESEARCH_MAX || '10', 10);
@@ -89,6 +115,11 @@ async function main(): Promise<void> {
   }
 
   if (process.env.MASTYF_AI_THREAT_RESEARCH_SEMANTIC !== 'false') {
+    patchThreatDiscoveryJob('auto-research', {
+      phase: 'semantic',
+      phaseLabel: 'Loading semantic audit signals',
+      progressPct: 30,
+    });
     const records = await loadSemanticAuditRecordsAsync({ sinceMs: 7 * 24 * 60 * 60 * 1000, limit: 50 });
     for (const rec of records) {
       if (candidates.length >= max * 3) break;
@@ -100,11 +131,16 @@ async function main(): Promise<void> {
   }
 
   if (process.env.MASTYF_AI_THREAT_RESEARCH_THREAT_INTEL !== 'false') {
+    patchThreatDiscoveryJob('auto-research', {
+      phase: 'threat-intel',
+      phaseLabel: 'Polling threat intelligence feeds',
+      progressPct: 45,
+    });
     const ti = getSharedThreatIntel();
     try {
       await ti.pollLiveFeeds();
     } catch (err) {
-      console.log(`[auto-threat-research] ThreatIntel poll warning: ${err instanceof Error ? err.message : String(err)}`);
+      log(`[auto-threat-research] ThreatIntel poll warning: ${err instanceof Error ? err.message : String(err)}`);
     }
     for (const entry of ti.getCatalogEntries({ minSeverity: 'MEDIUM', limit: max * 2 })) {
       if (candidates.length >= max * 3) break;
@@ -121,24 +157,41 @@ async function main(): Promise<void> {
 
   const events = filterUnprocessedEvents(candidates).slice(0, max);
   if (events.length === 0) {
-    console.log(
+    log(
       `[auto-threat-research] wrote 0/0 fixture(s) — all ${candidates.length} candidate signal(s) already processed (${countProcessedFingerprints()} in ledger). Route new MCP blocks through Mastyf AI for fresh block-repeat signals.`,
     );
+    finishThreatDiscoveryJob('auto-research', {
+      ok: true,
+      extra: { writtenCount: 0, attemptedCount: 0 },
+    });
     return;
   }
 
+  patchThreatDiscoveryJob('auto-research', {
+    phase: 'process',
+    phaseLabel: 'Generating adversarial fixtures',
+    progressPct: 70,
+  });
+
   const results = await processThreatResearchBatch(events);
   const ok = results.filter((r) => r.ok);
-  console.log(`[auto-threat-research] wrote ${ok.length}/${results.length} fixture(s)`);
+  log(`[auto-threat-research] wrote ${ok.length}/${results.length} fixture(s)`);
   for (const r of ok) {
-    console.log(`  ✓ ${r.advId} → ${r.relPath}`);
+    log(`  ✓ ${r.advId} → ${r.relPath}`);
   }
   for (const r of results.filter((x) => !x.ok)) {
-    console.log(`  ✗ ${r.reason}`);
+    log(`  ✗ ${r.reason}`);
   }
+
+  finishThreatDiscoveryJob('auto-research', {
+    ok: true,
+    extra: { writtenCount: ok.length, attemptedCount: results.length },
+  });
 }
 
 main().catch((err) => {
-  console.error(err);
+  const message = err instanceof Error ? err.message : String(err);
+  log(`[auto-threat-research] failed: ${message}`);
+  finishThreatDiscoveryJob('auto-research', { ok: false, error: message });
   process.exit(1);
 });

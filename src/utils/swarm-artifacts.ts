@@ -407,16 +407,54 @@ export type AutoCorpusManifestEntry = {
   category: string;
 };
 
+export function readAutoCorpusManifestUngated(tenantId?: string): AutoCorpusManifestEntry[] {
+  const tid = validateTenantId(tenantId?.trim() || DEFAULT_TENANT_ID);
+  const dirs = [resolveTenantSwarmDir(tid)];
+  if (tid === DEFAULT_TENANT_ID) {
+    const legacy = join(REPO_ROOT, 'reports', 'security-swarm');
+    if (!dirs.includes(legacy)) dirs.push(legacy);
+    if (isLegacyArtifactsAllowed() && !dirs.includes(LEGACY_SWARM_DIR)) {
+      dirs.push(LEGACY_SWARM_DIR);
+    }
+  }
+  const byAdvId = new Map<string, AutoCorpusManifestEntry>();
+  for (const dir of dirs) {
+    const p = join(dir, 'auto-corpus-manifest.json');
+    if (!existsSync(p)) continue;
+    try {
+      const data = JSON.parse(readFileSync(p, 'utf-8')) as { entries?: AutoCorpusManifestEntry[] };
+      if (!Array.isArray(data.entries)) continue;
+      for (const entry of data.entries) {
+        if (entry?.advId && !byAdvId.has(entry.advId)) byAdvId.set(entry.advId, entry);
+      }
+    } catch {
+      /* try next dir */
+    }
+  }
+  return [...byAdvId.values()].sort(
+    (a, b) => Date.parse(b.timestamp) - Date.parse(a.timestamp),
+  );
+}
+
 export function readAutoCorpusManifest(tenantId?: string): {
   timestamp: string;
   count: number;
   entries: AutoCorpusManifestEntry[];
 } | null {
-  return readSwarmJsonFile<{
+  const gated = readSwarmJsonFile<{
     timestamp: string;
     count: number;
     entries: AutoCorpusManifestEntry[];
   }>('auto-corpus-manifest.json', tenantId);
+  if (gated?.entries?.length) return gated;
+
+  const entries = readAutoCorpusManifestUngated(tenantId);
+  if (entries.length === 0) return null;
+  return {
+    timestamp: entries[0]?.timestamp || new Date().toISOString(),
+    count: entries.length,
+    entries,
+  };
 }
 
 export function markThreatLabCandidate(

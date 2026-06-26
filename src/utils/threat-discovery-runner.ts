@@ -2,18 +2,22 @@
  * Dashboard-triggered Threat Lab and Auto Threat Research jobs (per-tenant).
  */
 import { spawn } from 'node:child_process';
-import { existsSync, readFileSync, writeFileSync, appendFileSync, mkdirSync } from 'node:fs';
+import { existsSync, statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { DEFAULT_TENANT_ID } from '../tenant/resolve-tenant.js';
 import { broadcastDashboardEvent } from './dashboard-events.js';
+import { REPO_ROOT, ensureTenantSwarmDir } from './swarm-artifacts.js';
 import {
-  REPO_ROOT,
-  ensureTenantSwarmDir,
-} from './swarm-artifacts.js';
-import { getEffectiveSwarmDir } from '../tenant/swarm-tenant-paths.js';
+  type ThreatDiscoveryJobKind,
+  loadThreatDiscoveryJob,
+  patchThreatDiscoveryJob,
+  readThreatDiscoveryLogTail,
+  threatDiscoveryJobPath,
+  threatDiscoveryLogPath,
+} from './threat-discovery-job-file.js';
 
-export type ThreatDiscoveryJobKind = 'threat-lab' | 'auto-research';
+export type { ThreatDiscoveryJobKind };
 
 export interface ThreatDiscoveryJobStatus {
   jobId: string;
@@ -31,49 +35,25 @@ export interface ThreatDiscoveryJobStatus {
   pid: number | null;
 }
 
-const JOB_FILES: Record<ThreatDiscoveryJobKind, string> = {
-  'threat-lab': 'threat-lab-job.json',
-  'auto-research': 'auto-research-job.json',
-};
-
-const LOG_FILES: Record<ThreatDiscoveryJobKind, string> = {
-  'threat-lab': 'threat-lab-job.log',
-  'auto-research': 'auto-research-job.log',
-};
-
 const SCRIPTS: Record<ThreatDiscoveryJobKind, string> = {
   'threat-lab': join(REPO_ROOT, 'scripts', 'security-swarm', 'run-threat-lab.ts'),
   'auto-research': join(REPO_ROOT, 'scripts', 'security-swarm', 'run-auto-threat-research.ts'),
 };
 
+const DISCOVERY_LOG_STALE_MS = 25 * 60 * 1000;
+const DISCOVERY_MAX_AGE_MS = 2 * 60 * 60 * 1000;
+
 const watchedJobs = new Set<string>();
 let watchTimer: ReturnType<typeof setInterval> | null = null;
 const runningPids = new Map<string, number>();
+const broadcastedTerminal = new Set<string>();
 
 function jobKey(tenantId: string, kind: ThreatDiscoveryJobKind): string {
   return `${tenantId}:${kind}`;
 }
 
-function swarmDir(tenantId: string): string {
-  return getEffectiveSwarmDir(tenantId);
-}
-
-function jobPath(tenantId: string, kind: ThreatDiscoveryJobKind): string {
-  return join(swarmDir(tenantId), JOB_FILES[kind]);
-}
-
-function logPath(tenantId: string, kind: ThreatDiscoveryJobKind): string {
-  return join(swarmDir(tenantId), LOG_FILES[kind]);
-}
-
 function loadJob(tenantId: string, kind: ThreatDiscoveryJobKind): Record<string, unknown> | null {
-  const p = jobPath(tenantId, kind);
-  if (!existsSync(p)) return null;
-  try {
-    return JSON.parse(readFileSync(p, 'utf-8')) as Record<string, unknown>;
-  } catch {
-    return null;
-  }
+  return loadThreatDiscoveryJob(kind, tenantId);
 }
 
 function writeJob(
@@ -81,20 +61,11 @@ function writeJob(
   kind: ThreatDiscoveryJobKind,
   patch: Record<string, unknown>,
 ): void {
-  const dir = ensureTenantSwarmDir(tenantId);
-  mkdirSync(dir, { recursive: true });
-  const existing = loadJob(tenantId, kind) || {};
-  writeFileSync(
-    jobPath(tenantId, kind),
-    JSON.stringify({ ...existing, ...patch, kind, tenantId }, null, 2),
-  );
+  patchThreatDiscoveryJob(kind, patch, tenantId);
 }
 
 function readLogTail(tenantId: string, kind: ThreatDiscoveryJobKind, maxLines = 40): string {
-  const p = logPath(tenantId, kind);
-  if (!existsSync(p)) return '';
-  const lines = readFileSync(p, 'utf-8').split('\n').filter(Boolean);
-  return lines.slice(-maxLines).join('\n');
+  return readThreatDiscoveryLogTail(kind, tenantId, maxLines);
 }
 
 function isProcessRunning(pid: number | null | undefined): boolean {
@@ -107,16 +78,136 @@ function isProcessRunning(pid: number | null | undefined): boolean {
   }
 }
 
+function inferJobOutcomeFromLog(
+  kind: ThreatDiscoveryJobKind,
+  logTail: string,
+): { exitCode: number; error?: string } | null {
+  if (!logTail.trim()) return null;
+  if (kind === 'auto-research') {
+    if (/wrote\s+\d+\s*\/\s*\d+\s+fixture\(s\)/i.test(logTail)) {
+      return { exitCode: 0 };
+    }
+    if (/\[auto-threat-research\] disabled/i.test(logTail)) {
+      return {
+        exitCode: 1,
+        error: 'Auto research disabled — set MASTYF_AI_THREAT_RESEARCH_AUTO=true on the proxy',
+      };
+    }
+    if (/\[auto-threat-research\] failed:/i.test(logTail)) {
+      const line = logTail.split('\n').find((l) => /\[auto-threat-research\] failed:/i.test(l));
+      return {
+        exitCode: 1,
+        error: line?.replace(/^\[auto-threat-research\] failed:\s*/i, '') || 'Auto research failed',
+      };
+    }
+  }
+  if (kind === 'threat-lab') {
+    if (/\[threat-lab\] wrote \d+/i.test(logTail)) {
+      return { exitCode: 0 };
+    }
+    if (/\[threat-lab\] skipped:/i.test(logTail)) {
+      return { exitCode: 0 };
+    }
+    if (/\[threat-lab\] gate failed:/i.test(logTail)) {
+      const line = logTail.split('\n').find((l) => /\[threat-lab\] gate failed:/i.test(l));
+      return {
+        exitCode: 1,
+        error: line?.replace(/^\[threat-lab\] gate failed:\s*/i, '') || 'Threat Lab gate failed',
+      };
+    }
+  }
+  return null;
+}
+
+function cleanupWatcher(key: string): void {
+  watchedJobs.delete(key);
+  runningPids.delete(key);
+  if (watchedJobs.size === 0 && watchTimer) {
+    clearInterval(watchTimer);
+    watchTimer = null;
+  }
+}
+
+function broadcastTerminalOnce(
+  tenantId: string,
+  kind: ThreatDiscoveryJobKind,
+  state: 'done' | 'failed',
+  payload: Record<string, unknown>,
+): void {
+  const key = jobKey(tenantId, kind);
+  const marker = `${key}:${state}:${String(payload.finishedAt ?? payload.exitCode ?? '')}`;
+  if (broadcastedTerminal.has(marker)) return;
+  broadcastedTerminal.add(marker);
+  broadcastDashboardEvent({
+    type: state === 'done' ? 'threat-discovery:done' : 'threat-discovery:failed',
+    tenantId,
+    payload: { kind, tenantId, ...payload },
+    timestamp: Date.now(),
+  });
+}
+
+/**
+ * Mark orphaned discovery jobs failed/done when the child exited without updating job.json
+ * (e.g. dashboard restart while a detached job was running).
+ */
+export function reconcileStaleThreatDiscoveryJob(
+  tenantId: string,
+  kind: ThreatDiscoveryJobKind,
+): boolean {
+  const job = loadJob(tenantId, kind);
+  if (!job || job.state !== 'running') return false;
+
+  const pid = job.pid != null ? Number(job.pid) : null;
+  if (pid && isProcessRunning(pid)) return false;
+
+  const logTail = readLogTail(tenantId, kind, 80);
+  const inferred = inferJobOutcomeFromLog(kind, logTail);
+  if (inferred) {
+    finishJob(tenantId, kind, inferred.exitCode, inferred.error, { fromReconcile: true });
+    return true;
+  }
+
+  const logPath = threatDiscoveryLogPath(kind, tenantId);
+  let logMtime = 0;
+  if (existsSync(logPath)) {
+    try {
+      logMtime = statSync(logPath).mtimeMs;
+    } catch {
+      /* ignore */
+    }
+  }
+  const startedAt = job.startedAt ? Date.parse(String(job.startedAt)) : 0;
+  const now = Date.now();
+  const logStale = logMtime > 0 && now - logMtime > DISCOVERY_LOG_STALE_MS;
+  const ageStale = startedAt > 0 && now - startedAt > DISCOVERY_MAX_AGE_MS;
+
+  if (!logStale && !ageStale) {
+    return false;
+  }
+
+  finishJob(
+    tenantId,
+    kind,
+    Number(job.exitCode ?? 1),
+    String(
+      job.error
+        || (logStale
+          ? 'Discovery stalled with no progress for 25+ minutes — re-run from the dashboard'
+          : 'Discovery exceeded maximum runtime — re-run from the dashboard'),
+    ),
+    { fromReconcile: true },
+  );
+  return true;
+}
+
 export function getThreatDiscoveryJobStatus(
   tenantId: string = DEFAULT_TENANT_ID,
   kind: ThreatDiscoveryJobKind,
 ): ThreatDiscoveryJobStatus {
+  reconcileStaleThreatDiscoveryJob(tenantId, kind);
   const job = loadJob(tenantId, kind);
   const pid = job?.pid != null ? Number(job.pid) : null;
-  let state = (job?.state as ThreatDiscoveryJobStatus['state']) || 'idle';
-  if (state === 'running' && pid && !isProcessRunning(pid)) {
-    state = job?.exitCode === 0 ? 'done' : 'failed';
-  }
+  const state = (job?.state as ThreatDiscoveryJobStatus['state']) || 'idle';
   return {
     jobId: String(job?.jobId ?? ''),
     kind,
@@ -161,40 +252,70 @@ function finishJob(
   kind: ThreatDiscoveryJobKind,
   exitCode: number,
   error?: string,
+  opts: { fromReconcile?: boolean; skipWrite?: boolean } = {},
 ): void {
-  const finishedAt = new Date().toISOString();
-  writeJob(tenantId, kind, {
-    state: exitCode === 0 ? 'done' : 'failed',
-    phase: exitCode === 0 ? 'done' : 'failed',
-    phaseLabel: exitCode === 0 ? 'Complete' : 'Failed',
-    progressPct: exitCode === 0 ? 100 : 0,
-    finishedAt,
-    exitCode,
-    error: error || null,
-    pid: null,
-  });
-  runningPids.delete(jobKey(tenantId, kind));
-  watchedJobs.delete(jobKey(tenantId, kind));
-  if (exitCode === 0) {
-    broadcastJobEvent(tenantId, kind, 'threat-discovery:done', { exitCode });
-  } else {
-    broadcastJobEvent(tenantId, kind, 'threat-discovery:failed', { exitCode, error });
+  const key = jobKey(tenantId, kind);
+  const existing = loadJob(tenantId, kind);
+  if (existing?.state === 'done' || existing?.state === 'failed') {
+    cleanupWatcher(key);
+    return;
   }
-  if (watchedJobs.size === 0 && watchTimer) {
-    clearInterval(watchTimer);
-    watchTimer = null;
+
+  const finishedAt = new Date().toISOString();
+  if (!opts.skipWrite) {
+    writeJob(tenantId, kind, {
+      state: exitCode === 0 ? 'done' : 'failed',
+      phase: exitCode === 0 ? 'done' : 'failed',
+      phaseLabel: exitCode === 0 ? 'Complete' : 'Failed',
+      progressPct: exitCode === 0 ? 100 : 0,
+      finishedAt,
+      exitCode,
+      error: error || null,
+      pid: null,
+    });
+  }
+
+  cleanupWatcher(key);
+  if (exitCode === 0) {
+    broadcastTerminalOnce(tenantId, kind, 'done', { exitCode, finishedAt });
+  } else {
+    broadcastTerminalOnce(tenantId, kind, 'failed', { exitCode, error, finishedAt });
   }
 }
 
 function tickWatchers(): void {
   for (const key of [...watchedJobs]) {
     const [tenantId, kind] = key.split(':') as [string, ThreatDiscoveryJobKind];
-    const pid = runningPids.get(key);
-    if (pid && isProcessRunning(pid)) continue;
     const job = loadJob(tenantId, kind);
-    if (job?.state === 'running') {
-      finishJob(tenantId, kind, Number(job.exitCode ?? 1), String(job.error || 'Process exited'));
+    if (!job) {
+      cleanupWatcher(key);
+      continue;
     }
+
+    const state = String(job.state);
+    if (state === 'done') {
+      finishJob(tenantId, kind, Number(job.exitCode ?? 0), undefined, { skipWrite: true });
+      continue;
+    }
+    if (state === 'failed') {
+      finishJob(
+        tenantId,
+        kind,
+        Number(job.exitCode ?? 1),
+        job.error ? String(job.error) : undefined,
+        { skipWrite: true },
+      );
+      continue;
+    }
+    if (state !== 'running') {
+      cleanupWatcher(key);
+      continue;
+    }
+
+    const pid = runningPids.get(key) ?? (job.pid != null ? Number(job.pid) : null);
+    if (pid && isProcessRunning(pid)) continue;
+
+    reconcileStaleThreatDiscoveryJob(tenantId, kind);
   }
 }
 
@@ -204,6 +325,19 @@ function startWatcher(tenantId: string, kind: ThreatDiscoveryJobKind, pid: numbe
   runningPids.set(key, pid);
   if (!watchTimer) {
     watchTimer = setInterval(tickWatchers, 1500);
+  }
+}
+
+export function resumeThreatDiscoveryWatchers(tenantId: string = DEFAULT_TENANT_ID): void {
+  for (const kind of ['threat-lab', 'auto-research'] as const) {
+    reconcileStaleThreatDiscoveryJob(tenantId, kind);
+    const job = loadJob(tenantId, kind);
+    if (job?.state === 'running') {
+      const pid = job.pid != null ? Number(job.pid) : null;
+      if (pid && isProcessRunning(pid)) {
+        startWatcher(tenantId, kind, pid);
+      }
+    }
   }
 }
 
@@ -235,16 +369,15 @@ function spawnDiscoveryJob(
 
   const jobId = randomUUID();
   const startedAt = new Date().toISOString();
-  const outDir = ensureTenantSwarmDir(tenantId);
-  const logFile = logPath(tenantId, kind);
-  writeFileSync(logFile, `[${startedAt}] Starting ${kind}\n`);
+  ensureTenantSwarmDir(tenantId);
+  writeFileSync(threatDiscoveryLogPath(kind, tenantId), `[${startedAt}] Starting ${kind}\n`);
 
   writeJob(tenantId, kind, {
     jobId,
     state: 'running',
-    phase: 'discover',
+    phase: 'starting',
     phaseLabel: kind === 'threat-lab' ? 'Threat Lab discovery' : 'Auto threat research',
-    progressPct: 10,
+    progressPct: 5,
     startedAt,
     finishedAt: null,
     exitCode: null,
@@ -254,31 +387,35 @@ function spawnDiscoveryJob(
 
   broadcastJobEvent(tenantId, kind, 'threat-discovery:started', { jobId, startedAt });
 
-  const child = spawn('node', ['--import', 'tsx/esm', script], {
+  const child = spawn(process.execPath, ['--import', 'tsx/esm', script], {
     cwd: REPO_ROOT,
     detached: true,
-    stdio: ['ignore', 'pipe', 'pipe'],
+    stdio: ['ignore', 'ignore', 'ignore'],
     env: {
       ...process.env,
       ...extraEnv,
-      MASTYF_AI_SWARM_DIR: outDir,
+      MASTYF_AI_SWARM_DIR: ensureTenantSwarmDir(tenantId),
       MASTYF_AI_TENANT_ID: tenantId,
     },
   });
 
-  child.stdout?.on('data', (chunk: Buffer) => {
-    appendFileSync(logFile, chunk.toString());
-  });
-  child.stderr?.on('data', (chunk: Buffer) => {
-    appendFileSync(logFile, chunk.toString());
-  });
-
-  child.on('exit', (code) => {
-    finishJob(tenantId, kind, code ?? 1, code === 0 ? undefined : `${kind} exited ${code}`);
+  child.once('exit', (code) => {
+    setTimeout(() => {
+      const job = loadJob(tenantId, kind);
+      if (!job || job.state !== 'running') return;
+      if (job.jobId !== jobId) return;
+      const logTail = readLogTail(tenantId, kind, 80);
+      const inferred = inferJobOutcomeFromLog(kind, logTail);
+      if (inferred) {
+        finishJob(tenantId, kind, inferred.exitCode, inferred.error);
+        return;
+      }
+      finishJob(tenantId, kind, code ?? 1, code === 0 ? undefined : `${kind} exited ${code}`);
+    }, 2500);
   });
 
   child.unref();
-  writeJob(tenantId, kind, { pid: child.pid ?? null, progressPct: 50 });
+  writeJob(tenantId, kind, { pid: child.pid ?? null, progressPct: 10 });
   if (child.pid) startWatcher(tenantId, kind, child.pid);
 
   return { ok: true, jobId, startedAt };
@@ -309,8 +446,11 @@ export function startAutoThreatResearchJob(
 export function resetThreatDiscoveryRunnerForTests(): void {
   watchedJobs.clear();
   runningPids.clear();
+  broadcastedTerminal.clear();
   if (watchTimer) {
     clearInterval(watchTimer);
     watchTimer = null;
   }
 }
+
+resumeThreatDiscoveryWatchers(DEFAULT_TENANT_ID);

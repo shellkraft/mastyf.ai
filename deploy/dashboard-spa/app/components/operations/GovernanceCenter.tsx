@@ -1,5 +1,7 @@
 'use client';
 
+/** @deprecated Unmounted — use PolicyControlCenter / ComplianceCenter. See `_archive/README.md`. */
+
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   fetchTenantContext,

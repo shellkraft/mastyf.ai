@@ -12,11 +12,12 @@ import {
   fetchSecurity,
   fetchSecurityDashboard,
   fetchSecurityQuarantinedThreats,
+  fetchSwarmStatus,
+  type SwarmJobStatus,
   fetchShadowRedTeamReport,
   fetchSignatureHints,
   fetchSupplyChainGraph,
   fetchSwarmLatest,
-  fetchThreatDiscoveryStatus,
   fetchThreatLabCandidates,
   pollAiThreats,
   quarantineAllThreats,
@@ -54,8 +55,14 @@ import { SocAutoResearchSection } from './SocAutoResearchSection';
 import { SocEnterpriseIntelSection } from './SocEnterpriseIntelSection';
 import { SocSwarmAnalysisView } from './SocSwarmAnalysisView';
 import { SocAiLearningView } from './SocAiLearningView';
+import { useThreatDiscoveryJobs } from '@/lib/use-threat-discovery-jobs';
+import { ThreatDiscoveryJobStatus } from '../ThreatDiscoveryJobStatus';
+import { ThreatLabWorkbench } from '../ThreatLabWorkbench';
+import { useDashboardWindow } from '../dashboard/DashboardWindowContext';
+import type { ThreatLabContext } from '../IncidentInvestigatorDrawer';
 
 type SecurityView = 'overview' | 'threats' | 'intel' | 'swarm' | 'learning' | 'quarantine';
+type ThreatDiscoverySubTab = 'overview' | 'threat-lab' | 'auto-research';
 
 type Props = {
   view: SecurityView;
@@ -63,6 +70,12 @@ type Props = {
   roles?: string[];
   refreshKey: number;
   onAction?: (msg: string) => void;
+  threatDiscoveryTick?: number;
+  aiRefreshTick?: number;
+  threatLabContext?: ThreatLabContext | null;
+  threatDiscoverySubTab?: ThreatDiscoverySubTab;
+  onClearThreatLabContext?: () => void;
+  onOpenThreatLab?: (ctx: ThreatLabContext) => void;
 };
 
 const VIEW_TABS = [
@@ -74,7 +87,11 @@ const VIEW_TABS = [
   { id: 'quarantine' as const, label: 'Quarantine' },
 ];
 
-const WINDOW_DAYS = 30;
+const THREAT_SUB_TABS: { id: ThreatDiscoverySubTab; label: string }[] = [
+  { id: 'overview', label: 'Pipeline' },
+  { id: 'threat-lab', label: 'Threat Lab' },
+  { id: 'auto-research', label: 'Auto Research' },
+];
 
 function scoreLevel(score: number | null): 'good' | 'fair' | 'poor' {
   if (score == null) return 'poor';
@@ -89,28 +106,47 @@ function formatTs(iso: string | null | undefined): string {
   return Number.isNaN(d.getTime()) ? iso : d.toLocaleString();
 }
 
+function pickLatestScanTimestamp(...values: Array<string | null | undefined>): string | null {
+  let best: string | null = null;
+  let bestMs = 0;
+  for (const value of values) {
+    if (!value) continue;
+    const normalized = value.includes('T') ? value : value.replace(' ', 'T');
+    const ms = Date.parse(normalized);
+    if (Number.isFinite(ms) && ms > bestMs) {
+      bestMs = ms;
+      best = value;
+    }
+  }
+  return best;
+}
+
 /* ── Overview ──────────────────────────────────── */
 
 function OverviewView({ roles, refreshKey, onAction }: { roles: string[]; refreshKey: number; onAction?: (msg: string) => void }) {
+  const { windowParam } = useDashboardWindow();
   const canMutate = hasPermission(roles, 'policy_mutate');
   const [dash, setDash] = useState<SecurityDashboardResponse | null>(null);
   const [sec, setSec] = useState<SecurityResponse | null>(null);
   const [health, setHealth] = useState<HealthResponse | null>(null);
+  const [swarm, setSwarm] = useState<SwarmJobStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState('');
 
   const load = useCallback(async () => {
     setLoading(true);
-    const [dashData, secData, healthData] = await Promise.all([
-      fetchSecurityDashboard('24h'),
+    const [dashData, secData, healthData, swarmData] = await Promise.all([
+      fetchSecurityDashboard(windowParam),
       fetchSecurity(),
       fetchHealth(),
+      fetchSwarmStatus(),
     ]);
     setDash(dashData);
     setSec(secData);
     setHealth(healthData);
+    setSwarm(swarmData);
     setLoading(false);
-  }, []);
+  }, [windowParam]);
 
   useEffect(() => { void load(); }, [load, refreshKey]);
 
@@ -169,7 +205,9 @@ function OverviewView({ roles, refreshKey, onAction }: { roles: string[]; refres
         <KpiCard label="Servers Monitored" value={serverCount} accent="info" />
         <KpiCard
           label="Last Scan"
-          value={sec?.lastScan ? formatTs(sec.lastScan) : dash?.generatedAt ? formatTs(dash.generatedAt) : '—'}
+          value={formatTs(
+            pickLatestScanTimestamp(sec?.lastScan, swarm?.finishedAt, dash?.generatedAt) ?? undefined,
+          )}
           accent="neutral"
         />
       </div>
@@ -318,26 +356,52 @@ function OverviewView({ roles, refreshKey, onAction }: { roles: string[]; refres
 
 /* ── Threats ───────────────────────────────────── */
 
-function ThreatsView({ roles, refreshKey, onAction }: { roles: string[]; refreshKey: number; onAction?: (msg: string) => void }) {
+function ThreatsView({
+  roles,
+  refreshKey,
+  threatDiscoveryTick = 0,
+  threatLabContext,
+  threatDiscoverySubTab,
+  onClearThreatLabContext,
+  onAction,
+}: {
+  roles: string[];
+  refreshKey: number;
+  threatDiscoveryTick?: number;
+  threatLabContext?: ThreatLabContext | null;
+  threatDiscoverySubTab?: ThreatDiscoverySubTab;
+  onClearThreatLabContext?: () => void;
+  onAction?: (msg: string) => void;
+}) {
+  const [subTab, setSubTab] = useState<ThreatDiscoverySubTab>(threatDiscoverySubTab || 'overview');
   const canMutate = hasPermission(roles, 'policy_mutate');
-  const [status, setStatus] = useState<ThreatDiscoveryStatus | null>(null);
+  const {
+    status,
+    loading: discoveryLoading,
+    threatLabJob,
+    autoResearchJob,
+    threatLabRunning,
+    autoResearchRunning,
+    refresh: refreshDiscovery,
+    setOptimisticRunning,
+  } = useThreatDiscoveryJobs(refreshKey, threatDiscoveryTick);
   const [candidates, setCandidates] = useState<ThreatLabCandidate[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState('');
   const [err, setErr] = useState('');
 
+  useEffect(() => {
+    if (threatDiscoverySubTab) setSubTab(threatDiscoverySubTab);
+  }, [threatDiscoverySubTab]);
+
   const load = useCallback(async () => {
     setLoading(true);
     setErr('');
-    const [statusRes, labRes] = await Promise.all([
-      fetchThreatDiscoveryStatus(),
-      fetchThreatLabCandidates(),
-    ]);
-    setStatus(statusRes.status);
-    if (statusRes.error) setErr(statusRes.error);
+    const labRes = await fetchThreatLabCandidates();
     setCandidates(labRes);
+    await refreshDiscovery();
     setLoading(false);
-  }, []);
+  }, [refreshDiscovery]);
 
   useEffect(() => { void load(); }, [load, refreshKey]);
 
@@ -353,10 +417,13 @@ function ThreatsView({ roles, refreshKey, onAction }: { roles: string[]; refresh
   };
 
   const onRunThreatLab = async () => {
+    if (threatLabRunning) return;
     setBusy('threat-lab');
     const res = await runThreatLab();
     if (res.ok) {
+      setOptimisticRunning('threat-lab', res.jobId);
       onAction?.(`Threat Lab started — job ${res.jobId}`);
+      await refreshDiscovery();
     } else {
       onAction?.(res.error || 'Failed to start Threat Lab');
     }
@@ -364,10 +431,13 @@ function ThreatsView({ roles, refreshKey, onAction }: { roles: string[]; refresh
   };
 
   const onAutoResearch = async () => {
+    if (autoResearchRunning) return;
     setBusy('auto');
     const res = await runAutoThreatResearch();
     if (res.ok) {
+      setOptimisticRunning('auto-research', res.jobId);
       onAction?.(`Auto Research started — job ${res.jobId}`);
+      await refreshDiscovery();
     } else {
       onAction?.(res.error || 'Failed to start Auto Research');
     }
@@ -407,8 +477,44 @@ function ThreatsView({ roles, refreshKey, onAction }: { roles: string[]; refresh
   const pipeline = status?.pipeline;
 
   const pendingCandidates = candidates.filter(c => c.reviewStatus === 'pending' || !c.reviewStatus);
+  const autoEntries = status?.autoCorpus.manifest?.entries ?? [];
 
   return (
+    <>
+      <WorkspaceSubNav
+        tabs={THREAT_SUB_TABS}
+        active={subTab}
+        onChange={(id) => setSubTab(id as ThreatDiscoverySubTab)}
+      />
+
+      {subTab === 'threat-lab' ? (
+        <ThreatLabWorkbench
+          candidates={candidates}
+          autoEntries={autoEntries}
+          roles={roles}
+          preloadedContext={threatLabContext}
+          manifestMeta={{
+            timestamp: status?.threatLab.manifest?.timestamp,
+            mode: status?.threatLab.manifest?.mode,
+            llmModel: status?.threatLab.manifest?.llmModel,
+            llmUsed: status?.threatLab.manifest?.llmUsed,
+            skipped: status?.threatLab.manifest?.skipped,
+            runNote: status?.threatLab.manifest?.runNote,
+          }}
+          onRefresh={() => void load()}
+          onClearContext={onClearThreatLabContext}
+          onRunStarted={onAction}
+        />
+      ) : null}
+
+      {subTab === 'auto-research' ? (
+        <SocAutoResearchSection
+          entries={autoEntries}
+          status={status}
+        />
+      ) : null}
+
+      {subTab === 'overview' ? (
     <>
       <div className="kpi-grid">
         <KpiCard label="Pipeline Queue" value={pipeline?.queued ?? 0} accent="info" />
@@ -510,19 +616,42 @@ function ThreatsView({ roles, refreshKey, onAction }: { roles: string[]; refresh
         </div>
 
         <div className="col-span-4">
-          <Card title="Quick Actions">
+          <ThreatDiscoveryJobStatus
+            threatLabJob={threatLabJob}
+            autoResearchJob={autoResearchJob}
+            threatLabDoneDetail={
+              status?.threatLab.manifest?.count != null
+                ? `${status.threatLab.manifest.count} candidate(s)`
+                : undefined
+            }
+            autoResearchDoneDetail={
+              status?.autoCorpus.manifest?.count != null
+                ? `${status.autoCorpus.manifest.count} fixture(s)`
+                : undefined
+            }
+          />
+
+          <Card title="Quick Actions" style={{ marginTop: 'var(--space-4)' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               <Button variant="primary" onClick={onRunAnalysis} disabled={!!busy}>
-                {busy === 'run' ? 'Running…' : 'Run Analysis'}
+                {busy === 'run' ? 'Starting…' : 'Run Analysis'}
               </Button>
-              <Button variant="secondary" onClick={onRunThreatLab} disabled={!!busy}>
-                {busy === 'threat-lab' ? 'Starting…' : 'Threat Lab'}
+              <Button
+                variant="secondary"
+                onClick={onRunThreatLab}
+                disabled={!!busy || threatLabRunning}
+              >
+                {threatLabRunning || busy === 'threat-lab' ? 'Threat Lab running…' : 'Threat Lab'}
               </Button>
-              <Button variant="secondary" onClick={onAutoResearch} disabled={!!busy}>
-                {busy === 'auto' ? 'Starting…' : 'Auto Research'}
+              <Button
+                variant="secondary"
+                onClick={onAutoResearch}
+                disabled={!!busy || autoResearchRunning}
+              >
+                {autoResearchRunning || busy === 'auto' ? 'Auto Research running…' : 'Auto Research'}
               </Button>
-              <Button variant="ghost" onClick={() => void load()} disabled={loading}>
-                {loading ? 'Refreshing…' : 'Refresh'}
+              <Button variant="ghost" onClick={() => void load()} disabled={loading || discoveryLoading}>
+                {loading || discoveryLoading ? 'Refreshing…' : 'Refresh'}
               </Button>
             </div>
           </Card>
@@ -536,13 +665,8 @@ function ThreatsView({ roles, refreshKey, onAction }: { roles: string[]; refresh
       </div>
 
       <SocAutomationSection refreshKey={refreshKey} onAction={onAction} />
-
-      <div className="section">
-        <SocAutoResearchSection
-          entries={status?.autoCorpus.manifest?.entries ?? []}
-          status={status}
-        />
-      </div>
+    </>
+      ) : null}
     </>
   );
 }
@@ -775,6 +899,7 @@ function IntelView({ roles, refreshKey, onAction }: { roles: string[]; refreshKe
 /* ── Quarantine ──────────────────────────────────── */
 
 function QuarantineView({ roles, refreshKey, onAction }: { roles: string[]; refreshKey: number; onAction?: (msg: string) => void }) {
+  const { windowDays } = useDashboardWindow();
   const canMutate = hasPermission(roles, 'policy_mutate');
   const [monitorRows, setMonitorRows] = useState<SecurityMonitorQuarantineRecord[]>([]);
   const [intelRows, setIntelRows] = useState<QuarantineRecord[]>([]);
@@ -788,13 +913,13 @@ function QuarantineView({ roles, refreshKey, onAction }: { roles: string[]; refr
   const load = useCallback(async () => {
     setLoading(true);
     const [monitor, intel] = await Promise.all([
-      fetchSecurityQuarantinedThreats(WINDOW_DAYS),
-      fetchQuarantinedThreats(WINDOW_DAYS),
+      fetchSecurityQuarantinedThreats(windowDays),
+      fetchQuarantinedThreats(windowDays),
     ]);
     setMonitorRows(monitor);
     setIntelRows(intel);
     setLoading(false);
-  }, []);
+  }, [windowDays]);
 
   useEffect(() => { void load(); }, [load, refreshKey]);
 
@@ -989,7 +1114,19 @@ function QuarantineView({ roles, refreshKey, onAction }: { roles: string[]; refr
 
 /* ── Container ─────────────────────────────────── */
 
-export function SecurityOperationsCenter({ view, onViewChange, roles = [], refreshKey, onAction }: Props) {
+export function SecurityOperationsCenter({
+  view,
+  onViewChange,
+  roles = [],
+  refreshKey,
+  onAction,
+  threatDiscoveryTick = 0,
+  aiRefreshTick = 0,
+  threatLabContext,
+  threatDiscoverySubTab,
+  onClearThreatLabContext,
+  onOpenThreatLab,
+}: Props) {
   return (
     <section aria-label="Security Operations Center">
       <div className="page-header">
@@ -1002,12 +1139,30 @@ export function SecurityOperationsCenter({ view, onViewChange, roles = [], refre
       <WorkspaceSubNav tabs={VIEW_TABS} active={view} onChange={onViewChange} />
 
       {view === 'overview' && <OverviewView roles={roles} refreshKey={refreshKey} onAction={onAction} />}
-      {view === 'threats' && <ThreatsView roles={roles} refreshKey={refreshKey} onAction={onAction} />}
+      {view === 'threats' && (
+        <ThreatsView
+          roles={roles}
+          refreshKey={refreshKey}
+          threatDiscoveryTick={threatDiscoveryTick}
+          threatLabContext={threatLabContext}
+          threatDiscoverySubTab={threatDiscoverySubTab}
+          onClearThreatLabContext={onClearThreatLabContext}
+          onAction={onAction}
+        />
+      )}
       {view === 'intel' && <IntelView roles={roles} refreshKey={refreshKey} onAction={onAction} />}
       {view === 'swarm' && (
         <SocSwarmAnalysisView roles={roles} refreshKey={refreshKey} onAction={onAction} />
       )}
-      {view === 'learning' && <SocAiLearningView roles={roles} refreshKey={refreshKey} onAction={onAction} />}
+      {view === 'learning' && (
+        <SocAiLearningView
+          roles={roles}
+          refreshKey={refreshKey}
+          aiRefreshTick={aiRefreshTick}
+          onAction={onAction}
+          onOpenThreatLab={onOpenThreatLab}
+        />
+      )}
       {view === 'quarantine' && <QuarantineView roles={roles} refreshKey={refreshKey} onAction={onAction} />}
     </section>
   );

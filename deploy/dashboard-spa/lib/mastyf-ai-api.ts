@@ -1,4 +1,5 @@
 import { TRIBUNAL_BATCH_LIMIT } from './tribunal-config';
+import { formatDownloadWindowSuffix, toWindowQueryParam } from './format-dashboard-window';
 
 export type MastyfAiHeaders = Record<string, string>;
 
@@ -609,7 +610,7 @@ function withWindowRegionQuery(
   region?: string,
   extra?: Record<string, string>,
 ): string {
-  const params = new URLSearchParams({ window: String(window) });
+  const params = new URLSearchParams({ window: toWindowQueryParam(window) });
   if (region) params.set('region', region);
   if (extra) {
     for (const [k, v] of Object.entries(extra)) params.set(k, v);
@@ -625,8 +626,8 @@ export async function fetchDashboardRegions(): Promise<{ regions: string[] } | n
   return { regions: body.regions ?? [] };
 }
 
-export async function fetchAggregateMetrics(windowDays = 7, region?: string): Promise<AggregateMetrics | null> {
-  const q = withWindowRegionQuery(windowDays, region);
+export async function fetchAggregateMetrics(window: string | number = '7d', region?: string): Promise<AggregateMetrics | null> {
+  const q = withWindowRegionQuery(window, region);
   const res = await mastyfAiFetch(`/api/aggregate/metrics?${q}`);
   if (!res.ok) return null;
   return liveOrNull((await res.json()) as AggregateMetrics);
@@ -637,14 +638,16 @@ export async function fetchAudit(opts?: {
   action?: string;
   server?: string;
   windowDays?: number;
+  windowParam?: string;
   region?: string;
 }): Promise<AuditResponse | null> {
   const params = new URLSearchParams();
   if (opts?.limit) params.set('limit', String(opts.limit));
   if (opts?.action) params.set('action', opts.action);
   if (opts?.server) params.set('server', opts.server);
-  if (opts?.windowDays && Number.isFinite(opts.windowDays)) {
-    params.set('window', String(opts.windowDays));
+  const windowQ = opts?.windowParam ?? opts?.windowDays;
+  if (windowQ != null && (typeof windowQ === 'string' || Number.isFinite(windowQ))) {
+    params.set('window', toWindowQueryParam(windowQ));
   }
   if (opts?.region) params.set('region', opts.region);
   const q = params.toString();
@@ -653,14 +656,14 @@ export async function fetchAudit(opts?: {
   return liveOrNull((await res.json()) as AuditResponse & { available?: boolean });
 }
 
-export async function fetchCost(windowDays = 7, region?: string): Promise<CostResponse | null> {
-  const res = await mastyfAiFetch(`/api/cost?${withWindowRegionQuery(windowDays, region)}`);
+export async function fetchCost(window: string | number = '7d', region?: string): Promise<CostResponse | null> {
+  const res = await mastyfAiFetch(`/api/cost?${withWindowRegionQuery(window, region)}`);
   if (!res.ok) return null;
   return liveOrNull((await res.json()) as CostResponse);
 }
 
-export async function fetchCostBreakdown(windowDays = 7): Promise<CostBreakdownResponse | null> {
-  const res = await mastyfAiFetch(`/api/cost/breakdown?window=${windowDays}`);
+export async function fetchCostBreakdown(window: string | number = 7): Promise<CostBreakdownResponse | null> {
+  const res = await mastyfAiFetch(`/api/cost/breakdown?window=${toWindowQueryParam(window)}`);
   if (!res.ok) return null;
   return liveOrNull((await res.json()) as CostBreakdownResponse);
 }
@@ -682,38 +685,38 @@ export type CostRecommendationsResponse = {
 };
 
 export async function fetchCostRecommendations(
-  windowDays = 7,
+  window: string | number = '7d',
 ): Promise<CostRecommendationsResponse | null> {
-  const res = await mastyfAiFetch(`/api/cost/recommendations?window=${windowDays}`);
+  const res = await mastyfAiFetch(`/api/cost/recommendations?window=${toWindowQueryParam(window)}`);
   if (!res.ok) return null;
   return liveOrNull((await res.json()) as CostRecommendationsResponse);
 }
 
 export async function fetchCostTimeseries(
-  windowDays = 7,
+  window: string | number = '7d',
   granularity: 'hour' | 'day' = 'day',
   region?: string,
 ): Promise<CostTimeseriesResponse | null> {
-  const q = withWindowRegionQuery(windowDays, region, { granularity });
+  const q = withWindowRegionQuery(window, region, { granularity });
   const res = await mastyfAiFetch(`/api/cost/timeseries?${q}`);
   if (!res.ok) return null;
   return liveOrNull((await res.json()) as CostTimeseriesResponse);
 }
 
 export async function fetchExecutiveSummary(
-  windowDays = 7,
+  window: string | number = '7d',
   region?: string,
 ): Promise<ExecutiveSummaryResponse | null> {
-  const res = await mastyfAiFetch(`/api/dashboard/executive-summary?${withWindowRegionQuery(windowDays, region)}`);
+  const res = await mastyfAiFetch(`/api/dashboard/executive-summary?${withWindowRegionQuery(window, region)}`);
   if (!res.ok) return null;
   return liveOrNull((await res.json()) as ExecutiveSummaryResponse);
 }
 
 export async function fetchDashboardInsights(
   scope: 'overview' | 'cost' | 'security' | 'audit' | 'ai',
-  windowDays = 7,
+  window: string | number = '7d',
 ): Promise<DashboardInsightsResponse | null> {
-  const res = await mastyfAiFetch(`/api/dashboard/insights?scope=${scope}&window=${windowDays}`);
+  const res = await mastyfAiFetch(`/api/dashboard/insights?scope=${scope}&window=${toWindowQueryParam(window)}`);
   if (!res.ok) return null;
   const body = (await res.json()) as DashboardInsightsResponse;
   if (body.available === false && !body.bullets?.length) return null;
@@ -743,17 +746,22 @@ export async function trackAdvancedAnalyticsEvent(event: {
 
 export async function downloadInsightsBriefing(
   scope: 'overview' | 'cost' | 'security' | 'audit' | 'ai',
-  windowDays = 7,
-): Promise<void> {
-  const res = await mastyfAiFetch(`/api/dashboard/insights/export?scope=${scope}&window=${windowDays}`);
-  if (!res.ok) return;
+  window: string | number = '7d',
+): Promise<{ ok: boolean; error?: string }> {
+  const windowQ = toWindowQueryParam(window);
+  const res = await mastyfAiFetch(`/api/dashboard/insights/export?scope=${scope}&window=${windowQ}`);
+  if (!res.ok) {
+    const body = (await res.json().catch(() => ({}))) as { error?: string };
+    return { ok: false, error: body.error || `Download failed (HTTP ${res.status})` };
+  }
   const blob = await res.blob();
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `mastyf-ai-briefing-${scope}-${windowDays}d.md`;
+  a.download = `mastyf-ai-briefing-${scope}-${formatDownloadWindowSuffix(window)}.md`;
   a.click();
   URL.revokeObjectURL(url);
+  return { ok: true };
 }
 
 export type McpHealthReportResponse = {
@@ -825,11 +833,11 @@ async function parseApiErrorMessage(
 }
 
 export async function fetchMcpHealthReport(
-  windowDays = 7,
+  window: string | number = '7d',
   useLlm = false,
 ): Promise<{ report: McpHealthReportResponse | null; error?: string }> {
   const res = await mastyfAiFetch(
-    `/api/reports/mcp-health?window=${windowDays}&useLlm=${useLlm ? 'true' : 'false'}`,
+    `/api/reports/mcp-health?window=${toWindowQueryParam(window)}&useLlm=${useLlm ? 'true' : 'false'}`,
   );
   if (res.status === 404) {
     return {
@@ -860,11 +868,17 @@ export async function fetchMcpHealthReport(
   return { report: body };
 }
 
-export async function downloadMcpHealthReport(windowDays = 7, useLlm = false): Promise<void> {
+export async function downloadMcpHealthReport(
+  window: string | number = '7d',
+  useLlm = false,
+): Promise<{ ok: boolean; error?: string }> {
+  const windowQ = toWindowQueryParam(window);
   const res = await mastyfAiFetch(
-    `/api/reports/mcp-health/download?window=${windowDays}&useLlm=${useLlm ? 'true' : 'false'}`,
+    `/api/reports/mcp-health/download?window=${windowQ}&useLlm=${useLlm ? 'true' : 'false'}`,
   );
-  if (!res.ok) return;
+  if (!res.ok) {
+    return { ok: false, error: `Download failed (HTTP ${res.status})` };
+  }
   const blob = await res.blob();
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -873,14 +887,15 @@ export async function downloadMcpHealthReport(windowDays = 7, useLlm = false): P
   a.download = `mastyf-ai-mcp-health-${date}.md`;
   a.click();
   URL.revokeObjectURL(url);
+  return { ok: true };
 }
 
 export async function fetchFullAnalysis(
-  windowDays = 7,
+  window: string | number = '7d',
   useLlm = true,
 ): Promise<{ analysis: MastyfAiFullAnalysisResponse | null; error?: string }> {
   const res = await mastyfAiFetch(
-    `/api/analysis/full?window=${windowDays}&useLlm=${useLlm ? 'true' : 'false'}`,
+    `/api/analysis/full?window=${toWindowQueryParam(window)}&useLlm=${useLlm ? 'true' : 'false'}`,
   );
   if (res.status === 404) {
     return {
@@ -911,11 +926,17 @@ export async function fetchFullAnalysis(
   return { analysis: body };
 }
 
-export async function downloadFullAnalysis(windowDays = 7, useLlm = true): Promise<void> {
+export async function downloadFullAnalysis(
+  window: string | number = '7d',
+  useLlm = true,
+): Promise<{ ok: boolean; error?: string }> {
+  const windowQ = toWindowQueryParam(window);
   const res = await mastyfAiFetch(
-    `/api/analysis/full/download?window=${windowDays}&useLlm=${useLlm ? 'true' : 'false'}`,
+    `/api/analysis/full/download?window=${windowQ}&useLlm=${useLlm ? 'true' : 'false'}`,
   );
-  if (!res.ok) return;
+  if (!res.ok) {
+    return { ok: false, error: `Download failed (HTTP ${res.status})` };
+  }
   const blob = await res.blob();
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -924,6 +945,7 @@ export async function downloadFullAnalysis(windowDays = 7, useLlm = true): Promi
   a.download = `mastyf-ai-full-analysis-${date}.md`;
   a.click();
   URL.revokeObjectURL(url);
+  return { ok: true };
 }
 
 export async function fetchAuditHeatmap(
@@ -1077,8 +1099,8 @@ export async function fetchActiveLearningReport(): Promise<Record<string, unknow
   return (await res.json()) as Record<string, unknown>;
 }
 
-export async function fetchAgentAbuseScores(windowDays = 7): Promise<Record<string, unknown> | null> {
-  const res = await mastyfAiFetch(`/api/dashboard/agent-abuse?window=${windowDays}`);
+export async function fetchAgentAbuseScores(window: string | number = '7d'): Promise<Record<string, unknown> | null> {
+  const res = await mastyfAiFetch(`/api/dashboard/agent-abuse?window=${toWindowQueryParam(window)}`);
   if (!res.ok) return null;
   return (await res.json()) as Record<string, unknown>;
 }
@@ -1132,19 +1154,66 @@ export type TribunalReport = {
   autoLabelsApplied?: number;
 };
 
+export type TribunalJobStatus = {
+  jobId: string;
+  tenantId: string;
+  state: 'idle' | 'running' | 'done' | 'failed';
+  phase: string;
+  phaseLabel: string;
+  progressPct: number;
+  startedAt: string | null;
+  finishedAt: string | null;
+  exitCode: number | null;
+  error: string | null;
+  logTail: string;
+  pid: number | null;
+  debatedCount?: number;
+  remainingEligible?: number;
+};
+
+export type TribunalStatusResponse = {
+  job: TribunalJobStatus;
+  report: TribunalReport | null;
+  queue: {
+    batchLimit: number;
+    eligibleTotal: number;
+    nextBatchSize: number;
+    remainingEligible: number;
+  };
+};
+
+export async function fetchTribunalStatus(
+  limit: number = TRIBUNAL_BATCH_LIMIT,
+): Promise<TribunalStatusResponse | null> {
+  const res = await mastyfAiFetch(
+    `/api/learning/semantic/tribunal?limit=${limit}&peek=true`,
+  );
+  if (!res.ok) return null;
+  return (await res.json()) as TribunalStatusResponse;
+}
+
+export async function runTribunalBatch(
+  limit: number = TRIBUNAL_BATCH_LIMIT,
+): Promise<{ ok: boolean; error?: string; jobId?: string; startedAt?: string }> {
+  const res = await mastyfAiFetch('/api/learning/semantic/tribunal/run', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ limit, useLlm: false }),
+  });
+  const body = (await res.json()) as { error?: string; jobId?: string; startedAt?: string };
+  return { ok: res.ok, error: body.error, jobId: body.jobId, startedAt: body.startedAt };
+}
+
+/** @deprecated Use fetchTribunalStatus + runTribunalBatch */
 export async function fetchTribunalReport(
   limit: number = TRIBUNAL_BATCH_LIMIT,
 ): Promise<TribunalReport | null> {
-  const batch = limit;
-  const res = await mastyfAiFetch(
-    `/api/learning/semantic/tribunal?limit=${batch}&useLlm=false`,
-  );
-  if (!res.ok) return null;
-  return (await res.json()) as TribunalReport;
+  const status = await fetchTribunalStatus(limit);
+  return status?.report ?? null;
 }
 
-export async function fetchComplianceReport(windowDays = 7): Promise<Record<string, unknown> | null> {
-  const res = await mastyfAiFetch(`/api/ai/compliance/report?window=${windowDays}&useLlm=false`);
+export async function fetchComplianceReport(window: string | number = '7d'): Promise<Record<string, unknown> | null> {
+  const res = await mastyfAiFetch(`/api/ai/compliance/report?window=${toWindowQueryParam(window)}&useLlm=false`);
   if (!res.ok) return null;
   return (await res.json()) as Record<string, unknown>;
 }
@@ -1384,9 +1453,11 @@ export async function fetchSwarmReportPreview(): Promise<string | null> {
   return res.text();
 }
 
-export async function downloadSwarmReport(): Promise<void> {
+export async function downloadSwarmReport(): Promise<{ ok: boolean; error?: string }> {
   const res = await mastyfAiFetch('/api/security-swarm/report/download');
-  if (!res.ok) return;
+  if (!res.ok) {
+    return { ok: false, error: `Download failed (HTTP ${res.status})` };
+  }
   const blob = await res.blob();
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -1394,6 +1465,7 @@ export async function downloadSwarmReport(): Promise<void> {
   a.download = 'mastyf-ai-swarm-analysis.txt';
   a.click();
   URL.revokeObjectURL(url);
+  return { ok: true };
 }
 
 export async function fetchAiReport(): Promise<AiReport | null> {
@@ -1722,8 +1794,8 @@ export type VisualsLiveFetchResult =
   | { ok: true; data: VisualsData }
   | { ok: false; status: number; message: string };
 
-export async function fetchVisualsLive(windowDays = 7, region?: string): Promise<VisualsLiveFetchResult> {
-  const res = await mastyfAiFetch(`/api/visuals/live?${withWindowRegionQuery(windowDays, region)}`);
+export async function fetchVisualsLive(window: string | number = '7d', region?: string): Promise<VisualsLiveFetchResult> {
+  const res = await mastyfAiFetch(`/api/visuals/live?${withWindowRegionQuery(window, region)}`);
   if (!res.ok) {
     let message =
       res.status === 404
@@ -2147,7 +2219,10 @@ export type AnalyticsSummaryResponse = {
   budgetUsd?: number | null;
   budgetUtilizationPct?: number | null;
   trafficSeries?: Array<{ bucket: string; requests: number; blocked: number }>;
+  latencySeries?: Array<{ bucket: string; p50Ms: number; p95Ms: number }>;
+  errorRateSeries?: Array<{ bucket: string; errorRatePct: number; blocked: number; requests: number }>;
   costSeries?: Array<{ bucket: string; costUsd: number; label: string }>;
+  meta?: ChartMeta;
   modelUsage?: Array<{ model: string; label: string; calls: number; tokens: number; pct: number }>;
   providerCosts?: Array<{
     provider: string;
@@ -2386,6 +2461,32 @@ export async function fetchAutopilotStatus(): Promise<AutopilotStatus | null> {
   const res = await mastyfAiFetch('/api/autopilot/status');
   if (!res.ok) return null;
   return (await res.json()) as AutopilotStatus;
+}
+
+export type ThreatPromotionStats = {
+  enabled?: boolean;
+  promoted?: number;
+  pending?: number;
+  skipped?: number;
+  lastRunAt?: string | null;
+  error?: string;
+};
+
+export async function fetchThreatPromotionStats(): Promise<ThreatPromotionStats | null> {
+  const res = await mastyfAiFetch('/api/threat-discovery/promote/stats');
+  if (!res.ok) return null;
+  return (await res.json()) as ThreatPromotionStats;
+}
+
+export async function runThreatPromotionBatch(): Promise<{ ok: boolean; error?: string; stats?: ThreatPromotionStats }> {
+  const headers = await buildMutatingHeaders();
+  const res = await mastyfAiFetch('/api/threat-discovery/promote/batch', {
+    method: 'POST',
+    headers,
+  });
+  const body = (await res.json().catch(() => ({}))) as ThreatPromotionStats & { error?: string };
+  if (!res.ok) return { ok: false, error: body.error || `HTTP ${res.status}` };
+  return { ok: true, stats: body };
 }
 
 export type SimilarEnvironmentBenchmark = {

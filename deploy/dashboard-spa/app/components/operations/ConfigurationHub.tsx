@@ -22,6 +22,7 @@ import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { Badge } from '../ui/Badge';
 import { EmptyState } from '../ui/EmptyState';
+import { PlatformIntegrationsPanel } from './PlatformIntegrationsPanel';
 
 type SettingsView = 'general' | 'tenants' | 'integrations' | 'admin';
 
@@ -30,6 +31,7 @@ type Props = {
   onViewChange: (v: SettingsView) => void;
   roles?: string[];
   tenantLocked?: boolean;
+  refreshKey?: number;
   onAction?: (msg: string) => void;
   onGoToAgentFlow?: () => void;
 };
@@ -43,7 +45,7 @@ type ChecklistItem = {
   icon: typeof Activity;
 };
 
-export function ConfigurationHub({ view, roles, tenantLocked = false, onAction, onGoToAgentFlow }: Props) {
+export function ConfigurationHub({ view, roles, tenantLocked = false, refreshKey = 0, onAction, onGoToAgentFlow }: Props) {
   const isAdmin = hasPermission(roles, 'admin');
 
   const [setupStatus, setSetupStatus] = useState<SetupStatusResponse | null>(null);
@@ -368,7 +370,9 @@ export function ConfigurationHub({ view, roles, tenantLocked = false, onAction, 
 
       {view === 'integrations' && (
         <div className="configuration-integrations">
-          <Card title="Cloud Control Plane" subtitle="Connection status and management">
+          <PlatformIntegrationsPanel roles={roles} refreshKey={refreshKey} onAction={onAction} />
+
+          <Card title="Cloud Control Plane" subtitle="Connection status and management" style={{ marginTop: 'var(--space-4)' }}>
             <div className="flex items-center gap-2">
               <Globe size={18} />
               <span className="text-sm">

@@ -6,8 +6,6 @@ import {
   BarChart,
   CartesianGrid,
   Cell,
-  Line,
-  LineChart,
   Pie,
   PieChart,
   ResponsiveContainer,
@@ -29,6 +27,11 @@ import { ChartCard } from './dashboard/ChartCard';
 import { ChartTooltip, ChartLegend } from './dashboard/chart-kit';
 import { useVisuals } from './dashboard/VisualsProvider';
 import { useDashboardWindow } from './dashboard/DashboardWindowContext';
+import {
+  buildLearningChartSeries,
+  learningChartHasValues,
+  learningChartTitle,
+} from '@/lib/learning-chart-series';
 
 type TabId = 'traffic' | 'learning' | 'semantic' | 'regression';
 
@@ -37,7 +40,7 @@ type Props = {
 };
 
 export function InfrastructureVisualsPanel({ refreshKey = 0 }: Props) {
-  const { windowDays } = useDashboardWindow();
+  const { windowDays, window: windowLabel } = useDashboardWindow();
   const { visuals: data, loading, error, refresh } = useVisuals();
   const [tab, setTab] = useState<TabId>('traffic');
 
@@ -62,21 +65,10 @@ export function InfrastructureVisualsPanel({ refreshKey = 0 }: Props) {
   const learningSource = data?.instantLearning?.source ?? 'none';
   const learningEmptyReason = data?.meta?.emptyReasons?.instantLearning;
 
-  const learningSeries = useMemo(() => {
-    const perMin = data?.instantLearning?.blocksPerMinute ?? [];
-    if (perMin.length > 0) {
-      return perMin.map((p, i) => ({
-        label: String(Math.round(p.t / 60_000)),
-        blocks: p.value,
-        idx: i,
-      }));
-    }
-    const blockedHourly = hourly.filter((h) => h.blocked > 0 || h.calls > 0);
-    if (blockedHourly.length > 0) {
-      return blockedHourly.map((h, i) => ({ label: h.label, blocks: h.blocked, idx: i }));
-    }
-    return [];
-  }, [data?.instantLearning?.blocksPerMinute, hourly]);
+  const learningSeries = useMemo(
+    () => buildLearningChartSeries(data?.instantLearning, data?.traffic?.hourly ?? [], granularity),
+    [data?.instantLearning, data?.traffic?.hourly, granularity],
+  );
 
   const ruleToolChartData = useMemo(() => {
     const pairs = data?.instantLearning?.ruleToolPairs ?? [];
@@ -94,7 +86,7 @@ export function InfrastructureVisualsPanel({ refreshKey = 0 }: Props) {
 
   const suggestionEngine = data?.instantLearning?.suggestionEngine;
   const learningHasData =
-    learningSeries.length > 0 || ruleToolChartData.some((r) => r.count > 0);
+    learningChartHasValues(learningSeries) || ruleToolChartData.some((r) => r.count > 0);
 
   const tools = data?.traffic?.topTools?.slice(0, 8) ?? [];
   const rules = data?.traffic?.topBlockRules?.slice(0, 8) ?? [];
@@ -121,8 +113,8 @@ export function InfrastructureVisualsPanel({ refreshKey = 0 }: Props) {
   const trafficEmptyReason =
     data?.meta?.emptyReasons?.traffic
     ?? (data?.meta?.dbPath
-      ? `No proxy traffic in the selected ${window} window — widen the time window or route MCP through Mastyf AI. Reading ${data.meta.dbPath}.`
-      : `No proxy traffic in the selected ${window} window — widen the time window or route MCP through Mastyf AI.`);
+      ? `No proxy traffic in the selected ${windowLabel} window — widen the time window or route MCP through Mastyf AI. Reading ${data.meta.dbPath}.`
+      : `No proxy traffic in the selected ${windowLabel} window — widen the time window or route MCP through Mastyf AI.`);
 
   return (
     <section className="infra-visuals-panel" aria-label="Infrastructure visuals">
@@ -242,22 +234,18 @@ export function InfrastructureVisualsPanel({ refreshKey = 0 }: Props) {
             </p>
           ) : null}
           <ChartCard
-            title={
-              (data?.instantLearning?.blocksPerMinute?.length ?? 0) > 0
-                ? `Blocks per minute (${learningSource})`
-                : 'Blocks over time (history.db)'
-            }
-            empty={!learningSeries.length}
+            title={learningChartTitle(data?.instantLearning)}
+            empty={!learningChartHasValues(learningSeries)}
             emptyReason={learningEmptyReason}
           >
             <ResponsiveContainer width="100%" height={220}>
-              <LineChart data={learningSeries}>
+              <BarChart data={learningSeries}>
                 <CartesianGrid {...CHART_GRID} />
-                <XAxis dataKey="label" {...CHART_AXIS} />
-                <YAxis {...CHART_AXIS} />
+                <XAxis dataKey="label" {...CHART_AXIS} interval="preserveStartEnd" />
+                <YAxis {...CHART_AXIS} allowDecimals={false} />
                 <Tooltip content={<ChartTooltip />} />
-                <Line type="monotone" dataKey="blocks" stroke={CHART_SERIES.accent} strokeWidth={2} dot={false} name="Blocks" />
-              </LineChart>
+                <Bar dataKey="blocks" fill={CHART_SERIES.accent} name="Blocks" radius={[4, 4, 0, 0]} />
+              </BarChart>
             </ResponsiveContainer>
           </ChartCard>
 

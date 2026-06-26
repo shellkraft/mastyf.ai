@@ -1,12 +1,14 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
-import { fetchThreatDiscoveryStatus, type ThreatDiscoveryStatus } from '@/lib/mastyf-ai-api';
+/** @deprecated Unmounted — use SecurityOperationsCenter Threat Detection view. See `_archive/README.md`. */
+
+import { useEffect, useState } from 'react';
 import { ThreatDiscoveryOverview } from './ThreatDiscoveryOverview';
 import { ThreatLabWorkbench } from './ThreatLabWorkbench';
 import { AutoResearchMonitor } from './AutoResearchMonitor';
 import { ThreatArchitectureView } from './ThreatArchitectureView';
 import { ThreatDiscoveryAutomation } from './ThreatDiscoveryAutomation';
+import { useThreatDiscoveryJobs } from '@/lib/use-threat-discovery-jobs';
 import type { AuthStatus } from '@/lib/mastyf-ai-api';
 
 import type { ThreatLabContext } from './IncidentInvestigatorDrawer';
@@ -41,30 +43,18 @@ export function ThreatDiscoveryPanel({
   onClearThreatLabContext,
 }: Props) {
   const [subTab, setSubTab] = useState<SubTab>(externalView || initialSubTab || 'overview');
-  const [status, setStatus] = useState<ThreatDiscoveryStatus | null>(null);
-  const [loadError, setLoadError] = useState('');
-  const [loading, setLoading] = useState(true);
+  const {
+    status,
+    loading,
+    error: loadError,
+    refresh: load,
+    setOptimisticRunning,
+  } = useThreatDiscoveryJobs(refreshKey);
 
   useEffect(() => {
     if (externalView) setSubTab(externalView);
     else if (initialSubTab) setSubTab(initialSubTab);
   }, [initialSubTab, externalView]);
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    setLoadError('');
-    try {
-      const { status: data, error } = await fetchThreatDiscoveryStatus();
-      setStatus(data);
-      if (error) setLoadError(error);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    void load();
-  }, [load, refreshKey]);
 
   const candidates = status?.threatLab.manifest?.candidates || [];
   const autoEntries = status?.autoCorpus.manifest?.entries || [];
@@ -111,6 +101,7 @@ export function ThreatDiscoveryPanel({
             roles={roles}
             onRunStarted={onAction}
             onRefresh={() => void load()}
+            onOptimisticStart={setOptimisticRunning}
           />
           <details className="security-manifest-detail">
             <summary>Automation and scheduler details</summary>

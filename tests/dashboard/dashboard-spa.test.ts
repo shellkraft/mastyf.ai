@@ -27,8 +27,8 @@ describe('dashboard-spa', () => {
   });
 
   it('includes Security operations center and Autopilot API client', () => {
-    const protection = readFileSync(
-      join(SPA_ROOT, 'app', 'components', 'workspaces', 'ProtectionWorkspace.tsx'),
+    const integrations = readFileSync(
+      join(SPA_ROOT, 'app', 'components', 'operations', 'PlatformIntegrationsPanel.tsx'),
       'utf-8',
     );
     const security = readFileSync(
@@ -36,7 +36,7 @@ describe('dashboard-spa', () => {
       'utf-8',
     );
     const api = readFileSync(join(SPA_ROOT, 'lib', 'mastyf-ai-api.ts'), 'utf-8');
-    expect(protection).toContain('fetchAutopilotStatus');
+    expect(integrations).toContain('fetchAutopilotStatus');
     expect(security).toContain('fetchSecurityDashboard');
     expect(api).toContain('/api/autopilot/status');
     expect(api).toContain('/api/reports/generate');
@@ -45,13 +45,14 @@ describe('dashboard-spa', () => {
   });
 
   it('deep-links Enterprise AI incidents into Threat Lab workbench', () => {
-    const workbench = readFileSync(join(SPA_ROOT, 'app', 'components', 'ThreatLabWorkbench.tsx'), 'utf-8');
-    expect(workbench).toContain('findLinkedCandidate');
-    expect(workbench).toContain('inputFingerprint === ctx.semanticAuditId');
-    expect(workbench).toContain('investigateTriggerId');
-    expect(workbench).toContain('Run Threat Lab (reactive)');
-    const drawer = readFileSync(join(SPA_ROOT, 'app', 'components', 'IncidentInvestigatorDrawer.tsx'), 'utf-8');
-    expect(drawer).toContain('toolFromCitation');
+    const client = readFileSync(join(SPA_ROOT, 'app', 'components', 'DashboardClient.tsx'), 'utf-8');
+    const security = readFileSync(
+      join(SPA_ROOT, 'app', 'components', 'operations', 'SecurityOperationsCenter.tsx'),
+      'utf-8',
+    );
+    expect(client).toContain('onOpenThreatLab={openThreatLab}');
+    expect(security).toContain('ThreatLabWorkbench');
+    expect(security).toContain('onOpenThreatLab');
   });
 
   it('includes health report and swarm job log API client', () => {

@@ -40,7 +40,7 @@ type Props = {
 };
 
 export function VisualsProvider({ children, refreshKey = 0, pollMs = 30_000 }: Props) {
-  const { windowDays } = useDashboardWindow();
+  const { windowDays, windowParam } = useDashboardWindow();
   const { region } = useDashboardRegion();
   const [visuals, setVisuals] = useState<VisualsData | null>(null);
   const [executiveSummary, setExecutiveSummary] = useState<ExecutiveSummaryResponse | null>(null);
@@ -57,9 +57,9 @@ export function VisualsProvider({ children, refreshKey = 0, pollMs = 30_000 }: P
     try {
       const gran = windowDays <= 7 ? 'hour' : 'day';
       const [v, s, ts] = await Promise.all([
-        fetchVisualsLive(windowDays, region || undefined),
-        fetchExecutiveSummary(windowDays, region || undefined),
-        fetchCostTimeseries(windowDays, gran, region || undefined),
+        fetchVisualsLive(windowParam, region || undefined),
+        fetchExecutiveSummary(windowParam, region || undefined),
+        fetchCostTimeseries(windowParam, gran, region || undefined),
       ]);
       if (!v.ok) {
         setError(v.message);
@@ -75,7 +75,7 @@ export function VisualsProvider({ children, refreshKey = 0, pollMs = 30_000 }: P
     } finally {
       setLoading(false);
     }
-  }, [windowDays, region]);
+  }, [windowDays, windowParam, region]);
 
   useEffect(() => {
     windowDaysRef.current = windowDays;

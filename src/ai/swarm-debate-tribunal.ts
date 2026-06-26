@@ -247,6 +247,36 @@ export async function runTribunalDebate(
 
 export const DEFAULT_TRIBUNAL_BATCH = 10;
 
+export async function peekTribunalQueue(opts?: {
+  tenantId?: string;
+  limit?: number;
+  uncertaintyMin?: number;
+}): Promise<{
+  batchLimit: number;
+  eligibleTotal: number;
+  nextBatchSize: number;
+  remainingEligible: number;
+}> {
+  const { loadSemanticAuditRecordsAsync } = await import('./semantic-audit-store.js');
+  const batchLimit = opts?.limit ?? DEFAULT_TRIBUNAL_BATCH;
+  const records = await loadSemanticAuditRecordsAsync({
+    tenantId: opts?.tenantId,
+    sinceMs: 30 * 24 * 60 * 60 * 1000,
+    limit: 500,
+  });
+  const ranked = rankSemanticReviewQueue(records, { limit: 500 });
+  const minScore = opts?.uncertaintyMin ?? 0.35;
+  const eligible = ranked.filter((r) => r.uncertaintyScore >= minScore && !r.labeled);
+  const nextBatchSize = Math.min(eligible.length, batchLimit);
+  const remainingEligible = Math.max(0, eligible.length - nextBatchSize);
+  return {
+    batchLimit,
+    eligibleTotal: eligible.length,
+    nextBatchSize,
+    remainingEligible,
+  };
+}
+
 export async function runTribunalForQueue(opts?: {
   tenantId?: string;
   limit?: number;

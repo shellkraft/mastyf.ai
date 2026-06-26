@@ -19,6 +19,7 @@ import {
 import { countProcessedFingerprints } from '../ai/auto-corpus-writer.js';
 import {
   readThreatLabCandidates,
+  readThreatLabCandidatesUngated,
   readAutoCorpusManifest,
   type ThreatLabCandidateRecord,
   type AutoCorpusManifestEntry,
@@ -143,8 +144,17 @@ export async function buildThreatDiscoveryStatus(
 ): Promise<ThreatDiscoveryStatus> {
   const llm = await cachedLlmHealth();
   const sessionActive = isSwarmSessionActiveForTenant(tenantId);
-  const threatLabManifest = sessionActive ? readThreatLabCandidates(tenantId) : null;
-  const autoManifest = sessionActive ? readAutoCorpusManifest(tenantId) : null;
+  let threatLabManifest = readThreatLabCandidates(tenantId);
+  if (!threatLabManifest?.candidates?.length && sessionActive) {
+    const ungated = readThreatLabCandidatesUngated(tenantId);
+    if (ungated.length > 0) {
+      threatLabManifest = {
+        candidates: ungated,
+        count: ungated.length,
+      };
+    }
+  }
+  const autoManifest = readAutoCorpusManifest(tenantId);
   const candidates = threatLabManifest?.candidates || [];
   const entries = autoManifest?.entries || [];
 

@@ -22,6 +22,7 @@ import { Badge } from '../ui/Badge';
 import { KpiCard } from '../ui/KpiCard';
 import { EmptyState } from '../ui/EmptyState';
 import { SeverityBadge } from '../ui/Badge';
+import { formatWindowSubtitle } from '@/lib/format-dashboard-window';
 
 type Props = {
   roles?: string[];
@@ -284,7 +285,7 @@ export function SocSwarmAnalysisView({ roles = [], refreshKey, onAction }: Props
 
       {traffic?.hasData && (traffic.servers?.length ?? 0) > 0 ? (
         <div className="section">
-          <Card title="Traffic Summary" subtitle={`Last ${traffic.windowDays ?? 7} days`}>
+          <Card title="Traffic Summary" subtitle={formatWindowSubtitle(traffic.windowDays ?? '7d')}>
             <div className="table-wrap">
               <table className="table">
                 <thead>

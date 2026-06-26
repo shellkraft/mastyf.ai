@@ -1,16 +1,15 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   fetchComplianceReport,
   fetchSemanticOutcomes,
   fetchShadowRedTeamReport,
   fetchSignatureHints,
   fetchSupplyChainGraph,
-  fetchTribunalReport,
   type SemanticOutcome,
-  type TribunalReport,
 } from '@/lib/mastyf-ai-api';
+import { useTribunalBatch } from '@/lib/use-tribunal-batch';
 import { TRIBUNAL_BATCH_LIMIT } from '@/lib/tribunal-config';
 import { DashboardSection } from './dashboard/DashboardSection';
 import { TenantLoraPanel } from './TenantLoraPanel';
@@ -39,53 +38,74 @@ export function EnterpriseAiPanel({
   const [supplyChain, setSupplyChain] = useState<Record<string, unknown> | null>(null);
   const [shadowRedTeam, setShadowRedTeam] = useState<Record<string, unknown> | null>(null);
   const [signatureHints, setSignatureHints] = useState<Record<string, unknown> | null>(null);
-  const [tribunal, setTribunal] = useState<TribunalReport | null>(null);
   const [compliance, setCompliance] = useState<Record<string, unknown> | null>(null);
   const [semantic, setSemantic] = useState<SemanticOutcome[]>([]);
   const [investigateId, setInvestigateId] = useState<string | null>(null);
-  const [tribunalLoading, setTribunalLoading] = useState(false);
+  const {
+    job: tribunalJob,
+    report: tribunal,
+    queue: tribunalQueue,
+    running: tribunalRunning,
+    refresh: refreshTribunal,
+    start: startTribunal,
+  } = useTribunalBatch(TRIBUNAL_BATCH_LIMIT, refreshTick);
+  const lastTribunalNoticeRef = useRef<string | null>(null);
 
   const refresh = useCallback(async () => {
-    const [sc, shadow, hints, trib, comp, semResp] = await Promise.all([
+    const [sc, shadow, hints, comp, semResp] = await Promise.all([
       fetchSupplyChainGraph(),
       fetchShadowRedTeamReport(),
       fetchSignatureHints(),
-      fetchTribunalReport(TRIBUNAL_BATCH_LIMIT),
       fetchComplianceReport(7),
       fetchSemanticOutcomes(),
     ]);
     setSupplyChain(sc);
     setShadowRedTeam(shadow);
     setSignatureHints(hints);
-    setTribunal(trib);
     setCompliance(comp);
     setSemantic(semResp.records);
-  }, []);
+    await refreshTribunal();
+  }, [refreshTribunal]);
 
   const runTribunalOnly = useCallback(async () => {
-    setTribunalLoading(true);
-    try {
-      const trib = await fetchTribunalReport(TRIBUNAL_BATCH_LIMIT);
-      setTribunal(trib);
-      const n = trib?.debatedCount ?? 0;
-      const remaining = trib?.remainingEligible ?? 0;
-      if (n > 0) {
-        onAction?.(
-          remaining > 0
-            ? `Tribunal: ${n} debate(s) · ${remaining} remaining — run next batch`
-            : `Tribunal completed: ${n} debate(s) — queue empty`,
-        );
-      } else {
-        onAction?.('Tribunal ran — no uncertain flags in queue');
-      }
-    } finally {
-      setTribunalLoading(false);
+    if (!canAi || tribunalRunning) return;
+    const res = await startTribunal();
+    if (res.ok) {
+      onAction?.(
+        res.jobId
+          ? `Tribunal batch started — job ${res.jobId.slice(0, 8)}…`
+          : 'Tribunal batch started',
+      );
+    } else {
+      onAction?.(res.error || 'Failed to start tribunal batch');
     }
-  }, [onAction]);
+  }, [canAi, tribunalRunning, startTribunal, onAction]);
 
   useEffect(() => {
     void refresh();
   }, [refresh, refreshTick]);
+
+  useEffect(() => {
+    if (tribunalJob?.state !== 'done' && tribunalJob?.state !== 'failed') return;
+    if (!tribunalJob.finishedAt) return;
+    if (lastTribunalNoticeRef.current === tribunalJob.finishedAt) return;
+    lastTribunalNoticeRef.current = tribunalJob.finishedAt;
+    const n = tribunalJob.debatedCount ?? tribunal?.debatedCount ?? 0;
+    if (tribunalJob.state === 'failed') {
+      onAction?.(tribunalJob.error || 'Tribunal batch failed');
+      return;
+    }
+    const remaining = tribunalJob.remainingEligible ?? tribunal?.remainingEligible ?? 0;
+    if (n > 0) {
+      onAction?.(
+        remaining > 0
+          ? `Tribunal: ${n} debate(s) · ${remaining} remaining — run next batch`
+          : `Tribunal completed: ${n} debate(s) — queue empty`,
+      );
+    } else {
+      onAction?.('Tribunal complete — no uncertain flags in queue');
+    }
+  }, [tribunalJob?.state, tribunalJob?.finishedAt]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const debatedCount = Number(tribunal?.debatedCount ?? 0);
   const hintCount = ((signatureHints?.hints as unknown[]) ?? []).length;
@@ -131,7 +151,9 @@ export function EnterpriseAiPanel({
           <TenantLoraPanel roles={roles} refreshTick={refreshTick} onAction={onAction} />
           <TribunalSummaryCard
             tribunal={tribunal}
-            tribunalLoading={tribunalLoading}
+            job={tribunalJob}
+            queue={tribunalQueue}
+            tribunalLoading={tribunalRunning}
             onRunTribunal={() => void runTribunalOnly()}
             onInvestigateRecord={canAi ? (id) => setInvestigateId(id) : undefined}
           />

@@ -1,5 +1,7 @@
 'use client';
 
+/** @deprecated Unmounted — use ExecutiveDashboard. See `_archive/README.md`. */
+
 import { useMemo } from 'react';
 import {
   Area,

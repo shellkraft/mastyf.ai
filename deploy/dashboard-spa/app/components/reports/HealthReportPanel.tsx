@@ -24,7 +24,7 @@ function verdictTone(v?: string): 'success' | 'warn' | 'danger' | 'neutral' {
 }
 
 export function HealthReportPanel({ proxyOnline, onReportLoading }: Props) {
-  const { windowDays } = useCurrentWindowDays();
+  const { windowParam } = useCurrentWindowDays();
   const [report, setReport] = useState<McpHealthReportResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -41,7 +41,7 @@ export function HealthReportPanel({ proxyOnline, onReportLoading }: Props) {
     setError('');
     onReportLoading?.(true);
     try {
-      const { report, error: apiError } = await fetchMcpHealthReport(windowDays, useLlm);
+      const { report, error: apiError } = await fetchMcpHealthReport(windowParam, useLlm);
       if (!report) {
         setReport(null);
         setError(
@@ -58,7 +58,7 @@ export function HealthReportPanel({ proxyOnline, onReportLoading }: Props) {
       setLoading(false);
       onReportLoading?.(false);
     }
-  }, [windowDays, useLlm, proxyOnline, onReportLoading]);
+  }, [windowParam, useLlm, proxyOnline, onReportLoading]);
 
   useEffect(() => {
     void load();
@@ -67,7 +67,8 @@ export function HealthReportPanel({ proxyOnline, onReportLoading }: Props) {
   const onDownload = async () => {
     setExporting(true);
     try {
-      await downloadMcpHealthReport(windowDays, useLlm);
+      const res = await downloadMcpHealthReport(windowParam, useLlm);
+      if (!res.ok) setError(res.error || 'Download failed');
     } finally {
       setExporting(false);
     }

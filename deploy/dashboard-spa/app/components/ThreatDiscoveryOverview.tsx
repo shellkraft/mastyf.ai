@@ -27,6 +27,7 @@ type Props = {
   roles?: string[];
   onRunStarted?: (msg: string) => void;
   onRefresh?: () => void;
+  onOptimisticStart?: (kind: 'threat-lab' | 'auto-research', jobId?: string) => void;
 };
 
 function toChartData(record: Record<string, number> | undefined) {
@@ -41,6 +42,7 @@ export function ThreatDiscoveryOverview({
   roles,
   onRunStarted,
   onRefresh,
+  onOptimisticStart,
 }: Props) {
   if (loading && !status) {
     return <p className="hint">Loading threat discovery status…</p>;
@@ -75,12 +77,11 @@ export function ThreatDiscoveryOverview({
       ) : null}
       {!sessionActive ? (
         <p className="hint banner-inline live-data-banner">
-          Batch Threat Lab / Auto Research results appear only after you run a job in this dashboard
-          session. Stale or committed swarm artifacts are hidden.
+          No discovery jobs recorded for this tenant yet. Run Threat Lab or Auto Research to populate artifacts.
         </p>
       ) : (
         <p className="hint banner-inline live-data-banner live-data-banner-ok">
-          Session batch data · Threat Lab / Auto Research outputs from this dashboard session
+          Latest tenant batch — Threat Lab / Auto Research outputs from recent runs
         </p>
       )}
       {!status.features.threatLabEnabled && !status.features.autoResearchEnabled ? (
@@ -137,6 +138,7 @@ export function ThreatDiscoveryOverview({
         status={status}
         onRunStarted={onRunStarted}
         onRefresh={onRefresh}
+        onOptimisticStart={onOptimisticStart}
       />
 
       <ConfidenceReviewBoard candidates={status.threatLab.manifest?.candidates ?? []} />

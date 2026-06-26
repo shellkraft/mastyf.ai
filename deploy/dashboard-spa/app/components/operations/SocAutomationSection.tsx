@@ -3,7 +3,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
   buildMutatingHeaders,
+  fetchSoarPlaybooks,
   fetchThreatAutomationSummary,
+  runThreatPromotionBatch,
   mastyfAiFetch,
   type ThreatAutomationSummary,
 } from '@/lib/mastyf-ai-api';
@@ -33,6 +35,7 @@ type Props = {
 
 export function SocAutomationSection({ refreshKey = 0, onAction }: Props) {
   const [state, setState] = useState<ThreatAutomationSummary | null>(null);
+  const [soar, setSoar] = useState<{ enabled: boolean; playbooks: Array<{ id: string; name: string; description?: string }> } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState('');
@@ -40,21 +43,28 @@ export function SocAutomationSection({ refreshKey = 0, onAction }: Props) {
   const load = useCallback(async () => {
     setLoading(true);
     setError('');
-    const { status, error: loadError } = await fetchThreatAutomationSummary();
+    const [{ status, error: loadError }, soarData] = await Promise.all([
+      fetchThreatAutomationSummary(),
+      fetchSoarPlaybooks(),
+    ]);
     if (!status) {
       setError(loadError || 'Failed to load automation summary');
       setState(null);
     } else {
       setState(status);
     }
+    setSoar(soarData);
     setLoading(false);
   }, []);
 
   useEffect(() => { void load(); }, [load, refreshKey]);
+  const discoveryJobsRunning =
+    state?.jobs.threatLab.state === 'running' || state?.jobs.autoResearch.state === 'running';
   useEffect(() => {
-    const t = window.setInterval(() => void load(), 10_000);
+    const ms = discoveryJobsRunning ? 2000 : 10_000;
+    const t = window.setInterval(() => void load(), ms);
     return () => window.clearInterval(t);
-  }, [load]);
+  }, [load, discoveryJobsRunning]);
 
   const startScheduler = async () => {
     setBusy('start');
@@ -154,32 +164,103 @@ export function SocAutomationSection({ refreshKey = 0, onAction }: Props) {
         <div className="col-span-6">
           <Card title="Last Auto Research Run">
             <div className="flex items-center gap-2 mb-2">
-              <Badge variant={jobVariant(autoResearch.state)}>{autoResearch.state}</Badge>
-              <span className="text-xs text-muted">Finished {formatTs(autoResearch.finishedAt)}</span>
+              <Badge variant={jobVariant(autoResearch.state)}>
+                {autoResearch.state === 'running' ? 'Running' : autoResearch.state}
+              </Badge>
+              {autoResearch.state === 'running' ? (
+                <span className="text-xs text-muted">
+                  {autoResearch.phaseLabel || autoResearch.phase}
+                  {autoResearch.progressPct > 0 ? ` · ${autoResearch.progressPct}%` : ''}
+                </span>
+              ) : (
+                <span className="text-xs text-muted">Finished {formatTs(autoResearch.finishedAt)}</span>
+              )}
             </div>
+            {autoResearch.state === 'running' && autoResearch.logTail ? (
+              <pre className="threat-job-log text-xs text-muted">{autoResearch.logTail.split('\n').slice(-1)[0]?.slice(0, 200)}</pre>
+            ) : null}
+            {autoResearch.state === 'failed' && autoResearch.error ? (
+              <p className="text-sm" style={{ color: 'var(--danger)', marginBottom: 'var(--space-2)' }} role="alert">
+                {autoResearch.error}
+              </p>
+            ) : null}
             <p className="text-sm">
-              {autoResearch.parsed.written}/{autoResearch.parsed.attempted} fixtures written
-              · duplicate skips {autoResearch.parsed.skips.duplicate}
+              {autoResearch.parsed.attempted > 0
+                ? `${autoResearch.parsed.written}/${autoResearch.parsed.attempted} fixtures written`
+                : autoResearch.parsed.summaryLine
+                  || (autoResearch.state === 'done'
+                    ? 'No new fixture signals in the last batch'
+                    : 'No batch results yet')}
+              {autoResearch.parsed.skips.duplicate > 0
+                ? ` · duplicate skips ${autoResearch.parsed.skips.duplicate}`
+                : ''}
             </p>
+            {autoResearch.parsed.summaryLine && autoResearch.parsed.attempted > 0 ? (
+              <p className="text-xs text-muted">{autoResearch.parsed.summaryLine}</p>
+            ) : null}
           </Card>
         </div>
         <div className="col-span-6">
           <Card title="Last Threat Lab Run">
             <div className="flex items-center gap-2 mb-2">
-              <Badge variant={jobVariant(threatLab.state)}>{threatLab.state}</Badge>
-              <span className="text-xs text-muted">Finished {formatTs(threatLab.finishedAt)}</span>
+              <Badge variant={jobVariant(threatLab.state)}>
+                {threatLab.state === 'running' ? 'Running' : threatLab.state}
+              </Badge>
+              {threatLab.state === 'running' ? (
+                <span className="text-xs text-muted">
+                  {threatLab.phaseLabel || threatLab.phase}
+                  {threatLab.progressPct > 0 ? ` · ${threatLab.progressPct}%` : ''}
+                </span>
+              ) : (
+                <span className="text-xs text-muted">Finished {formatTs(threatLab.finishedAt)}</span>
+              )}
             </div>
+            {threatLab.state === 'running' && threatLab.logTail ? (
+              <pre className="threat-job-log text-xs text-muted">{threatLab.logTail.split('\n').slice(-1)[0]?.slice(0, 200)}</pre>
+            ) : null}
             <p className="text-sm">Authentic candidates written: {threatLab.parsed.wroteAuthentic ?? 0}</p>
           </Card>
         </div>
       </div>
 
       <Card title="Corpus Promotion" subtitle="Auto-discovered threats promoted to regression corpus">
-        <div className="flex flex-wrap gap-4 text-sm">
+        <div className="flex flex-wrap gap-4 text-sm" style={{ marginBottom: 'var(--space-3)' }}>
           <div><span className="text-muted">Promoted</span> <strong>{promotion.totalPromoted}</strong></div>
           <div><span className="text-muted">Daily quota</span> <strong>{promotion.dailyQuota.used}/{promotion.dailyQuota.max}</strong></div>
           <Badge variant={promotion.enabled ? 'success' : 'warning'}>{promotion.enabled ? 'Enabled' : 'Disabled'}</Badge>
         </div>
+        <Button
+          variant="secondary"
+          size="sm"
+          disabled={!!busy || !promotion.enabled}
+          onClick={async () => {
+            setBusy('promote');
+            const res = await runThreatPromotionBatch();
+            onAction?.(res.ok ? 'Promotion batch completed' : res.error || 'Promotion failed');
+            setBusy('');
+            void load();
+          }}
+        >
+          Run promotion batch
+        </Button>
+      </Card>
+
+      <Card title="SOAR Playbooks" subtitle="Security orchestration playbooks" style={{ marginTop: 'var(--space-4)' }}>
+        {soar?.playbooks?.length ? (
+          <ul className="text-sm" style={{ margin: 0, paddingLeft: 16 }}>
+            {soar.playbooks.map((pb) => (
+              <li key={pb.id} style={{ marginBottom: 8 }}>
+                <strong>{pb.name}</strong>
+                {pb.description ? <span className="text-muted"> — {pb.description}</span> : null}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <EmptyState
+            title={soar?.enabled ? 'No playbooks' : 'SOAR disabled'}
+            message={soar?.enabled ? 'No playbooks registered' : 'Enable SOAR integration on the proxy to list playbooks'}
+          />
+        )}
       </Card>
 
       <div className="section">

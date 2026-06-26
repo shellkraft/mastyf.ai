@@ -9,6 +9,9 @@ if [ ! -f dist/cli.js ]; then
   pnpm build
 elif [ ! -f dist/utils/dashboard-server.js ] \
   || [ src/utils/dashboard-server.ts -nt dist/utils/dashboard-server.js ] \
+  || [ src/utils/swarm-session.ts -nt dist/utils/swarm-session.js 2>/dev/null ] \
+  || [ src/utils/swarm-artifacts.ts -nt dist/utils/swarm-artifacts.js 2>/dev/null ] \
+  || [ src/utils/threat-discovery-status.ts -nt dist/utils/threat-discovery-status.js 2>/dev/null ] \
   || [ ! -f dist/ai/mcp-health-report.js ] \
   || [ src/ai/mcp-health-report.ts -nt dist/ai/mcp-health-report.js 2>/dev/null ] \
   || [ src/ai/mastyf-ai-full-analysis.ts -nt dist/ai/mastyf-ai-full-analysis.js 2>/dev/null ]; then

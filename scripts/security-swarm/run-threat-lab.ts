@@ -30,8 +30,26 @@ import {
 import { resolveSwarmOutputDir } from '../../src/tenant/swarm-tenant-paths.js';
 import { loadSemanticAuditRecordsAsync } from '../../src/ai/semantic-audit-store.js';
 import { getSharedThreatIntel } from '../../src/ai/threat-intel.js';
+import {
+  appendThreatDiscoveryLog,
+  finishThreatDiscoveryJob,
+  loadThreatDiscoveryJob,
+  patchThreatDiscoveryJob,
+} from '../../src/utils/threat-discovery-job-file.js';
 
 await exitUnlessProFeature('swarm');
+
+function log(msg: string): void {
+  appendThreatDiscoveryLog('threat-lab', msg);
+}
+
+function failThreatLab(message: string, exitCode = 1): never {
+  log(message);
+  if (loadThreatDiscoveryJob('threat-lab')?.state === 'running') {
+    finishThreatDiscoveryJob('threat-lab', { ok: false, error: message.replace(/^\[threat-lab\]\s*/i, '') });
+  }
+  process.exit(exitCode);
+}
 
 const REPO = process.cwd();
 const OUT_DIR = resolveSwarmOutputDir();
@@ -216,6 +234,19 @@ async function queueCandidate(
 }
 
 async function main(): Promise<void> {
+  patchThreatDiscoveryJob('threat-lab', {
+    state: 'running',
+    phase: 'starting',
+    phaseLabel: 'Starting Threat Lab discovery',
+    progressPct: 10,
+    startedAt: new Date().toISOString(),
+    finishedAt: null,
+    exitCode: null,
+    error: null,
+    pid: process.pid,
+  });
+  log('[threat-lab] starting');
+
   const max = threatLabMaxCandidates();
   const mode = threatLabMode();
   const requireReplay = process.env.SWARM_THREAT_LAB_REQUIRE_REPLAY !== 'false';
@@ -224,11 +255,11 @@ async function main(): Promise<void> {
   if (!llmReady.ok) {
     const msg = `[threat-lab] skipped: ${llmReady.reason}`;
     if (threatLabRequireLlm()) {
-      console.log(msg);
-      process.exit(0);
+      log(msg);
+      finishThreatDiscoveryJob('threat-lab', { ok: true, extra: { skipped: true } });
+      return;
     }
-    console.error(msg);
-    process.exit(1);
+    failThreatLab(msg);
   }
   const llm = llmReady.llm;
 
@@ -338,8 +369,7 @@ async function main(): Promise<void> {
   const maxFallback = gates.threatLab?.maxFallbackCandidates ?? 0;
   const fallbackCount = candidates.filter((c) => c.attackClass.startsWith('llm-fallback')).length;
   if (fallbackCount > maxFallback) {
-    console.error(`[threat-lab] gate failed: ${fallbackCount} fallback candidate(s) (max ${maxFallback})`);
-    process.exit(1);
+    failThreatLab(`[threat-lab] gate failed: ${fallbackCount} fallback candidate(s) (max ${maxFallback})`);
   }
 
   const replayRate =
@@ -348,8 +378,7 @@ async function main(): Promise<void> {
       : candidates.filter((c) => c.validation.replayBlocked).length / candidates.length;
   const minReplay = requireReplay ? (gates.threatLab?.minReplayBlockRate ?? 1) : 0;
   if (candidates.length > 0 && replayRate < minReplay) {
-    console.error(`[threat-lab] gate failed: replay block rate ${replayRate} < ${minReplay}`);
-    process.exit(1);
+    failThreatLab(`[threat-lab] gate failed: replay block rate ${replayRate} < ${minReplay}`);
   }
 
   const manifest = signManifest(
@@ -375,10 +404,16 @@ async function main(): Promise<void> {
   );
 
   writeFileSync(MANIFEST, JSON.stringify(manifest, null, 2));
-  console.log(`[threat-lab] wrote ${candidates.length} authentic LLM candidate(s) → ${MANIFEST}`);
+  log(`[threat-lab] wrote ${candidates.length} authentic LLM candidate(s) → ${MANIFEST}`);
+  finishThreatDiscoveryJob('threat-lab', {
+    ok: true,
+    extra: { candidateCount: candidates.length },
+  });
 }
 
 main().catch((err) => {
-  console.error(err);
+  const message = err instanceof Error ? err.message : String(err);
+  log(`[threat-lab] failed: ${message}`);
+  finishThreatDiscoveryJob('threat-lab', { ok: false, error: message });
   process.exit(1);
 });

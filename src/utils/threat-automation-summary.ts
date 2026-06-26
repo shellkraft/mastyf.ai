@@ -1,5 +1,3 @@
-import { existsSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
 import { countProcessedFingerprints } from '../ai/auto-corpus-writer.js';
 import {
   getThreatResearchConfig,
@@ -7,37 +5,17 @@ import {
   threatResearchAutoEnabled,
 } from '../ai/threat-research-pipeline.js';
 import { ensureThreatLabLlmReady, threatLabMode } from '../ai/threat-lab.js';
-import { resolveTenantSwarmDir } from '../tenant/swarm-tenant-paths.js';
 import { readRecentLearningEvents, type LearningEvent } from './learning-events.js';
 import { parseAutoResearchLogTail } from './parse-auto-research-log.js';
 import { getSchedulerStatus } from './threat-discovery-scheduler.js';
 import { getThreatDiscoveryJobStatus } from './threat-discovery-runner.js';
-import type { ThreatLabCandidateRecord, AutoCorpusManifestEntry } from './swarm-artifacts.js';
-
-type ThreatLabManifest = {
-  timestamp?: string;
-  count?: number;
-  mode?: string;
-  llmModel?: string;
-  llmUsed?: boolean;
-  candidates?: ThreatLabCandidateRecord[];
-};
-
-type AutoCorpusManifest = {
-  timestamp?: string;
-  count?: number;
-  entries?: AutoCorpusManifestEntry[];
-};
-
-function readTenantJson<T>(tenantId: string, fileName: string): T | null {
-  const path = join(resolveTenantSwarmDir(tenantId), fileName);
-  if (!existsSync(path)) return null;
-  try {
-    return JSON.parse(readFileSync(path, 'utf-8')) as T;
-  } catch {
-    return null;
-  }
-}
+import {
+  readAutoCorpusManifest,
+  readThreatLabCandidates,
+  readThreatLabCandidatesUngated,
+  type ThreatLabCandidateRecord,
+  type AutoCorpusManifestEntry,
+} from './swarm-artifacts.js';
 
 function countBy(items: string[]): Record<string, number> {
   const out: Record<string, number> = {};
@@ -117,8 +95,14 @@ export async function buildThreatAutomationSummary(tenantId: string): Promise<Th
   const scheduler = getSchedulerStatus(tenantId);
   const autoResearchJob = getThreatDiscoveryJobStatus(tenantId, 'auto-research');
   const threatLabJob = getThreatDiscoveryJobStatus(tenantId, 'threat-lab');
-  const autoCorpusManifest = readTenantJson<AutoCorpusManifest>(tenantId, 'auto-corpus-manifest.json');
-  const threatLabManifest = readTenantJson<ThreatLabManifest>(tenantId, 'threat-lab-candidates.json');
+  const autoCorpusManifest = readAutoCorpusManifest(tenantId);
+  let threatLabManifest = readThreatLabCandidates(tenantId);
+  if (!threatLabManifest?.candidates?.length) {
+    const ungated = readThreatLabCandidatesUngated(tenantId);
+    if (ungated.length > 0) {
+      threatLabManifest = { candidates: ungated, count: ungated.length };
+    }
+  }
   const events = readRecentLearningEvents(tenantId, 200);
   const llmReady = await ensureThreatLabLlmReady();
 

@@ -56,7 +56,7 @@ import { buildCostTimeseries, loadAllRecordsInWindow } from './cost-timeseries.j
 import { buildExecutiveSummary } from './dashboard-executive-summary.js';
 import { buildDashboardInsights, type InsightScope } from './dashboard-insights.js';
 import { buildAuditHeatmapBundle } from './audit-heatmap.js';
-import { parseWindowDays } from './time-buckets.js';
+import { parseWindowDays, windowToLabel } from './time-buckets.js';
 import { buildDashboardFleetResponse } from './dashboard-fleet-api.js';
 import {
   listFederatedRegions,
@@ -86,6 +86,27 @@ function deployDir(): string | null {
     if (existsSync(p)) return p;
   }
   return null;
+}
+
+function scanTimestampMs(value: string | null | undefined): number {
+  if (!value) return 0;
+  const normalized = value.includes('T') ? value : value.replace(' ', 'T');
+  const ms = Date.parse(normalized);
+  return Number.isFinite(ms) ? ms : 0;
+}
+
+function latestScanTimestamp(...candidates: Array<string | null | undefined>): string | null {
+  let best: string | null = null;
+  let bestMs = 0;
+  for (const candidate of candidates) {
+    if (!candidate) continue;
+    const ms = scanTimestampMs(candidate);
+    if (ms > bestMs) {
+      bestMs = ms;
+      best = candidate;
+    }
+  }
+  return best;
 }
 
 /** Next static export (`out/`) when built; else legacy static files in `dashboard-spa/`. */
@@ -1380,16 +1401,46 @@ export async function startDashboardServer(
 
       if (url === '/api/learning/semantic/tribunal' && method === 'GET') {
         setCors();
-        const { buildTribunalReport } = await import('../ai/swarm-debate-tribunal.js');
+        const { peekTribunalQueue } = await import('../ai/swarm-debate-tribunal.js');
+        const { getTribunalJobStatus, loadTribunalReport } = await import('./tribunal-runner.js');
         const u = new URL(req.url || url, 'http://localhost');
         const limitRaw = parseInt(u.searchParams.get('limit') || '10', 10);
-        const limit = Number.isFinite(limitRaw) ? limitRaw : 10;
+        const limit = Number.isFinite(limitRaw) ? Math.min(Math.max(limitRaw, 1), 25) : 10;
+        const peekOnly = u.searchParams.get('peek') !== 'false';
+        if (peekOnly) {
+          const [queue, job, report] = await Promise.all([
+            peekTribunalQueue({ tenantId: requestTenantId, limit }),
+            Promise.resolve(getTribunalJobStatus(requestTenantId)),
+            Promise.resolve(loadTribunalReport(requestTenantId)),
+          ]);
+          writeJson(res, 200, { job, report, queue });
+          return;
+        }
+        const { buildTribunalReport } = await import('../ai/swarm-debate-tribunal.js');
         const report = await buildTribunalReport({
           tenantId: requestTenantId,
-          limit: Math.min(Math.max(limit, 1), 25),
+          limit,
           useLlm: u.searchParams.get('useLlm') !== 'false',
         });
         writeJson(res, 200, report);
+        return;
+      }
+
+      if (url === '/api/learning/semantic/tribunal/run' && method === 'POST') {
+        setCors();
+        const body = await readBody(req);
+        const limitRaw = parseInt(String(body.limit ?? '10'), 10);
+        const limit = Number.isFinite(limitRaw) ? Math.min(Math.max(limitRaw, 1), 25) : 10;
+        const { startTribunalJob } = await import('./tribunal-runner.js');
+        const result = startTribunalJob(requestTenantId, {
+          limit,
+          useLlm: body.useLlm === true,
+        });
+        if (!result.ok) {
+          writeJson(res, result.status ?? 409, { ok: false, error: result.error, jobId: result.jobId });
+          return;
+        }
+        writeJson(res, 200, { ok: true, jobId: result.jobId, startedAt: result.startedAt });
         return;
       }
 
@@ -2202,7 +2253,7 @@ export async function startDashboardServer(
             burnRatePerHour: sum.total > 0 ? burnRatePerHour : null,
             lastUpdated: new Date().toISOString(),
             meta: mergeFedMeta({
-              window: `${windowDays}d`,
+              window: windowToLabel(windowDays),
               windowDays,
               generatedAt: new Date().toISOString(),
               recordCount: records.length,
@@ -2623,6 +2674,9 @@ export async function startDashboardServer(
               reps.push({ name: srv, scanned: false, score: null, cves: null, critical: null, high: null, auth: null });
             }
           }
+          const { getSwarmJobStatus } = await import('./security-swarm-runner.js');
+          const swarmFinishedAt = getSwarmJobStatus(requestTenantId).finishedAt;
+          lastScan = latestScanTimestamp(lastScan, swarmFinishedAt);
           writeJson(res, 200, available({
             serverReports: reps,
             overallScore: scanned > 0 ? Math.round(ts / scanned) : null,
@@ -2698,7 +2752,7 @@ export async function startDashboardServer(
             disclaimer: costCoverage.disclaimer,
             windowDays,
             meta: mergeFedMeta({
-              window: `${windowDays}d`,
+              window: windowToLabel(windowDays),
               windowDays,
               generatedAt: new Date().toISOString(),
               recordCount: windowRecords.length,
