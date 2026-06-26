@@ -34,11 +34,23 @@ jobs:
 
       - run: pnpm test
 
+      - name: Generate SBOM
+        run: pnpm dlx @cyclonedx/cyclonedx-npm --output-file sbom.cdx.json --omit dev
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sbom
+          path: sbom.cdx.json
+          retention-days: 90
+
       - name: Premortem enterprise profile
         run: pnpm test:enterprise-profile
 
       - name: Enterprise validation matrix
         run: pnpm validate:enterprise-matrix
+
+      - name: Enterprise evidence check
+        run: pnpm enterprise:evidence-check
 
       - name: Run tests with coverage
         run: pnpm vitest run --coverage
@@ -218,17 +230,44 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - name: Run pnpm audit
         run: pnpm audit --audit-level=high
+      - name: OSV vulnerability scan
+        run: pnpm dlx osv-scanner --lockfile=pnpm-lock.yaml
+
+  policy-schema:
+    name: Policy Schema Validation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v3
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: pnpm install --frozen-lockfile
+      - run: node scripts/export-policy-schema.mjs
+      - run: git diff --exit-code policy-schema.json
+
+  evidence-check:
+    name: Enterprise Evidence Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: pnpm enterprise:evidence-check
 
   docker-scan:
     name: Docker Build & Security Scan
-    if: github.event_name == 'push'
+    if: github.event_name == 'push' || github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - name: Build Docker image
         run: docker build -t mastyf-ai:ci .
       - name: Scan image with Trivy
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@0.28.0
         with:
           image-ref: mastyf-ai:ci
           severity: 'CRITICAL'

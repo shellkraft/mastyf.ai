@@ -35,12 +35,6 @@ jobs:
       - name: Build all packages
         run: pnpm run build
 
-      - name: Publish @mastyf-ai/plugin-sdk
-        working-directory: packages/plugin-sdk
-        run: npm publish --provenance --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-
       - name: Run full test suite
         run: pnpm -r test
         env:
@@ -50,6 +44,15 @@ jobs:
         run: pnpm tsx corpus/run-eval.ts
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+
+      - name: Generate release SBOM
+        run: pnpm dlx @cyclonedx/cyclonedx-npm --output-file sbom.cdx.json --omit dev
+
+      - name: Publish @mastyf-ai/plugin-sdk
+        working-directory: packages/plugin-sdk
+        run: npm publish --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Publish @mastyf-ai/core
         working-directory: packages/core
@@ -67,6 +70,12 @@ jobs:
         run: npm publish --provenance --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Upload release SBOM
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-sbom
+          path: sbom.cdx.json
 
       - name: Attest build provenance (root package)
         uses: actions/attest-build-provenance@v2

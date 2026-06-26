@@ -8,6 +8,7 @@ import {
   compiledRulesEtag,
   type CompiledRules,
 } from './compiled-rules.js';
+import { registerTenantApiRoutes } from './tenant-api.js';
 
 export interface ControlPlaneServerOptions {
   port?: number;
@@ -76,6 +77,11 @@ export function createControlPlaneApp(options?: ControlPlaneServerOptions): expr
       });
     }
   });
+
+  if (process.env['MASTYF_AI_TENANT_API_ENABLED'] === 'true') {
+    app.use(express.json({ limit: '1mb' }));
+    registerTenantApiRoutes(app);
+  }
 
   return app;
 }

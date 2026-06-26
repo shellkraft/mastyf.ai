@@ -34,8 +34,7 @@ import type { CallContext, PolicyDecision } from '../policy/policy-types.js';
 import { routeSemanticModelForTenant } from './tenant-semantic-model.js';
 import {
   getEstimatedSemanticCostUsd,
-  isTenantDailyBudgetExceeded,
-  recordTenantDailySpend,
+  tryReserveTenantDailyBudget,
 } from '../services/tenant-budget.js';
 
 export interface SemanticAuditJob {
@@ -177,10 +176,15 @@ function getLlm(tenantId?: string): LlmAssistant {
 
 /** Enqueue async semantic audit (debounced batch drain). Never blocks the caller. */
 export function enqueueSemanticAudit(job: SemanticAuditJob): void {
+  void reserveAndEnqueue(job);
+}
+
+async function reserveAndEnqueue(job: SemanticAuditJob): Promise<void> {
   if (!isSemanticAsyncEnabled(job.tenantId)) return;
 
-  const budget = isTenantDailyBudgetExceeded(job.tenantId, getEstimatedSemanticCostUsd());
-  if (budget.exceeded) {
+  const estimated = getEstimatedSemanticCostUsd();
+  const reserved = await tryReserveTenantDailyBudget(job.tenantId, estimated);
+  if (!reserved) {
     reportSemanticAuditSkipped('tenant_budget', job.tenantId);
     if (isLocalSemanticEnabled(job.tenantId)) {
       void runLocalSemanticAudit(job);
@@ -369,7 +373,6 @@ Categories: prompt-injection, exfiltration, privilege-escalation, encoded-payloa
       );
       if (response?.text) {
         recordSemanticLlmSuccess();
-        recordTenantDailySpend(job.tenantId, getEstimatedSemanticCostUsd());
         await cache.set(cacheKey, response.text);
       } else {
         recordSemanticLlmFailure();

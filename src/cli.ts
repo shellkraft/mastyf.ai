@@ -82,6 +82,7 @@ interface ProxyOptions {
   config?: string;
   policy?: string;
   blockingMode?: string;
+  unsafeNoTls?: boolean;
   dryRun?: boolean;
   gateway?: boolean;
   authIssuer?: string;
@@ -584,10 +585,15 @@ program
   .command('doctor')
   .description('Check DB path, policy, dashboard/AI env — quick onboarding diagnostics')
   .option('--policy <path>', 'Policy YAML to verify', 'default-policy.yaml')
+  .option('--skip-policy-validate', 'Skip Zod schema validation of policy file')
   .option('-c, --config <path>', 'Optional MCP config path to verify')
-  .action((opts: { policy: string; config?: string }) => {
+  .action((opts: { policy: string; config?: string; skipPolicyValidate?: boolean }) => {
     import('./utils/doctor.js').then(({ runDoctor }) => {
-      process.exit(runDoctor({ policyPath: opts.policy, configPath: opts.config }));
+      process.exit(runDoctor({
+        policyPath: opts.policy,
+        configPath: opts.config,
+        validatePolicy: !opts.skipPolicyValidate,
+      }));
     });
   });
 
@@ -780,6 +786,7 @@ program
   .option('-c, --config <path>', 'Path to MCP config file')
   .option('--policy <path>', 'Path to policy YAML file (enables active blocking)')
   .option('--blocking-mode <mode>', 'Override policy mode: audit (passive), warn (flag), block (enforce)', 'block')
+  .option('--unsafe-no-tls', 'Allow plaintext HTTP to upstream MCP servers (dev only — sets MASTYF_AI_ALLOW_PLAINTEXT_UPSTREAM=true)', false)
   .option('--auth-issuer <url>', 'OIDC issuer URL for JWT validation (e.g., https://accounts.google.com)')
   .option('--auth-audience <aud>', 'Expected audience claim in JWT')
   .option('--auth-required', 'Require authentication for all tool calls (fail-closed)', false)
@@ -788,6 +795,13 @@ program
   .action(async (opts: ProxyOptions) => {
     const { applyProxyRuntimeDefaults } = await import('./utils/start-env.js');
     applyProxyRuntimeDefaults();
+
+    if (opts.unsafeNoTls) {
+      process.env['MASTYF_AI_ALLOW_PLAINTEXT_UPSTREAM'] = 'true';
+      console.error(chalk.yellow.bold(
+        '⚠ --unsafe-no-tls: upstream MCP traffic may use cleartext HTTP (development only)',
+      ));
+    }
 
     const paths = opts.config ? [opts.config] : ConfigParser.findConfigPaths();
     if (paths.length === 0) { console.error(chalk.red('No MCP config files found. Use --config to specify a path.')); process.exit(1); }
@@ -913,7 +927,8 @@ program
             ));
           } else {
             const { load } = await import('js-yaml');
-            const policyConfig = load(readFileSync(opts.policy, 'utf-8')) as PolicyConfig;
+            const { parsePolicyConfig } = await import('./policy/policy-schema.js');
+            const policyConfig = parsePolicyConfig(load(readFileSync(opts.policy, 'utf-8')));
             policyConfig.policy.mode = opts.blockingMode as 'audit' | 'warn' | 'block';
             policyEngine = new PolicyEngine(policyConfig);
             useWatcherForManager = false;

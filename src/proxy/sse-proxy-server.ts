@@ -9,8 +9,10 @@ import { findingsToMessages, isResponseScanSkipped } from '../utils/streaming-in
 import { gateToolResponseText } from '../utils/response-security-gate.js';
 import { TokenCounter, extractModelFromPayload } from '../utils/token-counter.js';
 import { Logger } from '../utils/logger.js';
+import { assertUpstreamTlsAllowed } from '../utils/upstream-tls.js';
 import { persistCallRecord } from '../utils/call-record-cost.js';
 import { StructuredLogger } from '../utils/structured-logger.js';
+import { auditPolicyDecision } from './audit-policy-decision.js';
 import * as Metrics from '../utils/metrics.js';
 import { resolveModelId, resolveModelIdForServer } from '../config/llm-config.js';
 import type { MtlsConfig } from '../utils/mtls-config.js';
@@ -63,6 +65,10 @@ export class SseProxyServer extends EventEmitter {
 
   constructor(opts: SseProxyOptions) {
     super();
+    const tlsCheck = assertUpstreamTlsAllowed(opts.upstreamUrl);
+    if (!tlsCheck.ok) {
+      throw new Error(`[sse-proxy:${opts.serverName}] ${tlsCheck.message}`);
+    }
     this.opts = opts;
     this.tokenCounter = new TokenCounter();
     void opts.mtlsConfig;
@@ -422,6 +428,7 @@ export class SseProxyServer extends EventEmitter {
         tenantId,
       }, requestHeaders);
       const decision = await this.opts.policy.evaluateAsync(context);
+      auditPolicyDecision(requestId, this.opts.serverName, toolName, decision, context);
       if (decision.action === 'block') {
         releaseProxyInflight(this.opts.serverName);
         StructuredLogger.logBlocked({

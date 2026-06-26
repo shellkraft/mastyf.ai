@@ -65,6 +65,41 @@ export function getLlmConfig(): LlmConfig {
 
 export function resetLlmConfigForTests(): void {
   cached = null;
+  lastLlmSecretRefreshAt = 0;
+}
+
+let lastLlmSecretRefreshAt = 0;
+let llmSecretRefreshTimer: ReturnType<typeof setInterval> | null = null;
+
+/** Reload LLM API keys from secret provider (for rotation without restart). */
+export async function refreshLlmApiKeysFromSecretProvider(): Promise<void> {
+  const { createSecretProvider } = await import('../auth/secret-provider.js');
+  const provider = createSecretProvider();
+  for (const key of ['ANTHROPIC_API_KEY', 'OPENAI_API_KEY'] as const) {
+    const value = await provider.get(key);
+    if (value) process.env[key] = value;
+  }
+  cached = null;
+  lastLlmSecretRefreshAt = Date.now();
+}
+
+/** Start periodic LLM key refresh when MASTYF_AI_LLM_SECRET_REFRESH_MS is set. */
+export function startLlmSecretRefreshTimer(): () => void {
+  stopLlmSecretRefreshTimer();
+  const ms = parseInt(process.env.MASTYF_AI_LLM_SECRET_REFRESH_MS || '0', 10);
+  if (!Number.isFinite(ms) || ms <= 0) return () => {};
+  void refreshLlmApiKeysFromSecretProvider();
+  llmSecretRefreshTimer = setInterval(() => {
+    void refreshLlmApiKeysFromSecretProvider();
+  }, ms);
+  return stopLlmSecretRefreshTimer;
+}
+
+export function stopLlmSecretRefreshTimer(): void {
+  if (llmSecretRefreshTimer) {
+    clearInterval(llmSecretRefreshTimer);
+    llmSecretRefreshTimer = null;
+  }
 }
 
 const GLOBAL_MODEL_ENV_KEYS = [

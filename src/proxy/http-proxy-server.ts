@@ -8,6 +8,8 @@ import { HistoryDatabase } from '../database/history-db.js';
 import { PolicyEngine } from '../policy/policy-engine.js';
 import { CallContext } from '../policy/policy-types.js';
 import { StructuredLogger } from '../utils/structured-logger.js';
+import { auditPolicyDecision } from './audit-policy-decision.js';
+import { checkHttpClientRateLimit } from './client-rate-limit.js';
 import { OAuthValidator } from '../auth/oauth.js';
 import { AuthValidationResult, AgentIdentity } from '../auth/auth-types.js';
 import { createSessionCache, validateSessionToken, type MastyfAiSessionCache } from '../auth/session-factory.js';
@@ -16,6 +18,7 @@ import type { MtlsConfig } from '../utils/mtls-config.js';
 import { getMtlsAgent } from '../utils/mtls-agent-registry.js';
 import * as Metrics from '../utils/metrics.js';
 import { Logger } from '../utils/logger.js';
+import { assertUpstreamTlsAllowed } from '../utils/upstream-tls.js';
 import { extractDpopProof, validateRequiredDpop } from '../auth/dpop-enforcement.js';
 import { resolveTenantContext, InvalidTenantIdError, DEFAULT_TENANT_ID } from '../tenant/resolve-tenant.js';
 import {
@@ -73,6 +76,10 @@ export class HttpProxyServer {
   ) {
     this.serverName = serverName;
     this.targetUrl = targetUrl.replace(/\/$/, '');
+    const tlsCheck = assertUpstreamTlsAllowed(this.targetUrl);
+    if (!tlsCheck.ok) {
+      throw new Error(`[http-proxy:${serverName}] ${tlsCheck.message}`);
+    }
     this.policyEngine = policyEngine || null;
     this.authValidator = authValidator || null;
     this.sessionCache = authValidator ? createSessionCache() : null;
@@ -367,6 +374,30 @@ export class HttpProxyServer {
             requestArguments = preGuard.arguments;
           }
 
+          const clientRl = await checkHttpClientRateLimit(
+            agentIdentity?.sub || 'anonymous',
+            toolName,
+            requestTenantId,
+          );
+          if (!clientRl.allowed) {
+            releaseProxyInflight(this.serverName);
+            StructuredLogger.logBlocked({
+              event: 'tool_blocked',
+              requestId: String(msg.id),
+              serverName: this.serverName,
+              toolName,
+              reason: clientRl.reason || 'rate limit',
+              rule: 'client_rate_limit',
+            });
+            res.writeHead(429, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({
+              jsonrpc: '2.0',
+              id: msg.id,
+              error: { code: -32001, message: `Blocked by MCP Mastyf AI rate limit: ${clientRl.reason}` },
+            }));
+            return;
+          }
+
           const context: CallContext = applyGeoToCallContext({
             serverName: this.serverName,
             toolName,
@@ -379,8 +410,17 @@ export class HttpProxyServer {
           }, req.headers);
 
           const decision = await this.policyEngine.evaluateAsync(context);
-
+          auditPolicyDecision(requestId, this.serverName, toolName, decision, context);
           if (decision.action === 'block') {
+            void import('../alerting/incident-responder.js').then(({ checkAndRespondToCriticalBlock, trackBlockSpike }) => {
+              trackBlockSpike(true);
+              return checkAndRespondToCriticalBlock(
+                decision.reason,
+                0.95,
+                toolName,
+                this.serverName,
+              );
+            }).catch(() => undefined);
             releaseProxyInflight(this.serverName);
             StructuredLogger.logBlocked({
               event: 'tool_blocked',

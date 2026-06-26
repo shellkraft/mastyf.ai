@@ -17,7 +17,15 @@ spec:
               image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
               command: ["/bin/sh", "-c"]
               args:
-                - cp {{ .Values.persistence.mountPath }}/history.db /backup/history-$(date +%Y%m%d).db
+                - |
+                  set -e
+                  OUT="/backup/history-$(date +%Y%m%d).db"
+                  cp {{ .Values.persistence.mountPath }}/history.db "$OUT"
+                  {{- if .Values.backup.s3Bucket }}
+                  if command -v aws >/dev/null 2>&1; then
+                    aws s3 cp "$OUT" "s3://{{ .Values.backup.s3Bucket }}/$(basename "$OUT")"
+                  fi
+                  {{- end }}
               volumeMounts:
                 - name: data
                   mountPath: {{ .Values.persistence.mountPath }}

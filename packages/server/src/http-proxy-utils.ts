@@ -29,6 +29,35 @@ export function resolveUpstreamPort(url: URL): number {
   return url.protocol === 'https:' ? 443 : 80;
 }
 
+export function isPlaintextUpstreamAllowed(): boolean {
+  if (process.env['MASTYF_AI_STRICT_MODE'] === 'true') {
+    return false;
+  }
+  return process.env['MASTYF_AI_ALLOW_PLAINTEXT_UPSTREAM'] === 'true';
+}
+
+export type UpstreamTlsCheckResult =
+  | { ok: true }
+  | { ok: false; message: string };
+
+/** Reject http:// upstream unless dev-only plaintext flag is set. */
+export function assertUpstreamTlsAllowed(targetUrl: string): UpstreamTlsCheckResult {
+  let parsed: URL;
+  try {
+    parsed = new URL(targetUrl);
+  } catch {
+    return { ok: false, message: 'Invalid upstream URL' };
+  }
+  if (parsed.protocol === 'http:' && !isPlaintextUpstreamAllowed()) {
+    return {
+      ok: false,
+      message:
+        'Plaintext HTTP upstream is disabled. Use https:// or set MASTYF_AI_ALLOW_PLAINTEXT_UPSTREAM=true (dev only).',
+    };
+  }
+  return { ok: true };
+}
+
 export type ReadBodyResult =
   | { ok: true; body: string }
   | { ok: false; tooLarge: true; bytes: number; limit: number };
@@ -111,6 +140,15 @@ export function relayToUpstream(options: RelayToUpstreamOptions): void {
     maxResponseBytes,
     onBufferedResponse,
   } = options;
+
+  const tlsCheck = assertUpstreamTlsAllowed(upstream.toString());
+  if (!tlsCheck.ok) {
+    if (!clientRes.headersSent) {
+      clientRes.writeHead(400, { 'Content-Type': 'application/json' });
+      clientRes.end(JSON.stringify({ error: tlsCheck.message }));
+    }
+    return;
+  }
 
   const upstreamReq = requestUpstream(upstream, {
     method,

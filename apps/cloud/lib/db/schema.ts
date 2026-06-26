@@ -85,6 +85,7 @@ export const apiKeys = pgTable('api_keys', {
   keyHash: text('key_hash').notNull(),
   prefix: text('prefix').notNull(),
   name: text('name').notNull().default('default'),
+  scopes: text('scopes').notNull().default('["badge:read","policy:read"]'),
   revokedAt: timestamp('revoked_at', { mode: 'date', withTimezone: true }),
   lastUsedAt: timestamp('last_used_at', { mode: 'date', withTimezone: true }),
   createdAt: timestamp('created_at', { mode: 'date', withTimezone: true }).notNull().defaultNow(),

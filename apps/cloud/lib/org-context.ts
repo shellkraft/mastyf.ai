@@ -7,6 +7,7 @@ import {
   policies,
 } from './db/schema';
 import { verifyApiKey } from './api-keys';
+import { userCanManageOrg as rbacCanManage, parseApiKeyScopes, apiKeyHasScope, type ApiScope } from './org-rbac';
 
 export type UserOrgContext = {
   org: typeof organizations.$inferSelect;
@@ -40,6 +41,7 @@ export async function requireActiveUserOrg(userId: string): Promise<UserOrgConte
 export async function resolveOrgFromApiKey(bearerToken: string): Promise<{
   org: typeof organizations.$inferSelect;
   apiKeyId: string;
+  scopes: ApiScope[];
 } | null> {
   const keys = await getDb()
     .select()
@@ -56,12 +58,16 @@ export async function resolveOrgFromApiKey(bearerToken: string): Promise<{
         .update(apiKeys)
         .set({ lastUsedAt: new Date() })
         .where(eq(apiKeys.id, row.id));
-      return { org, apiKeyId: row.id };
+      return {
+        org,
+        apiKeyId: row.id,
+        scopes: parseApiKeyScopes((row as { scopes?: string }).scopes),
+      };
     }
   }
   return null;
 }
 
 export function userCanManageOrg(membership: typeof organizationMembers.$inferSelect): boolean {
-  return membership.role === 'owner' || membership.role === 'admin';
+  return rbacCanManage(membership);
 }

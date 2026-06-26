@@ -81,6 +81,30 @@ monitoring:
     interval: 30s
     scrapeTimeout: 10s
     labels: {}
+  prometheusRule:
+    enabled: false
+    labels: {}
+    thresholds:
+      blockRateRatio: 0.25
+      auditQueueDepth: 1000
+  grafanaDashboard:
+    enabled: false
+  alertmanager:
+    enabled: false
+    # Document external Alertmanager; wire ALERT_PAGERDUTY_KEY / ALERT_SLACK_WEBHOOK via ExternalSecrets
+  otel:
+    enabled: false
+    endpoint: http://otel-collector:4318
+    serviceName: mastyf-ai
+
+autoscaling:
+  enabled: false
+  minReplicas: 2
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 70
+  customMetric:
+    enabled: false
+    averageRequestsPerSecond: "50"
 
 externalSecrets:
   enabled: false
@@ -147,7 +171,7 @@ podSecurityContext:
 
 securityContext:
   allowPrivilegeEscalation: false
-  readOnlyRootFilesystem: false
+  readOnlyRootFilesystem: true
   capabilities:
     drop:
       - ALL
@@ -174,3 +198,6 @@ multiTenant:
 backup:
   enabled: false
   schedule: "0 2 * * *"
+  storageSize: 5Gi
+  storageClass: ""
+  s3Bucket: ""

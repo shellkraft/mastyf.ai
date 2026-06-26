@@ -2,6 +2,8 @@
 
 Optional YAML fragments to merge with `default-policy.yaml` (or your own base policy).
 
+**Production requirement:** set `unicode_strict: true` under `policy:` in every production policy file. This enables Unicode homoglyph normalization (TR39 confusables) on tool arguments. Do not set `unicode_strict: false` unless you have verified international text requirements with security review.
+
 | Template | Purpose | Enable |
 |----------|---------|--------|
 | [http-tools-policy.yaml](./http-tools-policy.yaml) | SSRF guards for outbound HTTP MCP tools | `MASTYF_AI_HTTP_TOOLS_POLICY=true` |

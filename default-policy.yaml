@@ -1,3 +1,4 @@
+# Production: keep unicode_strict: true for homoglyph bypass protection (do not set false).
 version: '1.0'
 policy:
   mode: block

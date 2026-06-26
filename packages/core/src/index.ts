@@ -22,7 +22,17 @@ export {
   resetLearnedRulesForTests,
   setLearnedRulesPathForTests,
   writeLearnedRulesFileForTests,
+  LearnedRulesSignatureError,
 } from "./learned-rules-store.js";
+export {
+  signLearnedRulesJson,
+  validateSignedLearnedRulesJson,
+  readLearnedRulesSignatureEnvelope,
+  learnedRulesSignaturePath,
+  hasLearnedRulesSigningKey,
+  isLearnedRulesSignatureRequired,
+  type LearnedRulesSignatureEnvelope,
+} from "./learned-rules-signature.js";
 export { validateLearnedRule, computeLearnedRuleFingerprint } from "./validate-learned-rule.js";
 export type { LearnedRuleDef, LearnedRuleTarget, LearnedRuleProvenance } from "./learned-rules-types.js";
 export type { ValidateLearnedRuleOptions, ValidateLearnedRuleResult } from "./validate-learned-rule.js";

@@ -15,6 +15,8 @@ import {
   loadInboundTlsFromEnv,
   readRequestBodyWithLimit,
   relayToUpstream,
+  assertUpstreamTlsAllowed,
+  isPlaintextUpstreamAllowed,
 } from './http-proxy-utils.js';
 
 interface TokenCounterLike { count(text: string): number; }
@@ -37,6 +39,15 @@ export function createHttpProxy(
   options: CreateHttpProxyOptions = {},
 ): http.Server | https.Server {
   const target = targetUrl.replace(/\/$/, '');
+  const upstreamTls = assertUpstreamTlsAllowed(target);
+  if (!upstreamTls.ok) {
+    throw new Error(upstreamTls.message);
+  }
+  if (isPlaintextUpstreamAllowed()) {
+    console.warn(
+      '[http-proxy] MASTYF_AI_ALLOW_PLAINTEXT_UPSTREAM=true — upstream tool traffic may use cleartext HTTP (dev only)',
+    );
+  }
   const maxBodyBytes = options.maxBodyBytes ?? getMaxBodyBytes();
   const upstreamTimeoutMs = options.upstreamTimeoutMs ?? getUpstreamTimeoutMs();
   const authValidator = options.authValidator ?? null;

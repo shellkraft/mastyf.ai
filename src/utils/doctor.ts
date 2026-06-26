@@ -1,7 +1,10 @@
 import { execSync } from 'node:child_process';
-import { existsSync, accessSync, constants, readdirSync } from 'fs';
-import { resolve, dirname, join } from 'path';
+import { existsSync, accessSync, constants, readdirSync, readFileSync } from 'fs';
+import { resolve, dirname, join, basename } from 'path';
+import { load } from 'js-yaml';
 import chalk from 'chalk';
+import { parsePolicyConfig, formatPolicyValidationErrors } from '../policy/policy-schema.js';
+import { validateSignedPolicyYaml, type PolicySignatureEnvelope } from '../policy/policy-signature.js';
 import { resolveMastyfAiDbPath } from './mastyf-ai-db-path.js';
 import { isAiLearningEnabled, isAiAutoApplyEnabled } from './ai-enabled.js';
 import { isFieldEncryptionEnabled } from './field-encryption.js';
@@ -13,6 +16,43 @@ import { pickMastyfAiConfig } from './pick-mastyf-ai-config.js';
 export interface DoctorOptions {
   policyPath?: string;
   configPath?: string;
+  validatePolicy?: boolean;
+}
+
+function validatePolicyAtPath(resolvedPolicy: string): number {
+  let issues = 0;
+  try {
+    const yaml = readFileSync(resolvedPolicy, 'utf-8');
+    parsePolicyConfig(load(yaml));
+    console.log(chalk.green('  Policy schema: valid'));
+  } catch (err: unknown) {
+    const details = formatPolicyValidationErrors(err);
+    console.log(chalk.red('  Policy schema: invalid'));
+    for (const d of details) {
+      console.log(chalk.dim(`    ${d.path}: ${d.message}`));
+    }
+    issues++;
+  }
+
+  const sigPath = join(dirname(resolvedPolicy), `.${basename(resolvedPolicy)}.sig.json`);
+  if (existsSync(sigPath)) {
+    try {
+      const yaml = readFileSync(resolvedPolicy, 'utf-8');
+      const envelope = JSON.parse(readFileSync(sigPath, 'utf-8')) as PolicySignatureEnvelope;
+      const result = validateSignedPolicyYaml(yaml, envelope);
+      if (result.ok) {
+        console.log(chalk.green('  Policy signature: valid'));
+      } else {
+        console.log(chalk.red(`  Policy signature: ${result.reason}`));
+        issues++;
+      }
+    } catch (err: unknown) {
+      console.log(chalk.red(`  Policy signature: ${err instanceof Error ? err.message : String(err)}`));
+      issues++;
+    }
+  }
+
+  return issues;
 }
 
 function checkPortInUse(port: number): boolean {
@@ -76,6 +116,9 @@ export function runDoctor(opts: DoctorOptions = {}): number {
     : resolve(installRoot, policyPath);
   if (existsSync(resolvedPolicy)) {
     console.log(chalk.green(`  Policy file: ${resolvedPolicy}`));
+    if (opts.validatePolicy !== false) {
+      issues += validatePolicyAtPath(resolvedPolicy);
+    }
   } else {
     console.log(chalk.red(`  Policy file missing: ${resolvedPolicy}`));
     issues++;
@@ -139,6 +182,28 @@ export function runDoctor(opts: DoctorOptions = {}): number {
     console.log(chalk.dim(`    Auto-apply rules: ${isAiAutoApplyEnabled() ? 'ON' : 'off'}`));
   } else {
     console.log(chalk.yellow('  AI learning: disabled (MASTYF_AI_AI_ENABLED=false)'));
+  }
+
+  if (picked || opts.configPath) {
+    const cfgPath = opts.configPath ? resolve(process.cwd(), opts.configPath) : picked!;
+    try {
+      const cfg = JSON.parse(readFileSync(cfgPath, 'utf-8')) as { mcpServers?: Record<string, { url?: string }> };
+      const strictTls = process.env.MASTYF_AI_STRICT_MODE === 'true';
+      for (const [name, srv] of Object.entries(cfg.mcpServers || {})) {
+        const url = srv?.url;
+        if (url?.startsWith('http://')) {
+          const line = `  MCP upstream ${name}: plaintext http:// (use https://)`;
+          if (strictTls) {
+            console.log(chalk.red(line));
+            issues++;
+          } else {
+            console.log(chalk.yellow(line));
+          }
+        }
+      }
+    } catch {
+      /* config parse handled above */
+    }
   }
 
   console.log(chalk.cyan('\n  Quick start:'));

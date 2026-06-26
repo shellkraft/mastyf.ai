@@ -5,12 +5,20 @@ import {
 } from "./local-semantic-rules.js";
 import { execPattern } from "./safe-pattern-match.js";
 import { extractHttpUrls, isSafeUrlHost } from "./url-allowlist.js";
-import { listLearnedRules, reloadLearnedRules as reloadLearnedRulesStore } from "./learned-rules-store.js";
+import {
+  listLearnedRules,
+  reloadLearnedRules as reloadLearnedRulesStore,
+  registerLocalSemanticCacheBust,
+} from "./learned-rules-store.js";
 import { reloadArgumentInjectionRules } from "./argument-prompt-injection.js";
 
 type CompiledLocalRule = LocalSemanticRuleDef & { re: RegExp; learned?: boolean };
 
 let compiledRules: CompiledLocalRule[] | null = null;
+
+registerLocalSemanticCacheBust(() => {
+  compiledRules = null;
+});
 
 function compileStaticLocalRules(): CompiledLocalRule[] {
   return LOCAL_SEMANTIC_RULES.map((rule) => ({

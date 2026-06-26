@@ -63,6 +63,12 @@ if [[ -n "${AUTH_GOOGLE_ID:-}" && -n "${AUTH_GOOGLE_SECRET:-}" ]]; then
   add_env AUTH_GOOGLE_SECRET "$AUTH_GOOGLE_SECRET"
 fi
 
+if [[ -n "${UPSTASH_REDIS_REST_URL:-}" && -n "${UPSTASH_REDIS_REST_TOKEN:-}" ]]; then
+  add_env UPSTASH_REDIS_REST_URL "$UPSTASH_REDIS_REST_URL"
+  add_env UPSTASH_REDIS_REST_TOKEN "$UPSTASH_REDIS_REST_TOKEN"
+  add_env MASTYF_AI_RATE_LIMIT_REQUIRED "true"
+fi
+
 echo "Deploying production from monorepo root (Vercel Root Directory = apps/cloud)..."
 cd "$ROOT"
 rm -rf .vercel

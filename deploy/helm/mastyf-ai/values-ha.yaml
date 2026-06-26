@@ -1,0 +1,34 @@
+# High-availability overlay for mastyf-ai Helm chart.
+# Usage: helm upgrade --install mastyf-ai ./deploy/helm/mastyf-ai -f values-ha.yaml
+
+replicaCount: 3
+
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 2
+
+database:
+  type: postgres
+  url: ""
+
+config:
+  env:
+    NODE_ENV: production
+    DASHBOARD_ENABLED: "true"
+    METRICS_ENABLED: "true"
+    MASTYF_AI_STRICT_MODE: "true"
+    MASTYF_AI_ENTERPRISE_MODE: "true"
+    DB_TYPE: postgres
+    POLICY_AUDIT_ENABLED: "true"
+    MASTYF_AI_SECRET_PROVIDER: env
+
+pgbouncer:
+  enabled: true
+  requireMastyfAiEnforcement: true
+  poolMaxPerReplica: 4
+
+redis:
+  enabled: true
+
+persistence:
+  enabled: false

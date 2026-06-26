@@ -334,6 +334,7 @@ docker run -v $(pwd)/mcp.json:/etc/mastyf-ai/config.json \
 | `MASTYF_AI_MAX_PAYLOAD_BYTES` | `10485760` (10 MB) | Max JSON-RPC payload size |
 | `MASTYF_AI_HTTP_MAX_BODY_BYTES` | `10485760` (10 MB) | Alias for HTTP proxy body cap |
 | `MASTYF_AI_UPSTREAM_TIMEOUT_MS` | `30000` | Upstream MCP HTTP relay timeout |
+| `MASTYF_AI_ALLOW_PLAINTEXT_UPSTREAM` | `false` | Dev-only: allow `http://` upstream tool servers (default TLS-only) |
 | `MASTYF_AI_TLS_CERT_PATH` | — | Inbound TLS cert for `createHttpProxy` listener |
 | `MASTYF_AI_TLS_KEY_PATH` | — | Inbound TLS key for `createHttpProxy` listener |
 | `MASTYF_AI_AUTH_ISSUER` | — | OIDC issuer for lightweight HTTP proxy OAuth bridge |

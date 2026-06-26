@@ -44,7 +44,14 @@ jobs:
           cosign sign --yes \
             ghcr.io/mastyf-ai/mastyf-ai:${{ github.ref_name }} \
             ghcr.io/mastyf-ai/mastyf-ai:latest
-      - uses: aquasecurity/trivy-action@master
+      - name: Generate release SBOM
+        run: pnpm dlx @cyclonedx/cyclonedx-npm --output-file sbom.cdx.json --omit dev
+      - name: Upload SBOM artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-release-sbom
+          path: sbom.cdx.json
+      - uses: aquasecurity/trivy-action@0.28.0
         with:
           image-ref: ghcr.io/mastyf-ai/mastyf-ai:${{ github.ref_name }}
           severity: CRITICAL,HIGH

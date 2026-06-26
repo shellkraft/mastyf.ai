@@ -18,6 +18,7 @@ concurrency:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    environment: production
     if: github.repository == 'mastyf-ai/mastyf.ai'
     steps:
       - uses: actions/checkout@v4
@@ -44,8 +45,8 @@ jobs:
           APP_URL: https://www.mastyf.ai
         run: |
           if [[ -z "$VERCEL_TOKEN" || -z "$DATABASE_URL" ]]; then
-            echo "Skipping deploy — VERCEL_TOKEN or CLOUD_DATABASE_URL secret not configured."
-            exit 0
+            echo "Missing VERCEL_TOKEN or DATABASE_URL on main — failing deploy"
+            exit 1
           fi
           chmod +x scripts/vercel-cloud-production.sh
           ./scripts/vercel-cloud-production.sh

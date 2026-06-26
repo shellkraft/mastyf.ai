@@ -1,5 +1,6 @@
 import {
   evaluateSessionFlowGuard,
+  evaluateLoopAnomalyGuard,
   recordSessionToolCall,
 } from '../session-flow-guard.js';
 import {
@@ -11,6 +12,11 @@ import type { PolicyStrategy } from './types.js';
 export const sessionFlowStrategy: PolicyStrategy = {
   name: 'session-flow',
   evaluate({ normalized }, deps) {
+    const loop = evaluateLoopAnomalyGuard(normalized);
+    if (loop) {
+      recordSessionToolCall(normalized);
+      return { ...loop, action: deps.resolveAction(loop.action) };
+    }
     const chainDetect = evaluateSessionChainGuard(normalized);
     if (chainDetect) {
       recordSessionToolCall(normalized);

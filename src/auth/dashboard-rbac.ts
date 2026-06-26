@@ -186,7 +186,11 @@ export function canAccessRoute(
 export function resolveRolesFromSessionPayload(payload: {
   roles?: string[];
   role?: string;
+  [key: string]: unknown;
 }): DashboardRole[] {
+  const ssoRoles = resolveSsoRolesFromClaims(payload);
+  if (ssoRoles.length > 0) return ssoRoles;
+
   const out: DashboardRole[] = [];
   if (payload.role) {
     const one = normalizeDashboardRole(payload.role);
@@ -202,6 +206,30 @@ export function resolveRolesFromSessionPayload(payload: {
 }
 
 export function resolveRolesForApiKey(apiKey: string, mapping?: Map<string, DashboardRole>): DashboardRole[] {
+  const jsonKeys = process.env['DASHBOARD_API_KEYS_JSON'];
+  if (jsonKeys?.trim()) {
+    try {
+      const obj = JSON.parse(jsonKeys) as Record<string, string>;
+      for (const [compound] of Object.entries(obj)) {
+        const parts = compound.split(':');
+        if (parts.length >= 3) {
+          const rolePart = parts[1];
+          const secret = parts.slice(2).join(':');
+          if (secret === apiKey) {
+            const role = normalizeDashboardRole(rolePart || 'viewer');
+            if (role) return [role];
+          }
+        }
+        if (compound === apiKey) {
+          const role = normalizeDashboardRole(obj[compound] || 'viewer');
+          if (role) return [role];
+        }
+      }
+    } catch {
+      /* fall through */
+    }
+  }
+
   const map = mapping ?? parseDashboardRolesEnv();
   if (map.has(apiKey)) return [map.get(apiKey)!];
   for (const [prefix, role] of map) {
@@ -209,6 +237,36 @@ export function resolveRolesForApiKey(apiKey: string, mapping?: Map<string, Dash
   }
   const defaultRole = normalizeDashboardRole(process.env['MASTYF_AI_DASHBOARD_DEFAULT_ROLE'] || 'viewer');
   return defaultRole ? [defaultRole] : ['viewer'];
+}
+
+/** Map IdP group claim to dashboard roles via MASTYF_AI_DASHBOARD_SSO_ROLE_MAP JSON. */
+export function resolveSsoRolesFromClaims(claims: Record<string, unknown>): DashboardRole[] {
+  const claimName = process.env['MASTYF_AI_DASHBOARD_SSO_ROLE_CLAIM'] || 'groups';
+  const rawMap = process.env['MASTYF_AI_DASHBOARD_SSO_ROLE_MAP'];
+  if (!rawMap?.trim()) return [];
+
+  let groupMap: Record<string, string>;
+  try {
+    groupMap = JSON.parse(rawMap) as Record<string, string>;
+  } catch {
+    return [];
+  }
+
+  const rawGroups = claims[claimName];
+  const groups: string[] = Array.isArray(rawGroups)
+    ? rawGroups.map(String)
+    : typeof rawGroups === 'string'
+      ? [rawGroups]
+      : [];
+
+  const out: DashboardRole[] = [];
+  for (const g of groups) {
+    const mapped = groupMap[g];
+    if (!mapped) continue;
+    const role = normalizeDashboardRole(mapped);
+    if (role && !out.includes(role)) out.push(role);
+  }
+  return out;
 }
 
 /** tenant-admin may only act within session tenant. */

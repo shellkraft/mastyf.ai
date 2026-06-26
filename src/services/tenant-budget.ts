@@ -1,10 +1,12 @@
 /**
- * Per-tenant daily budget — hot-path spend tracking for semantic/LLM gates.
+ * Per-tenant daily budget — atomic pre-call reservation (Redis) + in-process debit.
  */
 import { getDailyBudgetCapUsd } from './cost-auditor.js';
 import { Logger } from '../utils/logger.js';
+import { isRedisConfigured, getSharedRedisClient } from '../utils/redis-client.js';
 
 const spendByTenantDay = new Map<string, number>();
+const REDIS_PREFIX = 'mastyf_ai:tenant_budget:';
 
 function utcDayKey(): string {
   return new Date().toISOString().slice(0, 10);
@@ -12,6 +14,16 @@ function utcDayKey(): string {
 
 function cacheKey(tenantId: string): string {
   return `${utcDayKey()}:${tenantId}`;
+}
+
+function redisKey(tenantId: string): string {
+  return `${REDIS_PREFIX}${cacheKey(tenantId)}`;
+}
+
+function ttlSecondsUntilUtcMidnight(): number {
+  const now = new Date();
+  const tomorrow = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1));
+  return Math.max(60, Math.ceil((tomorrow.getTime() - now.getTime()) / 1000));
 }
 
 /** Record USD spend after a persisted call (proxy hot path). */
@@ -27,7 +39,7 @@ export function getEstimatedSemanticCostUsd(): number {
   return Number.isFinite(v) && v > 0 ? v : 0.003;
 }
 
-/** Synchronous budget check before enqueueing LLM semantic work. */
+/** Legacy projected check (non-atomic). Prefer tryReserveTenantDailyBudget. */
 export function isTenantDailyBudgetExceeded(
   tenantId?: string,
   additionalUsd = 0,
@@ -46,6 +58,61 @@ export function isTenantDailyBudgetExceeded(
     return { exceeded: true, spentUsd, capUsd };
   }
   return { exceeded: false, spentUsd, capUsd };
+}
+
+/**
+ * Atomically reserve daily budget before forwarding LLM / tool work.
+ * Returns false when cap would be exceeded (TOCTOU-safe with Redis when configured).
+ */
+export async function tryReserveTenantDailyBudget(
+  tenantId: string | undefined,
+  costUsd: number,
+): Promise<boolean> {
+  if (!costUsd || costUsd <= 0) return true;
+  const tid = tenantId?.trim() || 'default';
+  const capUsd = getDailyBudgetCapUsd(tid);
+  if (capUsd <= 0) return true;
+
+  const microUsd = Math.ceil(costUsd * 1_000_000);
+  const capMicroUsd = Math.ceil(capUsd * 1_000_000);
+
+  if (isRedisConfigured()) {
+    try {
+      const redis = getSharedRedisClient();
+      const key = redisKey(tid);
+      const script = `
+local current = tonumber(redis.call('GET', KEYS[1]) or '0')
+local cap = tonumber(ARGV[1])
+local delta = tonumber(ARGV[2])
+if current + delta > cap then
+  return 0
+end
+redis.call('INCRBY', KEYS[1], delta)
+redis.call('EXPIRE', KEYS[1], ARGV[3])
+return 1`;
+      const ok = await redis.eval(script, 1, key, capMicroUsd, microUsd, ttlSecondsUntilUtcMidnight());
+      if (ok === 1) {
+        spendByTenantDay.set(cacheKey(tid), (spendByTenantDay.get(cacheKey(tid)) ?? 0) + costUsd);
+        return true;
+      }
+      Logger.warn(`[tenant-budget] Redis reserve denied for tenant ${tid}`);
+      return false;
+    } catch (err: unknown) {
+      if (process.env['MASTYF_AI_STRICT_MODE'] === 'true') {
+        Logger.error(`[tenant-budget] Redis reserve failed in strict mode: ${err instanceof Error ? err.message : String(err)}`);
+        return false;
+      }
+    }
+  }
+
+  const key = cacheKey(tid);
+  const spentUsd = spendByTenantDay.get(key) ?? 0;
+  if (spentUsd + costUsd >= capUsd) {
+    Logger.warn(`[tenant-budget] Tenant ${tid} daily cap exceeded on reserve`);
+    return false;
+  }
+  spendByTenantDay.set(key, spentUsd + costUsd);
+  return true;
 }
 
 /** @internal tests */

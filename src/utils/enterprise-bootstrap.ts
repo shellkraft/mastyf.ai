@@ -34,6 +34,7 @@ let mtlsWatcher: MtlsCertWatcher | null = null;
 const SECRET_KEYS = [
   'NVD_API_KEY',
   'ANTHROPIC_API_KEY',
+  'OPENAI_API_KEY',
   'DASHBOARD_API_KEY',
   'DASHBOARD_JWT_SECRET',
   'MCP_AUTH_JWT_SECRET',
@@ -60,6 +61,9 @@ export async function bootstrapSecrets(): Promise<void> {
       Logger.debug(`[bootstrap] Loaded secret ${key} from ${provider.name}`);
     }
   }
+
+  const { startLlmSecretRefreshTimer } = await import('../config/llm-config.js');
+  startLlmSecretRefreshTimer();
 }
 
 export async function bootstrapCompliance(db: IDatabase): Promise<void> {
@@ -147,7 +151,7 @@ export function runEnterpriseSecurityPreflight(): void {
 
   if (process.env.MASTYF_AI_ENTERPRISE_MODE === 'true') {
     if (!isManagedSecretProviderConfigured()) {
-      const msg = '[bootstrap] MASTYF_AI_ENTERPRISE_MODE=true requires managed secrets provider (set MASTYF_AI_SECRET_PROVIDER=hashicorp-vault|aws-secrets-manager)';
+      const msg = '[bootstrap] MASTYF_AI_ENTERPRISE_MODE=true requires managed secrets provider (set MASTYF_AI_SECRET_PROVIDER=hashicorp-vault|aws-secrets-manager|gcp-secret-manager)';
       if (process.env.MASTYF_AI_ALLOW_ENV_SECRETS_IN_ENTERPRISE === 'true') {
         Logger.warn(`${msg} (temporary override via MASTYF_AI_ALLOW_ENV_SECRETS_IN_ENTERPRISE=true)`);
       } else {
@@ -185,6 +189,57 @@ export function runEnterpriseSecurityPreflight(): void {
       '[bootstrap] MASTYF_AI_SEMANTIC_SYNC_RESPONSE=false in production — tool responses bypass sync semantic gate',
     );
   }
+
+  assertSQLiteMultiReplicaSafety();
+  assertStrictUpstreamTlsPosture();
+  assertMultiTenantGatewayAuth();
+  assertEnterpriseRateLimitRedis();
+}
+
+function assertStrictUpstreamTlsPosture(): void {
+  if (process.env['MASTYF_AI_STRICT_MODE'] !== 'true') return;
+  if (process.env['MASTYF_AI_ALLOW_PLAINTEXT_UPSTREAM'] === 'true') {
+    throw new Error(
+      '[bootstrap] MASTYF_AI_STRICT_MODE=true ignores MASTYF_AI_ALLOW_PLAINTEXT_UPSTREAM — use https:// upstreams only',
+    );
+  }
+}
+
+function assertMultiTenantGatewayAuth(): void {
+  if (process.env['MASTYF_AI_MULTI_TENANT_ENABLED'] !== 'true') return;
+  if (process.env['MASTYF_AI_GATEWAY_MODE'] !== 'true') return;
+  if (process.env['MASTYF_AI_AUTH_REQUIRED'] !== 'true') {
+    throw new Error(
+      '[bootstrap] Multi-tenant gateway requires MASTYF_AI_AUTH_REQUIRED=true on all ingress paths',
+    );
+  }
+}
+
+function assertEnterpriseRateLimitRedis(): void {
+  if (process.env['MASTYF_AI_GLOBAL_RATE_LIMIT_REQUIRED'] !== 'true') return;
+  if (isRedisConfigured()) return;
+  throw new Error(
+    '[bootstrap] MASTYF_AI_GLOBAL_RATE_LIMIT_REQUIRED=true but REDIS_URL/Sentinel/Cluster is unset',
+  );
+}
+
+function assertSQLiteMultiReplicaSafety(): void {
+  const dbType = (process.env['DB_TYPE'] || 'sqlite').toLowerCase();
+  if (dbType !== 'sqlite') return;
+  if (!isMultiReplicaDeployment()) return;
+
+  const msg =
+    '[bootstrap] SQLite history DB is unsafe with multiple replicas (lock contention/corruption). '
+    + 'Use DB_TYPE=postgres, per-instance MASTYF_AI_DB_PATH, or MASTYF_AI_AUDIT_SYNC_ENABLED=true with DATABASE_URL. '
+    + 'See deploy/DEPLOYMENT.md';
+
+  if (
+    process.env.MASTYF_AI_STRICT_MODE === 'true'
+    || process.env.MASTYF_AI_ENTERPRISE_MODE === 'true'
+  ) {
+    throw new Error(msg);
+  }
+  Logger.warn(msg);
 }
 
 export async function bootstrapControlPlane(
@@ -260,6 +315,22 @@ export async function shutdownEnterprise(): Promise<void> {
 export async function exportSiemEvent(type: string, payload: Record<string, unknown>): Promise<void> {
   const { appendSiemChainedEvent } = await import('./audit-hash-chain.js');
   appendSiemChainedEvent(type, payload);
+  if (type === 'policy_decision' || type === 'tool_blocked') {
+    const { exportPolicyDecision } = await import('../exporters/siem-exporter.js');
+    const decision = payload['decision'] as { action?: string; rule?: string; reason?: string } | undefined;
+    const context = payload['context'] as { tenantId?: string; agentIdentity?: string } | undefined;
+    exportPolicyDecision({
+      timestamp: new Date().toISOString(),
+      action: decision?.action ?? (type === 'tool_blocked' ? 'block' : 'pass'),
+      rule: decision?.rule ?? String(payload['rule'] ?? 'unknown'),
+      reason: decision?.reason ?? String(payload['reason'] ?? ''),
+      serverName: String(payload['serverName'] ?? ''),
+      toolName: String(payload['toolName'] ?? ''),
+      tenantId: context?.tenantId ?? String(payload['tenantId'] ?? 'default'),
+      requestId: String(payload['requestId'] ?? ''),
+      agentIdentity: context?.agentIdentity,
+    });
+  }
   if (!exporterManager) return;
   await exporterManager.export({
     type,

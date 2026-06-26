@@ -33,6 +33,8 @@ export interface FlowEvent {
   at: number;
   /** Redacted tool arguments for chain classification and intent graph replay. */
   argumentsSnapshot?: Record<string, unknown>;
+  /** Normalized argument fingerprint for loop / perturbation detection. */
+  argFingerprint?: string;
 }
 
 const memoryStore = new LRUCache<string, FlowEvent[]>({

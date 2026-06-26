@@ -3,7 +3,9 @@
  */
 import { mkdirSync, writeFileSync } from 'fs';
 import { dirname, join } from 'path';
+import { load } from 'js-yaml';
 import type { PolicyWatcher } from '../policy/policy-watcher.js';
+import { parsePolicyConfig, formatPolicyValidationErrors } from '../policy/policy-schema.js';
 import { Logger } from '../utils/logger.js';
 
 let pollTimer: ReturnType<typeof setInterval> | null = null;
@@ -56,6 +58,15 @@ export async function fetchAndApplyCloudPolicy(
 
   const yaml = await res.text();
   if (!yaml.trim()) return { applied: false, version: lastVersion };
+
+  try {
+    parsePolicyConfig(load(yaml));
+  } catch (err: unknown) {
+    const details = formatPolicyValidationErrors(err);
+    throw new Error(
+      `Cloud policy failed schema validation: ${details.map((d) => `${d.path}: ${d.message}`).join('; ')}`,
+    );
+  }
 
   const path = tenantPolicyPath(tenantSlug);
   mkdirSync(dirname(path), { recursive: true });

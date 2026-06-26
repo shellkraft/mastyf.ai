@@ -1,0 +1,3 @@
+{{- if and (gt (int .Values.replicaCount) 1) (eq .Values.database.type "sqlite") }}
+{{- fail (printf "replicaCount=%v with database.type=sqlite is unsafe (SQLite lock contention/corruption). Set database.type=postgres or use values-ha.yaml." .Values.replicaCount) }}
+{{- end }}

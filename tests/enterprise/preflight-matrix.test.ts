@@ -26,4 +26,14 @@ describe('enterprise validation matrix', () => {
     vi.stubEnv('MASTYF_AI_HEALTH_PROBE_INTERVAL_MS', '0');
     expect(() => runEnterpriseSecurityPreflight()).not.toThrow();
   });
+
+  it('fails preflight when strict multi-replica uses SQLite', () => {
+    vi.stubEnv('MASTYF_AI_ENTERPRISE_MODE', 'false');
+    vi.stubEnv('MASTYF_AI_STRICT_MODE', 'true');
+    vi.stubEnv('MASTYF_AI_REPLICA_COUNT', '2');
+    vi.stubEnv('DB_TYPE', 'sqlite');
+    vi.stubEnv('MASTYF_AI_CI_BYPASS_LICENSE', '');
+    vi.stubEnv('MASTYF_AI_DEV_UNLOCK_ALL', '');
+    expect(() => runEnterpriseSecurityPreflight()).toThrow(/SQLite history DB is unsafe/);
+  });
 });

@@ -291,6 +291,19 @@ export async function startMetricsServer(port: number = 9090): Promise<Registry>
   try {
     const server = createServer(async (req, res) => {
       const url = req.url || '/metrics';
+      const metricsToken = process.env['METRICS_BEARER_TOKEN']?.trim()
+        || process.env['MASTYF_AI_METRICS_BEARER_TOKEN']?.trim();
+
+      if (url === '/metrics' && metricsToken) {
+        const auth = req.headers.authorization || '';
+        const expected = `Bearer ${metricsToken}`;
+        if (auth !== expected) {
+          res.writeHead(401, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Unauthorized' }));
+          return;
+        }
+      }
+
       if (url === '/healthz') {
         const { getSemanticRequestGateStatus } = await import('../ai/sync-semantic-request.js');
         res.writeHead(200, { 'Content-Type': 'application/json' });

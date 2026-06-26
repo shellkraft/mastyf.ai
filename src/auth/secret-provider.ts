@@ -126,8 +126,47 @@ export class AwsSecretsManagerProvider implements SecretProvider {
 }
 
 /**
+ * GCP Secret Manager provider.
+ * Requires: GCP_PROJECT_ID or GOOGLE_CLOUD_PROJECT, plus Application Default Credentials or GOOGLE_APPLICATION_CREDENTIALS.
+ * SecretId is the env key name (e.g. ANTHROPIC_API_KEY).
+ */
+export class GcpSecretManagerProvider implements SecretProvider {
+  readonly name = 'gcp-secret-manager';
+  private projectId: string;
+
+  constructor(options?: { projectId?: string }) {
+    this.projectId =
+      options?.projectId
+      || process.env['GCP_PROJECT_ID']
+      || process.env['GOOGLE_CLOUD_PROJECT']
+      || '';
+  }
+
+  async get(key: string): Promise<string | undefined> {
+    if (!this.projectId) return undefined;
+    try {
+      // @ts-expect-error - @google-cloud/secret-manager is an optional peer dependency
+      const { SecretManagerServiceClient } = await import('@google-cloud/secret-manager');
+      const client = new SecretManagerServiceClient();
+      const name = `projects/${this.projectId}/secrets/${encodeURIComponent(key)}/versions/latest`;
+      const [version] = await client.accessSecretVersion({ name });
+      const data = version.payload?.data;
+      if (typeof data === 'string') return data;
+      if (data instanceof Uint8Array) return Buffer.from(data).toString('utf8');
+      return undefined;
+    } catch {
+      return undefined;
+    }
+  }
+
+  async healthCheck(): Promise<boolean> {
+    return Boolean(this.projectId);
+  }
+}
+
+/**
  * Factory: creates the appropriate secret provider based on MASTYF_AI_SECRET_PROVIDER env var.
- * Accepted values: 'env' (default), 'hashicorp-vault', 'aws-secrets-manager'
+ * Accepted values: 'env' (default), 'hashicorp-vault', 'aws-secrets-manager', 'gcp-secret-manager'
  */
 export function createSecretProvider(): SecretProvider {
   const providerType = process.env['MASTYF_AI_SECRET_PROVIDER'] || 'env';
@@ -137,6 +176,8 @@ export function createSecretProvider(): SecretProvider {
       return new HashiCorpVaultProvider();
     case 'aws-secrets-manager':
       return new AwsSecretsManagerProvider();
+    case 'gcp-secret-manager':
+      return new GcpSecretManagerProvider();
     case 'env':
     default:
       return new EnvSecretProvider();

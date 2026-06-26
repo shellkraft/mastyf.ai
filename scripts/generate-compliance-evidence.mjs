@@ -201,6 +201,26 @@ async function collectEvidence() {
     hostname: process.env['HOSTNAME'] || 'unknown',
   };
 
+  // ── EU AI Act (limited risk transparency) ─────────────────────────
+  evidence.euAiAct = {
+    classification: 'limited_risk',
+    documentation: existsSync(join(REPO_ROOT, 'docs', 'compliance', 'EU_AI_ACT.md')),
+    semanticLlmEnabled:
+      process.env['MASTYF_AI_LOCAL_SEMANTIC'] === 'true'
+      || process.env['OLLAMA_ENABLED'] === 'true',
+    transparencyNoticeHeader: 'X-Mastyf-Ai-Ai-Notice',
+    humanOversight: {
+      threatLabApproval: true,
+      policyFourEyes: true,
+      autopilotShadowMode: process.env['MASTYF_AI_AI_AUTO_APPLY'] !== 'true',
+    },
+  };
+  evidence.controls.push({
+    controlId: 'EU-AI-13',
+    controlName: 'EU AI Act Art. 13 Transparency',
+    evidence: evidence.euAiAct,
+  });
+
   return evidence;
 }
 

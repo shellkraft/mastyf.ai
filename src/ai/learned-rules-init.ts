@@ -15,7 +15,13 @@ export function bootstrapLearnedRules(): void {
     return;
   }
 
-  reloadLearnedRules();
+  try {
+    reloadLearnedRules();
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    Logger.error(`[bootstrap] Learned rules overlay failed to load: ${msg}`);
+    throw err;
+  }
   stopReload = startLearnedRulesReloadTimer();
   const stats = getLearnedRulesStats();
   Logger.info(

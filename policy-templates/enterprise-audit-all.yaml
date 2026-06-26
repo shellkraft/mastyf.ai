@@ -1,0 +1,18 @@
+# Enterprise audit — log every tool call for SIEM / compliance evidence
+#
+# Merge with base policy:
+#   mastyf-ai proxy --policy default-policy.yaml --policy policy-templates/enterprise-audit-all.yaml
+#
+# Requires POLICY_AUDIT_ENABLED=true (default in values-enterprise.yaml).
+# Pair with MASTYF_AI_AUDIT_HASH_CHAIN=true and MASTYF_AI_SIEM_* exporter env.
+
+version: '1.0'
+policy:
+  mode: block
+  audit:
+    mode: log_all
+  rules:
+    - name: enterprise-audit-all-tools
+      description: Audit log every tool invocation (pass/flag/block) for SIEM ingestion
+      action: pass
+      audit: true

@@ -3,4 +3,5 @@ policy:
   mode: block
   default_action: pass
   default_sandbox_tier: shadow
+  unicode_strict: true
   rules: []

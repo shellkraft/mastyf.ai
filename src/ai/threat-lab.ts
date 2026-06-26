@@ -9,6 +9,7 @@ import { load } from 'js-yaml';
 import { LlmAssistant } from './llm-assistant.js';
 import { isDangerousUnblockPattern } from './learning-quorum.js';
 import { PolicyEngine } from '../policy/policy-engine.js';
+import { parsePolicyConfig } from '../policy/policy-schema.js';
 import { resetSessionFlowHistory } from '../policy/session-flow-store.js';
 import type { PolicyConfig, PolicyRule, CallContext } from '../policy/policy-types.js';
 import type { StoredSemanticAudit } from './semantic-audit-store.js';
@@ -101,7 +102,7 @@ export function corpusReplayPolicyPath(): string {
 function loadPolicyEngineFromPath(path: string): PolicyEngine | null {
   if (!existsSync(path)) return null;
   try {
-    const policy = load(readFileSync(path, 'utf-8')) as PolicyConfig;
+    const policy = parsePolicyConfig(load(readFileSync(path, 'utf-8')));
     return new PolicyEngine(policy);
   } catch {
     return null;

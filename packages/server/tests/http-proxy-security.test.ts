@@ -1,9 +1,10 @@
-import { describe, it, expect, afterEach } from 'vitest';
+import { describe, it, expect, afterEach, beforeEach } from 'vitest';
 import http from 'http';
 import { URL } from 'url';
 import {
   resolveUpstreamPort,
   getMaxBodyBytes,
+  assertUpstreamTlsAllowed,
 } from '../src/http-proxy-utils.js';
 import { createHttpProxy } from '../src/http-proxy.js';
 import type { HttpProxyAuthValidator } from '../src/http-proxy-auth.js';
@@ -26,13 +27,26 @@ describe('createHttpProxy security', () => {
   let upstream: http.Server | null = null;
   let proxy: http.Server | null = null;
 
+  beforeEach(() => {
+    process.env.MASTYF_AI_ALLOW_PLAINTEXT_UPSTREAM = 'true';
+  });
+
   afterEach(async () => {
-    await new Promise<void>((r) => proxy?.close(() => r()));
-    await new Promise<void>((r) => upstream?.close(() => r()));
+    if (proxy && 'closeAllConnections' in proxy) {
+      (proxy as http.Server).closeAllConnections();
+    }
+    if (upstream && 'closeAllConnections' in upstream) {
+      upstream.closeAllConnections();
+    }
+    await Promise.all([
+      new Promise<void>((r) => (proxy ? proxy.close(() => r()) : r())),
+      new Promise<void>((r) => (upstream ? upstream.close(() => r()) : r())),
+    ]);
     proxy = null;
     upstream = null;
     delete process.env.MASTYF_AI_MAX_PAYLOAD_BYTES;
     delete process.env.MASTYF_AI_UPSTREAM_TIMEOUT_MS;
+    delete process.env.MASTYF_AI_ALLOW_PLAINTEXT_UPSTREAM;
   });
 
   const noopDb = { addCallRecord: async () => {} };
@@ -170,6 +184,19 @@ describe('createHttpProxy security', () => {
 
     const res = await fetch(`http://127.0.0.1:${proxyPort}/slow`, { method: 'GET' });
     expect(res.status).toBe(504);
+  });
+
+  it('blocks http upstream by default', () => {
+    delete process.env.MASTYF_AI_ALLOW_PLAINTEXT_UPSTREAM;
+    expect(assertUpstreamTlsAllowed('http://127.0.0.1:8080').ok).toBe(false);
+    expect(() =>
+      createHttpProxy('http://127.0.0.1:8080', null, noopDb, noopTokens),
+    ).toThrow(/Plaintext HTTP upstream is disabled/);
+  });
+
+  it('allows http upstream when dev flag is set', () => {
+    process.env.MASTYF_AI_ALLOW_PLAINTEXT_UPSTREAM = 'true';
+    expect(assertUpstreamTlsAllowed('http://127.0.0.1:8080').ok).toBe(true);
   });
 });
 

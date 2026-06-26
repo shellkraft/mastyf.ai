@@ -11,8 +11,10 @@ import {
   resetSessionFlowStore,
 } from './session-flow-store.js';
 import { snapshotAuditArguments } from '../utils/audit-args-snapshot.js';
+import { fingerprintArguments } from './loop-anomaly-detector.js';
 
 export { recordSensitiveResponseAccess, resetSessionFlowStore as resetSessionFlowHistory };
+export { evaluateLoopAnomalyGuard } from './loop-anomaly-detector.js';
 
 const SENSITIVE_READ_TOOLS = new Set([
   'read_file',
@@ -102,6 +104,7 @@ export function recordSessionToolCall(ctx: CallContext): void {
     dataAccess,
     at: Date.now(),
     argumentsSnapshot: snapshotAuditArguments(ctx.arguments),
+    argFingerprint: fingerprintArguments(ctx.arguments),
   });
 }
 

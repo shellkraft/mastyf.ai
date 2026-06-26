@@ -1,0 +1,52 @@
+{{- if .Values.pgbouncer.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "mastyf-ai.fullname" . }}-pgbouncer
+  labels:
+    {{- include "mastyf-ai.labels" . | nindent 4 }}
+    app.kubernetes.io/component: pgbouncer
+spec:
+  replicas: {{ .Values.pgbouncer.replicas | default 2 }}
+  selector:
+    matchLabels:
+      {{- include "mastyf-ai.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: pgbouncer
+  template:
+    metadata:
+      labels:
+        {{- include "mastyf-ai.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: pgbouncer
+    spec:
+      containers:
+        - name: pgbouncer
+          image: {{ .Values.pgbouncer.image | default "edoburu/pgbouncer:1.22.1" }}
+          ports:
+            - name: pgbouncer
+              containerPort: {{ .Values.pgbouncer.port | default 6432 }}
+          volumeMounts:
+            - name: config
+              mountPath: /etc/pgbouncer
+              readOnly: true
+          resources:
+            {{- toYaml (.Values.pgbouncer.resources | default dict) | nindent 12 }}
+      volumes:
+        - name: config
+          configMap:
+            name: {{ include "mastyf-ai.fullname" . }}-pgbouncer
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "mastyf-ai.fullname" . }}-pgbouncer
+  labels:
+    {{- include "mastyf-ai.labels" . | nindent 4 }}
+spec:
+  selector:
+    {{- include "mastyf-ai.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: pgbouncer
+  ports:
+    - name: pgbouncer
+      port: {{ .Values.pgbouncer.port | default 6432 }}
+      targetPort: pgbouncer
+{{- end }}

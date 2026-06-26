@@ -3,7 +3,7 @@
 #     -f deploy/helm/mastyf-ai/values.yaml \
 #     -f deploy/helm/mastyf-ai/values-enterprise.yaml
 #
-# See docs/ENTERPRISE_DEPLOY.md and README Production Checklist.
+# See docs/ENTERPRISE_DEPLOYMENT.md and README Production Checklist.
 
 replicaCount: 3
 
@@ -31,6 +31,8 @@ config:
     MASTYF_AI_STRICT_MODE: "true"
     MASTYF_AI_REQUIRE_PGBOUNCER: "true"
     MASTYF_AI_MULTI_TENANT_ENABLED: "true"
+    MASTYF_AI_TENANT_API_ENABLED: "true"
+    MASTYF_AI_AUTH_REQUIRED: "true"
     MASTYF_AI_AI_AUTO_APPLY: "false"
     POLICY_AUDIT_ENABLED: "true"
     MASTYF_AI_ENCODING_GUARD: "true"
@@ -47,6 +49,12 @@ config:
     MASTYF_AI_AUDIT_HASH_CHAIN: "true"
     MASTYF_AI_AUDIT_HASH_CHAIN_SIEM: "true"
     MASTYF_AI_AUDIT_SYNC_ENABLED: "true"
+    MASTYF_AI_SIEM_SPLUNK_ENABLED: "true"
+    MASTYF_AI_ENTERPRISE_MODE: "true"
+    MASTYF_AI_GLOBAL_RATE_LIMIT_REQUIRED: "true"
+    MASTYF_AI_TELEMETRY_ENDPOINTS: "http://$(POD_IP):9090/metrics"
+    MASTYF_AI_REQUIRE_INBOUND_TLS: "true"
+    OTEL_SERVICE_NAME: mastyf-ai
     MASTYF_AI_DASHBOARD_DATA_SOURCE: "auto"
     MASTYF_AI_DPOP_LOCK_FREE: "true"
     OLLAMA_ENABLED: "true"
@@ -91,7 +99,7 @@ gateway:
     enabled: true
     host: mastyf-ai.example.com
     tls: true
-    tlsSecret: ""
+    tlsSecret: mastyf-ai-tls
     annotations: {}
 
 # Optional MCP Mastyf AI Cloud control plane (policy sync / SSO — no license paywall)
@@ -104,18 +112,30 @@ monitoring:
   serviceMonitor:
     enabled: true
     interval: 30s
+  prometheusRule:
+    enabled: true
+  grafanaDashboard:
+    enabled: true
+  alertmanager:
+    enabled: true
+  otel:
+    enabled: true
+    endpoint: http://otel-collector.observability:4318
 
 networkPolicy:
   enabled: true
 
 mtls:
-  enabled: false
+  enabled: true
   # Set existingSecret when upstream MCP requires client certs
+  existingSecret: mastyf-ai-mtls
 
 backup:
   enabled: true
   schedule: "0 2 * * *"
   retentionDays: 7
+  storageSize: 20Gi
+  s3Bucket: ""
   postgresImage: postgres:16-alpine
   postgresHost: postgres
   postgresPort: 5432
@@ -130,3 +150,22 @@ resources:
   limits:
     cpu: 2000m
     memory: 2Gi
+
+autoscaling:
+  enabled: true
+  minReplicas: 3
+  maxReplicas: 20
+  targetCPUUtilizationPercentage: 65
+  customMetric:
+    enabled: true
+    averageRequestsPerSecond: "100"
+
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: mastyf-ai
+          topologyKey: kubernetes.io/hostname

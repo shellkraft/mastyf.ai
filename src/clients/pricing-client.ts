@@ -1,5 +1,7 @@
 import { execSync } from 'child_process';
 import { Logger } from '../utils/logger.js';
+import { fetchSignedRemotePricing } from './pricing-remote.js';
+import { detectZeroPricingAlert } from './pricing-signature.js';
 
 // Last reviewed date for STATIC_PRICING — update when pricing table is refreshed
 export const PRICING_TABLE_DATE = '2025-03-01';
@@ -97,11 +99,33 @@ export class PricingClient {
   }
 
   addPricing(model: string, inputPerMillion: number, outputPerMillion: number): void {
+    if (inputPerMillion <= 0 && outputPerMillion <= 0) {
+      Logger.error(`[pricing] Rejected zero-price override for model ${model}`);
+      return;
+    }
     this.customPricing.set(model, { input: inputPerMillion, output: outputPerMillion });
   }
 
-  /** Best-effort live refresh via litellm; no-op when Python/litellm unavailable */
+  /** Best-effort live refresh via signed remote URL or litellm; static table always available */
   async refreshLivePricing(): Promise<void> {
+    const remoteUrl = process.env['MASTYF_AI_PRICING_URL']?.trim();
+    if (remoteUrl) {
+      try {
+        const models = await fetchSignedRemotePricing(remoteUrl);
+        if (models) {
+          for (const [model, rates] of Object.entries(models)) {
+            this.customPricing.set(model, rates);
+          }
+          this.liveModels = Object.keys(models);
+          return;
+        }
+      } catch (err: unknown) {
+        Logger.warn(
+          `[pricing] Signed remote pricing unavailable — using static fallback: ${err instanceof Error ? err.message : String(err)}`,
+        );
+      }
+    }
+
     const models = this.getAvailableModels();
     const fetched: string[] = [];
     for (const model of models.slice(0, 5)) {
@@ -182,6 +206,11 @@ except Exception as e:
 
       const data = JSON.parse(result);
       if (data?.input !== undefined && data?.output !== undefined) {
+        const zero = detectZeroPricingAlert({ [model]: { input: data.input, output: data.output } });
+        if (zero.length > 0) {
+          Logger.error(`[pricing] litellm returned zero price for ${model} — ignored`);
+          return null;
+        }
         return { input: data.input, output: data.output };
       }
     } catch (err) {

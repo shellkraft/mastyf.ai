@@ -1,0 +1,224 @@
+{
+  "$ref": "#/definitions/MastyfAiPolicy",
+  "definitions": {
+    "MastyfAiPolicy": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "policy": {
+          "type": "object",
+          "properties": {
+            "mode": {
+              "type": "string",
+              "enum": [
+                "audit",
+                "warn",
+                "block"
+              ]
+            },
+            "default_action": {
+              "type": "string",
+              "enum": [
+                "pass",
+                "block",
+                "flag"
+              ]
+            },
+            "semantic_shell": {
+              "type": "boolean"
+            },
+            "unicode_strict": {
+              "type": "boolean"
+            },
+            "opa": {
+              "type": "boolean"
+            },
+            "require_certification": {
+              "type": "string",
+              "enum": [
+                "bronze",
+                "silver",
+                "gold",
+                "platinum"
+              ]
+            },
+            "default_sandbox_tier": {
+              "type": "string",
+              "enum": [
+                "shadow",
+                "redact",
+                "allow"
+              ]
+            },
+            "rules": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "description": {
+                    "type": "string"
+                  },
+                  "action": {
+                    "type": "string",
+                    "enum": [
+                      "block",
+                      "flag",
+                      "pass"
+                    ]
+                  },
+                  "enabled": {
+                    "type": "boolean"
+                  },
+                  "tools": {
+                    "type": "object",
+                    "properties": {
+                      "allow": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "deny": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "enforceAllowlist": {
+                        "type": "boolean"
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  "patterns": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "argPatterns": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "field": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "patterns": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "minItems": 1
+                        }
+                      },
+                      "required": [
+                        "field",
+                        "patterns"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "toolCategories": {
+                    "type": "object",
+                    "properties": {
+                      "deny": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "minItems": 1
+                      }
+                    },
+                    "required": [
+                      "deny"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "toolAllowExceptions": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "maxTokens": {
+                    "type": "number",
+                    "exclusiveMinimum": 0
+                  },
+                  "maxCallsPerMinute": {
+                    "type": "number",
+                    "exclusiveMinimum": 0
+                  },
+                  "maxCallsPer10Seconds": {
+                    "type": "number",
+                    "exclusiveMinimum": 0
+                  },
+                  "cacheable": {
+                    "type": "boolean"
+                  },
+                  "rbac": {
+                    "type": "object",
+                    "properties": {
+                      "scopes": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "scopeMatch": {
+                        "type": "string",
+                        "enum": [
+                          "any",
+                          "all"
+                        ]
+                      },
+                      "clientIds": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "tenants": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "name",
+                  "action"
+                ],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": [
+            "mode",
+            "rules"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "version",
+        "policy"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "$schema": "http://json-schema.org/draft-07/schema#"
+}

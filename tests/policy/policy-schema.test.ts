@@ -40,16 +40,22 @@ describe('parsePolicyConfig', () => {
     ).toThrow();
   });
 
-  it('rejects excessively nested policy YAML', () => {
-    let nested: Record<string, unknown> = { action: 'block', name: 'leaf' };
-    for (let i = 0; i < 25; i++) {
-      nested = { rules: [nested] };
-    }
+  it('rejects unknown top-level fields', () => {
     expect(() =>
       parsePolicyConfig({
         version: '1.0',
-        policy: { mode: 'block', rules: [nested] },
+        policy: { mode: 'block', rules: [] },
+        unicode_strct: true,
       }),
-    ).toThrow(/max nesting depth/i);
+    ).toThrow(/Invalid policy config/);
+  });
+
+  it('rejects unknown policy fields', () => {
+    expect(() =>
+      parsePolicyConfig({
+        version: '1.0',
+        policy: { mode: 'block', rules: [], unicode_strct: true },
+      }),
+    ).toThrow(/unicode_strct/);
   });
 });

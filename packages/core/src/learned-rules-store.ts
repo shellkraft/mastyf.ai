@@ -10,11 +10,38 @@ import {
 } from "./learned-rules-config.js";
 import { validateLearnedRule } from "./validate-learned-rule.js";
 import type { ValidateLearnedRuleOptions } from "./validate-learned-rule.js";
+import { reloadArgumentInjectionRules } from "./argument-prompt-injection.js";
+import {
+  hasLearnedRulesSigningKey,
+  readLearnedRulesSignatureEnvelope,
+  signLearnedRulesJson,
+  validateSignedLearnedRulesJson,
+  writeLearnedRulesSignatureEnvelope,
+  isLearnedRulesSignatureRequired,
+} from "./learned-rules-signature.js";
 
 let cachedRules: LearnedRuleDef[] = [];
 let reloadTimer: ReturnType<typeof setInterval> | null = null;
 /** Test override for overlay path. */
 let pathOverride: string | null = null;
+let localSemanticCacheBust: (() => void) | null = null;
+
+export class LearnedRulesSignatureError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "LearnedRulesSignatureError";
+  }
+}
+
+/** Register cache bust hook from local-semantic-fallback (avoids circular import). */
+export function registerLocalSemanticCacheBust(fn: () => void): void {
+  localSemanticCacheBust = fn;
+}
+
+function bustLearnedRuleCaches(): void {
+  reloadArgumentInjectionRules();
+  localSemanticCacheBust?.();
+}
 
 function storePath(): string {
   return pathOverride ?? learnedRulesPath();
@@ -28,10 +55,19 @@ function readFile(): LearnedRulesFile {
   const path = storePath();
   if (!existsSync(path)) return emptyFile();
   try {
-    const parsed = JSON.parse(readFileSync(path, "utf-8")) as LearnedRulesFile;
+    const raw = readFileSync(path, "utf-8");
+    const envelope = readLearnedRulesSignatureEnvelope(path);
+    const sigResult = validateSignedLearnedRulesJson(raw, envelope);
+    if (!sigResult.ok) {
+      const msg = `learned rules signature invalid: ${sigResult.reason}`;
+      if (isLearnedRulesSignatureRequired()) throw new LearnedRulesSignatureError(msg);
+      return emptyFile();
+    }
+    const parsed = JSON.parse(raw) as LearnedRulesFile;
     if (parsed.version !== 1 || !Array.isArray(parsed.rules)) return emptyFile();
     return parsed;
-  } catch {
+  } catch (err) {
+    if (err instanceof LearnedRulesSignatureError) throw err;
     return emptyFile();
   }
 }
@@ -41,7 +77,19 @@ function writeFile(data: LearnedRulesFile): void {
   const dir = dirname(path);
   if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
   data.updatedAt = new Date().toISOString();
-  writeFileSync(path, JSON.stringify(data, null, 2));
+  const json = JSON.stringify(data, null, 2);
+  writeFileSync(path, json);
+  if (hasLearnedRulesSigningKey()) {
+    const keyId = process.env["MASTYF_AI_LEARNED_RULES_SIGNING_KEY_ID"] || "default";
+    const issuer = process.env["MASTYF_AI_LEARNED_RULES_SIGNING_ISSUER"] || "mastyf-ai-admin";
+    const envelope = signLearnedRulesJson(json, {
+      alg: "Ed25519",
+      issuer,
+      keyId,
+      issuedAt: new Date().toISOString(),
+    });
+    writeLearnedRulesSignatureEnvelope(path, envelope);
+  }
 }
 
 function nextRuleId(target: LearnedRuleTarget, existing: LearnedRuleDef[]): string {
@@ -66,6 +114,7 @@ export function reloadLearnedRules(): LearnedRuleDef[] {
     return cachedRules;
   }
   cachedRules = readFile().rules;
+  bustLearnedRuleCaches();
   return cachedRules;
 }
 

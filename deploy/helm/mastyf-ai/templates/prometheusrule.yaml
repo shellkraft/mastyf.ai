@@ -1,0 +1,49 @@
+{{- if and .Values.monitoring.prometheusRule.enabled .Capabilities.APIVersions.Has "monitoring.coreos.com/v1" }}
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: {{ include "mastyf-ai.fullname" . }}
+  labels:
+    {{- include "mastyf-ai.labels" . | nindent 4 }}
+    {{- with .Values.monitoring.prometheusRule.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  groups:
+    - name: mastyf-ai.rules
+      rules:
+        - alert: MastyfAiHighBlockRate
+          expr: |
+            sum(rate(mastyf_ai_proxy_requests_total{decision="block"}[5m]))
+            / sum(rate(mastyf_ai_proxy_requests_total[5m])) > {{ .Values.monitoring.prometheusRule.thresholds.blockRateRatio }}
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: MCP Mastyf AI block rate elevated
+            description: Block rate exceeds threshold over 10 minutes.
+        - alert: MastyfAiRedisDown
+          expr: mastyf_ai_redis_available == 0
+          for: 2m
+          labels:
+            severity: critical
+          annotations:
+            summary: Redis unavailable for MCP Mastyf AI
+            description: Distributed rate limits and session flow may be degraded.
+        - alert: MastyfAiSemanticLlmOffline
+          expr: mastyf_ai_semantic_llm_online == 0
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: Semantic LLM offline
+            description: Async/sync semantic gates may be bypassed or queued.
+        - alert: MastyfAiAuditQueueOverflow
+          expr: mastyf_ai_audit_queue_depth > {{ .Values.monitoring.prometheusRule.thresholds.auditQueueDepth }}
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: Audit queue depth high
+            description: SIEM export or audit sync may be backlogged.
+{{- end }}

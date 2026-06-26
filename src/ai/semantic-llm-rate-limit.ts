@@ -92,10 +92,18 @@ export async function allowSemanticLlmCall(tenantId?: string): Promise<boolean> 
   const estimatedUsd = getEstimatedSemanticCostUsd();
   const maxPerMin = getMaxPerMin();
 
+  let allowed = false;
   if (isRedisConfigured()) {
     try {
-      return await checkRedisLimits(tid, estimatedUsd);
+      allowed = await checkRedisLimits(tid, estimatedUsd);
+      void import('../alerting/incident-responder.js').then(({ trackLlmHealth }) => {
+        trackLlmHealth(true);
+      }).catch(() => undefined);
+      return allowed;
     } catch {
+      void import('../alerting/incident-responder.js').then(({ trackLlmHealth }) => {
+        trackLlmHealth(false);
+      }).catch(() => undefined);
       /* fall through to local */
     }
   }

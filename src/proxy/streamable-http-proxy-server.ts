@@ -9,7 +9,9 @@ import { randomUUID } from 'crypto';
 import { URL } from 'url';
 import { PolicyEngine } from '../policy/policy-engine.js';
 import { Logger } from '../utils/logger.js';
+import { assertUpstreamTlsAllowed } from '../utils/upstream-tls.js';
 import { StructuredLogger } from '../utils/structured-logger.js';
+import { auditPolicyDecision } from './audit-policy-decision.js';
 import { resolveTenantContext, InvalidTenantIdError } from '../tenant/resolve-tenant.js';
 import { resolveProxyTenantId, JwtTenantRequiredError } from '../tenant/jwt-tenant-binding.js';
 import { OAuthValidator } from '../auth/oauth.js';
@@ -57,6 +59,10 @@ export class StreamableHttpProxyServer {
   private readonly rugPullState: ToolFingerprintState = { fingerprint: null, blocked: false };
 
   constructor(opts: StreamableHttpProxyOptions) {
+    const tlsCheck = assertUpstreamTlsAllowed(opts.upstreamBaseUrl);
+    if (!tlsCheck.ok) {
+      throw new Error(`[streamable-http:${opts.serverName}] ${tlsCheck.message}`);
+    }
     this.opts = opts;
     this.sessionCache = opts.authValidator ? createSessionCache() : null;
     getMtlsAgent();
@@ -444,6 +450,7 @@ export class StreamableHttpProxyServer {
     }
 
     const decision = await this.opts.policy.evaluateAsync(context);
+    auditPolicyDecision(context.requestId, this.opts.serverName, context.toolName, decision, context);
     if (decision.action === 'block') {
       releaseProxyInflight(this.opts.serverName);
       StructuredLogger.logBlocked({
