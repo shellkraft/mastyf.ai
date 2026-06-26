@@ -12,6 +12,8 @@ const SECRET_PATH = join(MANIFEST_DIR, ".local-secret");
 
 const MIN_SECRET_LENGTH = 32;
 
+export const MIN_MANIFEST_SECRET_LENGTH = MIN_SECRET_LENGTH;
+
 export class ManifestSecretError extends Error {
   override name = "ManifestSecretError";
 }
@@ -29,6 +31,11 @@ export function resetManifestSecretForTests(): void {
 
 /** @internal */
 export function setManifestSecretForTests(secret: string): void {
+  if (secret.length < MIN_SECRET_LENGTH) {
+    throw new ManifestSecretError(
+      `Test manifest secret must be at least ${MIN_SECRET_LENGTH} characters`,
+    );
+  }
   secretOverride = secret;
 }
 

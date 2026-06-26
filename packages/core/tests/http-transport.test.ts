@@ -5,6 +5,7 @@ import { fileURLToPath } from "url";
 import { dirname, join } from "path";
 import {
   fetchToolsFromHttp,
+  fetchToolsFromSse,
   resetHttpFetchClientsForTests,
 } from "../src/transports/http.js";
 import { getDispatcherForOrigin } from "../src/transports/http-fetch-client.js";
@@ -12,6 +13,11 @@ import { getDispatcherForOrigin } from "../src/transports/http-fetch-client.js";
 const echoServerPath = join(
   dirname(fileURLToPath(import.meta.url)),
   "../../../tests/fixtures/mcp-http-echo-server.cjs",
+);
+
+const sseEchoServerPath = join(
+  dirname(fileURLToPath(import.meta.url)),
+  "../../../tests/fixtures/mcp-sse-echo-server.cjs",
 );
 
 function spawnEchoServer(): Promise<{ proc: ChildProcessWithoutNullStreams; url: string }> {
@@ -209,6 +215,39 @@ describe("fetchToolsFromHttp", () => {
       expect(listSessionHeader).toBe("session-abc-123");
     } finally {
       await new Promise<void>((r) => server.close(() => r()));
+    }
+  });
+});
+
+describe("fetchToolsFromSse", () => {
+  afterEach(() => {
+    resetHttpFetchClientsForTests();
+  });
+
+  it("uses GET /sse then POST /message for tools/list", async () => {
+    const proc = spawn("node", [sseEchoServerPath], {
+      stdio: ["ignore", "pipe", "inherit"],
+      env: { ...process.env, MCP_ECHO_HOST: "127.0.0.1" },
+    });
+
+    const url = await new Promise<string>((resolve, reject) => {
+      let buf = "";
+      proc.stdout.on("data", (chunk: Buffer) => {
+        buf += chunk.toString();
+        const match = buf.match(/READY:(\d+)/);
+        if (match) resolve(`http://127.0.0.1:${match[1]}/sse`);
+      });
+      proc.on("error", reject);
+      proc.on("exit", (code) => {
+        if (code !== 0 && code !== null) reject(new Error(`sse echo exited ${code}`));
+      });
+    });
+
+    try {
+      const tools = await fetchToolsFromSse({ url });
+      expect(tools.some((t) => t.name === "echo")).toBe(true);
+    } finally {
+      proc.kill();
     }
   });
 });

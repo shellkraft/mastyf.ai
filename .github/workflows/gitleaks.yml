@@ -3,15 +3,34 @@ name: Gitleaks
 on:
   push:
     branches: [main, develop, master]
-  pull_request:
+  # pull_request_target runs in the base-repo context so fork PRs are scanned.
+  # Only gitleaks-action runs after checkout — no untrusted workflow code from the PR.
+  pull_request_target:
     branches: [main, master]
 
+permissions:
+  contents: read
+  pull-requests: read
+
 jobs:
-  scan:
+  scan-push:
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  scan-pr:
+    if: github.event_name == 'pull_request_target'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 0
       - uses: gitleaks/gitleaks-action@v2
         env:

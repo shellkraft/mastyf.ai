@@ -198,6 +198,24 @@ describe('createHttpProxy security', () => {
     process.env.MASTYF_AI_ALLOW_PLAINTEXT_UPSTREAM = 'true';
     expect(assertUpstreamTlsAllowed('http://127.0.0.1:8080').ok).toBe(true);
   });
+
+  it('rejects createHttpProxy when inbound TLS required but unset', () => {
+    process.env.MASTYF_AI_ALLOW_PLAINTEXT_UPSTREAM = 'true';
+    process.env.MASTYF_AI_REQUIRE_INBOUND_TLS = 'true';
+    expect(() =>
+      createHttpProxy('http://127.0.0.1:8080', null, noopDb, noopTokens),
+    ).toThrow(/MASTYF_AI_REQUIRE_INBOUND_TLS/);
+    delete process.env.MASTYF_AI_REQUIRE_INBOUND_TLS;
+  });
+
+  it('rejects createHttpProxy when auth required but validator missing', () => {
+    process.env.MASTYF_AI_ALLOW_PLAINTEXT_UPSTREAM = 'true';
+    process.env.MASTYF_AI_AUTH_REQUIRED = 'true';
+    expect(() =>
+      createHttpProxy('http://127.0.0.1:8080', null, noopDb, noopTokens),
+    ).toThrow(/MASTYF_AI_AUTH_REQUIRED/);
+    delete process.env.MASTYF_AI_AUTH_REQUIRED;
+  });
 });
 
 describe('readRequestBodyWithLimit', () => {

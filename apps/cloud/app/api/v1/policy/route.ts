@@ -1,10 +1,8 @@
-import { extractBearerToken } from '@/lib/api-keys';
-import { auth } from '@/lib/auth';
 import {
-  getUserOrg,
-  resolveOrgFromApiKey,
-  userCanManageOrg,
-} from '@/lib/org-context';
+  orgAccessCanReadPolicy,
+  orgAccessCanWritePolicy,
+  resolveOrgAccess,
+} from '@/lib/org-access';
 import { getDefaultPolicyYaml } from '@/lib/default-policy';
 import { getDb } from '@/lib/db';
 import { policies } from '@/lib/db/schema';
@@ -13,31 +11,14 @@ import { policyPutSchema } from '@/lib/api-schemas';
 import { eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 
-async function resolveWriteContext(request: Request) {
-  const bearer = extractBearerToken(request.headers.get('authorization'));
-  if (bearer) {
-    const apiCtx = await resolveOrgFromApiKey(bearer);
-    if (!apiCtx) return null;
-    return {
-      orgId: apiCtx.org.id,
-      canManage: true,
-    };
+export async function GET(request: Request) {
+  const access = await resolveOrgAccess(request);
+  if (!access || !orgAccessCanReadPolicy(access)) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const session = await auth();
-  if (!session?.user?.id) return null;
-  const ctx = await getUserOrg(session.user.id);
-  if (!ctx) return null;
-  const canManage = userCanManageOrg(ctx.membership);
-  return { orgId: ctx.org.id, canManage };
-}
-
-export async function GET(request: Request) {
-  const writeCtx = await resolveWriteContext(request);
-  if (!writeCtx) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-
   const policy = await getDb().query.policies.findFirst({
-    where: eq(policies.orgId, writeCtx.orgId),
+    where: eq(policies.orgId, access.orgId),
   });
 
   return new NextResponse(policy?.yamlContent ?? getDefaultPolicyYaml(), {
@@ -49,11 +30,11 @@ export async function GET(request: Request) {
 }
 
 export async function PUT(request: Request) {
-  const writeCtx = await resolveWriteContext(request);
-  if (!writeCtx) {
+  const access = await resolveOrgAccess(request);
+  if (!access) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
-  if (!writeCtx.canManage) {
+  if (!orgAccessCanWritePolicy(access)) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
@@ -74,7 +55,7 @@ export async function PUT(request: Request) {
     return NextResponse.json({ error: 'Policy YAML required' }, { status: 400 });
   }
 
-  await publishPolicyYaml(writeCtx.orgId, yaml);
+  await publishPolicyYaml(access.orgId, yaml);
 
   return NextResponse.json({ ok: true });
 }

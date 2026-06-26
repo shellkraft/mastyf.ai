@@ -1,10 +1,14 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, afterEach } from 'vitest';
 import {
   createHttpProxyWithOAuth,
   buildAuthConfigFromEnv,
 } from '../../src/proxy/create-http-proxy-bridge.js';
 
 describe('createHttpProxyWithOAuth bridge', () => {
+  afterEach(() => {
+    delete process.env.MASTYF_AI_ALLOW_PLAINTEXT_UPSTREAM;
+  });
+
   it('buildAuthConfigFromEnv reads issuer, audience, required', () => {
     process.env.MASTYF_AI_AUTH_ISSUER = 'https://issuer.example';
     process.env.MASTYF_AI_AUTH_AUDIENCE = 'my-app';
@@ -20,6 +24,7 @@ describe('createHttpProxyWithOAuth bridge', () => {
   });
 
   it('createHttpProxyWithOAuth wires OAuthValidator into createHttpProxy', () => {
+    process.env.MASTYF_AI_ALLOW_PLAINTEXT_UPSTREAM = 'true';
     const proxy = createHttpProxyWithOAuth(
       'http://127.0.0.1:9',
       null,

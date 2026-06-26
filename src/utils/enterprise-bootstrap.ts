@@ -140,10 +140,12 @@ export async function bootstrapCompliance(db: IDatabase): Promise<void> {
 }
 
 /** Startup warnings for production security posture (mcp tests 31 §3.5 / §3.1). */
-function isMultiReplicaDeployment(): boolean {
-  if (process.env.KUBERNETES_SERVICE_HOST) return true;
-  const n = parseInt(process.env.MASTYF_AI_REPLICA_COUNT || '1', 10);
-  return Number.isFinite(n) && n > 1;
+export function isMultiReplicaDeployment(): boolean {
+  for (const key of ['MASTYF_AI_REPLICA_COUNT', 'REPLICA_COUNT'] as const) {
+    const n = parseInt(process.env[key] || '1', 10);
+    if (Number.isFinite(n) && n > 1) return true;
+  }
+  return false;
 }
 
 export function runEnterpriseSecurityPreflight(): void {

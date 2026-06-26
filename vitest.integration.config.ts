@@ -1,12 +1,10 @@
 import { defineConfig } from 'vitest/config';
-import path from 'path';
+import { workspacePackageAliases } from './vitest.workspace-aliases';
 
 /** Integration tests (MCP subprocesses, HTTP fixtures) — excluded from default `pnpm test`. */
 export default defineConfig({
   resolve: {
-    alias: {
-      '@mastyf-ai/plugin-sdk': path.resolve(__dirname, 'packages/plugin-sdk/dist/index.js'),
-    },
+    alias: workspacePackageAliases,
   },
   test: {
     setupFiles: ['./tests/setup-env.ts'],

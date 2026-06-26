@@ -31,6 +31,7 @@ import * as Metrics from '../utils/metrics.js';
 import { idempotencyKeyFromRequest } from '../policy/idempotency-store.js';
 import type { AgentIdentity } from '../auth/auth-types.js';
 import { sanitizeProxyClientError, webSocketClientOptions } from '../utils/ws-tls-config.js';
+import { requireUpstreamTlsAllowed } from '../utils/upstream-tls.js';
 import { injectRotatedSessionIntoResult } from '../utils/mcp-session-meta.js';
 import { getUpstreamTimeoutMs } from '../utils/upstream-timeout.js';
 import { getAnomalyDetector } from '../ai/anomaly-detector.js';
@@ -65,6 +66,7 @@ export class WebSocketProxyServer {
   private tokenCounter = new TokenCounter();
 
   constructor(opts: WebSocketProxyOptions) {
+    requireUpstreamTlsAllowed(opts.upstreamWsUrl);
     this.opts = opts;
     this.sessionCache = opts.authValidator ? createSessionCache() : null;
   }

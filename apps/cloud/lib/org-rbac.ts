@@ -39,15 +39,54 @@ export type ApiScope =
   | 'policy:write'
   | 'keys:manage';
 
-export function parseApiKeyScopes(raw: string | null | undefined): ApiScope[] {
-  if (!raw) return ['badge:read', 'policy:read'];
+const ALLOWED_API_SCOPES: readonly ApiScope[] = [
+  'badge:read',
+  'deep-scan:run',
+  'policy:read',
+  'policy:write',
+  'keys:manage',
+];
+
+const DEFAULT_API_SCOPES: ApiScope[] = ['badge:read', 'policy:read'];
+
+export type ParsedApiKeyScopes = {
+  scopes: ApiScope[];
+  dropped: string[];
+};
+
+export function parseApiKeyScopesDetailed(raw: string | null | undefined): ParsedApiKeyScopes {
+  if (!raw) {
+    return { scopes: [...DEFAULT_API_SCOPES], dropped: [] };
+  }
   try {
     const parsed = JSON.parse(raw) as string[];
-    return parsed.filter((s): s is ApiScope =>
-      ['badge:read', 'deep-scan:run', 'policy:read', 'policy:write', 'keys:manage'].includes(s));
+    if (!Array.isArray(parsed)) {
+      return { scopes: [...DEFAULT_API_SCOPES], dropped: [] };
+    }
+    const scopes: ApiScope[] = [];
+    const dropped: string[] = [];
+    for (const entry of parsed) {
+      if (typeof entry !== 'string') continue;
+      if (ALLOWED_API_SCOPES.includes(entry as ApiScope)) {
+        scopes.push(entry as ApiScope);
+      } else {
+        dropped.push(entry);
+      }
+    }
+    if (dropped.length > 0) {
+      console.warn('[org-rbac] dropped unrecognized API key scopes:', dropped);
+    }
+    return {
+      scopes: scopes.length > 0 ? scopes : [...DEFAULT_API_SCOPES],
+      dropped,
+    };
   } catch {
-    return ['badge:read', 'policy:read'];
+    return { scopes: [...DEFAULT_API_SCOPES], dropped: [] };
   }
+}
+
+export function parseApiKeyScopes(raw: string | null | undefined): ApiScope[] {
+  return parseApiKeyScopesDetailed(raw).scopes;
 }
 
 export function apiKeyHasScope(scopes: ApiScope[], required: ApiScope): boolean {

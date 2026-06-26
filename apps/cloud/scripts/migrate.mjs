@@ -2,6 +2,8 @@
 /**
  * Apply SQL migrations for the cloud control plane database.
  * Usage: DATABASE_URL=postgresql://... node scripts/migrate.mjs
+ *
+ * Rollback: apply matching `*.down.sql` manually, then DELETE FROM _cloud_migrations WHERE name = '...';
  */
 import { readFileSync, readdirSync } from 'fs';
 import { dirname, join } from 'path';

@@ -11,11 +11,13 @@ describe('SseProxyServer', () => {
   let db: HistoryDatabase;
 
   beforeEach(async () => {
+    process.env.MASTYF_AI_ALLOW_PLAINTEXT_UPSTREAM = 'true';
     db = new HistoryDatabase(':memory:');
     await db.initialize();
   });
 
   afterEach(async () => {
+    delete process.env.MASTYF_AI_ALLOW_PLAINTEXT_UPSTREAM;
     if (prevDlp) process.env.MASTYF_AI_RESPONSE_DLP_MODE = prevDlp;
     else delete process.env.MASTYF_AI_RESPONSE_DLP_MODE;
     await upstream?.close();

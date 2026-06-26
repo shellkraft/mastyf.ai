@@ -13,7 +13,7 @@ import {
   setLearnedRulesPathForTests,
   listLearnedRules,
   reloadLearnedRules,
-} from '@mastyf-ai/core';
+} from '../../packages/core/src/learned-rules-store.js';
 
 function sampleDiscovery(confidence: number): ThreatLabDiscovery {
   return {
@@ -45,13 +45,17 @@ describe('core-rule-promoter', () => {
     process.env.MASTYF_AI_LEARNED_RULES_ENABLED = 'true';
     process.env.MASTYF_AI_LEARNED_RULES_PROMOTE = 'true';
     process.env.MASTYF_AI_LEARNED_RULES_MIN_CONFIDENCE = '0.90';
+    process.env.MASTYF_AI_LEARNED_RULES_SIGNATURE_OPTIONAL = 'true';
     process.env.MASTYF_AI_THREAT_RESEARCH_STATE_PATH = tempDir;
+    delete process.env.MASTYF_AI_STRICT_MODE;
+    delete process.env.MASTYF_AI_REQUIRE_SIGNED_LEARNED_RULES;
   });
 
   afterEach(() => {
     delete process.env.MASTYF_AI_LEARNED_RULES_ENABLED;
     delete process.env.MASTYF_AI_LEARNED_RULES_PROMOTE;
     delete process.env.MASTYF_AI_LEARNED_RULES_MIN_CONFIDENCE;
+    delete process.env.MASTYF_AI_LEARNED_RULES_SIGNATURE_OPTIONAL;
     delete process.env.MASTYF_AI_THREAT_RESEARCH_STATE_PATH;
     resetLearnedRulesForTests();
     rmSync(tempDir, { recursive: true, force: true });

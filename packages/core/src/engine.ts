@@ -57,6 +57,25 @@ function deduplicateIssues(issues: Issue[]): Issue[] {
 }
 
 const DEFAULT_MAX_TOOLS_PER_SCAN = 200;
+const DEFAULT_SCAN_CONCURRENCY = 32;
+
+let cachedScanConcurrency: number | undefined;
+
+function getScanConcurrency(): number {
+  if (cachedScanConcurrency === undefined) {
+    const n = parseInt(
+      process.env["MASTYF_AI_SCAN_CONCURRENCY"] || String(DEFAULT_SCAN_CONCURRENCY),
+      10,
+    );
+    cachedScanConcurrency = Number.isFinite(n) && n > 0 ? n : DEFAULT_SCAN_CONCURRENCY;
+  }
+  return cachedScanConcurrency;
+}
+
+/** @internal */
+export function resetScanConcurrencyCacheForTests(): void {
+  cachedScanConcurrency = undefined;
+}
 
 function scanToolTimeoutMs(): number {
   const explicit = parseInt(process.env["MASTYF_AI_SCAN_TOOL_TIMEOUT_MS"] || "", 10);
@@ -104,11 +123,6 @@ function toolScanTimeoutResult(toolName: string, timeoutMs: number): ToolScanRes
       semantic: { ran: false, durationMs: 0, skipped: "tool scan budget exceeded" },
     },
   };
-}
-
-function scanConcurrency(): number {
-  const n = parseInt(process.env["MASTYF_AI_SCAN_CONCURRENCY"] || "32", 10);
-  return Number.isFinite(n) && n > 0 ? n : 32;
 }
 
 export async function scanTool(
@@ -303,7 +317,7 @@ export async function scanServer(
   let truncated: ServerScanResult["truncated"];
   let budgetExceeded = false;
 
-  const limit = scanConcurrency();
+  const limit = getScanConcurrency();
   let idx = 0;
 
   async function worker(): Promise<void> {

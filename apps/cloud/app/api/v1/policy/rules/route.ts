@@ -1,27 +1,15 @@
-import { extractBearerToken } from '@/lib/api-keys';
-import { auth } from '@/lib/auth';
 import { getDb } from '@/lib/db';
 import { policies } from '@/lib/db/schema';
 import { getDefaultPolicyYaml } from '@/lib/default-policy';
-import { getUserOrg, resolveOrgFromApiKey, userCanManageOrg } from '@/lib/org-context';
+import {
+  orgAccessCanReadPolicy,
+  orgAccessCanWritePolicy,
+  resolveOrgAccess,
+} from '@/lib/org-access';
 import { publishPolicyYaml } from '@/lib/policy-publish';
 import { removeRule, setRuleEnabled, summarizeRules } from '@/lib/policy-rule-ops';
 import { eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
-
-async function resolveContext(request: Request): Promise<{ orgId: string; canManage: boolean } | null> {
-  const bearer = extractBearerToken(request.headers.get('authorization'));
-  if (bearer) {
-    const apiCtx = await resolveOrgFromApiKey(bearer);
-    if (!apiCtx) return null;
-    return { orgId: apiCtx.org.id, canManage: true };
-  }
-  const session = await auth();
-  if (!session?.user?.id) return null;
-  const ctx = await getUserOrg(session.user.id);
-  if (!ctx) return null;
-  return { orgId: ctx.org.id, canManage: userCanManageOrg(ctx.membership) };
-}
 
 async function getPolicyYaml(orgId: string): Promise<{ yaml: string; version: number }> {
   const policy = await getDb().query.policies.findFirst({
@@ -31,9 +19,11 @@ async function getPolicyYaml(orgId: string): Promise<{ yaml: string; version: nu
 }
 
 export async function GET(request: Request) {
-  const ctx = await resolveContext(request);
-  if (!ctx) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  const { yaml, version } = await getPolicyYaml(ctx.orgId);
+  const access = await resolveOrgAccess(request);
+  if (!access || !orgAccessCanReadPolicy(access)) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+  const { yaml, version } = await getPolicyYaml(access.orgId);
   const rules = summarizeRules(yaml);
   return NextResponse.json({
     rules,
@@ -45,28 +35,28 @@ export async function GET(request: Request) {
 }
 
 export async function PATCH(request: Request) {
-  const ctx = await resolveContext(request);
-  if (!ctx) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  if (!ctx.canManage) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  const access = await resolveOrgAccess(request);
+  if (!access) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (!orgAccessCanWritePolicy(access)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   const body = (await request.json().catch(() => ({}))) as { name?: string; enabled?: boolean };
   const name = String(body.name ?? '').trim();
   if (!name || typeof body.enabled !== 'boolean') {
     return NextResponse.json({ error: 'name and enabled(boolean) are required' }, { status: 400 });
   }
-  const { yaml } = await getPolicyYaml(ctx.orgId);
+  const { yaml } = await getPolicyYaml(access.orgId);
   let nextYaml = '';
   try {
     nextYaml = setRuleEnabled(yaml, name, body.enabled);
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : 'Failed to update rule' }, { status: 400 });
   }
-  const published = await publishPolicyYaml(ctx.orgId, nextYaml);
+  const published = await publishPolicyYaml(access.orgId, nextYaml);
   const rules = summarizeRules(nextYaml);
   const warning = rules.filter((rule) => rule.enabled).length === 0
     ? 'All rules are disabled. This significantly reduces protections.'
     : undefined;
   console.info('[cloud-policy] rule toggled', {
-    orgId: ctx.orgId,
+    orgId: access.orgId,
     action: 'toggle',
     ruleName: name,
     enabled: body.enabled,
@@ -83,26 +73,26 @@ export async function PATCH(request: Request) {
 }
 
 export async function DELETE(request: Request) {
-  const ctx = await resolveContext(request);
-  if (!ctx) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  if (!ctx.canManage) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  const access = await resolveOrgAccess(request);
+  if (!access) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (!orgAccessCanWritePolicy(access)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   const body = (await request.json().catch(() => ({}))) as { name?: string };
   const name = String(body.name ?? '').trim();
   if (!name) return NextResponse.json({ error: 'name is required' }, { status: 400 });
-  const { yaml } = await getPolicyYaml(ctx.orgId);
+  const { yaml } = await getPolicyYaml(access.orgId);
   let nextYaml = '';
   try {
     nextYaml = removeRule(yaml, name);
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : 'Failed to delete rule' }, { status: 400 });
   }
-  const published = await publishPolicyYaml(ctx.orgId, nextYaml);
+  const published = await publishPolicyYaml(access.orgId, nextYaml);
   const rules = summarizeRules(nextYaml);
   const warning = rules.length === 0
     ? 'Policy has no rules after deletion.'
     : undefined;
   console.info('[cloud-policy] rule deleted', {
-    orgId: ctx.orgId,
+    orgId: access.orgId,
     action: 'delete',
     ruleName: name,
     version: published.version,

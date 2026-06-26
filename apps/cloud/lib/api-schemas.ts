@@ -1,10 +1,11 @@
 import { z } from 'zod';
+import { isValidNpmPackageName } from './npm-package-name';
 
 export const packageNameSchema = z
   .string()
   .min(1)
-  .max(200)
-  .regex(/^[a-zA-Z0-9@/_\-.]+$/);
+  .max(214)
+  .refine(isValidNpmPackageName, { message: 'Invalid npm package name' });
 
 export const badgeQuerySchema = z.object({
   style: z.enum(['github', 'flat', 'flat-square']).optional(),

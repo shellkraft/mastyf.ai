@@ -54,6 +54,17 @@ export function createHttpProxy(
   const upstreamAgent = options.upstreamAgent;
   const inboundTls = options.tls ?? loadInboundTlsFromEnv();
 
+  if (process.env.MASTYF_AI_REQUIRE_INBOUND_TLS === 'true' && !inboundTls) {
+    throw new Error(
+      'MASTYF_AI_REQUIRE_INBOUND_TLS=true requires inbound TLS cert/key (options.tls or MCP_INBOUND_TLS_*)',
+    );
+  }
+  if (process.env.MASTYF_AI_AUTH_REQUIRED === 'true' && !authValidator) {
+    throw new Error(
+      'MASTYF_AI_AUTH_REQUIRED=true requires an authValidator when creating the HTTP proxy',
+    );
+  }
+
   const handler = async (clientReq: http.IncomingMessage, clientRes: http.ServerResponse) => {
     const start = Date.now();
 

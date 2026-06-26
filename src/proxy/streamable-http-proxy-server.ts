@@ -9,7 +9,7 @@ import { randomUUID } from 'crypto';
 import { URL } from 'url';
 import { PolicyEngine } from '../policy/policy-engine.js';
 import { Logger } from '../utils/logger.js';
-import { assertUpstreamTlsAllowed } from '../utils/upstream-tls.js';
+import { requireUpstreamTlsAllowed } from '../utils/upstream-tls.js';
 import { StructuredLogger } from '../utils/structured-logger.js';
 import { auditPolicyDecision } from './audit-policy-decision.js';
 import { resolveTenantContext, InvalidTenantIdError } from '../tenant/resolve-tenant.js';
@@ -59,10 +59,7 @@ export class StreamableHttpProxyServer {
   private readonly rugPullState: ToolFingerprintState = { fingerprint: null, blocked: false };
 
   constructor(opts: StreamableHttpProxyOptions) {
-    const tlsCheck = assertUpstreamTlsAllowed(opts.upstreamBaseUrl);
-    if (!tlsCheck.ok) {
-      throw new Error(`[streamable-http:${opts.serverName}] ${tlsCheck.message}`);
-    }
+    requireUpstreamTlsAllowed(opts.upstreamBaseUrl);
     this.opts = opts;
     this.sessionCache = opts.authValidator ? createSessionCache() : null;
     getMtlsAgent();

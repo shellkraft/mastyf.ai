@@ -12,6 +12,35 @@ const port = Number(process.env.MCP_ECHO_PORT || process.argv[2] || 0);
 const sessions = new Map();
 
 function reply(msg) {
+  if (msg.method === 'initialize') {
+    return {
+      jsonrpc: '2.0',
+      id: msg.id,
+      result: {
+        protocolVersion: '2024-11-05',
+        serverInfo: { name: 'mcp-sse-echo', version: '1.0.0' },
+        capabilities: { tools: {} },
+      },
+    };
+  }
+  if (msg.method === 'tools/list') {
+    return {
+      jsonrpc: '2.0',
+      id: msg.id,
+      result: {
+        tools: [
+          {
+            name: 'echo',
+            description: 'Echo arguments as JSON text',
+            inputSchema: {
+              type: 'object',
+              properties: { text: { type: 'string' } },
+            },
+          },
+        ],
+      },
+    };
+  }
   if (msg.method === 'tools/call') {
     const args = (msg.params && msg.params.arguments) || {};
     return {
@@ -25,7 +54,7 @@ function reply(msg) {
   return {
     jsonrpc: '2.0',
     id: msg.id,
-    result: { protocolVersion: '2024-11-05' },
+    error: { code: -32601, message: 'Method not found: ' + msg.method },
   };
 }
 

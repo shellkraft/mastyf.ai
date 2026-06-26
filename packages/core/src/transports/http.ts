@@ -1,5 +1,6 @@
 import type { ToolDefinition } from "../types.js";
 import { fetchWithTimeout, remainingMs } from "./http-fetch-client.js";
+import { parseEndpointFromSse, sseProbePaths } from "./sse-endpoint.js";
 
 export interface HttpServerConfig {
   url: string;
@@ -93,64 +94,111 @@ export async function fetchToolsFromHttp(
   return data.result?.tools ?? [];
 }
 
+async function discoverSseMessageEndpoint(
+  config: HttpServerConfig,
+  deadline: number,
+): Promise<{ messageUrl: URL; sessionId: string }> {
+  const perRequestMs = config.timeoutMs ?? 15_000;
+  const base = new URL(config.url.replace(/\/$/, ""));
+  const headers = {
+    Accept: "text/event-stream",
+    ...(config.headers ?? {}),
+  };
+
+  for (const path of sseProbePaths(base)) {
+    const sseUrl = new URL(base.href);
+    if (path !== "/") {
+      sseUrl.pathname = path;
+    }
+
+    const response = await fetchWithTimeout(
+      sseUrl.href,
+      { method: "GET", headers },
+      requestTimeoutMs(perRequestMs, deadline),
+      "sse endpoint",
+    );
+
+    if (!response.ok) continue;
+
+    const text = await response.text();
+    const parsed = parseEndpointFromSse(text, sseUrl);
+    if (parsed) return parsed;
+  }
+
+  throw new Error("Failed to discover SSE message endpoint (GET /sse or /)");
+}
+
+async function postSseJsonRpc(
+  messageUrl: URL,
+  body: Record<string, unknown>,
+  headers: Record<string, string>,
+  timeoutMs: number,
+  label: string,
+): Promise<Record<string, unknown>> {
+  const response = await fetchWithTimeout(
+    messageUrl.href,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...headers,
+      },
+      body: JSON.stringify(body),
+    },
+    timeoutMs,
+    label,
+  );
+
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status} on ${label}`);
+  }
+
+  return await response.json() as Record<string, unknown>;
+}
+
 export async function fetchToolsFromSse(
   config: HttpServerConfig,
 ): Promise<ToolDefinition[]> {
-  const timeoutMs = config.timeoutMs ?? 15_000;
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  const perRequestMs = config.timeoutMs ?? 15_000;
+  const deadline = Date.now() + (config.totalTimeoutMs ?? perRequestMs * 3);
+  const baseHeaders = { ...(config.headers ?? {}) };
 
-  return new Promise(async (resolve, reject) => {
-    try {
-      const response = await fetch(config.url, {
-        headers: {
-          Accept: "text/event-stream",
-          ...(config.headers ?? {}),
-        },
-        signal: controller.signal,
-      });
+  const { messageUrl } = await discoverSseMessageEndpoint(config, deadline);
 
-      if (!response.ok || !response.body) {
-        throw new Error(`SSE connection failed: HTTP ${response.status}`);
-      }
+  await postSseJsonRpc(
+    messageUrl,
+    {
+      jsonrpc: "2.0",
+      id: 1,
+      method: "initialize",
+      params: {
+        protocolVersion: "2024-11-05",
+        capabilities: {},
+        clientInfo: { name: "mastyf-ai", version: "2.3.4" },
+      },
+    },
+    baseHeaders,
+    requestTimeoutMs(perRequestMs, deadline),
+    "initialize",
+  );
 
-      const tools: ToolDefinition[] = [];
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = "";
+  const listData = await postSseJsonRpc(
+    messageUrl,
+    {
+      jsonrpc: "2.0",
+      id: 2,
+      method: "tools/list",
+      params: {},
+    },
+    baseHeaders,
+    requestTimeoutMs(perRequestMs, deadline),
+    "tools/list",
+  );
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split("\n");
-        buffer = lines.pop() ?? "";
-
-        for (const line of lines) {
-          if (line.startsWith("data: ")) {
-            try {
-              const msg = JSON.parse(line.slice(6));
-              if (msg?.result?.tools) {
-                tools.push(...msg.result.tools);
-                clearTimeout(timeout);
-                resolve(tools);
-                return;
-              }
-            } catch {
-              /* skip */
-            }
-          }
-        }
-      }
-
-      clearTimeout(timeout);
-      resolve(tools);
-    } catch (err) {
-      clearTimeout(timeout);
-      reject(err);
-    }
-  });
+  const result = listData.result as { tools?: ToolDefinition[] } | undefined;
+  return result?.tools ?? [];
 }
+
+export { parseEndpointFromSse, sseProbePaths } from "./sse-endpoint.js";
 
 export { resetHttpFetchClientsForTests } from "./http-fetch-client.js";

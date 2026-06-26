@@ -56,7 +56,15 @@ Do **not** set `AUTH_DEV_LOGIN=true` in production.
 
 Link [Vercel KV](https://vercel.com/docs/storage/vercel-kv) or [Upstash Redis](https://upstash.com) to the project. The deploy script sets `UPSTASH_REDIS_REST_*` when `UPSTASH_REDIS_REST_URL` is exported locally.
 
-Limits: **100 req/hour/IP** (badge), **10 req/min/IP** (deep-scan).
+Limits: **100 req/hour** (badge), **10 req/min** (deep-scan), **30 req/hour** (reports). Keys are per API key when `Authorization: Bearer …` is present, otherwise per client IP.
+
+On Vercel, client IP comes from `x-vercel-forwarded-for` / `x-forwarded-for` (edge-injected, not client-spoofable). Self-hosted options:
+
+| Variable | Purpose |
+|----------|---------|
+| `MASTYF_AI_TRUST_PROXY_HEADERS=true` | Trust `X-Forwarded-For` / `X-Real-IP` from your reverse proxy (configure proxy to strip client-supplied values) |
+| `MASTYF_AI_RATE_LIMIT_PROXY_SECRET` | Require matching `X-Mastyf-Proxy-Secret` + `X-Mastyf-Client-IP` from your edge |
+| `MASTYF_AI_TRUST_CLOUDFLARE=true` | Use `CF-Connecting-IP` when behind Cloudflare |
 
 ## Alternative: Vercel CLI login
 

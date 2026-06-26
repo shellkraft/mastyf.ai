@@ -2,6 +2,7 @@ import { randomUUID } from 'crypto';
 import { sql } from 'drizzle-orm';
 import { getDb } from '@/lib/db';
 import { observatorySnapshot } from '@/lib/cloud-observatory-store';
+import { isValidOrgId, recentPackagesReportLimit } from '@/lib/report-query-guards';
 
 export type PerformanceReport = {
   reportId: string;
@@ -95,9 +96,11 @@ export async function buildPerformanceReport(opts: {
   const windowDays = opts.windowDays;
   const end = new Date();
   const start = new Date(end.getTime() - windowDays * 24 * 60 * 60 * 1000);
-  const orgFilter = opts.orgId
-    ? sql`AND org_id = ${opts.orgId}`
-    : sql``;
+  const scopedOrgId = opts.orgId?.trim();
+  if (scopedOrgId && !isValidOrgId(scopedOrgId)) {
+    throw new Error('invalid_org_id');
+  }
+  const recentLimit = recentPackagesReportLimit();
 
   const [orgRow] = await db.execute(sql`
     SELECT
@@ -155,10 +158,10 @@ export async function buildPerformanceReport(opts: {
   const avgScore = avgScoreRaw != null && Number.isFinite(Number(avgScoreRaw)) ? Number(avgScoreRaw) : null;
 
   const recentRows = await db.execute(sql`
-    SELECT DISTINCT ON (package_name) package_name, score, grade, computed_at
+    SELECT package_name, score, grade, computed_at
     FROM package_score_cache
-    ORDER BY package_name, computed_at DESC
-    LIMIT 10
+    ORDER BY computed_at DESC
+    LIMIT ${recentLimit}
   `);
   const recentPackages = (recentRows as unknown as Array<{
     package_name: string;
@@ -172,24 +175,39 @@ export async function buildPerformanceReport(opts: {
     computedAt: r.computed_at instanceof Date ? r.computed_at.toISOString() : String(r.computed_at),
   }));
 
-  const fleetRows = await db.execute(sql`
-    SELECT metrics_snapshot
-    FROM mastyf_ai_fleet_instances
-    WHERE last_heartbeat > NOW() - INTERVAL '15 minutes'
-    ${orgFilter}
-  `);
+  const fleetRows = scopedOrgId
+    ? await db.execute(sql`
+        SELECT metrics_snapshot
+        FROM mastyf_ai_fleet_instances
+        WHERE last_heartbeat > NOW() - INTERVAL '15 minutes'
+          AND org_id = ${scopedOrgId}
+      `)
+    : await db.execute(sql`
+        SELECT metrics_snapshot
+        FROM mastyf_ai_fleet_instances
+        WHERE last_heartbeat > NOW() - INTERVAL '15 minutes'
+      `);
   const fleetSnapshots = (fleetRows as unknown as Array<{ metrics_snapshot: Record<string, unknown> }>);
   const fleetAgg = aggregateFleetMetrics(fleetSnapshots);
 
-  const ruleRows = await db.execute(sql`
-    SELECT rule_name, SUM(event_count)::int AS cnt
-    FROM mastyf_ai_fleet_threat_signatures
-    WHERE last_seen > NOW() - (${windowDays} || ' days')::interval
-    ${orgFilter}
-    GROUP BY rule_name
-    ORDER BY cnt DESC
-    LIMIT 10
-  `);
+  const ruleRows = scopedOrgId
+    ? await db.execute(sql`
+        SELECT rule_name, SUM(event_count)::int AS cnt
+        FROM mastyf_ai_fleet_threat_signatures
+        WHERE last_seen > NOW() - (${windowDays} || ' days')::interval
+          AND org_id = ${scopedOrgId}
+        GROUP BY rule_name
+        ORDER BY cnt DESC
+        LIMIT 10
+      `)
+    : await db.execute(sql`
+        SELECT rule_name, SUM(event_count)::int AS cnt
+        FROM mastyf_ai_fleet_threat_signatures
+        WHERE last_seen > NOW() - (${windowDays} || ' days')::interval
+        GROUP BY rule_name
+        ORDER BY cnt DESC
+        LIMIT 10
+      `);
   const signatureRules = (ruleRows as unknown as Array<{ rule_name: string; cnt: number }>).map((r) => ({
     rule: r.rule_name,
     count: r.cnt,

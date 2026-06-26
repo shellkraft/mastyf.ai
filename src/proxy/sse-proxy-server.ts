@@ -9,7 +9,7 @@ import { findingsToMessages, isResponseScanSkipped } from '../utils/streaming-in
 import { gateToolResponseText } from '../utils/response-security-gate.js';
 import { TokenCounter, extractModelFromPayload } from '../utils/token-counter.js';
 import { Logger } from '../utils/logger.js';
-import { assertUpstreamTlsAllowed } from '../utils/upstream-tls.js';
+import { requireUpstreamTlsAllowed } from '../utils/upstream-tls.js';
 import { persistCallRecord } from '../utils/call-record-cost.js';
 import { StructuredLogger } from '../utils/structured-logger.js';
 import { auditPolicyDecision } from './audit-policy-decision.js';
@@ -65,10 +65,7 @@ export class SseProxyServer extends EventEmitter {
 
   constructor(opts: SseProxyOptions) {
     super();
-    const tlsCheck = assertUpstreamTlsAllowed(opts.upstreamUrl);
-    if (!tlsCheck.ok) {
-      throw new Error(`[sse-proxy:${opts.serverName}] ${tlsCheck.message}`);
-    }
+    requireUpstreamTlsAllowed(opts.upstreamUrl);
     this.opts = opts;
     this.tokenCounter = new TokenCounter();
     void opts.mtlsConfig;

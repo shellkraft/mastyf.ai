@@ -45,6 +45,10 @@ describe("manifest secret handling", () => {
     expect(() => resolveManifestSecret()).toThrow(ManifestSecretError);
   });
 
+  it("rejects short test override secret", () => {
+    expect(() => setManifestSecretForTests("short")).toThrow(ManifestSecretError);
+  });
+
   it("requires explicit secret in strict mode", () => {
     process.env.MASTYF_AI_STRICT_MODE = "true";
     expect(() => resolveManifestSecret()).toThrow(/MASTYF_AI_MANIFEST_SECRET is required/);

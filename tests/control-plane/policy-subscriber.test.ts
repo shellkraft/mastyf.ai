@@ -38,7 +38,7 @@ describe('policy-subscriber', () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
       headers: { get: (h: string) => (h === 'x-policy-version' ? '2' : null) },
-      text: async () => 'policy:\n  mode: block\n  rules: []\n',
+      text: async () => "version: '1.0'\npolicy:\n  mode: block\n  rules: []\n",
     });
     vi.stubGlobal('fetch', fetchMock);
 
@@ -66,7 +66,7 @@ describe('policy-subscriber', () => {
       vi.fn().mockResolvedValue({
         ok: true,
         headers: { get: () => '1' },
-        text: async () => 'policy:\n  mode: audit\n  rules: []\n',
+        text: async () => "version: '1.0'\npolicy:\n  mode: audit\n  rules: []\n",
       }),
     );
 

@@ -25,6 +25,7 @@ describe('swarm-session', () => {
 
   it('hides legacy committed artifacts unless session job and opt-in env', () => {
     const legacyDir = join(process.cwd(), 'reports', 'security-swarm');
+    mkdirSync(legacyDir, { recursive: true });
     const artifact = join(legacyDir, 'latest-stale-test.json');
     writeFileSync(artifact, '{}');
     writeFileSync(

@@ -1,46 +1,29 @@
 import { randomUUID } from 'crypto';
 import { eq, and, isNull } from 'drizzle-orm';
-import { extractBearerToken, generateApiKey } from '@/lib/api-keys';
-import { auth } from '@/lib/auth';
+import { generateApiKey } from '@/lib/api-keys';
 import { getDb } from '@/lib/db';
 import { apiKeys } from '@/lib/db/schema';
-import {
-  getUserOrg,
-  resolveOrgFromApiKey,
-  userCanManageOrg,
-} from '@/lib/org-context';
+import { orgAccessCanManageKeys, resolveOrgAccess } from '@/lib/org-access';
 import { NextResponse } from 'next/server';
 
-async function authorizeRotate(request: Request): Promise<{ orgId: string } | null> {
-  const bearer = extractBearerToken(request.headers.get('authorization'));
-  if (bearer) {
-    const ctx = await resolveOrgFromApiKey(bearer);
-    if (!ctx) return null;
-    return { orgId: ctx.org.id };
-  }
-
-  const session = await auth();
-  if (!session?.user?.id) return null;
-  const ctx = await getUserOrg(session.user.id);
-  if (!ctx || !userCanManageOrg(ctx.membership)) return null;
-  return { orgId: ctx.org.id };
-}
-
 export async function POST(request: Request) {
-  const authCtx = await authorizeRotate(request);
-  if (!authCtx) {
+  const access = await resolveOrgAccess(request);
+  if (!access) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+  if (!orgAccessCanManageKeys(access)) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
   await getDb()
     .update(apiKeys)
     .set({ revokedAt: new Date() })
-    .where(and(eq(apiKeys.orgId, authCtx.orgId), isNull(apiKeys.revokedAt)));
+    .where(and(eq(apiKeys.orgId, access.orgId), isNull(apiKeys.revokedAt)));
 
   const { plaintext, prefix, hash } = generateApiKey();
   await getDb().insert(apiKeys).values({
     id: randomUUID(),
-    orgId: authCtx.orgId,
+    orgId: access.orgId,
     keyHash: hash,
     prefix,
     name: 'default',

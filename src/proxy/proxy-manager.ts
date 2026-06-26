@@ -4,6 +4,7 @@ import { StdioConnectionPool, stdioPoolSize } from './stdio-connection-pool.js';
 import { SseProxyServer } from './sse-proxy-server.js';
 import { WebSocketProxyServer } from './websocket-proxy-server.js';
 import { assertGatewayStartup, isGatewayModeEnabled } from '../tenant/gateway-mode.js';
+import { requireUpstreamTlsAllowed } from '../utils/upstream-tls.js';
 import { McpServerConfig } from '../types.js';
 import { Logger } from '../utils/logger.js';
 import { PolicyEngine } from '../policy/policy-engine.js';
@@ -138,6 +139,7 @@ export class ProxyManager {
           Logger.warn(`[proxy] SKIPPED SSE server "${config.name}" — no URL configured. Add 'url' to mcp.json.`);
           continue;
         }
+        requireUpstreamTlsAllowed(url);
         const authHeader = config.env?.['AUTH_TOKEN']
           ? `Bearer ${config.env['AUTH_TOKEN']}`
           : undefined;
@@ -177,6 +179,7 @@ export class ProxyManager {
           Logger.warn(`[proxy] SKIPPED WebSocket "${config.name}" — no url`);
           continue;
         }
+        requireUpstreamTlsAllowed(url);
         const listenPort = parseInt(
           config.env?.['MASTYF_AI_WS_PROXY_PORT'] || config.env?.['MASTYF_AI_SSE_PROXY_PORT'] || '0',
           10,

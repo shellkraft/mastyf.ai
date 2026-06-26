@@ -17,10 +17,14 @@
     "./transports/http": {
       "import": "./dist/transports/http.js",
       "types": "./dist/transports/http.d.ts"
+    },
+    "./transports/http-fetch-client": {
+      "import": "./dist/transports/http-fetch-client.js",
+      "types": "./dist/transports/http-fetch-client.d.ts"
     }
   },
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && node scripts/verify-core-dist.mjs",
     "test": "vitest run",
     "test:regex-safety": "vitest run tests/argument-regex-safety.test.ts",
     "typecheck": "tsc --noEmit"

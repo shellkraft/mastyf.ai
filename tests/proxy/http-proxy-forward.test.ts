@@ -1,4 +1,4 @@
-import { describe, it, expect, afterEach } from 'vitest';
+import { describe, it, expect, afterEach, beforeEach } from 'vitest';
 import http from 'http';
 import { createHttpProxy } from '../../packages/server/src/http-proxy.js';
 
@@ -8,7 +8,12 @@ describe('createHttpProxy (packages/server)', () => {
   let upstreamMethod = '';
   let proxyPort = 0;
 
+  beforeEach(() => {
+    process.env.MASTYF_AI_ALLOW_PLAINTEXT_UPSTREAM = 'true';
+  });
+
   afterEach(async () => {
+    delete process.env.MASTYF_AI_ALLOW_PLAINTEXT_UPSTREAM;
     await new Promise<void>((r) => proxy?.close(() => r()));
     await new Promise<void>((r) => upstream?.close(() => r()));
     proxy = null;

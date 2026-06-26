@@ -1,8 +1,16 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { StreamableHttpProxyServer } from '../../src/proxy/streamable-http-proxy-server.js';
 import { PolicyEngine } from '../../src/policy/policy-engine.js';
 
 describe('StreamableHttpProxyServer', () => {
+  beforeEach(() => {
+    process.env.MASTYF_AI_ALLOW_PLAINTEXT_UPSTREAM = 'true';
+  });
+
+  afterEach(() => {
+    delete process.env.MASTYF_AI_ALLOW_PLAINTEXT_UPSTREAM;
+  });
+
   it('blocks tools/call on POST /mcp when policy denies', async () => {
     const policy = new PolicyEngine({
       version: '1.0',

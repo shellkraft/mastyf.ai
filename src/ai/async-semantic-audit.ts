@@ -22,6 +22,7 @@ import { isSemanticAsyncEnabledForTenant } from '../tenant/tenant-semantic-confi
 import { withSemanticTimeout } from '../utils/semantic-timeout.js';
 import {
   isSemanticCircuitOpen,
+  tryBeginSemanticLlmProbe,
   recordSemanticLlmFailure,
   recordSemanticLlmSuccess,
 } from './semantic-circuit-breaker.js';
@@ -205,7 +206,7 @@ async function reserveAndEnqueue(job: SemanticAuditJob): Promise<void> {
     return;
   }
 
-  if (isSemanticCircuitOpen()) {
+  if (isSemanticCircuitOpen(job.tenantId)) {
     reportSemanticAuditSkipped('circuit_open', job.tenantId);
     if (isLocalSemanticEnabled(job.tenantId)) {
       void runLocalSemanticAudit(job);
@@ -332,6 +333,14 @@ async function runAudit(job: SemanticAuditJob): Promise<void> {
     return;
   }
 
+  if (!tryBeginSemanticLlmProbe(job.tenantId)) {
+    reportSemanticAuditSkipped('circuit_open', job.tenantId);
+    if (isLocalSemanticEnabled(job.tenantId)) {
+      await runLocalSemanticAudit(job);
+    }
+    return;
+  }
+
   const argsPreview = JSON.stringify(job.arguments ?? {}).slice(0, 2000);
   const systemPrompt = `You are an MCP security analyst. Classify whether a tools/call is suspicious AFTER sync policy passed.
 Respond ONLY with JSON: {"suspicious":boolean,"confidence":0-1,"categories":string[],"reasoning":"one sentence"}
@@ -364,6 +373,7 @@ Categories: prompt-injection, exfiltration, privilege-escalation, encoded-payloa
       tokensUsed: 0,
       durationMs: 0,
     };
+    recordSemanticLlmSuccess(job.tenantId);
   } else {
     try {
       response = await withSemanticTimeout(
@@ -372,13 +382,13 @@ Categories: prompt-injection, exfiltration, privilege-escalation, encoded-payloa
         null,
       );
       if (response?.text) {
-        recordSemanticLlmSuccess();
+        recordSemanticLlmSuccess(job.tenantId);
         await cache.set(cacheKey, response.text);
       } else {
-        recordSemanticLlmFailure();
+        recordSemanticLlmFailure(undefined, job.tenantId);
       }
     } catch (err) {
-      recordSemanticLlmFailure(err);
+      recordSemanticLlmFailure(err, job.tenantId);
       response = null;
     }
   }

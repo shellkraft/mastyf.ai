@@ -61,8 +61,11 @@ describe('enterprise findings MASTYF_AI_FINDINGS', () => {
       timestamp: new Date().toISOString(),
     };
     mod.enqueueSemanticAudit({ ...job, requestId: 'a' });
+    await new Promise((r) => setTimeout(r, 25));
     mod.enqueueSemanticAudit({ ...job, requestId: 'b' });
+    await new Promise((r) => setTimeout(r, 25));
     mod.enqueueSemanticAudit({ ...job, requestId: 'c' });
+    await new Promise((r) => setTimeout(r, 50));
     const stats = mod.getSemanticAuditStats();
     expect(stats.queued).toBeLessThanOrEqual(2);
     expect(stats.dropped).toBeGreaterThanOrEqual(1);

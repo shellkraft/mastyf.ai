@@ -7,7 +7,7 @@ import {
   policies,
 } from './db/schema';
 import { verifyApiKey } from './api-keys';
-import { userCanManageOrg as rbacCanManage, parseApiKeyScopes, apiKeyHasScope, type ApiScope } from './org-rbac';
+import { userCanManageOrg as rbacCanManage, parseApiKeyScopesDetailed, type ApiScope } from './org-rbac';
 
 export type UserOrgContext = {
   org: typeof organizations.$inferSelect;
@@ -61,7 +61,7 @@ export async function resolveOrgFromApiKey(bearerToken: string): Promise<{
       return {
         org,
         apiKeyId: row.id,
-        scopes: parseApiKeyScopes((row as { scopes?: string }).scopes),
+        scopes: parseApiKeyScopesDetailed((row as { scopes?: string }).scopes).scopes,
       };
     }
   }

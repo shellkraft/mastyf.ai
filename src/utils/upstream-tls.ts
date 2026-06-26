@@ -26,3 +26,11 @@ export function assertUpstreamTlsAllowed(targetUrl: string): UpstreamTlsCheckRes
   }
   return { ok: true };
 }
+
+/** Mandatory choke point — all proxy transports must call this before connecting upstream. */
+export function requireUpstreamTlsAllowed(targetUrl: string): void {
+  const result = assertUpstreamTlsAllowed(targetUrl);
+  if (!result.ok) {
+    throw new Error(result.message);
+  }
+}

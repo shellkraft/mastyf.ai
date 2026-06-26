@@ -1,4 +1,5 @@
 import { createServer, IncomingMessage, ServerResponse } from 'http';
+import { createServer as createHttpsServer } from 'https';
 import { request as httpReq } from 'http';
 import { request as httpsReq, Agent as HttpsAgent } from 'https';
 import { randomUUID } from 'crypto';
@@ -18,7 +19,8 @@ import type { MtlsConfig } from '../utils/mtls-config.js';
 import { getMtlsAgent } from '../utils/mtls-agent-registry.js';
 import * as Metrics from '../utils/metrics.js';
 import { Logger } from '../utils/logger.js';
-import { assertUpstreamTlsAllowed } from '../utils/upstream-tls.js';
+import { requireUpstreamTlsAllowed } from '../utils/upstream-tls.js';
+import { loadInboundTlsFromEnv } from '../utils/inbound-tls.js';
 import { extractDpopProof, validateRequiredDpop } from '../auth/dpop-enforcement.js';
 import { resolveTenantContext, InvalidTenantIdError, DEFAULT_TENANT_ID } from '../tenant/resolve-tenant.js';
 import {
@@ -62,7 +64,8 @@ export class HttpProxyServer {
   private tokenCounter: TokenCounter;
   private db: HistoryDatabase;
   private port: number;
-  private server: ReturnType<typeof createServer> | null = null;
+  private inboundTls: { cert: Buffer; key: Buffer } | null;
+  private server: ReturnType<typeof createServer> | ReturnType<typeof createHttpsServer> | null = null;
   private readonly rugPullState: ToolFingerprintState = { fingerprint: null, blocked: false };
 
   constructor(
@@ -76,9 +79,17 @@ export class HttpProxyServer {
   ) {
     this.serverName = serverName;
     this.targetUrl = targetUrl.replace(/\/$/, '');
-    const tlsCheck = assertUpstreamTlsAllowed(this.targetUrl);
-    if (!tlsCheck.ok) {
-      throw new Error(`[http-proxy:${serverName}] ${tlsCheck.message}`);
+    requireUpstreamTlsAllowed(this.targetUrl);
+    this.inboundTls = loadInboundTlsFromEnv();
+    if (process.env['MASTYF_AI_REQUIRE_INBOUND_TLS'] === 'true' && !this.inboundTls) {
+      throw new Error(
+        'MASTYF_AI_REQUIRE_INBOUND_TLS=true requires inbound TLS cert/key (MASTYF_AI_TLS_CERT_PATH + MASTYF_AI_TLS_KEY_PATH)',
+      );
+    }
+    if (process.env['MASTYF_AI_AUTH_REQUIRED'] === 'true' && !authValidator) {
+      throw new Error(
+        'MASTYF_AI_AUTH_REQUIRED=true requires an OAuthValidator when creating HttpProxyServer',
+      );
     }
     this.policyEngine = policyEngine || null;
     this.authValidator = authValidator || null;
@@ -96,12 +107,18 @@ export class HttpProxyServer {
   }
 
   async start(): Promise<void> {
-    this.server = createServer((req, res) => this.handleRequest(req, res));
+    const handler = (req: IncomingMessage, res: ServerResponse) => {
+      void this.handleRequest(req, res);
+    };
+    this.server = this.inboundTls
+      ? createHttpsServer({ cert: this.inboundTls.cert, key: this.inboundTls.key }, handler)
+      : createServer(handler);
     await new Promise<void>((resolve, reject) => {
       this.server!.once('error', reject);
       this.server!.listen(this.port, () => {
         this.server!.removeListener('error', reject);
-        Logger.info(`[http-proxy:${this.serverName}] Listening on http://0.0.0.0:${this.port} → ${this.targetUrl}`);
+        const scheme = this.inboundTls ? 'https' : 'http';
+        Logger.info(`[http-proxy:${this.serverName}] Listening on ${scheme}://0.0.0.0:${this.port} → ${this.targetUrl}`);
         resolve();
       });
     });

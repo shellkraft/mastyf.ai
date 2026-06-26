@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { scanTool, scanToolCall, scanServer } from "../src/engine.js";
+import { scanTool, scanToolCall, scanServer, resetScanConcurrencyCacheForTests } from "../src/engine.js";
 import { runRegexScan } from "../src/regex-scanner.js";
 import { runSchemaScan } from "../src/schema-scanner.js";
 import { resetLlmConfigForTests } from "../src/config/llm-config.js";
@@ -371,6 +371,7 @@ describe("scanServer — timeouts and budgets", () => {
     process.env.MASTYF_AI_SCAN_TOOL_TIMEOUT_MS = "10";
     process.env.MASTYF_AI_SCAN_TEST_DELAY_MS = "50";
     process.env.MASTYF_AI_SCAN_CONCURRENCY = "1";
+    resetScanConcurrencyCacheForTests();
     const result = await scanServer(
       "slow-server",
       [{ name: "slow", description: "safe tool" }],
@@ -385,6 +386,7 @@ describe("scanServer — timeouts and budgets", () => {
     process.env.MASTYF_AI_SCAN_SERVER_BUDGET_MS = "5";
     process.env.MASTYF_AI_SCAN_TEST_DELAY_MS = "15";
     process.env.MASTYF_AI_SCAN_CONCURRENCY = "1";
+    resetScanConcurrencyCacheForTests();
     const tools = Array.from({ length: 50 }, (_, i) => ({
       name: `tool-${i}`,
       description: "scan me",

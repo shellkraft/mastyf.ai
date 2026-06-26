@@ -1,34 +1,17 @@
-import { extractBearerToken } from '@/lib/api-keys';
 import {
-  getUserOrg,
-  resolveOrgFromApiKey,
-  userCanManageOrg,
-} from '@/lib/org-context';
+  orgAccessCanReadPolicy,
+  orgAccessCanWritePolicy,
+  resolveOrgAccess,
+} from '@/lib/org-access';
 import { publishPolicyYaml } from '@/lib/policy-publish';
 import { NextResponse } from 'next/server';
 
-async function resolveWriteContext(request: Request) {
-  const bearer = extractBearerToken(request.headers.get('authorization'));
-  if (bearer) {
-    const apiCtx = await resolveOrgFromApiKey(bearer);
-    if (!apiCtx) return null;
-    return { orgId: apiCtx.org.id, canManage: true };
-  }
-
-  const { auth } = await import('@/lib/auth');
-  const session = await auth();
-  if (!session?.user?.id) return null;
-  const ctx = await getUserOrg(session.user.id);
-  if (!ctx) return null;
-  return { orgId: ctx.org.id, canManage: userCanManageOrg(ctx.membership) };
-}
-
 export async function POST(request: Request) {
-  const writeCtx = await resolveWriteContext(request);
-  if (!writeCtx) {
+  const access = await resolveOrgAccess(request);
+  if (!access) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
-  if (!writeCtx.canManage) {
+  if (!orgAccessCanWritePolicy(access)) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
@@ -45,7 +28,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Policy YAML required' }, { status: 400 });
   }
 
-  const { version, publishedAt } = await publishPolicyYaml(writeCtx.orgId, yaml);
+  const { version, publishedAt } = await publishPolicyYaml(access.orgId, yaml);
 
   return NextResponse.json({ ok: true, version, publishedAt });
 }
