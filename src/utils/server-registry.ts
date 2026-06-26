@@ -69,9 +69,11 @@ function topTools(records: import('../types.js').ProxyCallRecord[], limit = 5): 
     .map(([tool, count]) => ({ tool, count }));
 }
 
-export async function getServerRegistry(projectRoot = REPO_ROOT): Promise<ServerRegistryEntry[]> {
-  const configsDir = join(projectRoot, 'mastyf-ai-configs');
-  const paths = listMastyfAiConfigPaths(configsDir);
+export async function getServerRegistry(projectRoot?: string): Promise<ServerRegistryEntry[]> {
+  const { resolveWorkspaceRoot, configsDir } = await import('../fleet/unified-server-registry.js');
+  const workspaceRoot = projectRoot ?? resolveWorkspaceRoot();
+  const configsDirPath = configsDir(workspaceRoot);
+  const paths = listMastyfAiConfigPaths(configsDirPath);
   const dbPath = resolveMastyfAiDbPath();
   const db = await createDatabase(dbPath);
   await db.initialize();
@@ -116,10 +118,12 @@ export async function getServerRegistry(projectRoot = REPO_ROOT): Promise<Server
   return entries.sort((a, b) => a.name.localeCompare(b.name));
 }
 
-export async function getOnboardingStatus(projectRoot = REPO_ROOT): Promise<OnboardingStatus> {
+export async function getOnboardingStatus(projectRoot?: string): Promise<OnboardingStatus> {
   const onboard = readOnboardArtifact();
-  const configsDir = join(projectRoot, 'mastyf-ai-configs');
-  const configCount = listMastyfAiConfigPaths(configsDir).length;
+  const { resolveWorkspaceRoot, configsDir } = await import('../fleet/unified-server-registry.js');
+  const workspaceRoot = projectRoot ?? resolveWorkspaceRoot();
+  const configsDirPath = onboard?.configsDir ?? configsDir(workspaceRoot);
+  const configCount = listMastyfAiConfigPaths(configsDirPath).length;
   const dbPath = resolveMastyfAiDbPath();
 
   let totalCalls = 0;
@@ -154,7 +158,7 @@ export async function getOnboardingStatus(projectRoot = REPO_ROOT): Promise<Onbo
     onboardedAt: onboard?.onboardedAt ?? null,
     client: onboard?.client ?? null,
     wrapApplied: onboard?.applied ?? false,
-    configsDir: existsSync(configsDir) ? configsDir : null,
+    configsDir: existsSync(configsDirPath) ? configsDirPath : null,
     configCount,
     hasTraffic,
     totalCalls,

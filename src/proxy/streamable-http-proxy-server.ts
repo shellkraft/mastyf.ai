@@ -11,15 +11,11 @@ import { PolicyEngine } from '../policy/policy-engine.js';
 import { Logger } from '../utils/logger.js';
 import { requireUpstreamTlsAllowed } from '../utils/upstream-tls.js';
 import { StructuredLogger } from '../utils/structured-logger.js';
-import { notifyToolBlock } from '../alerting/notify-tool-block.js';
-import { auditPolicyDecision } from './audit-policy-decision.js';
 import { resolveTenantContext, InvalidTenantIdError } from '../tenant/resolve-tenant.js';
 import { resolveProxyTenantId, JwtTenantRequiredError } from '../tenant/jwt-tenant-binding.js';
 import { OAuthValidator } from '../auth/oauth.js';
 import { extractDpopProof, validateRequiredDpop } from '../auth/dpop-enforcement.js';
 import { createSessionCache, validateSessionToken, type MastyfAiSessionCache } from '../auth/session-factory.js';
-import type { CallContext } from '../policy/policy-types.js';
-import { applyGeoToCallContext } from '../utils/request-geo-context.js';
 import type { IDatabase } from '../database/database-interface.js';
 import { persistCallRecord } from '../utils/call-record-cost.js';
 import { TokenCounter } from '../utils/token-counter.js';
@@ -31,12 +27,15 @@ import { getMtlsAgent } from '../utils/mtls-agent-registry.js';
 import { parseJsonWithDepthLimit } from './http-proxy-security.js';
 import { getUpstreamTimeoutMs } from '../utils/upstream-timeout.js';
 import { acquireProxyInflight, releaseProxyInflight } from './proxy-inflight.js';
-import { isPostPolicyGateBlock, runPostPolicyAllowGates } from './proxy-post-allow-gates.js';
+import { evaluateToolCallDefense } from './tool-call-defense-orchestrator.js';
 import { withProxyRequestVault } from './proxy-request-context.js';
 import {
   fingerprintJsonRpcToolsList,
-  isRugPullBlockedForCall,
 } from './rug-pull-transport.js';
+import {
+  createStreamingEconomicsState,
+  inspectStreamingEconomicsChunk,
+} from './streaming-economics.js';
 import type { ToolFingerprintState } from './tool-fingerprint.js';
 import {
   injectIntoUpstreamHeaders,
@@ -51,10 +50,8 @@ export interface StreamableHttpProxyOptions {
   policy?: PolicyEngine;
   db?: IDatabase;
   authValidator?: OAuthValidator;
-}
-
-function isUpstreamRelayEnabled(): boolean {
-  return process.env['MASTYF_AI_STREAMABLE_HTTP_UPSTREAM_RELAY'] === 'true';
+  /** When true, POST /mcp requests are relayed to upstreamBaseUrl/mcp. */
+  upstreamRelay?: boolean;
 }
 
 export class StreamableHttpProxyServer {
@@ -64,10 +61,13 @@ export class StreamableHttpProxyServer {
   private sessionCache: MastyfAiSessionCache | null;
   private tokenCounter = new TokenCounter();
   private readonly rugPullState: ToolFingerprintState = { fingerprint: null, blocked: false };
+  private readonly upstreamRelay: boolean;
 
   constructor(opts: StreamableHttpProxyOptions) {
     requireUpstreamTlsAllowed(opts.upstreamBaseUrl);
     this.opts = opts;
+    this.upstreamRelay = opts.upstreamRelay
+      ?? process.env['MASTYF_AI_STREAMABLE_HTTP_UPSTREAM_RELAY'] === 'true';
     this.sessionCache = opts.authValidator ? createSessionCache() : null;
     getMtlsAgent();
   }
@@ -172,7 +172,7 @@ export class StreamableHttpProxyServer {
     });
     if (blocked) return blocked;
 
-    if (!isUpstreamRelayEnabled()) {
+    if (!this.upstreamRelay) {
       if (msg.method === 'tools/call') {
         releaseProxyInflight(this.opts.serverName);
       }
@@ -198,7 +198,10 @@ export class StreamableHttpProxyServer {
         toolName: (msg.params as { name?: string } | undefined)?.name ?? 'unknown',
         tenantId: relayTenantId,
         transport: 'streamable-http',
-      }, () => this.relayToUpstream(JSON.stringify(msg), req))
+      }, () => this.relayToUpstream(JSON.stringify(msg), req, {
+        tenantId: (msg as { _defenseTenantId?: string })._defenseTenantId ?? relayTenantId,
+        spendReservationId: (msg as { _spendReservationId?: string })._spendReservationId,
+      }))
       : await this.relayToUpstream(JSON.stringify(msg), req);
     if (msg.method === 'tools/call') {
       releaseProxyInflight(this.opts.serverName);
@@ -274,6 +277,7 @@ export class StreamableHttpProxyServer {
   private relayToUpstream(
     body: string,
     req: IncomingMessage,
+    opts?: { tenantId?: string; spendReservationId?: string },
   ): Promise<Record<string, unknown> | null> {
     const base = this.opts.upstreamBaseUrl.replace(/\/$/, '');
     const url = new URL(`${base}/mcp`);
@@ -300,7 +304,20 @@ export class StreamableHttpProxyServer {
       };
       const clientReq = (isHttps ? httpsRequest : httpRequest)(reqOpts, (upstreamRes) => {
         const parts: Buffer[] = [];
-        upstreamRes.on('data', (c) => parts.push(c));
+        const streamEcon = createStreamingEconomicsState(
+          opts?.tenantId ?? 'default',
+          opts?.spendReservationId,
+        );
+        upstreamRes.on('data', (c) => {
+          const chunk = c.toString();
+          const econ = inspectStreamingEconomicsChunk(streamEcon, chunk);
+          if (econ.abort) {
+            upstreamRes.destroy();
+            clientReq.destroy();
+            return;
+          }
+          parts.push(c);
+        });
         upstreamRes.on('end', () => {
           const text = Buffer.concat(parts).toString();
           const parsed = parseJsonWithDepthLimit(text);
@@ -368,18 +385,6 @@ export class StreamableHttpProxyServer {
       throw err;
     }
 
-    if (await isRugPullBlockedForCall(this.rugPullState, this.opts.serverName, tenantId)) {
-      return {
-        jsonrpc: '2.0',
-        id: msg.id,
-        error: {
-          code: -32001,
-          message:
-            'Blocked by MCP Mastyf AI policy: tool definitions changed mid-session (rug-pull)',
-        },
-      };
-    }
-
     if (token && this.sessionCache && !authenticated) {
       const sessionResult = await validateSessionToken(this.sessionCache, token, tenantId);
       if (sessionResult) {
@@ -415,36 +420,6 @@ export class StreamableHttpProxyServer {
     } | undefined;
     const toolName = params?.name || 'unknown';
     const requestId = String(msg.id ?? randomUUID());
-    const { runToolCallPreForwardGuard, toolCallGuardBlockResponse } = await import(
-      './tool-call-pre-guard.js'
-    );
-    const preGuard = await runToolCallPreForwardGuard(
-      this.opts.serverName,
-      toolName,
-      params?.arguments,
-      requestId,
-      {
-        meta: params?._meta,
-        headers: req.headers,
-        agentId: agentSub,
-        mcpSessionId: fleetCtx?.mcpSessionId,
-      },
-    );
-    if (preGuard.blocked) {
-      releaseProxyInflight(this.opts.serverName);
-      StructuredLogger.logBlocked({
-        event: 'tool_blocked',
-        requestId,
-        serverName: this.opts.serverName,
-        toolName,
-        reason: preGuard.message,
-        rule: 'payload_or_agentic',
-      });
-      return toolCallGuardBlockResponse(msg.id, preGuard);
-    }
-    if (preGuard.arguments && params) {
-      params.arguments = preGuard.arguments;
-    }
     const reqMsg = { params: { name: params?.name, arguments: params?.arguments } };
     const model = resolveModelIdForServer(this.opts.serverName);
     const tokenCounts = this.tokenCounter.countProxyCall({
@@ -453,16 +428,6 @@ export class StreamableHttpProxyServer {
       model,
       requestPayload: reqMsg,
     });
-    const context: CallContext = applyGeoToCallContext({
-      serverName: this.opts.serverName,
-      toolName,
-      arguments: params?.arguments,
-      requestId,
-      requestTokens: tokenCounts.requestTokens,
-      timestamp: new Date().toISOString(),
-      tenantId,
-      idempotencyKey: idempotencyKeyFromRequest(params?._meta),
-    }, req.headers);
 
     const inflight = acquireProxyInflight(this.opts.serverName);
     if (!inflight.ok) {
@@ -476,66 +441,62 @@ export class StreamableHttpProxyServer {
       };
     }
 
-    const decision = await this.opts.policy.evaluateAsync(context);
-    auditPolicyDecision(context.requestId, this.opts.serverName, context.toolName, decision, context);
-    if (decision.action === 'block') {
-      notifyToolBlock({
+    const defense = await evaluateToolCallDefense(
+      {
         serverName: this.opts.serverName,
-        toolName: context.toolName,
-        rule: decision.rule,
-        reason: decision.reason,
-        requestId: context.requestId,
-        anomalyScore: 0.95,
-      });
+        toolName,
+        arguments: params?.arguments,
+        requestId,
+        requestTokens: tokenCounts.requestTokens,
+        tenantId,
+        headers: req.headers,
+        meta: params?._meta,
+        agentId: agentSub,
+        mcpSessionId: fleetCtx?.mcpSessionId,
+        idempotencyKey: idempotencyKeyFromRequest(params?._meta),
+      },
+      {
+        policyEngine: this.opts.policy,
+        db: this.opts.db,
+        rugPullState: this.rugPullState,
+      },
+    );
+
+    if (!defense.allowed) {
       releaseProxyInflight(this.opts.serverName);
-      StructuredLogger.logBlocked({
-        event: 'tool_blocked',
-        requestId: context.requestId,
-        serverName: this.opts.serverName,
-        toolName: context.toolName,
-        reason: decision.reason,
-        rule: decision.rule,
-      });
+      const phaseLabel =
+        defense.phase === 'semantic' ? 'semantic gate' :
+        defense.phase === 'spend' ? 'spend cap' :
+        defense.phase === 'policy' ? 'policy' :
+        defense.phase === 'lifecycle' ? 'lifecycle assurance' :
+        'pre-guard';
+      if (defense.phase === 'pre-guard' && defense.preGuard) {
+        const { toolCallGuardBlockResponse } = await import('./tool-call-pre-guard.js');
+        return toolCallGuardBlockResponse(msg.id, defense.preGuard);
+      }
       return {
         jsonrpc: '2.0',
         id: msg.id,
         error: {
-          code: -32001,
-          message: `Blocked by MCP Mastyf AI policy: ${decision.reason}`,
+          code: defense.code,
+          message: `Blocked by MCP Mastyf AI ${phaseLabel}: ${defense.reason}`,
         },
       };
     }
 
-    const gateOutcome = await runPostPolicyAllowGates(context, decision, this.opts.serverName);
-    if (isPostPolicyGateBlock(gateOutcome)) {
-      releaseProxyInflight(this.opts.serverName);
-      StructuredLogger.logBlocked({
-        event: 'tool_blocked',
-        requestId,
-        serverName: this.opts.serverName,
-        toolName,
-        reason: gateOutcome.reason,
-        rule: 'semantic_gate',
-      });
-      return {
-        jsonrpc: '2.0',
-        id: msg.id,
-        error: {
-          code: -32001,
-          message: `Blocked by MCP Mastyf AI semantic gate: ${gateOutcome.reason}`,
-        },
-      };
+    if (defense.arguments && params) {
+      params.arguments = defense.arguments;
     }
-    const spendReservationId =
-      gateOutcome && 'allowed' in gateOutcome ? gateOutcome.spendReservationId : undefined;
+
+    const spendReservationId = defense.spendReservationId;
 
     if (this.opts.db) {
       persistCallRecord(
         this.opts.db,
         {
           serverName: this.opts.serverName,
-          toolName: context.toolName,
-          timestamp: context.timestamp,
+          toolName,
+          timestamp: defense.context.timestamp,
           requestTokens: tokenCounts.requestTokens,
           responseTokens: tokenCounts.responseTokens,
           totalTokens: tokenCounts.totalTokens,
@@ -552,6 +513,8 @@ export class StreamableHttpProxyServer {
     if (rotatedSessionToken) {
       (msg as { _rotatedSessionToken?: string })._rotatedSessionToken = rotatedSessionToken;
     }
+    (msg as { _defenseTenantId?: string; _spendReservationId?: string })._defenseTenantId = tenantId;
+    (msg as { _spendReservationId?: string })._spendReservationId = spendReservationId;
 
     return null;
   }

@@ -54,8 +54,9 @@ import {
   redactArguments,
   ingestPolicyDecision,
 } from '../ai/block-learning.js';
-import { isPostPolicyGateBlock, runPostPolicyAllowGates } from './proxy-post-allow-gates.js';
+import { evaluateToolCallDefense } from './tool-call-defense-orchestrator.js';
 import { publishRugPullAlert, isClusterRugPullActive } from './rug-pull-cluster.js';
+import { onToolsListObserved } from './lifecycle-assurance-gates.js';
 import {
   applyToolFingerprintFromResult,
   type ToolFingerprintState,
@@ -256,6 +257,7 @@ export class McpProxyServer {
         // ── Rug-pull: fingerprint tools/list on any message carrying result.tools ──
         if (msg.result?.tools && Array.isArray(msg.result.tools)) {
           if (msg.id != null) this.pendingToolsListIds.delete(msg.id);
+          onToolsListObserved(this.serverName, msg.result.tools);
           applyToolFingerprintFromResult(this.rugPullState, msg.result, {
             serverName: this.serverName,
             tenantId: this.defaultTenantId,
@@ -1062,39 +1064,6 @@ export class McpProxyServer {
           }
         }
 
-        // ── CVE gate (latest security_scans row; run preflight or `mastyf-ai scan`) ──
-        if (this.policyEngine?.getMode() === 'block') {
-          const { evaluateCveGate } = await import('../utils/cve-gate.js');
-          const cveGate = await evaluateCveGate(this.db, this.serverName);
-          if (cveGate.block) {
-            const cveReason = cveGate.reason || 'CVE policy violation';
-            this.recordDeniedCall(toolName, requestTokens, Date.now() - proxyStartTime, 'cve-gate', cveReason);
-            StructuredLogger.info({
-              event: 'request_denied',
-              requestId,
-              serverName: this.serverName,
-              toolName,
-              blockReason: `cve:${cveReason}`,
-              proxyLatencyMs: Date.now() - proxyStartTime,
-            });
-            Metrics.recordProxyBlock(
-              {
-                server_name: this.serverName,
-                block_reason: 'cve_gate',
-                rule: 'cve-gate',
-                tenant_id: requestTenantId,
-              },
-              'cve',
-            );
-            Metrics.requestsTotal.inc({ server_name: this.serverName, decision: 'block', authn_success: String(authnSuccess) });
-            this.sendError(msg.id, -32001, `Blocked by MCP Mastyf AI CVE policy: ${cveReason}`, {
-              rule: 'cve-gate',
-              policy: 'block',
-            });
-            return;
-          }
-        }
-
         // ── Circuit breaker check ───────────────────────────
         const tenantBreaker = this.breakerFor(requestTenantId);
         if (!tenantBreaker.allowRequest()) {
@@ -1111,7 +1080,7 @@ export class McpProxyServer {
           return;
         }
 
-        // ── RBAC + policy evaluation ────────────────────────
+        // ── Defense Fabric (lifecycle + policy + spend + semantic) ──
         let authzAllowed = true;
         let blockReason: string | undefined;
         let spendReservationId: string | undefined;
@@ -1124,121 +1093,68 @@ export class McpProxyServer {
           const idempotencyKey = idempotencyKeyFromRequest(
             msg.params?._meta as Record<string, unknown> | undefined,
           );
-          const context: CallContext = applyGeoToCallContext({
-            serverName: this.serverName,
-            toolName,
-            arguments: requestArguments,
-            requestId,
-            requestTokens,
-            timestamp: new Date().toISOString(),
-            tenantId,
-            agentIdentity,
-            idempotencyKey,
-          });
 
-          const decision = await this.evaluatePolicyPinned(engine, context);
+          const defense = await evaluateToolCallDefense(
+            {
+              serverName: this.serverName,
+              toolName,
+              arguments: requestArguments,
+              requestId,
+              requestTokens,
+              tenantId,
+              agentIdentity,
+              idempotencyKey,
+            },
+            {
+              policyEngine: engine,
+              db: this.db,
+              rugPullState: this.rugPullState,
+              evaluatePolicy: (ctx) => this.evaluatePolicyPinned(engine, ctx),
+            },
+          );
+
           await waitProxyTimingNormalize(proxyStartTime);
 
-          ingestPolicyDecision({
-            requestId,
-            serverName: this.serverName,
-            toolName,
-            action: decision.action,
-            rule: decision.rule,
-            reason: decision.reason,
-            timestamp: context.timestamp,
-            requestTokens,
-          });
-
-          StructuredLogger.logPolicyDecision({
-            event: 'policy_decision',
-            requestId,
-            serverName: this.serverName,
-            toolName,
-            decision,
-            context,
-          });
-
-          const policyMode = engine.getMode();
-          const shouldDeny = decision.action === 'block'
-            || (decision.action === 'flag' && policyMode === 'block');
-
-          if (shouldDeny) {
+          if (!defense.allowed) {
             authzAllowed = false;
-            blockReason = `policy:${decision.rule}:${decision.reason}`;
+            blockReason = `${defense.phase}:${defense.rule}:${defense.reason}`;
             this.recordDeniedCall(
               toolName,
               requestTokens,
               Date.now() - proxyStartTime,
-              decision.rule,
-              decision.reason,
+              defense.rule,
+              defense.reason,
               requestArguments,
               requestTenantId,
             );
-
-            StructuredLogger.logBlocked({
-              event: 'tool_blocked',
-              requestId,
-              serverName: this.serverName,
-              toolName,
-              reason: `policy_rule=${decision.rule} | reason=${decision.reason}`,
-              rule: decision.rule,
-            });
-
-            StructuredLogger.info({
-              event: 'request_denied',
-              requestId,
-              serverName: this.serverName,
-              toolName,
-              authnSuccess,
-              authzAllowed,
-              blockReason,
-              proxyLatencyMs: Date.now() - proxyStartTime,
-            });
-
-            Metrics.recordProxyBlock(
-              {
-                server_name: this.serverName,
-                block_reason: blockReason || 'policy',
-                rule: decision.rule,
-                tenant_id: context.tenantId,
-              },
-            );
-            Metrics.requestsTotal.inc({ server_name: this.serverName, decision: 'block', authn_success: String(authnSuccess) });
-            notifyToolBlock({
-              serverName: this.serverName,
-              toolName,
-              rule: decision.rule,
-              reason: decision.reason,
-              requestId,
-              anomalyScore: 0.95,
-            });
-            this.sendError(msg.id, -32001, `Blocked by MCP Mastyf AI policy: ${decision.reason}`, {
-              rule: decision.rule,
-              policy: policyMode,
+            this.sendError(msg.id, -32001, `Blocked by MCP Mastyf AI: ${defense.reason}`, {
+              rule: defense.rule,
+              policy: engine.getMode(),
             });
             return;
           }
 
-          const gateOutcome = await runPostPolicyAllowGates(context, decision, this.serverName);
-          if (isPostPolicyGateBlock(gateOutcome)) {
-            this.recordDeniedCall(
+          if (defense.allowed) {
+            requestArguments = defense.arguments ?? requestArguments;
+            spendReservationId = defense.spendReservationId;
+            ingestPolicyDecision({
+              requestId,
+              serverName: this.serverName,
               toolName,
+              action: defense.decision.action,
+              rule: defense.decision.rule,
+              reason: defense.decision.reason,
+              timestamp: defense.context.timestamp,
               requestTokens,
-              Date.now() - proxyStartTime,
-              gateOutcome.rule,
-              gateOutcome.reason,
-              requestArguments,
-              requestTenantId,
-            );
-            this.sendError(msg.id, -32001, `Blocked by MCP Mastyf AI semantic gate: ${gateOutcome.reason}`, {
-              rule: gateOutcome.rule,
-              policy: 'block',
             });
-            return;
-          }
-          if (gateOutcome && 'allowed' in gateOutcome) {
-            spendReservationId = gateOutcome.spendReservationId;
+            StructuredLogger.logPolicyDecision({
+              event: 'policy_decision',
+              requestId,
+              serverName: this.serverName,
+              toolName,
+              decision: defense.decision,
+              context: defense.context,
+            });
           }
         }
 

@@ -2,6 +2,7 @@ import { IDatabase } from '../database/database-interface.js';
 import { McpProxyServer } from './proxy-server.js';
 import { StdioConnectionPool, stdioPoolSize } from './stdio-connection-pool.js';
 import { SseProxyServer } from './sse-proxy-server.js';
+import { StreamableHttpProxyServer } from './streamable-http-proxy-server.js';
 import { WebSocketProxyServer } from './websocket-proxy-server.js';
 import { assertGatewayStartup, isGatewayModeEnabled } from '../tenant/gateway-mode.js';
 import { requireUpstreamTlsAllowed } from '../utils/upstream-tls.js';
@@ -13,11 +14,13 @@ import { TenantPolicyRegistry } from '../policy/tenant-policy-registry.js';
 import { OAuthValidator } from '../auth/oauth.js';
 import { StructuredLogger } from '../utils/structured-logger.js';
 import * as Metrics from '../utils/metrics.js';
+import { isStreamableHttpMcpUrl, resolveStreamableHttpUpstreamBase } from '../utils/mcp-transport-url.js';
 
 export class ProxyManager {
   private stdioProxies: McpProxyServer[] = [];
   private stdioPools: StdioConnectionPool[] = [];
   private sseProxies: Map<string, SseProxyServer> = new Map();
+  private streamableProxies: Map<string, StreamableHttpProxyServer> = new Map();
   private wsProxies: Map<string, WebSocketProxyServer> = new Map();
   private policyEngine: PolicyEngine | undefined;
   private tenantPolicyRegistry: TenantPolicyRegistry | undefined;
@@ -70,10 +73,11 @@ export class ProxyManager {
   }
 
   /** Returns summary counts for the CLI proxy command output */
-  getProxyStats(): { stdioCount: number; sseCount: number; wsCount: number } {
+  getProxyStats(): { stdioCount: number; sseCount: number; streamableCount: number; wsCount: number } {
     return {
       stdioCount: this.stdioProxies.length,
       sseCount: this.sseProxies.size,
+      streamableCount: this.streamableProxies.size,
       wsCount: this.wsProxies.size,
     };
   }
@@ -85,13 +89,18 @@ export class ProxyManager {
     const stdioServers = gateway
       ? []
       : configs.filter((c) => c.command && c.transport !== 'websocket');
+    const streamableServers = configs.filter(
+      (c) => !c.command && c.url && isStreamableHttpMcpUrl(c.url),
+    );
     const sseServers = configs.filter(
-      (c) => !c.command && (c.transport === 'sse' || (!c.transport && c.url)),
+      (c) => !c.command && c.url && !isStreamableHttpMcpUrl(c.url)
+        && (c.transport === 'sse' || !c.transport),
     );
     const wsServers = configs.filter((c) => c.transport === 'websocket' && c.url);
 
     let stdioStarted = 0;
     let sseStarted = 0;
+    let streamableStarted = 0;
     let wsStarted = 0;
 
     // ─── Stdio proxies ─────────────────────────────────────
@@ -131,7 +140,43 @@ export class ProxyManager {
       }
     }
 
-    // ─── SSE/HTTP proxies — NEW: actually spawn them ──────
+    // ─── Streamable HTTP proxies (/mcp) ───────────────────
+    for (const config of streamableServers) {
+      try {
+        const url = config.url!;
+        requireUpstreamTlsAllowed(url);
+        const streamableProxy = new StreamableHttpProxyServer({
+          listenPort: parseInt(
+            config.env?.['MASTYF_AI_STREAMABLE_HTTP_PORT']
+              || config.env?.['MASTYF_AI_SSE_PROXY_PORT']
+              || '0',
+            10,
+          ) || 0,
+          upstreamBaseUrl: resolveStreamableHttpUpstreamBase(url),
+          serverName: config.name,
+          policy: this.policyEngine,
+          db: this.db,
+          authValidator: this.authValidator,
+          upstreamRelay: true,
+        });
+        const listenPort = await streamableProxy.start();
+        this.streamableProxies.set(config.name, streamableProxy);
+        streamableStarted++;
+        StructuredLogger.info({
+          event: 'streamable_http_proxy_listening',
+          serverName: config.name,
+          upstreamUrl: url,
+          listenPort,
+          message: `Point MCP client at http://127.0.0.1:${listenPort}/mcp`,
+        });
+        Logger.info(`[proxy] Streamable HTTP active for "${config.name}" → ${url} (local :${listenPort}/mcp)`);
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : String(err);
+        Logger.error(`[proxy] FAILED streamable HTTP for "${config.name}": ${message}`);
+      }
+    }
+
+    // ─── SSE/HTTP proxies ─────────────────────────────────
     for (const config of sseServers) {
       try {
         const url = config.url;
@@ -205,7 +250,7 @@ export class ProxyManager {
     }
 
     // ─── Summary — loud and clear ═══════════════════════════
-    const total = stdioStarted + sseStarted + wsStarted;
+    const total = stdioStarted + sseStarted + streamableStarted + wsStarted;
     const skipped = configs.length - total;
 
     if (total === 0) {
@@ -224,9 +269,10 @@ export class ProxyManager {
       `╔══════════════════════════════════════════╗\n` +
       `║  MCP Mastyf AI Proxy — Protection Active  ║\n` +
       `╠══════════════════════════════════════════╣\n` +
-      `║  Stdio: ${String(stdioStarted).padStart(4)} servers              ║\n` +
-      `║  SSE:   ${String(sseStarted).padStart(4)} servers              ║\n` +
-      `║  WS:    ${String(wsStarted).padStart(4)} servers              ║\n` +
+      `║  Stdio:       ${String(stdioStarted).padStart(4)} servers              ║\n` +
+      `║  SSE:         ${String(sseStarted).padStart(4)} servers              ║\n` +
+      `║  Streamable:  ${String(streamableStarted).padStart(4)} servers              ║\n` +
+      `║  WS:          ${String(wsStarted).padStart(4)} servers              ║\n` +
       `║  Total: ${String(total).padStart(4)} servers protected        ║`
     );
 
@@ -234,6 +280,7 @@ export class ProxyManager {
       const startedNames = new Set<string>();
       for (const p of this.stdioProxies) startedNames.add(p['serverName'] as string);
       for (const [name] of this.sseProxies) startedNames.add(name);
+      for (const [name] of this.streamableProxies) startedNames.add(name);
       for (const [name] of this.wsProxies) startedNames.add(name);
       const skippedNames = configs.filter(c => !startedNames.has(c.name)).map(c => c.name);
       Logger.warn(
@@ -275,6 +322,10 @@ export class ProxyManager {
       await sseProxy.stop();
     }
     this.sseProxies.clear();
+    for (const [, streamableProxy] of this.streamableProxies) {
+      await streamableProxy.stop();
+    }
+    this.streamableProxies.clear();
     for (const [, wsProxy] of this.wsProxies) {
       await wsProxy.stop();
     }

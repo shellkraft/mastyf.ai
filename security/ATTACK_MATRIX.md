@@ -1,21 +1,19 @@
 # OWASP MCP Top 10 & LLM Top 10 — Attack Matrix
 
-Maps threats to MCP Mastyf AI controls and tests.
+Maps threats to MCP Mastyf AI controls and tests. Defense Fabric phases in [docs/DEFENSE_FABRIC.md](../docs/DEFENSE_FABRIC.md).
 
-## OWASP MCP Top 10
-
-| ID | Threat | Control | Test |
-|----|--------|---------|------|
-| MCP-01 | Tool poisoning | Rug-pull fingerprint, tools/list hash | `tests/proxy/rug-pull.test.ts` |
-| MCP-02 | Privilege abuse | OAuth, RBAC scopes, DPoP | `tests/auth/*` |
-| MCP-03 | Data exfiltration | Response gates, egress policy | corpus exfil fixtures |
-| MCP-04 | Prompt injection | Regex + semantic audit | corpus 154-attack |
-| MCP-05 | Insecure transport | TLS upstream enforcement | `packages/server/tests/http-proxy-security.test.ts` |
-| MCP-06 | Log injection | Structured JSON logger | audit schema |
-| MCP-07 | Denial of service | Rate limits, inflight cap | `tests/enterprise/preflight-matrix.test.ts` |
-| MCP-08 | Supply chain | SBOM, signed policy, Dependabot | CI audit job |
-| MCP-09 | Insufficient logging | `policy_decision` all transports | integration tests |
-| MCP-10 | Shadow MCP | Gateway auth required | enterprise preflight |
+| ID | Threat | Fabric phase | Control | Test |
+|----|--------|--------------|---------|------|
+| MCP-01 | Tool poisoning | Lifecycle + Egress | Rug-pull fingerprint, tools/list hash | `tests/proxy/rug-pull.test.ts` |
+| MCP-02 | Privilege abuse | Ingress + Policy | OAuth, RBAC scopes, DPoP | `tests/auth/*` |
+| MCP-03 | Data exfiltration | Egress | Response gates, egress policy | corpus exfil fixtures |
+| MCP-04 | Prompt injection | Intelligence | Regex + semantic audit | corpus 154-attack |
+| MCP-05 | Insecure transport | Ingress | TLS upstream enforcement | `packages/server/tests/http-proxy-security.test.ts` |
+| MCP-06 | Log injection | Egress | Structured JSON logger | audit schema |
+| MCP-07 | Denial of service | Ingress + Economics | Rate limits, inflight cap, spend pool | `tests/enterprise/preflight-matrix.test.ts` |
+| MCP-08 | Supply chain | Policy | SBOM, signed policy, Dependabot | CI audit job |
+| MCP-09 | Insufficient logging | Egress | `policy_decision` all transports | integration tests |
+| MCP-10 | Shadow MCP | Ingress | Gateway auth required | enterprise preflight |
 
 ## OWASP LLM Top 10 (selected)
 

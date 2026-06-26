@@ -5,6 +5,7 @@ import { runRegexScan } from "./regex-scanner.js";
 import { runSchemaScan } from "./schema-scanner.js";
 import { runSemanticScan, type SemanticScanOptions } from "./semantic-scanner.js";
 import { tryAcquireClusterSemanticSlot, releaseSemanticSlot, semanticQueueMax, semanticPerTenantMax } from "./semantic-queue.js";
+import { tryAcquireScanSlot, releaseScanSlot, isRedisScanConcurrencyEnabled } from "./redis-scan-concurrency.js";
 import { isCoreSemanticCircuitOpen, tryBeginCoreSemanticScan, abortCoreSemanticProbe } from "./semantic-circuit-breaker.js";
 import { isCoreLocalSemanticEnabled, runLocalSemanticFallback } from "./local-semantic-fallback.js";
 import { runArgumentScan } from "./argument-scanner.js";
@@ -12,6 +13,8 @@ import { resolveScanToolTimeoutMs } from "./scan-timeouts.js";
 import { getMaxArgumentBytes, serializedArgumentBytes } from "./payload-limits.js";
 
 export interface ScanEngineOptions {
+  /** Abort in-flight semantic scans when the parent budget times out (M-002). */
+  abortSignal?: AbortSignal;
   /** TR39 confusables before offline regex (default: true). */
   unicodeStrict?: boolean;
   semantic?: SemanticScanOptions & {
@@ -36,16 +39,21 @@ function computeStatus(issues: Issue[]): ScanStatus {
 
 const CATEGORY_ALIASES: Record<string, string> = {
   "cross-tool": "cross-tool-chaining",
+  "cross-tool-chaining": "cross-tool-chaining",
   "privilege-escalation": "privilege-escalation",
   exfiltration: "exfiltration",
   stealth: "stealth",
   injection: "prompt-injection",
   "prompt-injection": "prompt-injection",
+  "identity-override": "identity-override",
+  "goal-replacement": "goal-replacement",
   shell: "shell-injection",
   ssrf: "ssrf",
   path: "path-traversal",
   "path-traversal": "path-traversal",
 };
+
+const KNOWN_SEMANTIC_CATEGORIES = new Set(Object.values(CATEGORY_ALIASES));
 
 function normalizeIssueCategory(category: string): string {
   const key = category.toLowerCase().trim();
@@ -53,12 +61,26 @@ function normalizeIssueCategory(category: string): string {
   return key.replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "unknown";
 }
 
+function semanticCategoryTokens(category: string): string[] {
+  return category
+    .split(",")
+    .map((c) => normalizeIssueCategory(c.trim()))
+    .filter(Boolean);
+}
+
 function deduplicateIssues(issues: Issue[]): Issue[] {
-  const semanticCategories = new Set(
-    issues
-      .filter((i) => i.layer === "semantic")
-      .map((i) => normalizeIssueCategory(i.category || "unknown")),
-  );
+  const semanticCategories = new Set<string>();
+  for (const issue of issues.filter((i) => i.layer === "semantic")) {
+    for (const token of semanticCategoryTokens(issue.category || "unknown")) {
+      if (KNOWN_SEMANTIC_CATEGORIES.has(token)) {
+        semanticCategories.add(token);
+      } else if (token !== "unknown") {
+        console.warn(
+          `[engine] unknown semantic category "${token}" — not used for regex/schema dedup`,
+        );
+      }
+    }
+  }
   return issues.filter((i) => {
     if (i.layer === "argument" || i.layer === "semantic") return true;
     if (i.layer !== "regex" && i.layer !== "schema") return true;
@@ -101,19 +123,39 @@ function scanServerBudgetMs(): number {
 }
 
 async function withTimeout<T>(
-  promise: Promise<T>,
+  fn: (signal: AbortSignal) => Promise<T>,
   ms: number,
   label: string,
 ): Promise<T> {
-  let timer: ReturnType<typeof setTimeout> | undefined;
-  const timeout = new Promise<never>((_, reject) => {
-    timer = setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms);
-  });
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), ms);
   try {
-    return await Promise.race([promise, timeout]);
+    const result = await fn(controller.signal);
+    if (controller.signal.aborted) {
+      throw new Error(`${label} timed out after ${ms}ms`);
+    }
+    return result;
+  } catch (err) {
+    if (controller.signal.aborted) {
+      throw new Error(`${label} timed out after ${ms}ms`);
+    }
+    throw err;
   } finally {
-    if (timer) clearTimeout(timer);
+    clearTimeout(timer);
   }
+}
+
+async function acquireScanSlotWithWait(
+  max: number,
+  startedAt: number,
+  budgetMs: number,
+): Promise<boolean> {
+  if (!isRedisScanConcurrencyEnabled()) return true;
+  while (Date.now() - startedAt < budgetMs) {
+    if (await tryAcquireScanSlot(max)) return true;
+    await new Promise((r) => setTimeout(r, 25));
+  }
+  return false;
 }
 
 function toolScanTimeoutResult(toolName: string, timeoutMs: number): ToolScanResult {
@@ -234,6 +276,7 @@ export async function scanTool(
             ...(options.semantic ?? {}),
             onlyOnHits,
             alwaysRun: !onlyOnHits,
+            abortSignal: options.abortSignal,
           }
         );
         const skipMeta = rawSemantic.find(
@@ -363,16 +406,28 @@ export async function scanServer(
         };
         return;
       }
+      if (!(await acquireScanSlotWithWait(limit, startedAt, serverBudgetMs))) {
+        budgetExceeded = true;
+        truncated = {
+          reason: "cluster scan concurrency cap exceeded",
+          budgetMs: serverBudgetMs,
+          scanned: toolResults.filter(Boolean).length,
+          total: capped.length,
+        };
+        return;
+      }
       const i = idx++;
       const tool = capped[i]!;
       try {
         toolResults[i] = await withTimeout(
-          scanTool(tool, options),
+          (signal) => scanTool(tool, { ...options, abortSignal: signal }),
           toolTimeoutMs,
           `scanTool(${tool.name})`,
         );
       } catch {
         toolResults[i] = toolScanTimeoutResult(tool.name, toolTimeoutMs);
+      } finally {
+        await releaseScanSlot();
       }
     }
   }

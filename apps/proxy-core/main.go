@@ -2,6 +2,10 @@ package main
 
 import (
 	"bytes"
+	"crypto/hmac"
+	"crypto/sha256"
+	"crypto/subtle"
+	"encoding/base64"
 	"encoding/json"
 	"io"
 	"log"
@@ -63,6 +67,101 @@ type compiledRules struct {
 	BlockedMethodSubstrings []string `json:"blockedMethodSubstrings"`
 	PolicyMode              string   `json:"policyMode"`
 	DefaultAction           string   `json:"defaultAction"`
+	TokensPerMinuteCap      int64    `json:"tokensPerMinuteCap"`
+	UsdPerMinuteCap         float64  `json:"usdPerMinuteCap"`
+}
+
+type compiledRulesSignatureEnvelope struct {
+	Issuer    string `json:"issuer"`
+	KeyId     string `json:"keyId"`
+	IssuedAt  string `json:"issuedAt"`
+	ExpiresAt string `json:"expiresAt,omitempty"`
+	Signature string `json:"signature"`
+}
+
+func signingSecretForCompiledRulesKeyId(keyId string) string {
+	if keyId != "" {
+		for _, envKey := range []string{
+			"PROXY_CORE_COMPILED_RULES_SIGNING_KEY_" + keyId,
+			"MASTYF_AI_COMPILED_RULES_SIGNING_KEY_" + keyId,
+		} {
+			if v := strings.TrimSpace(os.Getenv(envKey)); v != "" {
+				return v
+			}
+		}
+	}
+	for _, envKey := range []string{
+		"PROXY_CORE_COMPILED_RULES_SIGNING_KEY",
+		"MASTYF_AI_COMPILED_RULES_SIGNING_KEY",
+		"MASTYF_AI_POLICY_SIGNING_KEY",
+	} {
+		if v := strings.TrimSpace(os.Getenv(envKey)); v != "" {
+			return v
+		}
+	}
+	return ""
+}
+
+func trustedCompiledRulesIssuers() map[string]struct{} {
+	raw := envOrDefault(
+		"PROXY_CORE_COMPILED_RULES_TRUSTED_ISSUERS",
+		envOrDefault(
+			"MASTYF_AI_COMPILED_RULES_TRUSTED_ISSUERS",
+			envOrDefault("MASTYF_AI_POLICY_TRUSTED_ISSUERS", "mastyf-ai-admin"),
+		),
+	)
+	out := map[string]struct{}{}
+	for _, part := range strings.Split(raw, ",") {
+		part = strings.TrimSpace(part)
+		if part != "" {
+			out[part] = struct{}{}
+		}
+	}
+	return out
+}
+
+func compiledRulesSignatureInput(rulesJSON string, env compiledRulesSignatureEnvelope) string {
+	return strings.Join([]string{rulesJSON, env.Issuer, env.KeyId, env.IssuedAt, env.ExpiresAt}, "\n")
+}
+
+func validateCompiledRulesSignature(rulesJSON []byte, sigHeaderB64 string) (bool, string) {
+	required := parseBool("PROXY_CORE_REQUIRE_SIGNED_RULES", false) ||
+		parseBool("MASTYF_AI_REQUIRE_SIGNED_COMPILED_RULES", false)
+	if sigHeaderB64 == "" {
+		if required {
+			return false, "missing signature envelope"
+		}
+		return true, ""
+	}
+	decoded, err := base64.StdEncoding.DecodeString(sigHeaderB64)
+	if err != nil {
+		return false, "invalid signature header encoding"
+	}
+	var env compiledRulesSignatureEnvelope
+	if err := json.Unmarshal(decoded, &env); err != nil {
+		return false, "invalid signature envelope json"
+	}
+	if _, ok := trustedCompiledRulesIssuers()[env.Issuer]; !ok {
+		return false, "untrusted issuer"
+	}
+	if env.ExpiresAt != "" {
+		if t, err := time.Parse(time.RFC3339, env.ExpiresAt); err == nil && time.Now().After(t) {
+			return false, "signature expired"
+		}
+	}
+	secret := signingSecretForCompiledRulesKeyId(env.KeyId)
+	if secret == "" {
+		return false, "missing verifier key"
+	}
+	mac := hmac.New(sha256.New, []byte(secret))
+	mac.Write([]byte(compiledRulesSignatureInput(string(rulesJSON), env)))
+	expected := base64.StdEncoding.EncodeToString(mac.Sum(nil))
+	a := []byte(expected)
+	b := []byte(env.Signature)
+	if len(a) != len(b) || subtle.ConstantTimeCompare(a, b) != 1 {
+		return false, "signature mismatch"
+	}
+	return true, ""
 }
 
 type rulesCache struct {
@@ -97,6 +196,7 @@ func (c *rulesCache) snapshot() map[string]any {
 		"lastSyncAt":       c.lastSyncAt.Format(time.RFC3339),
 		"sourcePolicy":     c.rules.SourcePolicyVersion,
 		"blockedToolsCount": len(c.rules.BlockedTools),
+		"tokensPerMinuteCap": c.rules.TokensPerMinuteCap,
 		"etag":             c.etag,
 	}
 }
@@ -152,6 +252,36 @@ func extractToolName(req mcpRequest) string {
 	return req.Method
 }
 
+var (
+	edgeBudgetMu          sync.Mutex
+	edgeBudgetWindowStart time.Time
+	edgeBudgetCalls       int64
+)
+
+func checkEdgeBudget(rules compiledRules) (bool, string) {
+	cap := rules.TokensPerMinuteCap
+	if cap <= 0 {
+		return false, ""
+	}
+	edgeBudgetMu.Lock()
+	defer edgeBudgetMu.Unlock()
+	now := time.Now()
+	if edgeBudgetWindowStart.IsZero() || now.Sub(edgeBudgetWindowStart) > time.Minute {
+		edgeBudgetWindowStart = now
+		edgeBudgetCalls = 0
+	}
+	edgeBudgetCalls++
+	// Coarse call-rate guard aligned with compiled tokens/min cap (edge tier).
+	maxCalls := cap / 500
+	if maxCalls < 10 {
+		maxCalls = 10
+	}
+	if edgeBudgetCalls > maxCalls {
+		return true, "edge_budget_cap_exceeded"
+	}
+	return false, ""
+}
+
 func shouldBlock(req mcpRequest, rules compiledRules, staticDenylist map[string]struct{}) (bool, string) {
 	if req.Method != "tools/call" {
 		return false, ""
@@ -159,6 +289,9 @@ func shouldBlock(req mcpRequest, rules compiledRules, staticDenylist map[string]
 	tool := strings.ToLower(extractToolName(req))
 	if tool == "" {
 		return false, ""
+	}
+	if blocked, reason := checkEdgeBudget(rules); blocked {
+		return true, reason
 	}
 	if _, found := staticDenylist[tool]; found {
 		return true, "blocked_by_static_denylist"
@@ -217,8 +350,18 @@ func syncRules(cache *rulesCache, controlPlaneURL string, client *http.Client) {
 		log.Printf("rules sync non-200 status: %d", res.StatusCode)
 		return
 	}
+	bodyBytes, err := io.ReadAll(res.Body)
+	if err != nil {
+		log.Printf("rules sync read body failed: %v", err)
+		return
+	}
+	sigHeader := res.Header.Get("X-Mastyf-Compiled-Rules-Signature")
+	if ok, reason := validateCompiledRulesSignature(bodyBytes, sigHeader); !ok {
+		log.Printf("rules sync signature rejected: %s", reason)
+		return
+	}
 	var rules compiledRules
-	if err := json.NewDecoder(res.Body).Decode(&rules); err != nil {
+	if err := json.Unmarshal(bodyBytes, &rules); err != nil {
 		log.Printf("rules sync decode failed: %v", err)
 		return
 	}

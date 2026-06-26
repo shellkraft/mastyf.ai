@@ -41,7 +41,7 @@ import { inspectToolResponse as sharedInspectToolResponse } from './response-ins
 import { injectRotatedSessionIntoResult } from '../utils/mcp-session-meta.js';
 import { getUpstreamTimeoutMs } from '../utils/upstream-timeout.js';
 import { acquireProxyInflight, releaseProxyInflight } from './proxy-inflight.js';
-import { isPostPolicyGateBlock, runPostPolicyAllowGates } from './proxy-post-allow-gates.js';
+import { evaluateToolCallDefense } from './tool-call-defense-orchestrator.js';
 import { runToolCallPreForwardGuard, toolCallGuardBlockResponse } from './tool-call-pre-guard.js';
 import { applyGeoToCallContext } from '../utils/request-geo-context.js';
 import { runMcpPrePipeline, applyMcpResponsePipeline, mcpResponseBlockJson } from './mcp-request-pipeline.js';
@@ -346,21 +346,6 @@ export class HttpProxyServer {
             toolsCallId = msg.id as string | number;
             toolsCallName = toolName;
           }
-          if (await isRugPullBlockedForCall(this.rugPullState, this.serverName, requestTenantId)) {
-            res.writeHead(403, { 'Content-Type': 'application/json' });
-            res.end(
-              JSON.stringify({
-                jsonrpc: '2.0',
-                id: msg.id,
-                error: {
-                  code: -32001,
-                  message:
-                    'Blocked by MCP Mastyf AI policy: tool definitions changed mid-session (rug-pull)',
-                },
-              }),
-            );
-            return;
-          }
           const inflight = acquireProxyInflight(this.serverName);
           if (!inflight.ok) {
             Metrics.proxyInflightRejectedTotal.inc(
@@ -383,36 +368,6 @@ export class HttpProxyServer {
             return;
           }
           const tokens = this.tokenCounter.count(body);
-
-          let requestArguments = msg.params?.arguments as Record<string, unknown> | undefined;
-          const preGuard = await runToolCallPreForwardGuard(
-            this.serverName,
-            toolName,
-            requestArguments,
-            String(msg.id),
-            {
-              agentId: agentIdentity?.sub,
-              meta: (msg.params as Record<string, unknown> | undefined)?._meta as Record<string, unknown> | undefined,
-              headers: req.headers,
-            },
-          );
-          if (preGuard.blocked && hasJsonRpcId(msg.id)) {
-            releaseProxyInflight(this.serverName);
-            StructuredLogger.logBlocked({
-              event: 'tool_blocked',
-              requestId: String(msg.id),
-              serverName: this.serverName,
-              toolName,
-              reason: preGuard.message,
-              rule: 'payload_or_agentic',
-            });
-            res.writeHead(403, { 'Content-Type': 'application/json' });
-            res.end(JSON.stringify(toolCallGuardBlockResponse(msg.id, preGuard)));
-            return;
-          }
-          if (!preGuard.blocked && preGuard.arguments) {
-            requestArguments = preGuard.arguments;
-          }
 
           const clientRl = await checkHttpClientRateLimit(
             agentIdentity?.sub || 'anonymous',
@@ -438,81 +393,46 @@ export class HttpProxyServer {
             return;
           }
 
-          const context: CallContext = applyGeoToCallContext({
-            serverName: this.serverName,
-            toolName,
-            arguments: requestArguments,
-            requestId,
-            requestTokens: tokens,
-            timestamp: new Date().toISOString(),
-            tenantId: requestTenantId,
-            agentIdentity,
-          }, req.headers);
+          const defense = await evaluateToolCallDefense(
+            {
+              serverName: this.serverName,
+              toolName,
+              arguments: msg.params?.arguments as Record<string, unknown> | undefined,
+              requestId,
+              requestTokens: tokens,
+              tenantId: requestTenantId,
+              agentIdentity,
+              headers: req.headers,
+              meta: (msg.params as Record<string, unknown> | undefined)?._meta as Record<string, unknown> | undefined,
+              agentId: agentIdentity?.sub,
+            },
+            {
+              policyEngine: this.policyEngine,
+              db: this.db,
+              rugPullState: this.rugPullState,
+            },
+          );
 
-          const decision = await this.policyEngine.evaluateAsync(context);
-          auditPolicyDecision(requestId, this.serverName, toolName, decision, context);
-          if (decision.action === 'block') {
-            notifyToolBlock({
-              serverName: this.serverName,
-              toolName,
-              rule: decision.rule,
-              reason: decision.reason,
-              requestId,
-              anomalyScore: 0.95,
-            });
+          if (!defense.allowed) {
             releaseProxyInflight(this.serverName);
-            StructuredLogger.logBlocked({
-              event: 'tool_blocked',
-              requestId,
-              serverName: this.serverName,
-              toolName,
-              reason: decision.reason,
-              rule: decision.rule,
-            });
-            Metrics.recordProxyBlock(
-              {
-                server_name: this.serverName,
-                block_reason: `policy:${decision.rule}`,
-                rule: decision.rule,
-                tenant_id: requestTenantId,
-              },
-            );
-            Metrics.requestsTotal.inc({ server_name: this.serverName, decision: 'block', authn_success: String(authnSuccess) });
-            const rateLimited =
-              /rate\s*limit/i.test(decision.reason || '') ||
-              /rate/i.test(decision.rule || '');
-            res.writeHead(rateLimited ? 429 : 403, { 'Content-Type': 'application/json' });
+            if (defense.phase === 'pre-guard' && defense.preGuard && hasJsonRpcId(msg.id)) {
+              const { toolCallGuardBlockResponse } = await import('./tool-call-pre-guard.js');
+              res.writeHead(403, { 'Content-Type': 'application/json' });
+              res.end(JSON.stringify(toolCallGuardBlockResponse(msg.id, defense.preGuard)));
+              return;
+            }
+            const status = defense.httpStatus ?? 403;
+            res.writeHead(status, { 'Content-Type': 'application/json' });
             res.end(JSON.stringify({
               jsonrpc: '2.0',
               id: msg.id,
-              error: { code: -32001, message: `Blocked by MCP Mastyf AI policy: ${decision.reason}` },
+              error: { code: defense.code, message: `Blocked by MCP Mastyf AI: ${defense.reason}` },
             }));
             return;
           }
 
-          const gateOutcome = await runPostPolicyAllowGates(context, decision, this.serverName);
-          if (isPostPolicyGateBlock(gateOutcome)) {
-            releaseProxyInflight(this.serverName);
-            StructuredLogger.logBlocked({
-              event: 'tool_blocked',
-              requestId,
-              serverName: this.serverName,
-              toolName,
-              reason: gateOutcome.reason,
-              rule: 'semantic_gate',
-            });
-            res.writeHead(403, { 'Content-Type': 'application/json' });
-            res.end(
-              JSON.stringify({
-                jsonrpc: '2.0',
-                id: msg.id,
-                error: {
-                  code: -32001,
-                  message: `Blocked by MCP Mastyf AI semantic gate: ${gateOutcome.reason}`,
-                },
-              }),
-            );
-            return;
+          if (defense.arguments && msg.params) {
+            msg.params.arguments = defense.arguments;
           }
         }
       } catch {

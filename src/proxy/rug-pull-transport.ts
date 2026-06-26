@@ -4,8 +4,10 @@
 import {
   applyToolFingerprintFromResult,
   type ToolFingerprintState,
+  type ToolListEntry,
 } from './tool-fingerprint.js';
 import { isClusterRugPullActive, publishRugPullAlert } from './rug-pull-cluster.js';
+import { onToolsListObserved } from './lifecycle-assurance-gates.js';
 
 export async function isRugPullBlockedForCall(
   state: ToolFingerprintState,
@@ -26,6 +28,10 @@ export function fingerprintJsonRpcToolsList(
   if (!payload || typeof payload !== 'object') return;
   const msg = payload as { result?: unknown };
   if (!msg.result) return;
+  const tools = (msg.result as { tools?: ToolListEntry[] }).tools;
+  if (Array.isArray(tools) && tools.length > 0) {
+    onToolsListObserved(serverName, tools as ToolListEntry[]);
+  }
   applyToolFingerprintFromResult(state, msg.result, {
     serverName,
     tenantId,

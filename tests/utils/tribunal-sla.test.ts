@@ -17,7 +17,17 @@ describe('tribunal SLA (M-016)', () => {
     vi.restoreAllMocks();
   });
 
-  it('reads timeout config', () => {
+  it('reads policy YAML tribunal config when env unset', async () => {
+    delete process.env.MASTYF_AI_TRIBUNAL_TIMEOUT_MS;
+    delete process.env.MASTYF_AI_TRIBUNAL_TIMEOUT_ACTION;
+    const { setTribunalPolicyFromConfig, resetTribunalPolicyForTests } = await import('../../src/policy/tribunal-policy.js');
+    setTribunalPolicyFromConfig({ timeout_ms: 60_000, timeout_action: 'allow' });
+    expect(getTribunalTimeoutMs()).toBe(60_000);
+    expect(getTribunalTimeoutAction()).toBe('allow');
+    resetTribunalPolicyForTests();
+  });
+
+  it('reads timeout config from env (overrides policy)', () => {
     expect(getTribunalTimeoutMs()).toBe(1000);
     expect(getTribunalTimeoutAction()).toBe('block');
   });

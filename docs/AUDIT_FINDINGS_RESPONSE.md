@@ -1,5 +1,35 @@
 # Audit Findings Response — MCP Proxy Code Review (M-001–M-017)
 
+## Report: 1000243555.pdf (core engine + HTTP proxy)
+
+Remediation of [1000243555.pdf](/Users/rudraneeldas/Downloads/1000243555.pdf) (mastyf.ai scope only; loopers-oss L-001–L-017 out of scope).
+
+| ID | Severity | Status | Evidence |
+|----|----------|--------|----------|
+| M-001 | CRITICAL | **Fixed** | Redis cluster scan concurrency [`packages/core/src/redis-scan-concurrency.ts`](../packages/core/src/redis-scan-concurrency.ts), [`packages/core/src/engine.ts`](../packages/core/src/engine.ts) |
+| M-002 | HIGH | **Fixed** | AbortController-linked `withTimeout` + `abortSignal` in engine/semantic scanner |
+| M-003 | MEDIUM | **Fixed** | Known-category semantic dedup only in [`packages/core/src/engine.ts`](../packages/core/src/engine.ts) |
+| M-004 | MEDIUM | **Fixed** | MCPG-R-110 UUID/ARN guard in [`packages/core/src/regex-scanner.ts`](../packages/core/src/regex-scanner.ts) |
+| M-005 | LOW | **Fixed** | MCPG-R-023 tightened to `webhook url` (warning) |
+| M-006 | HIGH | **Fixed** | [`packages/core/src/verdict-schema.ts`](../packages/core/src/verdict-schema.ts) |
+| M-007 | MEDIUM | **Fixed** | `policyVersion` cache key + [`invalidateLlmCache()`](../packages/core/src/ai/llm-cache.ts), policy watcher hook |
+| M-008 | MEDIUM | **Fixed** | Ollama `/api/chat` with system/user roles in semantic scanner |
+| M-009 | MEDIUM | **Fixed** | NoSQL patterns gated on `$operator` strings in argument scanner |
+| M-010 | LOW | **Fixed** | Per-field byte cap [`packages/core/src/payload-limits.ts`](../packages/core/src/payload-limits.ts) |
+| M-011 | CRITICAL | **Fixed** | PEM validation in [`packages/server/src/http-proxy-utils.ts`](../packages/server/src/http-proxy-utils.ts) |
+| M-012 | HIGH | **Fixed** | Token counter fallback on JSON parse failure in [`packages/server/src/http-proxy.ts`](../packages/server/src/http-proxy.ts) |
+| M-013 | MEDIUM | **Fixed** | JSON-RPC upstream errors via `jsonRpcId` in `relayToUpstream` |
+| M-014 | HIGH | **Fixed** | Provider-aware counting in [`src/utils/token-counter.ts`](../src/utils/token-counter.ts) (prior remediation) |
+| M-015 | HIGH | **Fixed** | Fail-open reload documented + `policy_load_error` metric; see policy watcher warn log |
+| M-016 | MEDIUM | **Fixed** | `policy.tribunal` YAML + env override in [`src/policy/tribunal-policy.ts`](../src/policy/tribunal-policy.ts) |
+| M-017 | LOW | **Fixed** | Low-cardinality `tool_name_hash` + span events in [`src/utils/tracing.ts`](../src/utils/tracing.ts) |
+
+Tests: [`packages/core/tests/audit-pdf2-remediation.test.ts`](../packages/core/tests/audit-pdf2-remediation.test.ts), [`packages/server/tests/http-proxy-pdf2.test.ts`](../packages/server/tests/http-proxy-pdf2.test.ts).
+
+---
+
+## Report: 1000243551.pdf (proxy / enterprise)
+
 Generated from remediation of [1000243551.pdf](/Users/rudraneeldas/Downloads/1000243551.pdf) (mastyf.ai scope only).
 
 | ID | Severity | Status | Evidence |

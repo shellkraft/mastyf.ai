@@ -21,6 +21,7 @@ Status evidence links for sales and security reviews. Capabilities marked **PRES
 | Semantic profiles | PRESENT | `MASTYF_AI_SEMANTIC_PROFILE`, [`values-balanced.yaml`](../deploy/helm/mastyf-ai/values-balanced.yaml), [`values-enterprise.yaml`](../deploy/helm/mastyf-ai/values-enterprise.yaml) |
 | Horizontal scaling | PRESENT | HPA, pod anti-affinity |
 | High availability | PRESENT | PDB, PgBouncer deployment, backup PVC |
+| Holistic MCP lifecycle | PRESENT | [DEFENSE_FABRIC.md](./DEFENSE_FABRIC.md), [ATTACK_MATRIX.md](../security/ATTACK_MATRIX.md) |
 | Disaster recovery | PRESENT | [DISASTER_RECOVERY.md](./DISASTER_RECOVERY.md), `dr-drill.sh` |
 | EU AI Act | PRESENT | [compliance/EU_AI_ACT.md](./compliance/EU_AI_ACT.md) |
 

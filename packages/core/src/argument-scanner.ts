@@ -22,7 +22,7 @@
  */
 import type { Issue } from './types.js';
 import { runEntropyScan, runCredentialFormatScan } from './entropy-detector.js';
-import { getMaxArgumentBytes, serializedArgumentBytes } from './payload-limits.js';
+import { getMaxArgumentBytes, getMaxArgumentFieldBytes, serializedArgumentBytes } from './payload-limits.js';
 import { normalizeUnicode } from './confusables.js';
 import { scanArgumentPromptInjection } from './argument-prompt-injection.js';
 import { testPattern } from './safe-pattern-match.js';
@@ -935,6 +935,15 @@ function isNoSqlQueryParam(keyPath: string): boolean {
   return /\b(?:filter|query|find|match|pipeline|aggregate|projection|sort|lookup|unwind)\b/i.test(keyPath);
 }
 
+function valueContainsNoSqlOperator(value: string): boolean {
+  return /\$[a-zA-Z][a-zA-Z0-9_-]*/.test(value);
+}
+
+function isStructuredJsonObjectString(value: string): boolean {
+  const trimmed = value.trim();
+  return trimmed.startsWith('{') && trimmed.endsWith('}');
+}
+
 function isSqlQueryParam(keyPath: string): boolean {
   return /\b(?:query|sql|statement|command|stored_procedure|sp_)\b/i.test(keyPath);
 }
@@ -1014,6 +1023,7 @@ export function runArgumentScan(
   }
 
   const flat = walkArgs(args);
+  const fieldLimit = getMaxArgumentFieldBytes();
 
   const entropyIssues = runEntropyScan(flat).map((i) => ({ ...i, layer: 'argument' as const }));
   issues.push(...entropyIssues);
@@ -1021,6 +1031,14 @@ export function runArgumentScan(
   issues.push(...credentialIssues);
 
   for (const item of flat) {
+    if (Buffer.byteLength(item.value, 'utf8') > fieldLimit) {
+      issues.push(makeIssue(
+        'MCPG-META-007', 'payload-limit', 'critical',
+        `Argument field "${item.keyPath}" exceeds ${fieldLimit} byte limit`,
+        item.keyPath, 1.0,
+      ));
+      continue;
+    }
     // ── Unicode normalization + recursive decode before regex ────────
     // Fixes 88% Cyrillic homoglyph evasion + 50%+ encoding-based evasion
     const normalized = normalizeUnicode(item.value, true);
@@ -1052,6 +1070,12 @@ export function runArgumentScan(
     // NoSQL Injection
     // ══════════════════════════════════════════════════════════════════
     if (isNoSqlQueryParam(item.keyPath)) {
+      if (isStructuredJsonObjectString(item.value)) {
+        continue;
+      }
+      if (!valueContainsNoSqlOperator(item.value)) {
+        continue;
+      }
       const combined = `${item.keyPath}=${item.value}`;
       for (const pattern of NOSQL_INJECTION_PATTERNS) {
         if (pattern.test(combined)) {

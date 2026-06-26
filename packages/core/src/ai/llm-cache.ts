@@ -8,6 +8,8 @@ export interface LlmCacheKeyInput {
   system: string;
   temperature: number;
   policyMode?: string;
+  /** Bumped on policy hot-reload to invalidate stale verdicts (M-007). */
+  policyVersion?: string;
   /** Engine scan mode — must differ so onlyOnHits vs thorough scans do not share verdicts. */
   onlyOnHits?: boolean;
   alwaysRun?: boolean;
@@ -35,11 +37,19 @@ export function resetLlmCacheForTests(): void {
   sharedCache = null;
 }
 
+/** Clear in-memory and Redis LLM verdict cache after policy reload (M-007). */
+export async function invalidateLlmCache(): Promise<void> {
+  if (sharedCache) {
+    await sharedCache.clear();
+  }
+}
+
 function hashCacheKey(input: LlmCacheKeyInput): string {
   const mode = input.policyMode?.trim() || 'block';
+  const policyVersion = input.policyVersion?.trim() || 'default';
   const onlyOnHits = input.onlyOnHits ? '1' : '0';
   const alwaysRun = input.alwaysRun ? '1' : '0';
-  const payload = `${mode}\0${onlyOnHits}\0${alwaysRun}\0${input.model}\0${input.system}\0${input.prompt}\0${input.temperature}`;
+  const payload = `${mode}\0${policyVersion}\0${onlyOnHits}\0${alwaysRun}\0${input.model}\0${input.system}\0${input.prompt}\0${input.temperature}`;
   return createHash('sha256').update(payload).digest('hex');
 }
 
@@ -132,10 +142,28 @@ export class LlmCache {
   }
 
   async close(): Promise<void> {
+    await this.clear();
     if (this.redis) {
       await this.redis.quit();
       this.redis = null;
     }
+  }
+
+  async clear(): Promise<void> {
     this.lru.clear();
+    this.hits = 0;
+    this.misses = 0;
+    if (!this.redis) return;
+    try {
+      const pattern = `${this.redisPrefix}*`;
+      let cursor = '0';
+      do {
+        const [next, keys] = await this.redis.scan(cursor, 'MATCH', pattern, 'COUNT', 100);
+        cursor = next;
+        if (keys.length) await this.redis.del(...keys);
+      } while (cursor !== '0');
+    } catch {
+      /* LRU already cleared */
+    }
   }
 }

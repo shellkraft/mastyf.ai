@@ -19,8 +19,13 @@ import {
   isPlaintextUpstreamAllowed,
 } from './http-proxy-utils.js';
 
+import type { ToolCallDefenseHook } from './tool-call-defense-hook.js';
+
 interface TokenCounterLike { count(text: string): number; }
-interface PolicyEngineLike { evaluate(c: any): { action: string; rule: string; reason: string }; }
+interface PolicyEngineLike {
+  evaluate(c: any): { action: string; rule: string; reason: string };
+  evaluateAsync?(c: any): Promise<{ action: string; rule: string; reason: string }>;
+}
 interface DatabaseLike { addCallRecord(r: any): Promise<void>; }
 
 export interface CreateHttpProxyOptions {
@@ -29,6 +34,10 @@ export interface CreateHttpProxyOptions {
   upstreamTimeoutMs?: number;
   tls?: { cert: Buffer | string; key: Buffer | string };
   upstreamAgent?: Agent;
+  /** Full Defense Fabric pipeline (monorepo bridge). When set, replaces basic policy-only check. */
+  defenseHook?: ToolCallDefenseHook | null;
+  serverName?: string;
+  tenantId?: string;
 }
 
 export function createHttpProxy(
@@ -52,6 +61,9 @@ export function createHttpProxy(
   const upstreamTimeoutMs = options.upstreamTimeoutMs ?? getUpstreamTimeoutMs();
   const authValidator = options.authValidator ?? null;
   const upstreamAgent = options.upstreamAgent;
+  const defenseHook = options.defenseHook ?? null;
+  const proxyServerName = options.serverName ?? target;
+  const defaultTenantId = options.tenantId ?? 'default';
   const inboundTls = options.tls ?? loadInboundTlsFromEnv();
 
   if (process.env.MASTYF_AI_REQUIRE_INBOUND_TLS === 'true' && !inboundTls) {
@@ -122,6 +134,7 @@ export function createHttpProxy(
         clientRes,
         timeoutMs: upstreamTimeoutMs,
         agent: upstreamAgent,
+        jsonRpcId: parsed?.id,
       });
       return;
     }
@@ -129,8 +142,34 @@ export function createHttpProxy(
     if (parsed.method === 'tools/call') {
       const toolName = parsed.params?.name || 'unknown';
       const inputTokens = tokenCounter.count(rawBody);
+      const requestId = String(parsed.id ?? '');
 
-      if (policyEngine) {
+      if (defenseHook) {
+        const defense = await defenseHook.evaluate({
+          serverName: proxyServerName,
+          toolName,
+          arguments: parsed.params?.arguments || {},
+          requestId,
+          requestTokens: inputTokens,
+          tenantId: defaultTenantId,
+        });
+        if (!defense.allowed) {
+          clientRes.writeHead(defense.httpStatus ?? 403, { 'Content-Type': 'application/json' });
+          clientRes.end(JSON.stringify({
+            jsonrpc: '2.0',
+            id: parsed.id,
+            error: {
+              code: defense.code,
+              message: `Blocked: ${defense.reason}`,
+              data: { rule: defense.rule },
+            },
+          }));
+          return;
+        }
+        if (defense.arguments && parsed.params) {
+          parsed.params.arguments = defense.arguments;
+        }
+      } else if (policyEngine) {
         const policyResult = policyEngine.evaluate({
           toolName,
           arguments: parsed.params?.arguments || {},
@@ -163,6 +202,7 @@ export function createHttpProxy(
         timeoutMs: upstreamTimeoutMs,
         agent: upstreamAgent,
         maxResponseBytes: maxBodyBytes,
+        jsonRpcId: parsed.id,
         onBufferedResponse: async (responseBody, upstreamRes) => {
           let outputTokens = 0;
           try {
@@ -171,9 +211,11 @@ export function createHttpProxy(
               outputTokens = tokenCounter.count(
                 (responseJson.result.content as any[]).map((c) => c.text || '').join(''),
               );
+            } else {
+              outputTokens = tokenCounter.count(responseBody);
             }
           } catch {
-            outputTokens = Math.round(responseBody.length * 0.25);
+            outputTokens = tokenCounter.count(responseBody);
           }
 
           if (!clientRes.headersSent) {

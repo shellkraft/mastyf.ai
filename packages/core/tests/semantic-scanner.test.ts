@@ -24,6 +24,12 @@ describe("semantic LLM cache keys", () => {
     expect(thorough).not.toBe(hitsOnly);
   });
 
+  it("includes policyVersion in the cache hash", () => {
+    const a = hashLlmCacheKeyForTests({ ...base, policyVersion: "v1" });
+    const b = hashLlmCacheKeyForTests({ ...base, policyVersion: "v2" });
+    expect(a).not.toBe(b);
+  });
+
   it("keeps stable hash for identical scan mode options", () => {
     const a = hashLlmCacheKeyForTests({ ...base, onlyOnHits: false, alwaysRun: true });
     const b = hashLlmCacheKeyForTests({ ...base, onlyOnHits: false, alwaysRun: true });

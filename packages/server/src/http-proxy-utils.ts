@@ -2,6 +2,7 @@ import * as http from 'http';
 import * as https from 'https';
 import type { IncomingMessage, ServerResponse } from 'http';
 import { readFileSync } from 'fs';
+import { X509Certificate } from 'crypto';
 
 const DEFAULT_MAX_BODY = 10 * 1024 * 1024;
 const DEFAULT_UPSTREAM_TIMEOUT_MS = 30_000;
@@ -79,16 +80,40 @@ export async function readRequestBodyWithLimit(
   return { ok: true, body: Buffer.concat(chunks).toString('utf8') };
 }
 
+export function validatePemMaterial(buf: Buffer, label: 'CERTIFICATE' | 'PRIVATE KEY' | 'RSA PRIVATE KEY'): void {
+  const text = buf.toString('utf8');
+  const begin = `-----BEGIN ${label}-----`;
+  const end = `-----END ${label}-----`;
+  if (!text.includes(begin) || !text.includes(end)) {
+    throw new Error(`Invalid PEM: expected ${label} block`);
+  }
+  if (label === 'CERTIFICATE') {
+    try {
+      // eslint-disable-next-line no-new
+      new X509Certificate(buf);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      throw new Error(`Invalid TLS certificate PEM: ${msg}`);
+    }
+  }
+}
+
 export function loadInboundTlsFromEnv():
   | { cert: Buffer; key: Buffer }
   | null {
   const certPath = process.env['MASTYF_AI_TLS_CERT_PATH'];
   const keyPath = process.env['MASTYF_AI_TLS_KEY_PATH'];
   if (!certPath || !keyPath) return null;
-  return {
-    cert: readFileSync(certPath),
-    key: readFileSync(keyPath),
-  };
+  const cert = readFileSync(certPath);
+  const key = readFileSync(keyPath);
+  validatePemMaterial(cert, 'CERTIFICATE');
+  const keyText = key.toString('utf8');
+  if (keyText.includes('BEGIN RSA PRIVATE KEY')) {
+    validatePemMaterial(key, 'RSA PRIVATE KEY');
+  } else {
+    validatePemMaterial(key, 'PRIVATE KEY');
+  }
+  return { cert, key };
 }
 
 export interface RelayToUpstreamOptions {
@@ -103,6 +128,8 @@ export interface RelayToUpstreamOptions {
   clientReq?: IncomingMessage;
   /** When set, buffer upstream response up to this many bytes. */
   maxResponseBytes?: number;
+  /** JSON-RPC request id for structured upstream error responses (M-013). */
+  jsonRpcId?: string | number | null;
   onBufferedResponse?: (
     responseBody: string,
     upstreamRes: IncomingMessage,
@@ -139,6 +166,7 @@ export function relayToUpstream(options: RelayToUpstreamOptions): void {
     clientReq,
     maxResponseBytes,
     onBufferedResponse,
+    jsonRpcId,
   } = options;
 
   const tlsCheck = assertUpstreamTlsAllowed(upstream.toString());
@@ -161,11 +189,22 @@ export function relayToUpstream(options: RelayToUpstreamOptions): void {
 
   const failClient = (status: number, message?: string) => {
     if (clientRes.headersSent) return;
+    clientRes.writeHead(status, { 'Content-Type': 'application/json' });
+    if (jsonRpcId !== undefined) {
+      clientRes.end(JSON.stringify({
+        jsonrpc: '2.0',
+        id: jsonRpcId,
+        error: {
+          code: status === 504 ? -32001 : -32002,
+          message: message || 'Upstream relay failed',
+        },
+      }));
+      return;
+    }
     if (message) {
-      clientRes.writeHead(status, { 'Content-Type': 'application/json' });
       clientRes.end(JSON.stringify({ error: message }));
     } else {
-      clientRes.writeHead(status).end();
+      clientRes.end();
     }
   };
 

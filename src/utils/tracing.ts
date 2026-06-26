@@ -1,4 +1,5 @@
 import { context, propagation, trace, SpanStatusCode } from '@opentelemetry/api';
+import { createHash } from 'crypto';
 import { W3CTraceContextPropagator } from '@opentelemetry/core';
 import { Logger } from './logger.js';
 import { onShutdown } from './shutdown.js';
@@ -121,8 +122,16 @@ export async function withToolCallSpan<T>(
   fn: () => Promise<T>,
 ): Promise<T> {
   const tracer = trace.getTracer('mastyf-ai-proxy');
-  return tracer.startActiveSpan(name, { attributes: attrs }, async (span) => {
+  const { tool_name: toolName, ...lowCardinality } = attrs;
+  const spanAttrs: Record<string, string | number> = { ...lowCardinality };
+  if (typeof toolName === 'string' && toolName.length > 0) {
+    spanAttrs.tool_name_hash = createHash('sha256').update(toolName).digest('hex').slice(0, 12);
+  }
+  return tracer.startActiveSpan(name, { attributes: spanAttrs }, async (span) => {
     try {
+      if (typeof toolName === 'string' && toolName.length > 0) {
+        span.addEvent('tool.call', { 'tool.name': toolName.slice(0, 128) });
+      }
       const result = await fn();
       span.setStatus({ code: SpanStatusCode.OK });
       return result;

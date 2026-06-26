@@ -2584,11 +2584,74 @@ export async function fetchPendingSuggestions(): Promise<{
   return { count: body.count ?? 0, suggestions: body.suggestions ?? [] };
 }
 
-export async function fetchServerRegistry(): Promise<{ servers: ServerRegistryEntry[]; uiServers: UiMcpServerConfig[] }> {
+export type UnifiedFleetServer = {
+  name: string;
+  transport: string;
+  source: string;
+  wrapped: boolean;
+  localUrl?: string;
+  status?: string;
+  metrics?: {
+    totalCalls: number;
+    blocked: number;
+    passed: number;
+    lastSeen: string | null;
+  };
+};
+
+export type FleetHubState = {
+  servers: Array<{
+    name: string;
+    pid: number;
+    port: number;
+    transport: string;
+    status: string;
+    localUrl: string;
+  }>;
+  startedAt: string;
+};
+
+export async function fetchServerRegistry(): Promise<{
+  servers: ServerRegistryEntry[];
+  uiServers: UiMcpServerConfig[];
+  unified?: UnifiedFleetServer[];
+  fleet?: FleetHubState | null;
+}> {
   const res = await mastyfAiFetch('/api/servers/registry');
   if (!res.ok) return { servers: [], uiServers: [] };
-  const body = (await res.json()) as { servers?: ServerRegistryEntry[]; uiServers?: UiMcpServerConfig[] };
-  return { servers: body.servers || [], uiServers: body.uiServers || [] };
+  const body = (await res.json()) as {
+    servers?: ServerRegistryEntry[];
+    uiServers?: UiMcpServerConfig[];
+    unified?: UnifiedFleetServer[];
+    fleet?: FleetHubState | null;
+  };
+  return {
+    servers: body.servers || [],
+    uiServers: body.uiServers || [],
+    unified: body.unified || [],
+    fleet: body.fleet ?? null,
+  };
+}
+
+export async function fetchFleetHubStatus(): Promise<{
+  entries: UnifiedFleetServer[];
+  fleet: FleetHubState | null;
+}> {
+  const res = await mastyfAiFetch('/api/fleet/status');
+  if (!res.ok) return { entries: [], fleet: null };
+  return (await res.json()) as { entries: UnifiedFleetServer[]; fleet: FleetHubState | null };
+}
+
+export async function restartFleetHub(): Promise<{ ok: boolean; error?: string }> {
+  const headers = await buildMutatingHeaders();
+  const res = await mastyfAiFetch('/api/fleet/restart', { method: 'POST', headers });
+  return (await res.json()) as { ok: boolean; error?: string };
+}
+
+export async function stopFleetHub(): Promise<{ ok: boolean; error?: string }> {
+  const headers = await buildMutatingHeaders();
+  const res = await mastyfAiFetch('/api/fleet/stop', { method: 'POST', headers });
+  return (await res.json()) as { ok: boolean; error?: string };
 }
 
 export type UiMcpServerConfig = {
@@ -2601,7 +2664,12 @@ export type UiMcpServerConfig = {
   disabled?: boolean;
 };
 
-export async function addMcpServer(config: UiMcpServerConfig): Promise<{ ok: boolean; error?: string }> {
+export async function addMcpServer(config: UiMcpServerConfig): Promise<{
+  ok: boolean;
+  error?: string;
+  localUrl?: string;
+  reloadRequired?: boolean;
+}> {
   const headers = await buildMutatingHeaders();
   const res = await mastyfAiFetch('/api/servers', {
     method: 'POST',

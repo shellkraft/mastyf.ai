@@ -4284,17 +4284,80 @@ export async function startDashboardServer(
       }
       if (url === '/api/servers/registry' && method === 'GET') {
         setCors();
+        const { discoverAllServers } = await import('../fleet/unified-server-registry.js');
+        const { readFleetState } = await import('../fleet/fleet-state.js');
         const { getServerRegistry } = await import('./server-registry.js');
+        const unified = discoverAllServers();
+        const fleet = readFleetState();
+        const fleetByName = new Map((fleet?.servers ?? []).map((s) => [s.name, s]));
         const servers = await getServerRegistry();
         const { listUiServers } = await import('./mcp-server-config.js');
         const uiServers = listUiServers();
-        writeJson(res, 200, { servers, uiServers });
+        const enriched = unified.map((e) => {
+          const live = fleetByName.get(e.name);
+          const metrics = servers.find((s) => s.name === e.name)?.metrics;
+          return {
+            ...e,
+            localUrl: live?.localUrl,
+            status: live?.status ?? 'unknown',
+            metrics,
+          };
+        });
+        writeJson(res, 200, { servers, uiServers, unified: enriched, fleet });
+        return;
+      }
+      if (url === '/api/fleet/status' && method === 'GET') {
+        setCors();
+        const { discoverAllServers } = await import('../fleet/unified-server-registry.js');
+        const { readFleetState } = await import('../fleet/fleet-state.js');
+        writeJson(res, 200, {
+          entries: discoverAllServers(),
+          fleet: readFleetState(),
+        });
+        return;
+      }
+      if (url === '/api/fleet/start' && method === 'POST') {
+        setCors();
+        const { fleetAdminRequest } = await import('../fleet/fleet-supervisor.js');
+        try {
+          const result = await fleetAdminRequest('/restart', 'POST');
+          writeJson(res, 200, result);
+        } catch {
+          writeJson(res, 503, {
+            ok: false,
+            error: 'Fleet supervisor not running — run mastyf-ai start',
+          });
+        }
+        return;
+      }
+      if (url === '/api/fleet/stop' && method === 'POST') {
+        setCors();
+        const { fleetAdminRequest } = await import('../fleet/fleet-supervisor.js');
+        try {
+          const result = await fleetAdminRequest('/stop', 'POST');
+          writeJson(res, 200, result);
+        } catch {
+          writeJson(res, 503, { ok: false, error: 'Fleet supervisor not running' });
+        }
+        return;
+      }
+      if (url === '/api/fleet/restart' && method === 'POST') {
+        setCors();
+        const { fleetAdminRequest } = await import('../fleet/fleet-supervisor.js');
+        try {
+          const result = await fleetAdminRequest('/restart', 'POST');
+          writeJson(res, 200, result);
+        } catch {
+          writeJson(res, 503, { ok: false, error: 'Fleet supervisor not running' });
+        }
         return;
       }
       if (url === '/api/servers' && method === 'POST') {
         setCors();
         const body = await readBody(req);
         const { addUiServer } = await import('./mcp-server-config.js');
+        const { fleetEntryFromMcpConfig, materializeServerConfig } = await import('../fleet/unified-server-registry.js');
+        const { getActiveSupervisor } = await import('../fleet/fleet-supervisor.js');
         const result = addUiServer({
           name: String(body.name || ''),
           command: String(body.command || ''),
@@ -4304,7 +4367,25 @@ export async function startDashboardServer(
           url: body.url ? String(body.url) : undefined,
           disabled: body.disabled === true,
         });
-        writeJson(res, result.ok ? 200 : 400, result);
+        if (!result.ok) {
+          writeJson(res, 400, result);
+          return;
+        }
+        const { loadUiMcpServers } = await import('./mcp-server-config.js');
+        const added = loadUiMcpServers().find((s) => s.name === String(body.name || ''));
+        let localUrl: string | undefined;
+        let reloadRequired = false;
+        if (added) {
+          const entry = fleetEntryFromMcpConfig(added, 'ui');
+          materializeServerConfig(entry);
+          const supervisor = getActiveSupervisor();
+          if (supervisor) {
+            const spawnResult = await supervisor.addServer(entry);
+            localUrl = spawnResult.localUrl;
+            reloadRequired = spawnResult.reloadRequired;
+          }
+        }
+        writeJson(res, 200, { ...result, localUrl, reloadRequired });
         return;
       }
       if (url?.startsWith('/api/servers/') && method === 'DELETE') {
@@ -4328,14 +4409,6 @@ export async function startDashboardServer(
         if (body.url !== undefined) patch.url = body.url ? String(body.url) : undefined;
         if (body.disabled !== undefined) patch.disabled = body.disabled === true;
         const result = updateUiServer(name, patch);
-        writeJson(res, result.ok ? 200 : 404, result);
-        return;
-      }
-      if (url?.startsWith('/api/servers/') && method === 'DELETE') {
-        setCors();
-        const name = decodeURIComponent(url.slice('/api/servers/'.length));
-        const { removeUiServer } = await import('./mcp-server-config.js');
-        const result = removeUiServer(name);
         writeJson(res, result.ok ? 200 : 404, result);
         return;
       }

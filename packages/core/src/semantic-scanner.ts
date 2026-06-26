@@ -9,6 +9,9 @@ import {
 import { isCoreLocalSemanticEnabled, runLocalSemanticFallback } from "./local-semantic-fallback.js";
 import { isCoreSemanticStrictMode } from "./semantic-strict.js";
 import { reportSemanticScanDuration } from "./semantic-duration-hook.js";
+import { parseAndValidateVerdict } from "./verdict-schema.js";
+import type { SemanticVerdict } from "./semantic-verdict-types.js";
+import { getPolicyVersionForCache } from "./policy-version.js";
 
 export interface SemanticScanOptions {
   apiKey?: string;               // Falls back to ANTHROPIC_API_KEY env var
@@ -17,15 +20,8 @@ export interface SemanticScanOptions {
   onlyOnHits?: boolean;          // Run only when regex/schema already flagged hits
   timeoutMs?: number;            // Default from getLlmConfig()
   temperature?: number;
-}
-
-interface SemanticVerdict {
-  is_injection: boolean;
-  confidence: number;            // 0.0 – 1.0
-  reasoning: string;
-  categories: string[];
-  severity: "critical" | "warning" | "none";
-  specific_phrases: string[];    // Exact phrases that triggered the verdict
+  /** Parent scan budget — aborts in-flight LLM fetch on timeout (M-002). */
+  abortSignal?: AbortSignal;
 }
 
 const SYSTEM_PROMPT = `You are a security analyst specializing in prompt injection attacks 
@@ -91,8 +87,11 @@ function verdictToIssues(verdict: SemanticVerdict): Issue[] {
 }
 
 function parseVerdictFromText(rawText: string): SemanticVerdict {
-  const cleanJson = rawText.replace(/```(?:json)?\n?/g, "").trim();
-  return JSON.parse(cleanJson) as SemanticVerdict;
+  const verdict = parseAndValidateVerdict(rawText);
+  if (!verdict) {
+    throw new Error("LLM verdict failed schema validation");
+  }
+  return verdict;
 }
 
 /** Strip API keys and truncate LLM error bodies before logging or surfacing. */
@@ -130,28 +129,50 @@ async function runSemanticViaOllama(
   model: string,
   timeoutMs: number,
   temperature: number,
+  externalSignal?: AbortSignal,
 ): Promise<string> {
   const llmConfig = getLlmConfig();
   const controller = new AbortController();
+  const onExternalAbort = () => controller.abort();
+  externalSignal?.addEventListener("abort", onExternalAbort);
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    const res = await fetch(`${llmConfig.ollamaBaseUrl}/api/generate`, {
+    const res = await fetch(`${llmConfig.ollamaBaseUrl}/api/chat`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         model,
-        prompt: `${SYSTEM_PROMPT}\n\n${userPrompt}\n\nRespond with JSON only.`,
+        messages: [
+          { role: "system", content: SYSTEM_PROMPT },
+          { role: "user", content: userPrompt },
+        ],
         stream: false,
         options: { temperature },
       }),
       signal: controller.signal,
     });
     if (!res.ok) throw new Error(`Ollama ${res.status}`);
-    const data = (await res.json()) as { response?: string };
-    return data.response || "";
+    const data = (await res.json()) as { message?: { content?: string } };
+    return data.message?.content || "";
   } finally {
     clearTimeout(timeout);
+    externalSignal?.removeEventListener("abort", onExternalAbort);
   }
+}
+
+function mergeAbortSignals(a?: AbortSignal, b?: AbortSignal): AbortSignal {
+  if (!a) return b ?? new AbortController().signal;
+  if (!b) return a;
+  if (a.aborted || b.aborted) {
+    const c = new AbortController();
+    c.abort();
+    return c.signal;
+  }
+  const merged = new AbortController();
+  const abort = () => merged.abort();
+  a.addEventListener("abort", abort);
+  b.addEventListener("abort", abort);
+  return merged.signal;
 }
 
 export async function runSemanticScan(
@@ -174,6 +195,7 @@ export async function runSemanticScan(
     system: SYSTEM_PROMPT,
     temperature,
     policyMode,
+    policyVersion: getPolicyVersionForCache(),
     onlyOnHits,
     alwaysRun,
   };
@@ -219,6 +241,7 @@ export async function runSemanticScan(
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  const scanSignal = mergeAbortSignals(options.abortSignal, controller.signal);
   const scanStarted = Date.now();
   let scanOutcome = 'ok';
 
@@ -241,7 +264,7 @@ export async function runSemanticScan(
           { role: "user", content: userPrompt },
         ],
       }),
-      signal: controller.signal,
+      signal: scanSignal,
     });
 
       if (!response.ok) {
@@ -259,7 +282,7 @@ export async function runSemanticScan(
         .map(b => b.text ?? "")
         .join("");
     } else {
-      rawText = await runSemanticViaOllama(userPrompt, model, timeoutMs, temperature);
+      rawText = await runSemanticViaOllama(userPrompt, model, timeoutMs, temperature, scanSignal);
     }
 
     await cache.set(cacheKey, rawText);
@@ -276,7 +299,7 @@ export async function runSemanticScan(
       || process.env.MASTYF_AI_LLM_PROVIDER === "ollama";
     if (!useOllama && ollamaFallbackEnabled) {
       try {
-        const rawText = await runSemanticViaOllama(userPrompt, model, timeoutMs, temperature);
+        const rawText = await runSemanticViaOllama(userPrompt, model, timeoutMs, temperature, scanSignal);
         await cache.set(cacheKey, rawText);
         recordCoreSemanticSuccess();
         return verdictToIssues(parseVerdictFromText(rawText));
@@ -286,7 +309,7 @@ export async function runSemanticScan(
     }
     if (useOllama) {
       try {
-        const rawText = await runSemanticViaOllama(userPrompt, model, timeoutMs, temperature);
+        const rawText = await runSemanticViaOllama(userPrompt, model, timeoutMs, temperature, scanSignal);
         await cache.set(cacheKey, rawText);
         recordCoreSemanticSuccess();
         return verdictToIssues(parseVerdictFromText(rawText));

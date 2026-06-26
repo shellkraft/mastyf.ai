@@ -44,7 +44,7 @@ import {
 } from './tool-fingerprint.js';
 import { publishRugPullAlert } from './rug-pull-cluster.js';
 import { isProxyInflightExceeded, proxyMaxInflight } from './proxy-inflight.js';
-import { isPostPolicyGateBlock, runPostPolicyAllowGates } from './proxy-post-allow-gates.js';
+import { evaluateToolCallDefense } from './tool-call-defense-orchestrator.js';
 import {
   runWithExtractedTrace,
   withMcpToolCallSpan,
@@ -532,34 +532,51 @@ export class WebSocketProxyServer {
 
     const toolName = params?.name || 'unknown';
     const requestId = String(msg.id ?? randomUUID());
-    const { runToolCallPreForwardGuard, toolCallGuardBlockResponse } = await import(
-      './tool-call-pre-guard.js'
-    );
-    const preGuard = await runToolCallPreForwardGuard(
-      this.opts.serverName,
-      toolName,
-      params?.arguments,
-      requestId,
+    const reqMsg = { params: { name: params?.name, arguments: params?.arguments } };
+    const model = resolveModelIdForServer(this.opts.serverName);
+    const tokenCounts = this.tokenCounter.countProxyCall({
+      requestText: JSON.stringify(reqMsg),
+      responseText: '',
+      model,
+      requestPayload: reqMsg,
+    });
+
+    const defense = await evaluateToolCallDefense(
       {
-        agentId: agentIdentity?.sub,
-        meta: params?._meta,
-        headers: req.headers,
-      },
-    );
-    if (preGuard.blocked) {
-      breaker.recordFailure();
-      StructuredLogger.logBlocked({
-        event: 'tool_blocked',
-        requestId,
         serverName: this.opts.serverName,
         toolName,
-        reason: preGuard.message,
-        rule: 'payload_or_agentic',
-      });
-      return toolCallGuardBlockResponse(msg.id, preGuard);
+        arguments: params?.arguments,
+        requestId,
+        requestTokens: tokenCounts.requestTokens,
+        tenantId,
+        agentIdentity,
+        headers: req.headers,
+        meta: params?._meta,
+        agentId: agentIdentity?.sub,
+        idempotencyKey: idempotencyKeyFromRequest(params?._meta),
+      },
+      {
+        policyEngine: this.opts.policy,
+        db: this.opts.db,
+        rugPullState: this.rugPullState,
+      },
+    );
+
+    if (!defense.allowed) {
+      breaker.recordFailure();
+      if (defense.phase === 'pre-guard' && defense.preGuard) {
+        const { toolCallGuardBlockResponse } = await import('./tool-call-pre-guard.js');
+        return toolCallGuardBlockResponse(msg.id, defense.preGuard);
+      }
+      return {
+        jsonrpc: '2.0',
+        id: msg.id,
+        error: { code: defense.code, message: `Blocked by MCP Mastyf AI: ${defense.reason}` },
+      };
     }
-    if (preGuard.arguments && params) {
-      params.arguments = preGuard.arguments;
+
+    if (defense.arguments && params) {
+      params.arguments = defense.arguments;
     }
 
     if (params?.arguments) {
@@ -574,71 +591,7 @@ export class WebSocketProxyServer {
       }
     }
 
-    const reqMsg = { params: { name: params?.name, arguments: params?.arguments } };
-    const model = resolveModelIdForServer(this.opts.serverName);
-    const tokenCounts = this.tokenCounter.countProxyCall({
-      requestText: JSON.stringify(reqMsg),
-      responseText: '',
-      model,
-      requestPayload: reqMsg,
-    });
-    const context: CallContext = applyGeoToCallContext({
-      serverName: this.opts.serverName,
-      toolName,
-      arguments: params?.arguments,
-      requestId,
-      requestTokens: tokenCounts.requestTokens,
-      timestamp: new Date().toISOString(),
-      tenantId,
-      agentIdentity,
-      idempotencyKey: idempotencyKeyFromRequest(params?._meta),
-    }, req.headers);
-
-    const decision = await this.opts.policy.evaluateAsync(context);
-    if (decision.action === 'block') {
-      notifyToolBlock({
-        serverName: this.opts.serverName,
-        toolName: context.toolName,
-        rule: decision.rule,
-        reason: decision.reason,
-        requestId: context.requestId,
-        anomalyScore: 0.95,
-      });
-      breaker.recordFailure();
-      StructuredLogger.logBlocked({
-        event: 'tool_blocked',
-        requestId: context.requestId,
-        serverName: this.opts.serverName,
-        toolName: context.toolName,
-        reason: decision.reason,
-        rule: decision.rule,
-      });
-      return {
-        jsonrpc: '2.0',
-        id: msg.id,
-        error: { code: -32001, message: `Blocked by MCP Mastyf AI policy: ${decision.reason}` },
-      };
-    }
-
-    const gateOutcome = await runPostPolicyAllowGates(context, decision, this.opts.serverName);
-    if (isPostPolicyGateBlock(gateOutcome)) {
-      breaker.recordFailure();
-      StructuredLogger.logBlocked({
-        event: 'tool_blocked',
-        requestId,
-        serverName: this.opts.serverName,
-        toolName,
-        reason: gateOutcome.reason,
-        rule: 'semantic_gate',
-      });
-      return {
-        jsonrpc: '2.0',
-        id: msg.id,
-        error: { code: -32001, message: `Blocked by MCP Mastyf AI semantic gate: ${gateOutcome.reason}` },
-      };
-    }
-    const spendReservationId =
-      gateOutcome && 'allowed' in gateOutcome ? gateOutcome.spendReservationId : undefined;
+    const spendReservationId = defense.spendReservationId;
 
     // ── Anomaly detection (ML pipeline) ────────────────────────────
     try {

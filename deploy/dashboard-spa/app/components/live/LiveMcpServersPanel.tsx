@@ -1,13 +1,14 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { Plus, Trash2, RefreshCw, Settings, Power, PowerOff, Globe, Terminal, TerminalSquare, Variable, X } from 'lucide-react';
+import { Plus, Trash2, RefreshCw, Settings, Power, PowerOff, Globe, Terminal, TerminalSquare, Variable, X, Copy, Link2 } from 'lucide-react';
 import {
   fetchServerRegistry,
   addMcpServer,
   removeMcpServer,
   updateMcpServer,
   type UiMcpServerConfig,
+  type UnifiedFleetServer,
 } from '@/lib/mastyf-ai-api';
 import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
@@ -42,6 +43,7 @@ const EMPTY_FORM: FormState = {
 
 export function LiveMcpServersPanel() {
   const [uiServers, setUiServers] = useState<UiMcpServerConfig[]>([]);
+  const [unified, setUnified] = useState<UnifiedFleetServer[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [showForm, setShowForm] = useState(false);
@@ -53,8 +55,9 @@ export function LiveMcpServersPanel() {
   const load = useCallback(async () => {
     setLoading(true);
     setError('');
-    const { uiServers: ui } = await fetchServerRegistry();
+    const { uiServers: ui, unified: uni } = await fetchServerRegistry();
     setUiServers(ui);
+    setUnified(uni ?? []);
     setLoading(false);
   }, []);
 
@@ -120,7 +123,10 @@ export function LiveMcpServersPanel() {
       });
       setSaving(false);
       if (result.ok) {
-        toast(`Server "${form.name}" added`, 'success');
+        const msg = result.localUrl
+          ? `Server "${form.name}" added — ${result.localUrl}. Reload MCP in your IDE.`
+          : `Server "${form.name}" added — run mastyf-ai start to activate Fleet Hub.`;
+        toast(msg, 'success');
         setForm(EMPTY_FORM);
         setShowForm(false);
         await load();
@@ -161,14 +167,24 @@ export function LiveMcpServersPanel() {
 
   if (loading) return <div className="flex flex-col gap-1"><SkeletonCard rows={2} /><SkeletonCard rows={3} /><SkeletonCard rows={2} /></div>;
 
-  const allServers = uiServers.map((u) => ({
-    name: u.name,
-    command: u.command,
-    transport: u.transport || 'stdio',
-    url: u.url,
-    disabled: u.disabled ?? false,
-    metrics: undefined as unknown,
-  }));
+  const allServers: UnifiedFleetServer[] = unified.length > 0
+    ? unified
+    : uiServers.map((u) => ({
+        name: u.name,
+        transport: u.transport || 'stdio',
+        source: 'ui',
+        wrapped: false,
+        status: 'unknown',
+      }));
+
+  const copyUrl = async (url: string) => {
+    try {
+      await navigator.clipboard.writeText(url);
+      toast('Local URL copied', 'success');
+    } catch {
+      toast('Copy failed', 'error');
+    }
+  };
 
   return (
     <div>
@@ -177,7 +193,7 @@ export function LiveMcpServersPanel() {
         <div>
           <h2 className="text-lg font-semibold" style={{ margin: 0 }}>MCP Servers</h2>
           <p className="text-sm text-muted" style={{ margin: '4px 0 0' }}>
-            {allServers.length} server{allServers.length !== 1 ? 's' : ''} configured
+            {allServers.length} server{allServers.length !== 1 ? 's' : ''} · Fleet Hub assigns local URLs automatically
           </p>
         </div>
         <div className="flex gap-1">
@@ -207,40 +223,49 @@ export function LiveMcpServersPanel() {
       {allServers.length > 0 ? (
         <div className="flex flex-col gap-1">
           {allServers.map((s) => {
-            const uiEntry = uiServers.find((u) => u.name === s.name)!;
+            const uiEntry = uiServers.find((u) => u.name === s.name);
+            const disabled = uiEntry?.disabled ?? false;
             return (
               <div
                 key={s.name}
                 className="card flex items-center gap-3"
-                style={{ opacity: s.disabled ? 0.5 : 1 }}
+                style={{ opacity: disabled ? 0.5 : 1 }}
               >
                 <div className="flex-1">
                   <div className="flex items-center gap-1" style={{ marginBottom: 2 }}>
                     <strong style={{ fontSize: 14 }}>{s.name}</strong>
-                    {s.disabled ? (
-                      <Badge variant="offline">Disabled</Badge>
-                    ) : null}
-                    {s.transport === 'sse' ? (
-                      <Badge variant="neutral">SSE</Badge>
-                    ) : (
-                      <Badge variant="neutral">STDIO</Badge>
-                    )}
+                    {disabled ? <Badge variant="offline">Disabled</Badge> : null}
+                    <Badge variant={s.status === 'running' ? 'success' : 'neutral'}>
+                      {s.status === 'running' ? 'Running' : s.status || 'Unknown'}
+                    </Badge>
+                    <Badge variant="neutral">{s.source}</Badge>
+                    <Badge variant="neutral">{s.transport.toUpperCase()}</Badge>
                   </div>
-                  <code className="mono" style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-                    {s.url ? s.url : (
-                      s.command ? `${s.command} ${(uiEntry.args || []).join(' ')}` : s.transport
-                    )}
-                  </code>
+                  {s.localUrl ? (
+                    <div className="flex items-center gap-1" style={{ marginTop: 4 }}>
+                      <Link2 size={12} style={{ color: 'var(--text-muted)' }} />
+                      <code className="mono" style={{ fontSize: 12, color: 'var(--text-muted)' }}>{s.localUrl}</code>
+                      <button type="button" className="btn-icon" onClick={() => void copyUrl(s.localUrl!)} title="Copy local URL">
+                        <Copy size={12} />
+                      </button>
+                    </div>
+                  ) : null}
+                  {s.metrics ? (
+                    <p className="text-xs text-muted" style={{ margin: '4px 0 0' }}>
+                      {s.metrics.totalCalls} calls · {s.metrics.blocked} blocked
+                    </p>
+                  ) : null}
                 </div>
+                {uiEntry ? (
                 <div className="flex items-center gap-1">
                   <button
                     type="button"
                     className="btn-icon"
                     onClick={() => handleToggleDisabled(uiEntry)}
-                    aria-label={s.disabled ? 'Enable server' : 'Disable server'}
-                    title={s.disabled ? 'Enable' : 'Disable'}
+                    aria-label={disabled ? 'Enable server' : 'Disable server'}
+                    title={disabled ? 'Enable' : 'Disable'}
                   >
-                    {s.disabled ? <PowerOff size={14} /> : <Power size={14} />}
+                    {disabled ? <PowerOff size={14} /> : <Power size={14} />}
                   </button>
                   <button
                     type="button"
@@ -261,6 +286,7 @@ export function LiveMcpServersPanel() {
                     <Trash2 size={14} />
                   </button>
                 </div>
+                ) : null}
               </div>
             );
           })}
@@ -422,8 +448,9 @@ export function LiveMcpServersPanel() {
       <Card style={{ marginTop: 16 }}>
         <p className="text-sm text-muted" style={{ margin: 0 }}>
           <strong>How it works:</strong> Servers added here are saved to{' '}
+          Persisted to{' '}
           <code className="mono" style={{ fontSize: 12 }}>~/.mastyf-ai/servers.json</code>.
-          Changes take effect immediately — the proxy auto-reloads on save.
+          Run <code className="mono" style={{ fontSize: 12 }}>mastyf-ai start</code> (Fleet Hub) to protect all servers with one command.
           Use <strong>STDIO</strong> for local servers (e.g., npx, uvx) and{' '}
           <strong>SSE / HTTP</strong> for remote servers (e.g., running on another port).
         </p>

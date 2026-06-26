@@ -16,6 +16,8 @@ import {
 } from './policy-signature.js';
 import { validateAllowlistRbac } from './policy-allowlist-guard.js';
 import { clearPolicyLoadError, recordPolicyLoadError } from './policy-load-metrics.js';
+import { setTribunalPolicyFromConfig } from './tribunal-policy.js';
+import { setPolicyVersionForCache, invalidateLlmCache } from '@mastyf-ai/core';
 
 const RELOAD_DEBOUNCE_MS = 50;
 const RELOAD_DRAIN_MS = parseInt(process.env['MASTYF_AI_POLICY_RELOAD_DRAIN_TIMEOUT_MS'] || '30000', 10);
@@ -34,6 +36,7 @@ export class PolicyWatcher {
   private policyPath: string;
   private reloadTimer: ReturnType<typeof setTimeout> | null = null;
   private reloadInFlight = false;
+  private loadedPolicyVersion = 'default';
   /** Callback invoked after a successful hot-reload (set by ProxyManager) */
   public onReload: (() => void) | null = null;
 
@@ -80,6 +83,9 @@ export class PolicyWatcher {
       }
       const config = applyPolicyMerges(parsePolicyConfig(load(yaml)));
       validateAllowlistRbac(config);
+      setTribunalPolicyFromConfig(config.policy.tribunal);
+      this.loadedPolicyVersion = config.version;
+      setPolicyVersionForCache(config.version);
       const oldMode = this.current?.getMode();
       const engine = getOrCreatePolicyEngine(config);
       Logger.info(
@@ -90,6 +96,11 @@ export class PolicyWatcher {
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
       Logger.error(`[policy-watcher] Failed to load policy: ${msg}`);
+      if (this.current) {
+        Logger.warn(
+          '[policy-watcher] Policy reload failed — retaining prior policy (fail-open on stale rules; see docs/AUDIT_FINDINGS_RESPONSE.md M-015)',
+        );
+      }
       recordPolicyLoadError(msg);
       return null;
     }
@@ -152,6 +163,12 @@ export class PolicyWatcher {
           Logger.warn('[policy-watcher] Reload deferred — evaluations still in flight');
         } else {
           this.current = pending;
+        }
+        try {
+          setPolicyVersionForCache(this.loadedPolicyVersion);
+          await invalidateLlmCache();
+        } catch {
+          /* core package optional in some test contexts */
         }
         try {
           const { recordConfigProvenance } = await import('../agentic/provenance/config-provenance-chain.js');

@@ -1,11 +1,12 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { fetchFleetInstances, fetchHealth, type FleetResponse, type HealthResponse } from '@/lib/mastyf-ai-api';
+import { fetchFleetInstances, fetchHealth, fetchFleetHubStatus, restartFleetHub, type FleetResponse, type HealthResponse } from '@/lib/mastyf-ai-api';
 import { Card } from '@/app/components/ui/Card';
 import { Badge } from '@/app/components/ui/Badge';
 import { KpiCard } from '@/app/components/ui/KpiCard';
 import { EmptyState } from '@/app/components/ui/EmptyState';
+import { Button } from '@/app/components/ui/Button';
 import { WorkspaceSubNav } from '@/app/components/ui/WorkspaceSubNav';
 import { LiveMcpServersPanel } from '@/app/components/live/LiveMcpServersPanel';
 import { HealthReliabilityPanel } from '@/app/components/dashboard/HealthReliabilityPanel';
@@ -21,14 +22,28 @@ type Props = {
 
 function FleetOverview() {
   const [fleet, setFleet] = useState<FleetResponse | null>(null);
+  const [hubStatus, setHubStatus] = useState<{ running: number; total: number }>({ running: 0, total: 0 });
   const [loading, setLoading] = useState(true);
+  const [restarting, setRestarting] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
-    const f = await fetchFleetInstances().catch(() => null);
+    const [f, hub] = await Promise.all([
+      fetchFleetInstances().catch(() => null),
+      fetchFleetHubStatus().catch(() => ({ entries: [], fleet: null })),
+    ]);
     if (f) setFleet(f);
+    const running = hub.fleet?.servers.filter((s) => s.status === 'running').length ?? 0;
+    setHubStatus({ running, total: hub.entries.length });
     setLoading(false);
   }, []);
+
+  const handleRestartFleet = async () => {
+    setRestarting(true);
+    await restartFleetHub().catch(() => ({ ok: false }));
+    setRestarting(false);
+    await load();
+  };
 
   useEffect(() => { void load(); }, [load]);
 
@@ -47,7 +62,16 @@ function FleetOverview() {
 
   return (
     <>
+      <div className="flex items-center justify-between mb-2">
+        <p className="text-sm text-muted" style={{ margin: 0 }}>
+          Fleet Hub: {hubStatus.running}/{hubStatus.total} servers running
+        </p>
+        <Button variant="secondary" size="sm" disabled={restarting} onClick={() => void handleRestartFleet()}>
+          {restarting ? 'Restarting…' : 'Restart Fleet'}
+        </Button>
+      </div>
       <div className="kpi-grid">
+        <KpiCard label="Fleet Hub" value={`${hubStatus.running}/${hubStatus.total}`} accent={hubStatus.running > 0 ? 'success' : 'neutral'} secondary="protected servers" />
         <KpiCard label="Total Instances" value={totalInstances} accent="info" secondary={`${activeInstances} active`} />
         <KpiCard label="Fleet Status" value={onlineCount > 0 ? `${onlineCount} online` : 'Offline'} accent={onlineCount > 0 ? 'success' : 'danger'} />
         <KpiCard label="Total Requests" value={totalRequests.toLocaleString()} accent="info" secondary={`${blockRate}% blocked`} />

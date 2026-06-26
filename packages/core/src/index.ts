@@ -40,6 +40,9 @@ export { getArgumentScannerPatterns } from "./argument-scanner.js";
 export { normalizeUnicode, resetConfusablesCache } from "./confusables.js";
 export { runSchemaScan } from "./schema-scanner.js";
 export { runSemanticScan, sanitizeLlmErrorBody, type SemanticScanOptions } from "./semantic-scanner.js";
+export { invalidateLlmCache, getLlmCache, resetLlmCacheForTests } from "./ai/llm-cache.js";
+export { setPolicyVersionForCache, getPolicyVersionForCache, resetPolicyVersionForTests } from "./policy-version.js";
+export { parseAndValidateVerdict } from "./verdict-schema.js";
 export {
   verifyToolDefinitions, approveToolDefinitions,
   resolveManifestSecret, ManifestSecretError,

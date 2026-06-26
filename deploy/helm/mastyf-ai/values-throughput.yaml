@@ -1,0 +1,22 @@
+# Fast-path / throughput overlay — policy + spend reserve; semantic async-only.
+# Use when P99 latency matters more than synchronous LLM semantic gates.
+#
+#   helm upgrade --install mastyf-ai ./deploy/helm/mastyf-ai \
+#     -f deploy/helm/mastyf-ai/values.yaml \
+#     -f deploy/helm/mastyf-ai/values-throughput.yaml
+
+replicaCount: 3
+
+config:
+  env:
+    MASTYF_AI_SEMANTIC_STRICT: "false"
+    MASTYF_AI_SEMANTIC_SYNC_REQUEST_LLM: "false"
+    MASTYF_AI_SEMANTIC_ASYNC: "true"
+    MASTYF_AI_LOCAL_SEMANTIC: "true"
+    MASTYF_AI_TENANT_TOKENS_PER_MIN: "1000000"
+    MASTYF_AI_LOOP_TOKENS_PER_MIN: "400000"
+    MASTYF_AI_REGISTRATION_GATE_SKIP_SEMANTIC: "true"
+    MASTYF_AI_BLOCK_CRITICAL_TOOLS: "false"
+
+# Optional: enable docker compose profile split-plane for sub-ms edge denylist
+# See docs/DEFENSE_FABRIC.md

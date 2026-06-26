@@ -245,3 +245,62 @@ export function runWrap(opts: WrapOptions): WrapResult {
     wrapperScript,
   };
 }
+
+export interface LocalUrlPatchEntry {
+  name: string;
+  localUrl: string;
+}
+
+const DEFAULT_SKIP_PATCH = new Set(['mastyf-ai', 'mastyf-ai']);
+
+/**
+ * Patch IDE MCP config so fleet servers use local HTTP URLs (Fleet Hub mode).
+ */
+export function patchClientToLocalUrls(opts: {
+  client: WrapClient;
+  configPath?: string;
+  entries: LocalUrlPatchEntry[];
+  apply: boolean;
+  skipNames?: string[];
+}): { clientConfigPath: string; backupPath?: string; patched: string[] } {
+  const clientPath = resolveClientConfigPath(opts.client, opts.configPath);
+  if (!clientPath) {
+    throw new Error(`No MCP config found for client "${opts.client}".`);
+  }
+  const skip = new Set([...(opts.skipNames ?? []), ...DEFAULT_SKIP_PATCH]);
+  const raw = readClientJson(clientPath);
+  const serverMap = extractServers(raw);
+  const patched: string[] = [];
+
+  for (const { name, localUrl } of opts.entries) {
+    if (skip.has(name)) continue;
+    serverMap[name] = { url: localUrl };
+    patched.push(name);
+  }
+
+  let backupPath: string | undefined;
+  if (opts.apply && patched.length > 0) {
+    backupPath = `${clientPath}.bak.${Date.now()}`;
+    fs.copyFileSync(clientPath, backupPath);
+    setServers(raw, serverMap);
+    fs.writeFileSync(clientPath, JSON.stringify(raw, null, 2) + '\n', 'utf-8');
+  }
+
+  return { clientConfigPath: clientPath, backupPath, patched };
+}
+
+export function patchClientServerToLocalUrl(opts: {
+  client: WrapClient;
+  configPath?: string;
+  name: string;
+  localUrl: string;
+  apply: boolean;
+}): { clientConfigPath: string; backupPath?: string } {
+  const result = patchClientToLocalUrls({
+    client: opts.client,
+    configPath: opts.configPath,
+    entries: [{ name: opts.name, localUrl: opts.localUrl }],
+    apply: opts.apply,
+  });
+  return { clientConfigPath: result.clientConfigPath, backupPath: result.backupPath };
+}

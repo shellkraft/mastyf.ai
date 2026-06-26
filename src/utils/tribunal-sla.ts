@@ -3,17 +3,30 @@
  */
 import { Logger } from './logger.js';
 import { broadcastDashboardEvent } from './dashboard-events.js';
+import { getTribunalPolicyFromConfig } from '../policy/tribunal-policy.js';
 
 export type TribunalTimeoutAction = 'block' | 'allow' | 'escalate-to-oncall';
 
 export function getTribunalTimeoutMs(): number {
-  const n = parseInt(process.env['MASTYF_AI_TRIBUNAL_TIMEOUT_MS'] || String(4 * 60 * 60 * 1000), 10);
-  return Number.isFinite(n) && n > 0 ? n : 4 * 60 * 60 * 1000;
+  const envRaw = process.env['MASTYF_AI_TRIBUNAL_TIMEOUT_MS'];
+  if (envRaw) {
+    const n = parseInt(envRaw, 10);
+    if (Number.isFinite(n) && n > 0) return n;
+  }
+  const fromPolicy = getTribunalPolicyFromConfig()?.timeout_ms;
+  if (fromPolicy && fromPolicy > 0) return fromPolicy;
+  return 4 * 60 * 60 * 1000;
 }
 
 export function getTribunalTimeoutAction(): TribunalTimeoutAction {
-  const v = (process.env['MASTYF_AI_TRIBUNAL_TIMEOUT_ACTION'] || 'block').toLowerCase();
-  if (v === 'allow' || v === 'escalate-to-oncall') return v;
+  const envRaw = process.env['MASTYF_AI_TRIBUNAL_TIMEOUT_ACTION'];
+  if (envRaw) {
+    const v = envRaw.toLowerCase();
+    if (v === 'allow' || v === 'escalate-to-oncall') return v;
+    return 'block';
+  }
+  const fromPolicy = getTribunalPolicyFromConfig()?.timeout_action;
+  if (fromPolicy) return fromPolicy;
   return 'block';
 }
 

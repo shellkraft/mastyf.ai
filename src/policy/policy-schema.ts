@@ -43,6 +43,13 @@ const EntropyPolicySchema = z
   })
   .strict();
 
+const TribunalPolicySchema = z
+  .object({
+    timeout_ms: z.number().positive().optional(),
+    timeout_action: z.enum(['block', 'allow', 'escalate-to-oncall']).optional(),
+  })
+  .strict();
+
 export const PolicyRuleSchema = z
   .object({
     name: z.string().min(1),
@@ -84,6 +91,7 @@ export const PolicySchema = z
         require_certification: z.enum(['bronze', 'silver', 'gold', 'platinum']).optional(),
         default_sandbox_tier: z.enum(['shadow', 'redact', 'allow']).optional(),
         entropy: EntropyPolicySchema.optional(),
+        tribunal: TribunalPolicySchema.optional(),
         rules: z.array(PolicyRuleSchema),
       })
       .strict(),

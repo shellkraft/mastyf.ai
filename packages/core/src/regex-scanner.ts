@@ -68,9 +68,9 @@ const CRITICAL_RULES: PatternRule[] = [
   { id: "MCPG-R-022", category: "exfiltration", severity: "critical",
     pattern: /(?:post|upload|transmit|forward|relay)\s+(?:to|the\s+result\s+to)/i,
     message: "Data transmission instruction" },
-  { id: "MCPG-R-023", category: "exfiltration", severity: "critical",
-    pattern: /webhook/i,
-    message: "Webhook reference — potential exfiltration vector" },
+  { id: "MCPG-R-023", category: "exfiltration", severity: "warning",
+    pattern: /\bwebhook\s*(?:url|endpoint|uri)\b/i,
+    message: "Webhook URL reference — review for exfiltration risk" },
   { id: "MCPG-R-024", category: "exfiltration", severity: "critical",
     pattern: /exfiltrat/i,
     message: "Literal exfiltration reference" },
@@ -112,7 +112,7 @@ const WARNING_RULES: PatternRule[] = [
 
   // Encoding / obfuscation
   { id: "MCPG-R-110", category: "encoded-content", severity: "warning",
-    pattern: /(?:[A-Za-z0-9+/]{40,}={0,2})(?:\s|$)/,
+    pattern: /(?!(?:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}))(?:[A-Za-z0-9+/]{48,}={0,2})(?:\s|$)/,
     message: "Long Base64-like string — potential obfuscated instruction" },
   { id: "MCPG-R-111", category: "encoded-content", severity: "warning",
     pattern: /\\u[0-9a-fA-F]{4}/,

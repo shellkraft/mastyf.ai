@@ -1,9 +1,9 @@
 import { createHash } from 'node:crypto';
 import type { PolicyConfig } from '../policy/policy-types.js';
 
-export const COMPILED_RULES_SCHEMA_VERSION = 'v1';
+export const COMPILED_RULES_SCHEMA_VERSION = 'v2';
 
-export interface CompiledRules {
+export interface CompiledRulesBase {
   schemaVersion: string;
   generatedAt: string;
   sourcePolicyVersion: string;
@@ -14,6 +14,14 @@ export interface CompiledRules {
   policyMode: PolicyConfig['policy']['mode'];
   defaultAction: NonNullable<PolicyConfig['policy']['default_action']> | 'pass';
 }
+
+export interface CompiledRulesV2 extends CompiledRulesBase {
+  schemaVersion: 'v2';
+  tokensPerMinuteCap: number;
+  usdPerMinuteCap: number;
+}
+
+export type CompiledRules = CompiledRulesV2;
 
 export interface DecisionTelemetryEvent {
   schemaVersion: string;
@@ -27,6 +35,30 @@ export interface DecisionTelemetryEvent {
 
 function uniqueSorted(values: Iterable<string>): string[] {
   return [...new Set([...values].map((v) => v.trim()).filter(Boolean))].sort();
+}
+
+function tokensPerMinuteCapFromPolicy(config: PolicyConfig): number {
+  let max = 0;
+  for (const rule of config.policy.rules) {
+    if (rule.maxTokensPerMinute && rule.maxTokensPerMinute > max) {
+      max = rule.maxTokensPerMinute;
+    }
+  }
+  const env = parseInt(process.env['MASTYF_AI_TENANT_TOKENS_PER_MIN'] || '', 10);
+  if (Number.isFinite(env) && env > 0) return env;
+  return max > 0 ? max : 500_000;
+}
+
+function usdPerMinuteCapFromPolicy(config: PolicyConfig): number {
+  let max = 0;
+  for (const rule of config.policy.rules) {
+    if (rule.maxUsdPerMinute && rule.maxUsdPerMinute > max) {
+      max = rule.maxUsdPerMinute;
+    }
+  }
+  const env = parseFloat(process.env['MASTYF_AI_TENANT_USD_PER_MIN'] || '');
+  if (Number.isFinite(env) && env > 0) return env;
+  return max > 0 ? max : 50;
 }
 
 export function compilePolicyToRules(config: PolicyConfig): CompiledRules {
@@ -47,15 +79,17 @@ export function compilePolicyToRules(config: PolicyConfig): CompiledRules {
   }
 
   return {
-    schemaVersion: COMPILED_RULES_SCHEMA_VERSION,
+    schemaVersion: 'v2',
     generatedAt: new Date().toISOString(),
     sourcePolicyVersion: config.version,
-    minProxyVersion: '0.1.0',
+    minProxyVersion: '0.2.0',
     blockedTools: uniqueSorted(blockedTools),
     allowedTools: uniqueSorted(allowedTools),
     blockedMethodSubstrings: uniqueSorted(blockedMethodSubstrings),
     policyMode: config.policy.mode,
     defaultAction: config.policy.default_action ?? 'pass',
+    tokensPerMinuteCap: tokensPerMinuteCapFromPolicy(config),
+    usdPerMinuteCap: usdPerMinuteCapFromPolicy(config),
   };
 }
 

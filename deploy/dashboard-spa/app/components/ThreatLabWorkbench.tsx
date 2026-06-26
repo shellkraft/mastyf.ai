@@ -14,20 +14,13 @@ import { ThreatCandidateDrawer } from './ThreatCandidateDrawer';
 import { IncidentInvestigatorDrawer } from './IncidentInvestigatorDrawer';
 import { hasPermission } from '@/lib/dashboard-roles';
 import { computeThreatConversionFromCandidates } from '@/lib/advanced-analytics';
+import { Card } from './ui/Card';
+import { Button } from './ui/Button';
+import { Badge, SeverityBadge } from './ui/Badge';
+import { KpiCard } from './ui/KpiCard';
+import { EmptyState } from './ui/EmptyState';
 
 import type { ThreatLabContext } from './IncidentInvestigatorDrawer';
-
-function fixtureCell(c: ThreatLabCandidate): string {
-  if (c.path) {
-    const id = c.id.startsWith('adv-') ? c.id : c.path.split('/').pop() || c.id;
-    return id;
-  }
-  if (c.advWriteSkipped) {
-    const short = c.advWriteSkipped.length > 28 ? `${c.advWriteSkipped.slice(0, 28)}…` : c.advWriteSkipped;
-    return short;
-  }
-  return '—';
-}
 
 type Props = {
   candidates: ThreatLabCandidate[];
@@ -60,9 +53,10 @@ function findLinkedCandidate(
   );
 }
 
-/** Incident API resolves Threat Lab candidates by id, fingerprint, or linked semantic audit id. */
-function investigateTriggerId(c: ThreatLabCandidate): string {
-  return c.id;
+function severityFromConfidence(confidence: number): 'HIGH' | 'MEDIUM' | 'LOW' {
+  if (confidence >= 0.7) return 'HIGH';
+  if (confidence >= 0.4) return 'MEDIUM';
+  return 'LOW';
 }
 
 export function ThreatLabWorkbench({
@@ -86,7 +80,8 @@ export function ThreatLabWorkbench({
   const [selected, setSelected] = useState<ThreatLabCandidate | null>(null);
   const [investigateId, setInvestigateId] = useState<string | null>(null);
   const [runBusy, setRunBusy] = useState(false);
-  const bannerRef = useRef<HTMLElement>(null);
+  const [busy, setBusy] = useState('');
+  const bannerRef = useRef<HTMLDivElement>(null);
   const canMutate = hasPermission(roles, 'policy_mutate');
   const canRun = hasPermission(roles, 'policy_test');
   const semanticTpCount = new Set(
@@ -95,6 +90,7 @@ export function ThreatLabWorkbench({
       .map((c) => String(c.provenance?.inputFingerprint)),
   ).size;
   const conversion = computeThreatConversionFromCandidates(candidates, semanticTpCount);
+  const pendingCount = candidates.filter((c) => !c.reviewStatus || c.reviewStatus === 'pending').length;
 
   useEffect(() => {
     void trackAdvancedAnalyticsEvent({
@@ -106,6 +102,11 @@ export function ThreatLabWorkbench({
   }, [conversion.caveat.confidence, conversion.conversionRatePct]);
 
   const onAccept = async (id: string) => {
+    if (!canMutate) {
+      onRunStarted?.('Requires operator role');
+      return;
+    }
+    setBusy(`accept:${id}`);
     const res = await acceptThreatLabCandidate(id);
     if (res.ok) {
       setSelected(null);
@@ -114,16 +115,24 @@ export function ThreatLabWorkbench({
     } else {
       onRunStarted?.(res.error || `Accept failed for ${id}`);
     }
+    setBusy('');
   };
 
   const onReject = async (id: string) => {
+    if (!canMutate) {
+      onRunStarted?.('Requires operator role');
+      return;
+    }
+    setBusy(`reject:${id}`);
     const res = await rejectThreatLabCandidate(id);
     if (res.ok) {
       setSelected(null);
       onRefresh?.();
+      onRunStarted?.(`Rejected candidate ${id}`);
     } else {
       onRunStarted?.(res.error || `Reject failed for ${id}`);
     }
+    setBusy('');
   };
 
   const runThreatLabReactive = async () => {
@@ -156,29 +165,6 @@ export function ThreatLabWorkbench({
     });
   }, [preloadedContext?.semanticAuditId, candidates]);
 
-  const contextActions = preloadedContext ? (
-    <div className="btn-row" style={{ marginTop: 8 }}>
-      <button type="button" className="secondary btn-sm" onClick={() => void onRefresh?.()}>
-        Refresh candidates
-      </button>
-      {canRun ? (
-        <button
-          type="button"
-          className="primary btn-sm"
-          disabled={runBusy}
-          onClick={() => void runThreatLabReactive()}
-        >
-          {runBusy ? 'Starting…' : 'Run Threat Lab (reactive)'}
-        </button>
-      ) : null}
-      {onClearContext ? (
-        <button type="button" className="secondary btn-sm" onClick={onClearContext}>
-          Dismiss context
-        </button>
-      ) : null}
-    </div>
-  ) : null;
-
   const investigateDrawer = investigateId ? (
     <IncidentInvestigatorDrawer
       triggerId={investigateId}
@@ -187,159 +173,256 @@ export function ThreatLabWorkbench({
   ) : null;
 
   return (
-    <div className="threat-lab-workbench">
-      <p className="hint">
-        You are in <strong>Threat Lab</strong>. Primary goal: review candidates and accept only safe,
-        high-confidence policy updates.
-      </p>
+    <>
       {preloadedContext ? (
-        <aside ref={bannerRef} className="threat-lab-context-banner">
-          <strong>Incident context</strong>
-          <p>
-            Semantic audit <code>{preloadedContext.semanticAuditId}</code> · {preloadedContext.category} ·{' '}
-            {preloadedContext.toolName}
-          </p>
-          {preloadedContext.narrative ? <p className="hint">{preloadedContext.narrative}</p> : null}
-          {contextActions}
-        </aside>
-      ) : null}
-      <div className="tribunal-summary-head" style={{ marginBottom: 8 }}>
-        <p className="hint" style={{ margin: 0, flex: 1 }}>
-          LLM-proposed policy rules: <strong>pending</strong> until you accept (applies YAML to live policy).
-          Reactive mode uses bypasses, then <strong>labeled semantic true positives</strong>, then threat intel.
-          {manifestMeta?.mode ? ` Mode: ${manifestMeta.mode}.` : ''}
-          {manifestMeta?.llmModel ? ` Model: ${manifestMeta.llmModel}.` : ''}
-        </p>
-        {canRun && !preloadedContext ? (
-          <button
-            type="button"
-            className="primary btn-sm"
-            disabled={runBusy}
-            onClick={() => void runThreatLabReactive()}
+        <div ref={bannerRef} style={{ marginBottom: 'var(--space-4)' }}>
+          <Card
+            title="Incident context"
+            subtitle={`${preloadedContext.category} · ${preloadedContext.toolName}`}
+            actions={
+              onClearContext ? (
+                <Button variant="ghost" size="sm" onClick={onClearContext}>
+                  Dismiss
+                </Button>
+              ) : undefined
+            }
           >
-            {runBusy ? 'Running…' : 'Start Threat Lab discovery'}
-          </button>
-        ) : null}
-      </div>
-      <div className="kpi-row">
-        <article className="kpi-card">
-          <p className="kpi-card-label">Threat-to-policy conversion</p>
-          <p className="kpi-card-value">{conversion.conversionRatePct.toFixed(1)}%</p>
-          <p className="kpi-card-sub">Accepted candidates / total generated candidates</p>
-        </article>
-        <article className="kpi-card">
-          <p className="kpi-card-label">Median accepted confidence</p>
-          <p className="kpi-card-value">{conversion.medianConfidencePct.toFixed(1)}%</p>
-          <p className="kpi-card-sub">Confidence distribution for accepted policy candidates</p>
-        </article>
-        <article className="kpi-card">
-          <p className="kpi-card-label">Backlog pressure</p>
-          <p className="kpi-card-value">{conversion.reviewBacklogPct.toFixed(1)}%</p>
-          <p className="kpi-card-sub">
-            Coverage {conversion.semanticTpToCandidateCoveragePct.toFixed(1)}% · {conversion.caveat.confidence}
-          </p>
-        </article>
-      </div>
-      {conversion.caveat.confidence === 'low' ? (
-        <p className="alert">
-          Confidence is low (n={conversion.caveat.sampleSize}, coverage {conversion.caveat.coveragePct}%).
-          Treat conversion metrics as directional.
-        </p>
-      ) : null}
-      {manifestMeta?.runNote || manifestMeta?.skipped ? (
-        <p className="hint status-warning">{manifestMeta.runNote || manifestMeta.skipped}</p>
-      ) : null}
-      {candidates.length === 0 ? (
-        <>
-          {preloadedContext ? (
-            <p className="muted">
-              No fixture yet for this audit — run Threat Lab (reactive) after labeling a semantic true positive,
-              or check the Overview session banner if batch data is hidden.
+            <p className="text-sm text-muted" style={{ marginBottom: 'var(--space-3)' }}>
+              Semantic audit <code className="text-xs">{preloadedContext.semanticAuditId}</code>
+              {preloadedContext.narrative ? ` — ${preloadedContext.narrative}` : null}
             </p>
-          ) : (
-            <p className="muted">No Threat Lab candidates yet. Run Threat Lab from Overview.</p>
-          )}
-          {investigateDrawer}
-          {selected ? (
-            <ThreatCandidateDrawer
-              candidate={selected}
-              autoEntry={selected.fingerprint ? autoByFingerprint.get(selected.fingerprint) : undefined}
-              onClose={() => setSelected(null)}
-              onAccept={(id) => void onAccept(id)}
-              onReject={(id) => void onReject(id)}
-              canMutate={canMutate}
-            />
-          ) : null}
-        </>
-      ) : (
-        <div className="workbench-layout">
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>Source</th>
-                <th>Attack class</th>
-                <th>Confidence</th>
-                <th>Fixture</th>
-                <th>Policy</th>
-                <th />
-              </tr>
-            </thead>
-            <tbody>
-              {candidates.map((c) => {
-                const isLinked =
-                  preloadedContext != null
-                  && c.provenance?.inputFingerprint === preloadedContext.semanticAuditId;
-                return (
-                  <tr key={c.id} className={isLinked ? 'row-highlight' : undefined}>
-                    <td>{c.id}</td>
-                    <td>{SOURCE_LABELS[c.provenance?.source || ''] || c.provenance?.source || '—'}</td>
-                    <td className="cell-truncate" title={c.attackClass}>
-                      {c.attackClass.slice(0, 40)}
-                      {c.attackClass.length > 40 ? '…' : ''}
-                    </td>
-                    <td>{(c.confidence * 100).toFixed(0)}%</td>
-                    <td className="cell-truncate" title={c.path || c.advWriteSkipped || ''}>
-                      {fixtureCell(c)}
-                    </td>
-                    <td>{c.reviewStatus || 'pending'}</td>
-                    <td>
-                      <div className="btn-row" style={{ marginTop: 0 }}>
-                        <button type="button" className="secondary btn-sm" onClick={() => setSelected(c)}>
-                          Review candidate
-                        </button>
-                        <button
-                          type="button"
-                          className="secondary btn-sm"
+            <div className="flex gap-2 flex-wrap">
+              <Button variant="ghost" size="sm" onClick={() => void onRefresh?.()}>
+                Refresh candidates
+              </Button>
+              {canRun ? (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  loading={runBusy}
+                  onClick={() => void runThreatLabReactive()}
+                >
+                  Run Threat Lab (reactive)
+                </Button>
+              ) : null}
+            </div>
+          </Card>
+        </div>
+      ) : null}
+
+      <div className="kpi-grid" style={{ marginBottom: 'var(--space-5)' }}>
+        <KpiCard
+          label="Threat-to-policy conversion"
+          value={`${conversion.conversionRatePct.toFixed(1)}%`}
+          secondary="Accepted / total generated"
+          accent="info"
+        />
+        <KpiCard
+          label="Median accepted confidence"
+          value={`${conversion.medianConfidencePct.toFixed(1)}%`}
+          secondary="Accepted candidates"
+          accent="success"
+        />
+        <KpiCard
+          label="Review backlog"
+          value={`${conversion.reviewBacklogPct.toFixed(1)}%`}
+          secondary={`Coverage ${conversion.semanticTpToCandidateCoveragePct.toFixed(1)}%`}
+          accent={pendingCount > 0 ? 'warning' : 'neutral'}
+        />
+        <KpiCard
+          label="Pending review"
+          value={pendingCount}
+          secondary={`${candidates.length} total candidate(s)`}
+          accent={pendingCount > 0 ? 'warning' : 'neutral'}
+        />
+      </div>
+
+      {conversion.caveat.confidence === 'low' ? (
+        <div className="banner banner-warning" style={{ marginBottom: 'var(--space-4)' }}>
+          <div className="banner-content">
+            Low sample confidence (n={conversion.caveat.sampleSize}, coverage {conversion.caveat.coveragePct}%).
+            Treat conversion metrics as directional.
+          </div>
+        </div>
+      ) : null}
+
+      {manifestMeta?.runNote || manifestMeta?.skipped ? (
+        <div className="banner banner-warning" style={{ marginBottom: 'var(--space-4)' }}>
+          <div className="banner-content">{manifestMeta.runNote || manifestMeta.skipped}</div>
+        </div>
+      ) : null}
+
+      <div className="grid grid-12">
+        <div className="col-span-8">
+          <Card
+            title="Threat Lab candidates"
+            subtitle={
+              pendingCount > 0
+                ? `${pendingCount} pending — accept applies YAML to live policy`
+                : 'LLM-proposed rules from discovery runs'
+            }
+          >
+            {candidates.length === 0 ? (
+              <EmptyState
+                title="No candidates"
+                message={
+                  preloadedContext
+                    ? 'No fixture yet for this audit. Run Threat Lab (reactive) after labeling a semantic true positive.'
+                    : 'Run Threat Lab from Pipeline quick actions or start discovery here.'
+                }
+              />
+            ) : (
+              <div className="grid grid-2" style={{ gap: 'var(--space-3)' }}>
+                {candidates.map((c) => {
+                  const isLinked =
+                    preloadedContext != null
+                    && c.provenance?.inputFingerprint === preloadedContext.semanticAuditId;
+                  const status = c.reviewStatus || 'pending';
+                  return (
+                    <div
+                      key={c.id}
+                      style={{
+                        border: `1px solid ${isLinked ? 'var(--warning)' : 'var(--border)'}`,
+                        borderRadius: 'var(--radius-lg)',
+                        padding: 'var(--space-4)',
+                        background: isLinked ? 'var(--surface-raised)' : undefined,
+                      }}
+                    >
+                      <div className="flex items-center gap-3 mb-2 flex-wrap">
+                        <SeverityBadge severity={severityFromConfidence(c.confidence)} />
+                        <span className="font-semibold text-sm">{(c.confidence * 100).toFixed(0)}% confidence</span>
+                        <Badge
+                          variant={
+                            status === 'accepted' ? 'success' : status === 'rejected' ? 'danger' : 'warning'
+                          }
+                        >
+                          {status}
+                        </Badge>
+                      </div>
+                      <p className="font-medium text-sm mb-1">{c.attackClass}</p>
+                      <p className="text-xs text-muted mb-2">{c.hypothesis.slice(0, 180)}</p>
+                      <div className="flex items-center gap-2 text-xs text-muted mb-3">
+                        <span>{SOURCE_LABELS[c.provenance?.source || ''] || c.provenance?.source || '—'}</span>
+                        <span>·</span>
+                        <span>{c.id}</span>
+                      </div>
+                      <div className="flex gap-2 flex-wrap">
+                        <Button variant="ghost" size="sm" onClick={() => setSelected(c)}>
+                          Review
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
                           onClick={() => {
-                            setInvestigateId(investigateTriggerId(c));
+                            setInvestigateId(c.id);
                             setSelected(null);
                           }}
                         >
-                          Open investigation
-                        </button>
+                          Investigate
+                        </Button>
+                        {status === 'pending' && canMutate ? (
+                          <>
+                            <Button
+                              size="sm"
+                              variant="primary"
+                              loading={busy === `accept:${c.id}`}
+                              disabled={!!busy && busy !== `accept:${c.id}`}
+                              onClick={() => void onAccept(c.id)}
+                            >
+                              Accept
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              loading={busy === `reject:${c.id}`}
+                              disabled={!!busy && busy !== `reject:${c.id}`}
+                              onClick={() => void onReject(c.id)}
+                            >
+                              Reject
+                            </Button>
+                          </>
+                        ) : null}
                       </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-          {selected ? (
-            <ThreatCandidateDrawer
-              candidate={selected}
-              autoEntry={
-                selected.fingerprint ? autoByFingerprint.get(selected.fingerprint) : undefined
-              }
-              onClose={() => setSelected(null)}
-              onAccept={(id) => void onAccept(id)}
-              onReject={(id) => void onReject(id)}
-              canMutate={canMutate}
-            />
-          ) : null}
-          {investigateDrawer}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </Card>
         </div>
-      )}
-    </div>
+
+        <div className="col-span-4">
+          <Card
+            title="Discovery"
+            subtitle="Reactive mode uses bypasses, semantic true positives, then threat intel"
+            actions={
+              canRun && !preloadedContext ? (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  loading={runBusy}
+                  onClick={() => void runThreatLabReactive()}
+                >
+                  Start discovery
+                </Button>
+              ) : undefined
+            }
+          >
+            <p className="text-sm text-muted" style={{ marginBottom: 'var(--space-3)' }}>
+              Review candidates carefully — only <strong>accept</strong> applies a generated YAML rule to live policy.
+            </p>
+            {(manifestMeta?.mode || manifestMeta?.llmModel) ? (
+              <dl className="text-sm" style={{ display: 'grid', gap: 'var(--space-2)' }}>
+                {manifestMeta.mode ? (
+                  <div className="flex justify-between gap-4">
+                    <span className="text-muted">Mode</span>
+                    <span className="font-medium">{manifestMeta.mode}</span>
+                  </div>
+                ) : null}
+                {manifestMeta.llmModel ? (
+                  <div className="flex justify-between gap-4">
+                    <span className="text-muted">Model</span>
+                    <span className="font-medium">{manifestMeta.llmModel}</span>
+                  </div>
+                ) : null}
+                {manifestMeta.timestamp ? (
+                  <div className="flex justify-between gap-4">
+                    <span className="text-muted">Manifest</span>
+                    <span className="font-medium text-xs">
+                      {new Date(manifestMeta.timestamp).toLocaleString()}
+                    </span>
+                  </div>
+                ) : null}
+              </dl>
+            ) : (
+              <p className="text-xs text-muted">No manifest metadata for the current batch.</p>
+            )}
+          </Card>
+
+          <Card title="Corpus linkage" subtitle="Auto Research fixtures tied to candidates" style={{ marginTop: 'var(--space-4)' }}>
+            {autoEntries.length === 0 ? (
+              <p className="text-sm text-muted">No linked auto-corpus entries in this batch.</p>
+            ) : (
+              <p className="text-sm">
+                <span className="font-semibold">{autoEntries.length}</span>
+                <span className="text-muted"> fixture(s) available — open Review on a candidate for details.</span>
+              </p>
+            )}
+          </Card>
+        </div>
+      </div>
+
+      {selected ? (
+        <ThreatCandidateDrawer
+          candidate={selected}
+          autoEntry={selected.fingerprint ? autoByFingerprint.get(selected.fingerprint) : undefined}
+          onClose={() => setSelected(null)}
+          onAccept={(id) => void onAccept(id)}
+          onReject={(id) => void onReject(id)}
+          canMutate={canMutate}
+        />
+      ) : null}
+      {investigateDrawer}
+    </>
   );
 }

@@ -82,9 +82,20 @@ for (const proxyFile of [
   'src/proxy/proxy-server.ts',
 ]) {
   const proxySrc = readFileSync(proxyFile, 'utf-8');
-  if (!proxySrc.includes('runPostPolicyAllowGates')) {
-    missing.push(`${proxyFile} must call runPostPolicyAllowGates after policy allow`);
+  const usesDefenseFabric =
+    proxySrc.includes('evaluateToolCallDefense') ||
+    proxySrc.includes('runPostPolicyAllowGates');
+  if (!usesDefenseFabric) {
+    missing.push(`${proxyFile} must call evaluateToolCallDefense or runPostPolicyAllowGates after policy allow`);
   }
+}
+
+if (!existsSync('docs/DEFENSE_FABRIC.md')) {
+  missing.push('missing file: docs/DEFENSE_FABRIC.md');
+}
+
+if (!existsSync('src/proxy/tool-call-defense-orchestrator.ts')) {
+  missing.push('missing file: src/proxy/tool-call-defense-orchestrator.ts');
 }
 
 if (!existsSync('src/services/unified-spend-pool.ts')) {

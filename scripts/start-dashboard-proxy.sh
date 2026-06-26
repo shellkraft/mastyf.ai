@@ -102,13 +102,14 @@ process.exit(1);
 NODE
 }
 
-if [ -z "$CONFIG" ]; then
+if [ -z "$CONFIG" ] && [ "${MASTYF_AI_FLEET_MODE:-true}" != "true" ]; then
   if CONFIG=$(pick_single_server_config 2>/dev/null); then
     :
   else
     echo "[dashboard-proxy] No single-server MCP config found." >&2
     echo "  Pass a config path: pnpm dashboard:proxy -- mastyf-ai-configs/filesystem.json" >&2
-    echo "  Multi-server configs (e.g. scenarios/real-life/mcp-config.json) need one proxy per server — see docs/REAL_WORLD_INTEGRATION.md" >&2
+    echo "  Or use Fleet Hub (default): MASTYF_AI_FLEET_MODE=true ./scripts/start-dashboard-proxy.sh" >&2
+    echo "  See docs/REAL_WORLD_INTEGRATION.md" >&2
     exit 1
   fi
 fi
@@ -124,6 +125,13 @@ if command -v curl >/dev/null 2>&1; then
   if ! curl -sf "${OLLAMA_BASE_URL}/api/tags" >/dev/null 2>&1; then
     echo "[dashboard-proxy] WARNING: Ollama not reachable at $OLLAMA_BASE_URL — Auto Threat Research and semantic features need a running LLM (ollama serve)." >&2
   fi
+fi
+
+# Fleet Hub (default): one supervisor protects all discovered MCP servers.
+# Set MASTYF_AI_FLEET_MODE=false to use legacy single-proxy mode.
+if [ "${MASTYF_AI_FLEET_MODE:-true}" = "true" ]; then
+  echo "[dashboard-proxy] Starting Fleet Hub (mastyf-ai start)…" >&2
+  exec node dist/cli.js start --policy "$POLICY" --blocking-mode "$BLOCKING"
 fi
 
 exec node dist/cli.js proxy --config "$CONFIG" --policy "$POLICY" --blocking-mode "$BLOCKING"

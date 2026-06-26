@@ -1,6 +1,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync, unlinkSync } from 'fs';
 import { join } from 'path';
 import { homedir } from 'os';
+import type { McpServerConfig } from '../types.js';
 
 export type UiMcpServerConfig = {
   name: string;
@@ -13,7 +14,7 @@ export type UiMcpServerConfig = {
 };
 
 const CONFIG_DIR = join(homedir(), '.mastyf-ai');
-const CONFIG_PATH = join(CONFIG_DIR, 'servers.json');
+const CONFIG_PATH = process.env.MASTYF_AI_SERVERS_JSON_PATH || join(CONFIG_DIR, 'servers.json');
 
 function ensureDir(): void {
   if (!existsSync(CONFIG_DIR)) mkdirSync(CONFIG_DIR, { recursive: true });
@@ -36,6 +37,46 @@ function writeConfig(servers: UiMcpServerConfig[]): void {
 
 export function listUiServers(): UiMcpServerConfig[] {
   return readConfig();
+}
+
+export function uiServerToMcpConfig(ui: UiMcpServerConfig): McpServerConfig | null {
+  if (ui.disabled) return null;
+  const transport = ui.transport ?? (ui.url ? 'sse' : 'stdio');
+  if (transport === 'stdio') {
+    if (!ui.command) return null;
+    return {
+      name: ui.name,
+      command: ui.command,
+      args: ui.args ?? [],
+      env: ui.env,
+      transport: 'stdio',
+    };
+  }
+  if (!ui.url) return null;
+  return {
+    name: ui.name,
+    args: ui.args?.length ? ui.args : undefined,
+    env: ui.env,
+    url: ui.url,
+    transport: 'sse',
+  };
+}
+
+export function loadUiMcpServers(): McpServerConfig[] {
+  return readConfig()
+    .map(uiServerToMcpConfig)
+    .filter((s): s is McpServerConfig => s !== null);
+}
+
+/** UI-managed servers from ~/.mastyf-ai/servers.json override CLI entries by name. */
+export function mergeCliAndUiServers(cliServers: McpServerConfig[]): McpServerConfig[] {
+  const uiByName = new Map(loadUiMcpServers().map((s) => [s.name, s]));
+  const merged = cliServers.map((cli) => uiByName.get(cli.name) ?? cli);
+  const cliNames = new Set(cliServers.map((s) => s.name));
+  for (const [name, ui] of uiByName) {
+    if (!cliNames.has(name)) merged.push(ui);
+  }
+  return merged;
 }
 
 export function addUiServer(config: UiMcpServerConfig): { ok: boolean; error?: string } {

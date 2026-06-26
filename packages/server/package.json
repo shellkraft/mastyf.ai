@@ -13,6 +13,10 @@
     "./http-proxy-utils": {
       "import": "./dist/http-proxy-utils.js",
       "types": "./dist/http-proxy-utils.d.ts"
+    },
+    "./tool-call-defense-hook": {
+      "import": "./dist/tool-call-defense-hook.js",
+      "types": "./dist/tool-call-defense-hook.d.ts"
     }
   },
   "scripts": {

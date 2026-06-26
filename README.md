@@ -131,6 +131,42 @@ flowchart LR
 
 ---
 
+## Defense Fabric (holistic MCP protection)
+
+Beyond the three inspection layers, every `tools/call` runs through a **six-phase Defense Fabric** — registration, ingress, economics, policy, intelligence, upstream, and egress — with the same pipeline on stdio, HTTP, SSE, streamable HTTP, and WebSocket.
+
+```mermaid
+flowchart LR
+  subgraph P1["1 Ingress"]
+    A["Auth + limits"]
+  end
+  subgraph P2["2 Economics"]
+    B["Spend reserve"]
+  end
+  subgraph P3["3 Policy"]
+    C["YAML / RBAC"]
+  end
+  subgraph P4["4 Intelligence"]
+    D["Args + semantic"]
+  end
+  subgraph P5["5 Upstream"]
+    E["Forward + stream cutoff"]
+  end
+  subgraph P6["6 Egress"]
+    F["DLP + audit"]
+  end
+  P1 --> P2 --> P3 --> P4 --> P5 --> P6
+```
+
+| Profile | Helm overlay | When to use |
+|---------|--------------|-------------|
+| **Max-security** (enterprise default) | `values-enterprise.yaml` | Full six phases, sync semantic LLM, fail-closed |
+| **Fast-path / throughput** | `values-throughput.yaml` | Policy + spend reserve; semantic async-only; optional split-plane edge |
+
+Details: [docs/DEFENSE_FABRIC.md](docs/DEFENSE_FABRIC.md).
+
+---
+
 ## Architecture
 
 One process usually runs the **proxy**, **policy engine**, **audit database**, and **web dashboard** together.

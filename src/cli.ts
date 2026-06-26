@@ -86,6 +86,7 @@ interface ProxyOptions {
   authIssuer?: string;
   authAudience?: string;
   authRequired?: boolean;
+  exposeLocalPort?: string;
 }
 
 interface ControlPlaneOptions {
@@ -470,16 +471,22 @@ program
 
 program
   .command('start')
-  .description('Start MCP proxy + web dashboard (local defaults, http://localhost:4000)')
-  .option('-c, --config <path>', 'Mastyf AI MCP config JSON (single stdio server)')
+  .description('Start Fleet Hub (default) or IDE-managed proxy + dashboard')
+  .option('-c, --config <path>', 'Mastyf AI MCP config JSON (IDE-managed mode only)')
   .option('--policy <path>', 'Policy YAML (default: policy-audit.yaml from install root)')
   .option('--blocking-mode <mode>', 'Policy mode: audit, warn, block', 'block')
   .option('--build-dashboard', 'Build dashboard SPA before starting (git clone)')
+  .option('--ide-managed', 'Fallback: single proxy + IDE-spawned stdio wrappers (legacy)')
+  .option('--no-apply-ide', 'Fleet Hub: do not patch IDE mcp.json with local URLs')
+  .option('--client <name>', 'IDE client for auto-patch: cursor, cline, auto', 'auto')
   .action(async (opts: {
     config?: string;
     policy?: string;
     blockingMode: string;
     buildDashboard?: boolean;
+    ideManaged?: boolean;
+    noApplyIde?: boolean;
+    client?: string;
   }) => {
     const { runStart } = await import('./cli/start.js');
     await runStart({
@@ -487,6 +494,9 @@ program
       policy: opts.policy,
       blockingMode: opts.blockingMode,
       buildDashboard: opts.buildDashboard,
+      ideManaged: opts.ideManaged,
+      noApplyIde: opts.noApplyIde,
+      client: (opts.client as import('./wrap/client-wrap.js').WrapClient) ?? 'auto',
     });
   });
 
@@ -790,6 +800,7 @@ program
   .option('--auth-required', 'Require authentication for all tool calls (fail-closed)', false)
   .option('--dry-run', 'Simulate policy against historical call_records without activating the proxy')
   .option('--gateway', 'Shared ingress: SSE/WebSocket only (requires MASTYF_AI_MULTI_TENANT_ENABLED)', false)
+  .option('--expose-local-port <port>', 'Fleet child: expose stdio proxy on local HTTP POST /mcp (no stdin)')
   .action(async (opts: ProxyOptions) => {
     const { applyProxyRuntimeDefaults } = await import('./utils/start-env.js');
     applyProxyRuntimeDefaults();
@@ -802,17 +813,38 @@ program
     }
 
     const paths = opts.config ? [opts.config] : ConfigParser.findConfigPaths();
-    if (paths.length === 0) { console.error(chalk.red('No MCP config files found. Use --config to specify a path.')); process.exit(1); }
-
-    const servers = ConfigParser.parse(paths[0]);
-    if (servers.length === 0) { console.error(chalk.yellow('No servers found in config.')); process.exit(0); }
+    let cliServers: McpServerConfig[] = [];
+    if (paths.length > 0) {
+      cliServers = ConfigParser.parse(paths[0]);
+    }
+    const fleetChild = process.env['MASTYF_AI_FLEET_CHILD'] === 'true';
+    let servers: McpServerConfig[];
+    if (fleetChild) {
+      servers = cliServers;
+    } else {
+      const { mergeCliAndUiServers } = await import('./utils/mcp-server-config.js');
+      servers = mergeCliAndUiServers(cliServers);
+    }
+    if (servers.length === 0) {
+      if (paths.length === 0) {
+        console.error(chalk.red('No MCP config files found. Use --config or add servers in the dashboard (~/.mastyf-ai/servers.json).'));
+      } else {
+        console.error(chalk.yellow('No servers found in config or UI registry.'));
+      }
+      process.exit(paths.length === 0 ? 1 : 0);
+    }
 
     if (opts.gateway) {
       process.env['MASTYF_AI_GATEWAY_MODE'] = 'true';
     }
 
+    const exposeLocalPort = opts.exposeLocalPort
+      ? parseInt(opts.exposeLocalPort, 10)
+      : 0;
+    const ingressMode = exposeLocalPort > 0;
+
     const stdioServerCount = servers.filter((s) => s.command).length;
-    if (!opts.gateway && stdioServerCount > 1) {
+    if (!opts.gateway && !ingressMode && stdioServerCount > 1) {
       console.error(chalk.red(
         'Multiple stdio MCP servers in one proxy process are not supported.\n' +
         `  Found ${stdioServerCount} servers with "command" in ${paths[0]}.\n` +
@@ -983,7 +1015,7 @@ program
       wireDashboardWsProviders(getWsBroadcaster(), db);
     };
 
-    if (process.env['DASHBOARD_ENABLED'] === undefined) {
+    if (process.env['DASHBOARD_ENABLED'] === undefined && !fleetChild) {
       process.env['DASHBOARD_ENABLED'] = 'true';
     }
     if (process.env['DASHBOARD_AUTH_DISABLED'] === undefined) {
@@ -999,69 +1031,78 @@ program
       process.env['MASTYF_AI_AGENTIC_ENABLED'] = 'false';
     }
     const dashboardPort = parseInt(process.env['DASHBOARD_PORT'] || '4000', 10);
-    const dashboardServerP = startDashboardServer(dashboardPort, policyWatcher);
-    dashboardServerP
-      .then(async ({ server: httpServer }) => {
-        void rewireDashboardWs();
-        if (httpServer && manager) {
-          try {
-            const { mountMcpEndpoint } = await import('./utils/mcp-http-bridge.js');
-            mountMcpEndpoint(httpServer, '/mcp', manager);
-          } catch (errMcp: unknown) {
-            console.error(chalk.yellow(`MCP endpoint mount warning: ${errMcp instanceof Error ? errMcp.message : String(errMcp)}`));
+    if (process.env['DASHBOARD_ENABLED'] === 'true') {
+      const dashboardServerP = startDashboardServer(dashboardPort, policyWatcher);
+      dashboardServerP
+        .then(async ({ server: httpServer }) => {
+          void rewireDashboardWs();
+          if (httpServer && manager) {
+            try {
+              const { mountMcpEndpoint } = await import('./utils/mcp-http-bridge.js');
+              mountMcpEndpoint(httpServer, '/mcp', manager);
+            } catch (errMcp: unknown) {
+              console.error(chalk.yellow(`MCP endpoint mount warning: ${errMcp instanceof Error ? errMcp.message : String(errMcp)}`));
+            }
           }
-        }
-      })
-      .catch((err: unknown) => {
-        const msg = err instanceof Error ? err.message : String(err);
-        console.error(chalk.yellow(`Dashboard/WS server warning: ${msg}`));
+        })
+        .catch((err: unknown) => {
+          const msg = err instanceof Error ? err.message : String(err);
+          console.error(chalk.yellow(`Dashboard/WS server warning: ${msg}`));
+        });
+    }
+
+    let localIngress: import('./proxy/local-ingress-server.js').LocalIngressServer | null = null;
+    if (ingressMode) {
+      const { LocalIngressServer } = await import('./proxy/local-ingress-server.js');
+      const serverName = servers[0]?.name ?? 'fleet';
+      localIngress = new LocalIngressServer({
+        listenPort: exposeLocalPort,
+        serverName,
+        proxyManager: manager,
       });
+      await localIngress.start();
+      console.error(chalk.green(`Local ingress: http://127.0.0.1:${exposeLocalPort}/mcp (${serverName})`));
+    }
 
     // ─── Hot-reload MCP servers (UI-managed + CLI config) ──
     void (async () => {
-      const { existsSync, readFileSync } = await import('fs');
+      const { existsSync } = await import('fs');
       const { join } = await import('path');
       const { homedir } = await import('os');
       const { watch } = await import('chokidar');
-      const uiConfigPath = join(homedir(), '.mastyf-ai', 'servers.json');
-      const cliConfigPath = paths[0];
-      const originalServers = servers;
+      const uiConfigDir = join(homedir(), '.mastyf-ai');
+      const uiConfigPath = join(uiConfigDir, 'servers.json');
+      const cliConfigPath = paths.length > 0 ? paths[0] : undefined;
 
-      const reload = async (reparseCli?: boolean) => {
+      const reload = async () => {
+        if (fleetChild || ingressMode) return;
         try {
-          let cliServers = originalServers;
-          if (reparseCli && cliConfigPath && existsSync(cliConfigPath)) {
-            cliServers = ConfigParser.parse(cliConfigPath);
+          const freshCli = cliConfigPath && existsSync(cliConfigPath)
+            ? ConfigParser.parse(cliConfigPath)
+            : [];
+          const { mergeCliAndUiServers } = await import('./utils/mcp-server-config.js');
+          const merged = mergeCliAndUiServers(freshCli);
+          const stdioCount = merged.filter((s) => s.command).length;
+          if (!opts.gateway && stdioCount > 1) {
+            console.error(chalk.yellow(
+              `Server reload skipped: ${stdioCount} stdio servers — use mastyf-ai start (Fleet Hub) for multi-server setups.`,
+            ));
+            return;
           }
-          const raw = existsSync(uiConfigPath) ? readFileSync(uiConfigPath, 'utf-8') : '[]';
-          const uiConfigs = JSON.parse(raw) as Array<{ name: string; command: string; args?: string[]; env?: Record<string, string>; disabled?: boolean }>;
-          const uiServers: McpServerConfig[] = uiConfigs
-            .filter((u) => !u.disabled)
-            .map((u) => ({
-              name: u.name,
-              command: u.command,
-              args: u.args || [],
-              env: u.env,
-              transport: 'stdio',
-            }));
-          const existingNames = new Set(cliServers.map((s) => s.name));
-          const merged = [...cliServers, ...uiServers.filter((u) => !existingNames.has(u.name))];
           await manager.reloadServers(merged);
         } catch (err: unknown) {
           console.error(chalk.yellow(`Server config reload error: ${err instanceof Error ? err.message : String(err)}`));
         }
       };
 
-      if (existsSync(uiConfigPath)) {
-        watch(uiConfigPath, { awaitWriteFinish: { stabilityThreshold: 300, pollInterval: 100 } }).on('change', () => {
-          void reload();
-        });
-        console.error(chalk.dim(`[watch] UI-managed MCP servers: ${uiConfigPath}`));
-      }
+      watch(uiConfigDir, { awaitWriteFinish: { stabilityThreshold: 300, pollInterval: 100 } }).on('change', (changedPath) => {
+        if (String(changedPath).endsWith('servers.json')) void reload();
+      });
+      console.error(chalk.dim(`[watch] UI-managed MCP servers: ${uiConfigDir}`));
 
       if (cliConfigPath && existsSync(cliConfigPath)) {
         watch(cliConfigPath, { awaitWriteFinish: { stabilityThreshold: 300, pollInterval: 100 } }).on('change', () => {
-          void reload(true);
+          void reload();
         });
         console.error(chalk.dim(`[watch] CLI config file: ${cliConfigPath}`));
       }
@@ -1125,6 +1166,7 @@ program
         /* ignore */
       }
       authValidator?.stopBackgroundJwksRefresh?.();
+      if (localIngress) await localIngress.stop();
       await manager.stopAll();
       try {
         const { stopReportScheduler } = await import('./utils/report-scheduler.js');
@@ -1148,11 +1190,17 @@ program
     process.on('SIGTERM', cleanup);
 
     const proxies = manager.getProxies();
-    if (proxies.length > 1) {
+    if (ingressMode) {
+      if (proxies.length !== 1) {
+        console.error(chalk.red('Fleet ingress requires exactly one stdio proxy.'));
+        process.exit(1);
+      }
+      // HTTP ingress only — no stdin
+    } else if (proxies.length > 1) {
       console.error(chalk.red('Internal error: multiple stdio proxies started; expected at most one.'));
       process.exit(1);
     }
-    if (proxies.length === 1) {
+    if (!ingressMode && proxies.length === 1) {
       process.stdin.setEncoding('utf-8');
       let buffer = '';
       const stdinQueue = new AsyncSerialQueue();

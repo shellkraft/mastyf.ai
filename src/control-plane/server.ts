@@ -3,11 +3,11 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { load } from 'js-yaml';
 import { parsePolicyConfig } from '../policy/policy-schema.js';
+import { COMPILED_RULES_SCHEMA_VERSION, compilePolicyToRules, compiledRulesEtag, type CompiledRules } from './compiled-rules.js';
 import {
-  compilePolicyToRules,
-  compiledRulesEtag,
-  type CompiledRules,
-} from './compiled-rules.js';
+  validateSignedCompiledRules,
+  type CompiledRulesSignatureEnvelope,
+} from './compiled-rules-signature.js';
 import { registerTenantApiRoutes } from './tenant-api.js';
 
 export interface ControlPlaneServerOptions {
@@ -63,12 +63,28 @@ export function createControlPlaneApp(options?: ControlPlaneServerOptions): expr
   app.get('/internal/api/rules', (req, res) => {
     try {
       const rules = readCompiledRules();
+      const rulesJson = JSON.stringify(rules);
+      const sigPath = `${policyPath}.compiled.sig.json`;
+      let envelope: CompiledRulesSignatureEnvelope | undefined;
+      try {
+        envelope = JSON.parse(readFileSync(sigPath, 'utf-8')) as CompiledRulesSignatureEnvelope;
+      } catch {
+        envelope = undefined;
+      }
+      const sigCheck = validateSignedCompiledRules(rulesJson, envelope);
+      if (!sigCheck.ok) {
+        res.status(500).json({ error: 'compiled_rules_signature_invalid', reason: sigCheck.reason });
+        return;
+      }
       if (req.headers['if-none-match'] === cachedEtag) {
         res.status(304).end();
         return;
       }
       res.setHeader('ETag', cachedEtag);
       res.setHeader('Cache-Control', 'no-cache');
+      if (envelope) {
+        res.setHeader('X-Mastyf-Compiled-Rules-Signature', Buffer.from(JSON.stringify(envelope)).toString('base64'));
+      }
       res.json(rules);
     } catch (error) {
       res.status(500).json({

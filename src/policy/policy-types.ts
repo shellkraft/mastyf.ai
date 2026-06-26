@@ -86,6 +86,11 @@ export interface PolicyConfig {
     default_sandbox_tier?: 'shadow' | 'redact' | 'allow';
     /** Per-tool entropy tuning for secret/argument scanning (M-004). */
     entropy?: import('./entropy-policy.js').EntropyPolicyConfig;
+    /** Human-review tribunal SLA overrides (M-016). */
+    tribunal?: {
+      timeout_ms?: number;
+      timeout_action?: 'block' | 'allow' | 'escalate-to-oncall';
+    };
     rules: PolicyRule[];
   };
 }
