@@ -19,7 +19,10 @@ import { OAuthValidator } from '../auth/oauth.js';
 import { AuthValidationResult, AgentIdentity } from '../auth/auth-types.js';
 import { createSessionCache, validateSessionToken, type MastyfAiSessionCache } from '../auth/session-factory.js';
 import { getCircuitBreaker } from '../utils/circuit-breaker-registry.js';
-import { ProxyRequestContextStore, withProxyRequestVault } from './proxy-request-context.js';
+import { ProxyRequestContextStore, proxyContextTtlMs, releaseSpendReservation, withProxyRequestVault, type ProxyRequestContext } from './proxy-request-context.js';
+import { StdioLineWriter } from './proxy-stdio-writer.js';
+import { JsonRpcResponseTracker } from './proxy-jsonrpc-response.js';
+import { ProxySessionAuthStore } from './proxy-session-auth.js';
 import { resolveTenantContext, DEFAULT_TENANT_ID, InvalidTenantIdError } from '../tenant/resolve-tenant.js';
 import { JwtTenantRequiredError, resolveProxyTenantId } from '../tenant/jwt-tenant-binding.js';
 import { idempotencyKeyFromRequest } from '../policy/idempotency-store.js';
@@ -93,9 +96,15 @@ export class McpProxyServer {
   private db: IDatabase;
   private currentRequestId: string | number | null = null;
   private readonly requestContexts = new ProxyRequestContextStore();
+  private readonly stdoutWriter = new StdioLineWriter();
+  private readonly responseTracker = new JsonRpcResponseTracker();
+  private readonly sessionAuth = new ProxySessionAuthStore();
+  private contextTtlTimer: ReturnType<typeof setInterval> | null = null;
   private serverName: string;
   private defaultTenantId: string;
   private policyEngine: PolicyEngine | null;
+  private pendingPolicyEngine: PolicyEngine | null = null;
+  private policyEvalInflight = 0;
   private tenantPolicyRegistry: TenantPolicyRegistry | null;
   private authValidator: OAuthValidator | null;
   private sessionCache: MastyfAiSessionCache | null;
@@ -106,9 +115,6 @@ export class McpProxyServer {
   private rugPullState: ToolFingerprintState = { fingerprint: null, blocked: false };
   /** Pending tools/list JSON-RPC ids awaiting correlated responses. */
   private pendingToolsListIds = new Set<string | number>();
-  private pendingRequestTimer: ReturnType<typeof setTimeout> | null = null;
-  /** Bearer token captured from initialize / env for the session (stdio OAuth). */
-  private sessionAuthHeader: string | undefined;
   private mcpSessionId: string | null = null;
   private mcpAgentId: string | null = null;
 
@@ -163,6 +169,15 @@ export class McpProxyServer {
     if (process.env['MASTYF_AI_MEMORY_MONITOR'] !== 'false') {
       this.stopMemoryMonitor = startMemoryMonitor({ label: this.serverName });
     }
+    const ttlMs = proxyContextTtlMs(this.requestTimeoutMs);
+    this.contextTtlTimer = setInterval(() => {
+      this.requestContexts.evictExpired(ttlMs, (id, ctx) => {
+        this.handleRequestTimeout(id, ctx.requestToolName || 'unknown', ctx, 'context TTL exceeded');
+      });
+    }, Math.min(ttlMs, 60_000));
+    if (typeof this.contextTtlTimer.unref === 'function') {
+      this.contextTtlTimer.unref();
+    }
 
     StructuredLogger.info({
       event: 'proxy_started',
@@ -190,6 +205,13 @@ export class McpProxyServer {
     });
 
     this.child.on('exit', (code, signal) => {
+      if (signal !== 'SIGTERM') {
+        this.failAllPendingRequests(
+          -32005,
+          `Upstream MCP server '${this.serverName}' process exited (code=${code}, signal=${signal})`,
+        );
+        this.sessionAuth.clearExcept(this.mcpSessionId);
+      }
       if (signal === 'SIGTERM') return; // intentional shutdown
       if (this.restartCount < this.maxRestarts) {
         this.restartCount++;
@@ -250,10 +272,10 @@ export class McpProxyServer {
         if (msg.id != null) {
           const reqCtx = this.requestContexts.get(msg.id);
           if (!reqCtx) {
-            process.stdout.write(line + '\n');
+            this.stdoutWriter.writeLine(line);
             return;
           }
-          this.clearRequestTimeout();
+          this.requestContexts.clearTimeout(msg.id);
           const proxyLatencyMs = Date.now() - reqCtx.requestStartTime;
 
           if (reqCtx.requestMethod === 'resources/read' || reqCtx.requestMethod === 'prompts/get') {
@@ -265,14 +287,14 @@ export class McpProxyServer {
             });
             if (rp.blocked) {
               const blockJson = mcpResponseBlockJson(msg.id, rp.reason ?? 'Resource/prompt blocked by Mastyf AI');
-              process.stdout.write(`${JSON.stringify(blockJson)}\n`);
+              this.responseTracker.sendJson(this.stdoutWriter, blockJson as Record<string, unknown>);
               this.requestContexts.delete(msg.id);
               return;
             }
             if (rp.result !== undefined) {
               msg.result = rp.result;
             }
-            process.stdout.write(`${JSON.stringify(msg)}\n`);
+            this.responseTracker.sendJson(this.stdoutWriter, msg as Record<string, unknown>);
             this.requestContexts.delete(msg.id);
             return;
           }
@@ -445,20 +467,21 @@ export class McpProxyServer {
 
           this.requestContexts.delete(msg.id);
           this.currentRequestId = null;
+          this.responseTracker.markResponded(msg.id);
         }
-        process.stdout.write(line + '\n');
+        this.stdoutWriter.writeLine(line);
       } catch (parseErr: unknown) {
-        if (this.currentRequestId != null) {
-          const rid = this.currentRequestId;
+        const orphanId = this.resolveOrphanResponseId();
+        if (orphanId != null) {
           this.sendError(
-            rid,
+            orphanId,
             -32700,
             `Mastyf AI: malformed JSON from upstream MCP server`,
           );
-          this.requestContexts.delete(rid);
+          this.requestContexts.delete(orphanId);
           this.currentRequestId = null;
         } else {
-          process.stdout.write(line + '\n');
+          this.stdoutWriter.writeLine(line);
         }
         Logger.debug(
           `[proxy:${this.serverName}] Non-JSON stdout line: ${parseErr instanceof Error ? parseErr.message : 'parse error'}`,
@@ -473,58 +496,80 @@ export class McpProxyServer {
   }
 
   private sendError(id: string | number, code: number, message: string, data?: Record<string, unknown>): void {
-    this.clearRequestTimeout();
-    const errorResponse = JSON.stringify({
-      jsonrpc: '2.0',
-      id,
-      error: { code, message, data },
-    });
-    process.stdout.write(errorResponse + '\n');
+    this.requestContexts.clearTimeout(id);
+    this.responseTracker.sendError(this.stdoutWriter, id, code, message, data);
   }
 
-  private clearRequestTimeout(): void {
-    if (this.pendingRequestTimer) {
-      clearTimeout(this.pendingRequestTimer);
-      this.pendingRequestTimer = null;
+  private failAllPendingRequests(code: number, message: string): void {
+    this.requestContexts.drain((id, ctx) => {
+      this.sendError(id, code, message, { rule: 'upstream-unavailable' });
+      this.requestContexts.delete(id, false);
+      releaseSpendReservation(ctx);
+    });
+    this.requestContexts.clearAllTimeouts();
+    this.currentRequestId = null;
+  }
+
+  private resolveOrphanResponseId(): string | number | null {
+    if (this.requestContexts.size === 1) {
+      return this.requestContexts.ids()[0] ?? null;
+    }
+    return this.currentRequestId;
+  }
+
+  private handleRequestTimeout(
+    requestId: string | number,
+    toolName: string,
+    reqCtx: ProxyRequestContext,
+    reason: string,
+  ): void {
+    if (!this.requestContexts.get(requestId)) return;
+    const durationMs = Date.now() - (reqCtx.requestStartTime ?? Date.now());
+    this.recordDeniedCall(toolName, reqCtx.requestTokens ?? 0, durationMs, 'request-timeout', reason, undefined, reqCtx.tenantId);
+    this.breakerFor(reqCtx.tenantId || this.defaultTenantId).recordFailure();
+    Metrics.recordProxyBlock(
+      {
+        server_name: this.serverName,
+        block_reason: 'request_timeout',
+        rule: 'request-timeout',
+        tenant_id: reqCtx.tenantId,
+      },
+      'timeout',
+    );
+    Metrics.requestsTotal.inc({
+      server_name: this.serverName,
+      decision: 'block',
+      authn_success: 'true',
+    });
+    StructuredLogger.info({
+      event: 'request_denied',
+      serverName: this.serverName,
+      toolName,
+      requestId: String(requestId),
+      blockReason: 'request_timeout',
+      proxyLatencyMs: durationMs,
+    });
+    this.sendError(requestId, -32006, `Mastyf AI: ${reason}`, { rule: 'request-timeout' });
+    this.requestContexts.delete(requestId);
+    if (this.currentRequestId === requestId) {
+      this.currentRequestId = null;
     }
   }
 
   private armRequestTimeout(requestId: string | number, toolName: string): void {
-    this.clearRequestTimeout();
-    this.pendingRequestTimer = setTimeout(() => {
-      if (this.currentRequestId !== requestId) return;
-      const reqCtx = this.requestContexts.get(requestId);
-      const durationMs = Date.now() - (reqCtx?.requestStartTime ?? Date.now());
-      const timeoutMs = resolveToolTimeoutMs(toolName, this.requestTimeoutMs);
+    const timeoutMs = resolveToolTimeoutMs(toolName, this.requestTimeoutMs);
+    this.requestContexts.armTimeout(requestId, timeoutMs, (id, ctx) => {
       const reason = `Upstream request timed out after ${timeoutMs}ms`;
-      this.recordDeniedCall(toolName, reqCtx?.requestTokens ?? 0, durationMs, 'request-timeout', reason, undefined, reqCtx?.tenantId);
-      this.breakerFor(reqCtx?.tenantId || this.defaultTenantId).recordFailure();
-      Metrics.recordProxyBlock(
-        {
-          server_name: this.serverName,
-          block_reason: 'request_timeout',
-          rule: 'request-timeout',
-          tenant_id: reqCtx?.tenantId,
-        },
-        'timeout',
-      );
-      Metrics.requestsTotal.inc({
-        server_name: this.serverName,
-        decision: 'block',
-        authn_success: 'true',
-      });
-      StructuredLogger.info({
-        event: 'request_denied',
-        serverName: this.serverName,
-        toolName,
-        requestId: String(requestId),
-        blockReason: 'request_timeout',
-        proxyLatencyMs: durationMs,
-      });
-      this.sendError(requestId, -32006, `Mastyf AI: ${reason}`, { rule: 'request-timeout' });
-      this.requestContexts.delete(requestId);
-      this.currentRequestId = null;
-    }, resolveToolTimeoutMs(toolName, this.requestTimeoutMs));
+      this.handleRequestTimeout(id, toolName, ctx, reason);
+    });
+  }
+
+  private clearRequestTimeout(requestId?: string | number): void {
+    if (requestId != null) {
+      this.requestContexts.clearTimeout(requestId);
+      return;
+    }
+    this.requestContexts.clearAllTimeouts();
   }
 
   private recordDeniedCall(
@@ -637,16 +682,19 @@ export class McpProxyServer {
     try {
       const msg = JSON.parse(raw);
 
+      let initAuth: string | undefined;
       if (msg.method === 'initialize') {
-        const initAuth = OAuthValidator.extractAuthFromMcpMessage(msg);
-        if (initAuth) this.sessionAuthHeader = initAuth;
+        initAuth = OAuthValidator.extractAuthFromMcpMessage(msg);
       }
 
+      const stickySessionAuth = process.env['MASTYF_AI_STICKY_SESSION_AUTH'] === 'true';
       const lifecycleAuthRequired = Boolean(this.authValidator?.getConfig().required);
       const pre = runMcpPrePipeline({
         msg: msg as Record<string, unknown>,
         serverName: this.serverName,
-        authenticated: lifecycleAuthRequired ? Boolean(this.sessionAuthHeader) : true,
+        authenticated: lifecycleAuthRequired
+          ? Boolean(initAuth ?? this.sessionAuth.getAuthHeader(this.mcpSessionId, undefined, stickySessionAuth))
+          : true,
         fallbackSessionKey: this.mcpSessionId ?? undefined,
       });
       if (pre.blocked && hasJsonRpcId(msg.id)) {
@@ -655,8 +703,13 @@ export class McpProxyServer {
         return;
       }
       if (!pre.blocked) {
+        const previousSessionId = this.mcpSessionId;
         this.mcpSessionId = pre.session.sessionId;
         this.mcpAgentId = pre.session.agentId;
+        this.sessionAuth.onSessionChange(previousSessionId, pre.session.sessionId);
+        if (msg.method === 'initialize' && initAuth) {
+          this.sessionAuth.setForSession(pre.session.sessionId, initAuth);
+        }
       }
 
       if (
@@ -666,6 +719,7 @@ export class McpProxyServer {
       ) {
         this.requestContexts.set(msg.id, {
           requestStartTime: proxyStartTime,
+          createdAt: proxyStartTime,
           requestToolName: String(pre.requestMethod ?? msg.method),
           requestMethod: pre.requestMethod,
           requestTokens: 0,
@@ -786,7 +840,7 @@ export class McpProxyServer {
               msg.id,
             );
             const blockResp = toolCallGuardBlockResponse(msg.id, preGuard);
-            process.stdout.write(`${JSON.stringify(blockResp)}\n`);
+            this.responseTracker.sendJson(this.stdoutWriter, blockResp as Record<string, unknown>);
             return;
           }
           if (preGuard.arguments) {
@@ -900,8 +954,11 @@ export class McpProxyServer {
         // ── OAuth 2.1 JWT validation ────────────────────────
         if (this.authValidator) {
           const msgAuth = OAuthValidator.extractAuthFromMcpMessage(msg);
-          const stickySessionAuth = process.env['MASTYF_AI_STICKY_SESSION_AUTH'] === 'true';
-          const authHeader = msgAuth ?? (stickySessionAuth ? this.sessionAuthHeader : undefined);
+          const authHeader = this.sessionAuth.getAuthHeader(
+            this.mcpSessionId,
+            msgAuth,
+            stickySessionAuth,
+          );
 
           const token = OAuthValidator.extractToken(authHeader);
 
@@ -1079,7 +1136,7 @@ export class McpProxyServer {
             idempotencyKey,
           });
 
-          const decision = await engine.evaluateAsync(context);
+          const decision = await this.evaluatePolicyPinned(engine, context);
           await waitProxyTimingNormalize(proxyStartTime);
 
           ingestPolicyDecision({
@@ -1186,8 +1243,10 @@ export class McpProxyServer {
         }
 
 
+        this.responseTracker.clearResponded(msg.id);
         this.requestContexts.set(msg.id, {
           requestStartTime: proxyStartTime,
+          createdAt: proxyStartTime,
           requestToolName: toolName,
           requestTokens,
           requestRaw: raw,
@@ -1241,14 +1300,45 @@ export class McpProxyServer {
 
   /** Atomically swap the active policy engine (used by hot-reload) */
   setPolicyEngine(engine: PolicyEngine): void {
+    if (this.policyEvalInflight > 0) {
+      this.pendingPolicyEngine = engine;
+      Logger.info(`[proxy:${this.serverName}] Policy hot-swap deferred — ${this.policyEvalInflight} eval(s) in flight`);
+      return;
+    }
     this.policyEngine = engine;
     Logger.info(`[proxy:${this.serverName}] Policy engine hot-swapped — mode: ${engine.getMode()}`);
   }
 
-  kill(): void {
-    this.clearRequestTimeout();
+  private async evaluatePolicyPinned(
+    engine: PolicyEngine,
+    context: import('../policy/policy-types.js').CallContext,
+  ): Promise<import('../policy/policy-types.js').PolicyDecision> {
+    this.policyEvalInflight += 1;
+    const pinned = engine;
     try {
-      this.child.kill();
+      return await pinned.evaluateAsync(context);
+    } finally {
+      this.policyEvalInflight -= 1;
+      if (this.policyEvalInflight === 0 && this.pendingPolicyEngine) {
+        this.policyEngine = this.pendingPolicyEngine;
+        this.pendingPolicyEngine = null;
+        Logger.info(`[proxy:${this.serverName}] Deferred policy swap applied`);
+      }
+    }
+  }
+
+  kill(): void {
+    if (this.contextTtlTimer) {
+      clearInterval(this.contextTtlTimer);
+      this.contextTtlTimer = null;
+    }
+    if (this.stopMemoryMonitor) {
+      this.stopMemoryMonitor();
+      this.stopMemoryMonitor = null;
+    }
+    this.failAllPendingRequests(-32005, `Proxy for '${this.serverName}' is shutting down`);
+    try {
+      this.child.kill('SIGTERM');
     } catch {
       // Already dead
     }

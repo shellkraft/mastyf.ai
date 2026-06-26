@@ -256,7 +256,10 @@ export async function peekTribunalQueue(opts?: {
   eligibleTotal: number;
   nextBatchSize: number;
   remainingEligible: number;
+  pendingTribunalCount: number;
 }> {
+  const { countPendingTribunalRecords } = await import('../utils/tribunal-sla.js');
+  const pendingTribunalCount = await countPendingTribunalRecords();
   const { loadSemanticAuditRecordsAsync } = await import('./semantic-audit-store.js');
   const batchLimit = opts?.limit ?? DEFAULT_TRIBUNAL_BATCH;
   const records = await loadSemanticAuditRecordsAsync({
@@ -274,6 +277,7 @@ export async function peekTribunalQueue(opts?: {
     eligibleTotal: eligible.length,
     nextBatchSize,
     remainingEligible,
+    pendingTribunalCount,
   };
 }
 

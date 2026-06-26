@@ -147,6 +147,37 @@ export async function bootstrapCompliance(db: IDatabase): Promise<void> {
   }
 
   Logger.info('[bootstrap] Enterprise compliance modules initialized');
+
+  const { warnLocalSemanticQueueCapsIfNeeded } = await import('./redis-semantic-queue.js');
+  warnLocalSemanticQueueCapsIfNeeded();
+
+  const { isSemanticLlmConfigured, reportSemanticDegradation } = await import('./semantic-layer.js');
+  const { isSemanticAsyncEnabledForTenant } = await import('../tenant/tenant-semantic-config.js');
+  const { isSyncSemanticRequestEnabled } = await import('../ai/sync-semantic-request.js');
+  const semanticEnabled =
+    isSyncSemanticRequestEnabled() || isSemanticAsyncEnabledForTenant();
+  if (semanticEnabled && !isSemanticLlmConfigured()) {
+    reportSemanticDegradation('llm_unavailable_at_startup');
+    Logger.warn('[bootstrap] semantic_layer_active=false — LLM API key missing or disabled (M-002)');
+  }
+
+  const { getLlmConfig } = await import('../config/llm-config.js');
+  const llmCfg = getLlmConfig();
+  if (
+    llmCfg.provider === 'ollama'
+    && (process.env['MASTYF_AI_ENTERPRISE_MODE'] === 'true' || process.env['MASTYF_AI_STRICT_MODE'] === 'true')
+  ) {
+    Logger.warn(
+      '[bootstrap] Ollama semantic backend in enterprise — frontier model APIs recommended for production (M-011)',
+    );
+    registerReadinessCheck(async () => ({
+      ok: true,
+      detail: 'ollama_semantic_backend',
+    }));
+  }
+
+  const { startTribunalSlaSweep } = await import('./tribunal-sla.js');
+  startTribunalSlaSweep();
 }
 
 /** Startup warnings for production security posture (mcp tests 31 §3.5 / §3.1). */

@@ -1,6 +1,8 @@
 /**
- * Decode response text before DLP inspection (HTML entities, bounded URL decode).
+ * Decode response text before DLP inspection (HTML entities, bounded URL decode, TR39 confusables).
  */
+import { normalizeConfusables } from './confusables.js';
+
 const HTML_ENTITIES: Record<string, string> = {
   '&quot;': '"',
   '&amp;': '&',
@@ -51,7 +53,10 @@ function tryPercentDecodeOnce(input: string): string | null {
 /**
  * Prepare response body for DLP scanning — decodes common encoding evasions.
  */
-export function decodeResponseForInspection(raw: string): ResponseDecodeResult {
+export function decodeResponseForInspection(
+  raw: string,
+  opts?: { unicodeStrict?: boolean },
+): ResponseDecodeResult {
   const passes: string[] = [];
   if (!raw || raw.length > MAX_DECODE_CHARS) {
     return { text: raw?.slice(0, MAX_DECODE_CHARS) ?? '', decoded: false, passes };
@@ -69,6 +74,19 @@ export function decodeResponseForInspection(raw: string): ResponseDecodeResult {
   if (urlDecoded && urlDecoded !== text && urlDecoded.length <= MAX_DECODE_CHARS) {
     passes.push('url-decode');
     text = urlDecoded;
+  }
+
+  if (opts?.unicodeStrict !== false) {
+    const normalized = normalizeConfusables(text);
+    if (normalized !== text) {
+      passes.push('confusables-tr39');
+      text = normalized;
+    }
+    const nfkc = text.normalize('NFKC');
+    if (nfkc !== text) {
+      passes.push('nfkc');
+      text = nfkc;
+    }
   }
 
   return { text, decoded: passes.length > 0, passes };

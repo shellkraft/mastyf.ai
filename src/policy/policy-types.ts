@@ -84,6 +84,8 @@ export interface PolicyConfig {
     require_certification?: 'bronze' | 'silver' | 'gold' | 'platinum';
     /** Default sandbox tier for uncertified servers (shadow|redact|allow). */
     default_sandbox_tier?: 'shadow' | 'redact' | 'allow';
+    /** Per-tool entropy tuning for secret/argument scanning (M-004). */
+    entropy?: import('./entropy-policy.js').EntropyPolicyConfig;
     rules: PolicyRule[];
   };
 }

@@ -34,6 +34,13 @@ import {
 import { broadcastDashboardEvent, emitFlowStep } from '../utils/dashboard-events.js';
 import type { CallContext, PolicyDecision } from '../policy/policy-types.js';
 import { routeSemanticModelForTenant } from './tenant-semantic-model.js';
+import {
+  getRedisSemanticQueueDepth,
+  isRedisSemanticQueueEnabled,
+  tryAcquireRedisSemanticSlot,
+  releaseRedisSemanticSlot,
+  warnLocalSemanticQueueCapsIfNeeded,
+} from '../utils/redis-semantic-queue.js';
 
 export interface SemanticAuditJob {
   requestId: string | number;
@@ -43,6 +50,8 @@ export interface SemanticAuditJob {
   syncDecision: PolicyDecision;
   timestamp: string;
   tenantId?: string;
+  /** @internal set when Redis cluster slot was acquired at enqueue */
+  redisSlotHeld?: boolean;
 }
 
 export interface SemanticAuditResult {
@@ -179,6 +188,7 @@ export function enqueueSemanticAudit(job: SemanticAuditJob): void {
 
 async function reserveAndEnqueue(job: SemanticAuditJob): Promise<void> {
   if (!isSemanticAsyncEnabled(job.tenantId)) return;
+  warnLocalSemanticQueueCapsIfNeeded();
 
   if (!getLlm(job.tenantId).isAvailable() || !isSemanticLlmConfigured()) {
     if (isLocalSemanticEnabled(job.tenantId)) {
@@ -201,7 +211,23 @@ async function reserveAndEnqueue(job: SemanticAuditJob): Promise<void> {
     return;
   }
 
-  if (queue.length >= MAX_QUEUE) {
+  if (isRedisSemanticQueueEnabled()) {
+    const depth = await getRedisSemanticQueueDepth();
+    if (depth >= MAX_QUEUE) {
+      stats.dropped++;
+      semanticAuditProcessed.inc({ ...getMastyfAiRegionLabels(), outcome: 'dropped' });
+      Logger.warn('[async-semantic] Redis cluster queue at capacity — dropped audit job');
+      return;
+    }
+    const acquired = await tryAcquireRedisSemanticSlot(job.tenantId);
+    if (!acquired) {
+      stats.dropped++;
+      semanticAuditProcessed.inc({ ...getMastyfAiRegionLabels(), outcome: 'dropped' });
+      Logger.warn('[async-semantic] Redis semantic slot unavailable — dropped audit job');
+      return;
+    }
+    job.redisSlotHeld = true;
+  } else if (queue.length >= MAX_QUEUE) {
     queue.shift();
     stats.dropped++;
     semanticAuditProcessed.inc({ ...getMastyfAiRegionLabels(), outcome: 'dropped' });
@@ -311,6 +337,7 @@ async function runLocalSemanticAudit(job: SemanticAuditJob): Promise<void> {
 }
 
 async function runAudit(job: SemanticAuditJob): Promise<void> {
+  try {
   const allowed = await allowSemanticLlmCall(job.tenantId);
   if (!allowed) {
     reportSemanticAuditSkipped('rate_limited', job.tenantId);
@@ -464,6 +491,12 @@ Categories: prompt-injection, exfiltration, privilege-escalation, encoded-payloa
     });
   });
   broadcastSemanticComplete(job, result);
+  } finally {
+    if (job.redisSlotHeld) {
+      await releaseRedisSemanticSlot(job.tenantId);
+      job.redisSlotHeld = false;
+    }
+  }
 }
 
 function broadcastSemanticComplete(

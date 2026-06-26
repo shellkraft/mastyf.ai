@@ -292,7 +292,27 @@ export class PostgresDatabase implements IDatabase {
     }));
   }
 
-  async transaction<T>(fn: (client: any) => Promise<T>): Promise<T> {
+  async transaction<T>(fn: () => Promise<T> | T): Promise<T> {
+    const result = fn();
+    if (!(result instanceof Promise)) {
+      return result;
+    }
+    const client = await this.pool.connect();
+    try {
+      await client.query('BEGIN');
+      const asyncResult = await result;
+      await client.query('COMMIT');
+      return asyncResult;
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
+  }
+
+  /** @deprecated Use transaction(fn: () => Promise<T>) — pool client is internal. */
+  async withTransactionClient<T>(fn: (client: any) => Promise<T>): Promise<T> {
     const client = await this.pool.connect();
     try {
       await client.query('BEGIN');

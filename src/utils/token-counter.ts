@@ -290,6 +290,8 @@ export class TokenCounter {
     }
 
     if (provider === 'google') {
+      const apiResult = this.googleCountApi(text, model);
+      if (apiResult) return apiResult;
       const litellmResult = this.litellmCount(text, model);
       if (litellmResult) return litellmResult;
       return {
@@ -484,6 +486,38 @@ export class TokenCounter {
     } catch (err) {
       Logger.debug(
         `Anthropic API token count failed: ${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
+    return null;
+  }
+
+  private googleCountApi(text: string, model: string): TokenCountResult | null {
+    const apiKey = process.env['GOOGLE_API_KEY'] || process.env['GEMINI_API_KEY'];
+    if (!apiKey) return null;
+    const modelId = model.startsWith('models/') ? model : `models/${model}`;
+    try {
+      const result = execSync(
+        `curl -s --max-time 5 "https://generativelanguage.googleapis.com/v1beta/${modelId}:countTokens?key=${apiKey}" \\
+          -H "content-type: application/json" \\
+          -d '${JSON.stringify({
+            contents: [{ parts: [{ text }] }],
+          }).replace(/'/g, "'\\''")}'`,
+        { encoding: 'utf-8', timeout: 6000 },
+      );
+      const data = JSON.parse(result) as { totalTokens?: number };
+      if (typeof data.totalTokens === 'number') {
+        return {
+          tokens: data.totalTokens,
+          provider: 'google',
+          model,
+          isExact: true,
+          method: 'google-api:countTokens',
+          tokenSource: 'estimated',
+        };
+      }
+    } catch (err) {
+      Logger.debug(
+        `Google countTokens failed: ${err instanceof Error ? err.message : String(err)}`,
       );
     }
     return null;

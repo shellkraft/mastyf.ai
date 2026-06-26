@@ -3149,6 +3149,7 @@ export async function startDashboardServer(
             avgLatency,
             totalTools,
             semanticRequestGate: semanticGate.semanticRequestGate,
+            semantic_layer_active: semanticGate.semantic_layer_active,
             semanticGateLlmConfigured: semanticGate.llmConfigured,
             enterpriseMode: semanticGate.enterpriseMode,
           }));

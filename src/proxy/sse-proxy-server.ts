@@ -213,13 +213,31 @@ export class SseProxyServer extends EventEmitter {
     if (isHttps && agent) reqOpts.agent = agent;
 
     const upstreamReq = client.request(reqOpts, (upstreamRes) => {
+      const costState = createStreamingInspectorState();
+      let eventBuffer = '';
       upstreamRes.on('data', (chunk: Buffer) => {
-        const text = chunk.toString();
-        const rewritten = text.replace(
-          /sessionId=([^&\s]+)/g,
-          `sessionId=${sessionId}`,
-        );
-        if (!res.writableEnded) res.write(rewritten);
+        eventBuffer += chunk.toString();
+        let boundary = eventBuffer.indexOf('\n\n');
+        while (boundary !== -1) {
+          const event = eventBuffer.slice(0, boundary + 2);
+          eventBuffer = eventBuffer.slice(boundary + 2);
+          const costCheck = inspectCostStreamingChunk(costState, event);
+          if (costCheck.terminateStream) {
+            upstreamReq.destroy();
+            if (!res.writableEnded) {
+              res.write(`event: error\ndata: ${JSON.stringify({ message: costCheck.reason })}\n\n`);
+              res.end();
+            }
+            this.sessions.delete(sessionId);
+            return;
+          }
+          const rewritten = event.replace(
+            /sessionId=([^&\s]+)/g,
+            `sessionId=${sessionId}`,
+          );
+          if (!res.writableEnded) res.write(rewritten);
+          boundary = eventBuffer.indexOf('\n\n');
+        }
       });
       upstreamRes.on('end', () => {
         if (!res.writableEnded) res.end();

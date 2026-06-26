@@ -124,4 +124,14 @@ policy:
     expect(sharedRateLimitStore.call().get(key)?.count).toBe(2);
     expect(engine2.evaluate(ctx).action).toBe('pass');
   });
+
+  it('keeps prior policy on invalid YAML reload and records load error', async () => {
+    const engineBefore = watcher!.get()!;
+    writeFileSync(policyPath, 'not: valid: yaml: [[', 'utf-8');
+    await watcher!.forceReloadForTests();
+    expect(watcher!.get()).toBe(engineBefore);
+    const { policyLoadErrorGauge } = await import('../../src/policy/policy-load-metrics.js');
+    const values = await policyLoadErrorGauge.get();
+    expect(values.values.some((v) => v.value === 1)).toBe(true);
+  });
 });

@@ -1,6 +1,7 @@
 import { PolicyConfig, PolicyDecision, CallContext, PolicyAction, PolicyMode } from './policy-types.js';
 import { Logger } from '../utils/logger.js';
 import { getNormalizer } from '../utils/payload-normalizer.js';
+import { setActiveEntropyPolicy } from './entropy-policy.js';
 import { isFpWhitelisted } from '../ai/fp-whitelist.js';
 import { ShellTokenizer } from './shell-tokenizer.js';
 import { LRUCache } from 'lru-cache';
@@ -69,6 +70,7 @@ export class PolicyEngine {
     this.mode = config.policy.mode;
     this.config = config;
     this.normalizer = getNormalizer(config.policy.unicode_strict !== false);
+    setActiveEntropyPolicy(config);
     this.compilePatterns();
     this.compileRbacClientIds();
   }

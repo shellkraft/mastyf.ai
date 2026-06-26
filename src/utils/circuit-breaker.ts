@@ -18,6 +18,8 @@ export class CircuitBreaker {
   private probing = false;
   /** Timestamp when the circuit first transitioned to OPEN (used for recovery timer) */
   private openedAt: number = 0;
+  private openCycles: number = 0;
+  private currentProbeTimeout: number;
   private readonly resetTimeout: number;
   private readonly failureThreshold: number;
   private readonly successThreshold: number;
@@ -31,13 +33,25 @@ export class CircuitBreaker {
     this.failureThreshold = options.failureThreshold || 5;
     this.successThreshold = options.successThreshold || 2;
     this.resetTimeout = options.resetTimeoutMs || 30000;
+    this.currentProbeTimeout = this.resetTimeout;
+  }
+
+  private maxProbeInterval(): number {
+    return parseInt(process.env['MASTYF_AI_CIRCUIT_MAX_PROBE_INTERVAL_MS'] || '300000', 10);
+  }
+
+  private nextProbeTimeout(): number {
+    const base = this.resetTimeout * Math.pow(2, Math.max(0, this.openCycles - 1));
+    const capped = Math.min(base, this.maxProbeInterval());
+    const jitter = capped * 0.1 * (Math.random() * 2 - 1);
+    return Math.round(capped + jitter);
   }
 
   /** Check if the circuit allows a request through */
   allowRequest(): boolean {
     if (this.state === 'CLOSED') return true;
     if (this.state === 'OPEN') {
-      if (Date.now() - this.openedAt >= this.resetTimeout) {
+      if (Date.now() - this.openedAt >= this.currentProbeTimeout) {
         this.state = 'HALF_OPEN';
         this.probing = false;
         Logger.debug(`[circuit-breaker:${this.name}] Transitioned to HALF_OPEN`);
@@ -62,6 +76,8 @@ export class CircuitBreaker {
         this.state = 'CLOSED';
         this.failureCount = 0;
         this.successCount = 0;
+        this.openCycles = 0;
+        this.currentProbeTimeout = this.resetTimeout;
         Logger.info(`[circuit-breaker:${this.name}] Circuit CLOSED — service healthy`);
         this.syncRedis();
       }
@@ -76,16 +92,21 @@ export class CircuitBreaker {
       this.probing = false;
       this.state = 'OPEN';
       this.successCount = 0;
+      this.openCycles += 1;
+      this.currentProbeTimeout = this.nextProbeTimeout();
       this.openedAt = Date.now();
-      Logger.warn(`[circuit-breaker:${this.name}] Circuit OPEN — half-open probe failed`);
+      Logger.warn(`[circuit-breaker:${this.name}] Circuit OPEN — half-open probe failed (probe wait ${this.currentProbeTimeout}ms)`);
       this.notifyCircuitOpen('half-open probe failed');
       this.syncRedis();
     } else if (this.state === 'CLOSED') {
       this.failureCount++;
       if (this.failureCount >= this.failureThreshold) {
         this.state = 'OPEN';
+        this.openCycles = Math.max(1, this.openCycles + 1);
+        this.currentProbeTimeout =
+          this.openCycles <= 1 ? this.resetTimeout : this.nextProbeTimeout();
         this.openedAt = Date.now();
-        Logger.warn(`[circuit-breaker:${this.name}] Circuit OPEN — ${this.failureCount} consecutive failures`);
+        Logger.warn(`[circuit-breaker:${this.name}] Circuit OPEN — ${this.failureCount} consecutive failures (probe wait ${this.currentProbeTimeout}ms)`);
         this.notifyCircuitOpen(`${this.failureCount} consecutive failures`);
         this.syncRedis();
       }

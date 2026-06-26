@@ -1,5 +1,8 @@
 /**
  * Shared semantic strict pre-check, sync gate, and async audit enqueue for all proxy transports.
+ *
+ * Transport parity (M-007): stdio, HTTP, SSE, and streamable HTTP proxies all call
+ * `runPostPolicyAllowGates` → `runSemanticPipelineAfterPolicyAllow` from this module.
  */
 import { buildSemanticAuditJob, enqueueSemanticAudit, isSemanticAsyncEnabled } from '../ai/async-semantic-audit.js';
 import { reportSemanticAuditSkipped } from '../ai/semantic-llm-rate-limit.js';

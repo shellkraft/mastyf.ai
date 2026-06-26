@@ -1,6 +1,7 @@
 import { readFileSync, existsSync } from 'fs';
 import { join } from 'path';
 import { isFpWhitelisted } from '../ai/fp-whitelist.js';
+import { isEntropySafeValue, minEntropyForContext } from '../policy/entropy-policy.js';
 import { runDetectorPlugins } from '../plugins/detector-plugin.js';
 import type { SecretFinding } from '../types.js';
 import { SECRET_RULES, type SecretRule } from './secret-rules.js';
@@ -98,7 +99,11 @@ function displaySubject(match: RegExpMatchArray): string {
   return captured;
 }
 
-export function scanForSecrets(target: string, context: string): SecretFinding[] {
+export function scanForSecrets(
+  target: string,
+  context: string,
+  opts?: { toolName?: string; fieldName?: string },
+): SecretFinding[] {
   const findings: SecretFinding[] = [];
   const seenSpans = new Set<string>();
   const pluginCtx = { location: context };
@@ -108,7 +113,14 @@ export function scanForSecrets(target: string, context: string): SecretFinding[]
     const matches = target.matchAll(globalRegex);
     for (const match of matches) {
       const entropySubject = entropyCheckSubject(match);
-      if (rule.entropy !== undefined && shannonEntropy(entropySubject) < rule.entropy) continue;
+      const minEntropy = minEntropyForContext(opts?.toolName, opts?.fieldName) ?? rule.entropy;
+      if (minEntropy !== undefined && shannonEntropy(entropySubject) < minEntropy) continue;
+      if (
+        rule.id === 'high-entropy-assignment'
+        && isEntropySafeValue(entropySubject, opts?.toolName, opts?.fieldName)
+      ) {
+        continue;
+      }
       const matchedValue = displaySubject(match);
       if (rule.id === 'postmark-api-token' && !isPostmarkTokenContext(target, context, match.index)) {
         continue;

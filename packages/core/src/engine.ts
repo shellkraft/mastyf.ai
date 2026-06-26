@@ -4,7 +4,7 @@ import type {
 import { runRegexScan } from "./regex-scanner.js";
 import { runSchemaScan } from "./schema-scanner.js";
 import { runSemanticScan, type SemanticScanOptions } from "./semantic-scanner.js";
-import { tryAcquireSemanticSlot, releaseSemanticSlot, semanticQueueMax, semanticPerTenantMax } from "./semantic-queue.js";
+import { tryAcquireClusterSemanticSlot, releaseSemanticSlot, semanticQueueMax, semanticPerTenantMax } from "./semantic-queue.js";
 import { isCoreSemanticCircuitOpen, tryBeginCoreSemanticScan, abortCoreSemanticProbe } from "./semantic-circuit-breaker.js";
 import { isCoreLocalSemanticEnabled, runLocalSemanticFallback } from "./local-semantic-fallback.js";
 import { runArgumentScan } from "./argument-scanner.js";
@@ -214,7 +214,7 @@ export async function scanTool(
         durationMs: 0,
         skipped: "circuit half-open — probe in flight",
       };
-    } else if (!tryAcquireSemanticSlot(options.tenantId)) {
+    } else if (!(await tryAcquireClusterSemanticSlot(options.tenantId))) {
       abortCoreSemanticProbe();
       const cap = options.tenantId
         ? `per-tenant cap (${semanticPerTenantMax()})`

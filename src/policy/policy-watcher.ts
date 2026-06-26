@@ -15,17 +15,21 @@ import {
   validateSignedPolicyYaml,
 } from './policy-signature.js';
 import { validateAllowlistRbac } from './policy-allowlist-guard.js';
+import { clearPolicyLoadError, recordPolicyLoadError } from './policy-load-metrics.js';
 
 const RELOAD_DEBOUNCE_MS = 50;
+const RELOAD_DRAIN_MS = parseInt(process.env['MASTYF_AI_POLICY_RELOAD_DRAIN_TIMEOUT_MS'] || '30000', 10);
 
 /**
  * Hot-reloadable policy engine wrapper.
- * Builds a new PolicyEngine off the event-loop critical path, then atomically swaps
- * `current` in one assignment. evaluate() always reads the active engine ref — never
- * blocks on file I/O and never returns "reload in progress" blocks.
+ * Builds a new PolicyEngine off the event-loop critical path, then swaps after in-flight
+ * evaluations complete (M-003). On validation failure during reload, retains the prior
+ * engine and emits policy_load_error metrics (M-012).
  */
 export class PolicyWatcher {
   private current: PolicyEngine | null = null;
+  private pendingEngine: PolicyEngine | null = null;
+  private evalInflight = 0;
   private watcher: FSWatcher | null = null;
   private policyPath: string;
   private reloadTimer: ReturnType<typeof setTimeout> | null = null;
@@ -84,8 +88,44 @@ export class PolicyWatcher {
       );
       return engine;
     } catch (err: unknown) {
-      Logger.error(`[policy-watcher] Failed to load policy: ${err instanceof Error ? err.message : String(err)}`);
+      const msg = err instanceof Error ? err.message : String(err);
+      Logger.error(`[policy-watcher] Failed to load policy: ${msg}`);
+      recordPolicyLoadError(msg);
       return null;
+    }
+  }
+
+  private async waitForEvalDrain(timeoutMs: number): Promise<boolean> {
+    const deadline = Date.now() + timeoutMs;
+    while (this.evalInflight > 0 && Date.now() < deadline) {
+      await new Promise((r) => setTimeout(r, 10));
+    }
+    return this.evalInflight === 0;
+  }
+
+  /** Pin active engine for evaluation — defers hot-swap until drain (M-003). */
+  pinEngineForEval(): PolicyEngine | null {
+    this.evalInflight += 1;
+    return this.current;
+  }
+
+  unpinEngineForEval(): void {
+    if (this.evalInflight > 0) this.evalInflight -= 1;
+    if (this.evalInflight === 0 && this.pendingEngine) {
+      this.current = this.pendingEngine;
+      this.pendingEngine = null;
+      Logger.info('[policy-watcher] Deferred policy swap applied after eval drain');
+      if (this.onReload) this.onReload();
+    }
+  }
+
+  async withEngineAsync<T>(fn: (engine: PolicyEngine) => Promise<T>): Promise<T | null> {
+    const engine = this.pinEngineForEval();
+    if (!engine) return null;
+    try {
+      return await fn(engine);
+    } finally {
+      this.unpinEngineForEval();
     }
   }
 
@@ -105,7 +145,14 @@ export class PolicyWatcher {
         setImmediate(() => resolve(this.buildEngineFromDisk()));
       });
       if (pending) {
-        this.current = pending;
+        clearPolicyLoadError();
+        const drained = await this.waitForEvalDrain(RELOAD_DRAIN_MS);
+        if (!drained) {
+          this.pendingEngine = pending;
+          Logger.warn('[policy-watcher] Reload deferred — evaluations still in flight');
+        } else {
+          this.current = pending;
+        }
         try {
           const { recordConfigProvenance } = await import('../agentic/provenance/config-provenance-chain.js');
           recordConfigProvenance({

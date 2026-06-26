@@ -19,8 +19,13 @@ export interface IDatabase {
   addHealthCheck(serverName: string, latency: number, success: boolean, toolCount: number, tenantId?: string): Promise<void>;
   addCallRecord(record: ProxyCallRecord): Promise<void>;
   getCallRecordsForServer(serverName: string, limit?: number, tenantId?: string): Promise<ProxyCallRecord[]>;
-  /** Execute callback within a database transaction. If the callback throws, the transaction is rolled back. */
+  /**
+   * SQLite: callback must be synchronous (no Promise return).
+   * PostgreSQL: callback may be async.
+   */
   transaction<T>(fn: () => Promise<T> | T): Promise<T>;
+  /** Synchronous transaction (SQLite / better-sqlite3). */
+  transactionSync?<T>(fn: () => T): Promise<T>;
   flush(): void | Promise<void>;
   close(): void | Promise<void>;
 }

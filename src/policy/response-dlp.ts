@@ -279,7 +279,7 @@ export function evaluateResponseDlp(
   const { text: scanText, truncated: charTrunc } = truncateForPolicy(body, MAX_RESPONSE_DLP_BYTES);
   truncated = truncated || charTrunc;
 
-  const decoded = decodeResponseForInspection(scanText);
+  const decoded = decodeResponseForInspection(scanText, { unicodeStrict: true });
   const inspectText = decoded.text;
 
   const findings: ResponseDlpFinding[] = [];

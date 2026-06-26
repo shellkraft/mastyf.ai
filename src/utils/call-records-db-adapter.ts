@@ -66,6 +66,10 @@ export class CallRecordsDbAdapter implements IDatabase {
     return recs;
   }
 
+  async transactionSync<T>(fn: () => T): Promise<T> {
+    return fn();
+  }
+
   async transaction<T>(fn: () => Promise<T> | T): Promise<T> {
     return fn();
   }

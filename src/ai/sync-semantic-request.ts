@@ -237,16 +237,32 @@ export type SemanticRequestGateStatus = 'enabled' | 'degraded' | 'disabled';
 /** Health/readiness: enterprise sync request gate posture. */
 export function getSemanticRequestGateStatus(tenantId?: string): {
   semanticRequestGate: SemanticRequestGateStatus;
+  semantic_layer_active: boolean;
   llmConfigured: boolean;
   enterpriseMode: boolean;
 } {
   const llmConfigured = isSemanticLlmConfigured();
   const enterpriseMode = isEnterpriseMode();
   if (!isSyncSemanticRequestEnabled(tenantId)) {
-    return { semanticRequestGate: 'disabled', llmConfigured, enterpriseMode };
+    return {
+      semanticRequestGate: 'disabled',
+      semantic_layer_active: false,
+      llmConfigured,
+      enterpriseMode,
+    };
   }
   if (!llmConfigured) {
-    return { semanticRequestGate: 'degraded', llmConfigured, enterpriseMode };
+    return {
+      semanticRequestGate: 'degraded',
+      semantic_layer_active: false,
+      llmConfigured,
+      enterpriseMode,
+    };
   }
-  return { semanticRequestGate: 'enabled', llmConfigured, enterpriseMode };
+  return {
+    semanticRequestGate: 'enabled',
+    semantic_layer_active: true,
+    llmConfigured,
+    enterpriseMode,
+  };
 }

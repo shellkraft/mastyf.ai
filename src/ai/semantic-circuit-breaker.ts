@@ -7,6 +7,14 @@ import { Logger } from '../utils/logger.js';
 import { DEFAULT_TENANT_ID } from '../tenant/resolve-tenant.js';
 
 const RESET_MS = parseInt(process.env.MASTYF_AI_SEMANTIC_CIRCUIT_RESET_MS || '60000', 10);
+const MAX_PROBE_MS = parseInt(process.env.MASTYF_AI_CIRCUIT_MAX_PROBE_INTERVAL_MS || '300000', 10);
+
+function probeBackoffMs(openCycles: number): number {
+  const base = RESET_MS * Math.pow(2, Math.max(0, openCycles - 1));
+  const capped = Math.min(base, MAX_PROBE_MS);
+  const jitter = capped * 0.1 * (Math.random() * 2 - 1);
+  return Math.round(capped + jitter);
+}
 
 function failureThreshold(): number {
   const n = parseInt(process.env.MASTYF_AI_SEMANTIC_CIRCUIT_THRESHOLD || '5', 10);
@@ -20,6 +28,7 @@ type TenantCircuit = {
   consecutiveFailures: number;
   openUntil: number;
   halfOpenProbeInFlight: boolean;
+  openCycles: number;
 };
 
 const circuits = new Map<string, TenantCircuit>();
@@ -42,6 +51,7 @@ function newCircuit(): TenantCircuit {
     consecutiveFailures: 0,
     openUntil: 0,
     halfOpenProbeInFlight: false,
+    openCycles: 0,
   };
 }
 
@@ -114,6 +124,7 @@ export function recordSemanticLlmSuccess(tenantId?: string): void {
     circuit.consecutiveFailures = 0;
     circuit.openUntil = 0;
     circuit.halfOpenProbeInFlight = false;
+    circuit.openCycles = 0;
     syncGauge(tenantId);
     return;
   }
@@ -127,7 +138,8 @@ export function recordSemanticLlmFailure(err?: unknown, tenantId?: string): void
   tickCircuit(tenantId);
   if (circuit.state === 'half-open') {
     circuit.state = 'open';
-    circuit.openUntil = Date.now() + RESET_MS;
+    circuit.openCycles += 1;
+    circuit.openUntil = Date.now() + probeBackoffMs(circuit.openCycles);
     circuit.halfOpenProbeInFlight = false;
     syncGauge(tenantId);
     const detail = err instanceof Error ? err.message : '';
@@ -140,7 +152,8 @@ export function recordSemanticLlmFailure(err?: unknown, tenantId?: string): void
   circuit.consecutiveFailures++;
   if (circuit.consecutiveFailures >= failureThreshold()) {
     circuit.state = 'open';
-    circuit.openUntil = Date.now() + RESET_MS;
+    circuit.openCycles += 1;
+    circuit.openUntil = Date.now() + probeBackoffMs(circuit.openCycles);
     syncGauge(tenantId);
     const detail = err instanceof Error ? err.message : '';
     Logger.warn(

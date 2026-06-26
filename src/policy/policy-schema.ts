@@ -23,6 +23,26 @@ const RbacSchema = z
   })
   .strict();
 
+const EntropyFieldSchema = z
+  .object({
+    min_entropy: z.number().optional(),
+    allow_patterns: z.array(z.string()).optional(),
+  })
+  .strict();
+
+const EntropyPolicySchema = z
+  .object({
+    default_min: z.number().optional(),
+    safe_patterns: z.array(z.string()).optional(),
+    tools: z
+      .record(
+        z.string(),
+        z.object({ fields: z.record(z.string(), EntropyFieldSchema).optional() }).strict(),
+      )
+      .optional(),
+  })
+  .strict();
+
 export const PolicyRuleSchema = z
   .object({
     name: z.string().min(1),
@@ -63,6 +83,7 @@ export const PolicySchema = z
         opa: z.boolean().optional(),
         require_certification: z.enum(['bronze', 'silver', 'gold', 'platinum']).optional(),
         default_sandbox_tier: z.enum(['shadow', 'redact', 'allow']).optional(),
+        entropy: EntropyPolicySchema.optional(),
         rules: z.array(PolicyRuleSchema),
       })
       .strict(),

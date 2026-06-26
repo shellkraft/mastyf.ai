@@ -10,6 +10,11 @@
  * `attachSemanticQueueWorker(parentPort)` in worker entry files.
  */
 import { isMainThread } from "node:worker_threads";
+import {
+  isRedisSemanticQueueEnabled,
+  tryAcquireRedisSemanticSlot,
+  releaseRedisSemanticSlot,
+} from "./redis-semantic-queue.js";
 
 let inflight = 0;
 const tenantInflight = new Map<string, number>();
@@ -36,19 +41,19 @@ export function semanticPerTenantMax(): number {
 }
 
 export function isSemanticQueueProcessLocal(): boolean {
-  return true;
+  return !isRedisSemanticQueueEnabled();
 }
 
 export function getSemanticQueueStats(): {
   inflight: number;
   tenantInflight: Record<string, number>;
-  processLocal: true;
+  processLocal: boolean;
   isMainThread: boolean;
 } {
   return {
     inflight,
     tenantInflight: Object.fromEntries(tenantInflight.entries()),
-    processLocal: true,
+    processLocal: isSemanticQueueProcessLocal(),
     isMainThread,
   };
 }
@@ -62,7 +67,7 @@ function warnWorkerLocalCapsOnce(): void {
   );
 }
 
-export function tryAcquireSemanticSlot(tenantId?: string): boolean {
+function tryAcquireLocalSlot(tenantId?: string): boolean {
   if (!isMainThread) warnWorkerLocalCapsOnce();
   if (inflight >= semanticQueueMax()) return false;
   const tid = tenantId?.trim();
@@ -75,6 +80,19 @@ export function tryAcquireSemanticSlot(tenantId?: string): boolean {
   return true;
 }
 
+export function tryAcquireSemanticSlot(tenantId?: string): boolean {
+  return tryAcquireLocalSlot(tenantId);
+}
+
+/** Cluster-wide async acquire — Redis when configured, else local (M-001). */
+export async function tryAcquireClusterSemanticSlot(tenantId?: string): Promise<boolean> {
+  if (isRedisSemanticQueueEnabled()) {
+    const ok = await tryAcquireRedisSemanticSlot(tenantId);
+    if (!ok) return false;
+  }
+  return tryAcquireLocalSlot(tenantId);
+}
+
 export function releaseSemanticSlot(tenantId?: string): void {
   const tid = tenantId?.trim();
   if (tid) {
@@ -83,6 +101,13 @@ export function releaseSemanticSlot(tenantId?: string): void {
     else tenantInflight.set(tid, cur - 1);
   }
   if (inflight > 0) inflight -= 1;
+  if (isRedisSemanticQueueEnabled()) {
+    void releaseRedisSemanticSlot(tenantId);
+  }
+}
+
+export async function releaseSemanticSlotAsync(tenantId?: string): Promise<void> {
+  releaseSemanticSlot(tenantId);
 }
 
 /** Main thread: handle worker acquire/release messages when COORD=parent. */
@@ -129,13 +154,13 @@ export function attachSemanticQueueWorker(
 const pendingAcquires = new Map<number, (ok: boolean) => void>();
 
 /** Async acquire for worker threads delegating to parent hooks. */
-export function tryAcquireSemanticSlotAsync(
+export function tryAcquireSemanticSlotViaParent(
   port: { postMessage: (msg: unknown) => void },
   tenantId?: string,
   timeoutMs = 5000,
 ): Promise<boolean> {
   if (isMainThread || process.env["MASTYF_AI_SEMANTIC_QUEUE_COORD"] !== "parent") {
-    return Promise.resolve(tryAcquireSemanticSlot(tenantId));
+    return tryAcquireClusterSemanticSlot(tenantId);
   }
   const replyId = Date.now() + Math.random();
   return new Promise((resolve) => {

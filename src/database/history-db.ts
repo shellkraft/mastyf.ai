@@ -447,15 +447,19 @@ export class HistoryDatabase implements IDatabase {
     };
   }
 
-  async transaction<T>(fn: () => Promise<T> | T): Promise<T> {
-    const txn = this.db.transaction(() => {
-      const result = fn();
-      if (result instanceof Promise) {
-        throw new Error('Async callbacks not supported in SQLite transactions — use synchronous operations');
-      }
-      return result as T;
-    });
+  async transactionSync<T>(fn: () => T): Promise<T> {
+    const txn = this.db.transaction(() => fn());
     return txn();
+  }
+
+  async transaction<T>(fn: () => Promise<T> | T): Promise<T> {
+    const result = fn();
+    if (result instanceof Promise) {
+      return Promise.reject(
+        new Error('Async callbacks not supported in SQLite transactions — use transactionSync or synchronous operations'),
+      );
+    }
+    return this.transactionSync(() => result as T);
   }
 
   async flush(): Promise<void> {}

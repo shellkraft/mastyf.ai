@@ -25,8 +25,10 @@ describe('McpProxyServer max inflight', () => {
 
     (proxy as any).requestContexts.set('pending-1', {
       requestStartTime: Date.now(),
+      createdAt: Date.now(),
       requestToolName: 'blocked-slot',
       requestTokens: 0,
+      requestRaw: '{}',
       tenantId: 'default',
     });
 
@@ -71,8 +73,10 @@ describe('McpProxyServer max inflight', () => {
 
     (proxy as any).requestContexts.set('pending-1', {
       requestStartTime: Date.now(),
+      createdAt: Date.now(),
       requestToolName: 'blocked-slot',
       requestTokens: 0,
+      requestRaw: '{}',
       tenantId: 'default',
     });
 
