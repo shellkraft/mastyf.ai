@@ -17,6 +17,7 @@
 [![Website](https://img.shields.io/badge/Website-live-blue)](https://mastyf-ai-cloud-jet.vercel.app/)
 [![License](https://img.shields.io/badge/License-MIT-yellow)](LICENSE)
 [![CI](https://img.shields.io/badge/CI-GitHub_Actions-blue)](https://github.com/mastyf-ai/mastyf.ai/actions)
+[![Coverage](https://img.shields.io/badge/coverage-58%25-yellow)](coverage/lcov-report/index.html)
 
 **Version 4.1.7**
 

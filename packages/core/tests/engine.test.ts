@@ -400,4 +400,30 @@ describe("scanServer — timeouts and budgets", () => {
     expect(result.truncated?.reason).toMatch(/server scan budget exceeded/i);
     expect(result.tools.length).toBeLessThan(50);
   });
+
+  it("caps per-tool timeout at MASTYF_AI_SCAN_TOOL_TIMEOUT_MAX_MS", async () => {
+    process.env.MASTYF_AI_SCAN_TOOL_TIMEOUT_MS = "60000";
+    process.env.MASTYF_AI_SCAN_TOOL_TIMEOUT_MAX_MS = "15000";
+    const { resetLlmConfigForTests } = await import("../src/config/llm-config.js");
+    resetLlmConfigForTests();
+    const { resolveScanToolTimeoutMs } = await import("../src/scan-timeouts.js");
+    expect(resolveScanToolTimeoutMs()).toBe(15000);
+  });
+});
+
+describe("scanToolCall — payload and deduplication", () => {
+  it("rejects oversized arguments with MCPG-META-006", async () => {
+    const prev = process.env.MASTYF_AI_MAX_ARGUMENT_BYTES;
+    process.env.MASTYF_AI_MAX_ARGUMENT_BYTES = "1024";
+    const huge = "x".repeat(2048);
+    const { scanToolCall } = await import("../src/engine.js");
+    const result = await scanToolCall(
+      { name: "t", description: "safe" },
+      { payload: huge },
+      { skipSemantic: true, skipSchema: true, skipRegex: true },
+    );
+    expect(result.issues.some((i) => i.id === "MCPG-META-006")).toBe(true);
+    if (prev === undefined) delete process.env.MASTYF_AI_MAX_ARGUMENT_BYTES;
+    else process.env.MASTYF_AI_MAX_ARGUMENT_BYTES = prev;
+  });
 });

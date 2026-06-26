@@ -26,24 +26,18 @@ import { idempotencyKeyFromRequest } from '../policy/idempotency-store.js';
 import { RequestIdLock } from '../utils/request-id-lock.js';
 import { scanMultimodalContent } from '../scanners/multimodal-content-scanner.js';
 import type { TenantPolicyRegistry } from '../policy/tenant-policy-registry.js';
-import {
-  isSemanticLlmConfigured,
-  isSemanticStrictMode,
-  reportSemanticDegradation,
-} from '../utils/semantic-layer.js';
-import { reportSemanticAuditSkipped } from '../ai/semantic-llm-rate-limit.js';
 import { findingsToMessages, isResponseScanSkipped } from '../utils/streaming-inspector.js';
 import { gateToolResponseText } from '../utils/response-security-gate.js';
 import { injectRedactionMeta } from '../utils/redaction-meta.js';
 import {
   flowSessionKey,
-  recordSessionToolCall,
 } from '../policy/session-flow-guard.js';
 import { recordSensitiveResponseAccess } from '../policy/session-flow-store.js';
 import { scanForSecrets } from '../scanners/secret-scanner.js';
 import { isProxyEntropyCheckEnabled, scanArgumentEntropy } from '../utils/arg-entropy.js';
 import * as Metrics from '../utils/metrics.js';
-import { alertPolicyBlock } from '../alerting/webhook-alerter.js';
+import { notifyToolBlock } from '../alerting/notify-tool-block.js';
+import { withMcpToolCallSpan } from './trace-context.js';
 import { persistCallRecord } from '../utils/call-record-cost.js';
 import {
   agenticPreForwardToolCall,
@@ -58,15 +52,13 @@ import {
   redactArguments,
   ingestPolicyDecision,
 } from '../ai/block-learning.js';
-import { buildSemanticAuditJob, enqueueSemanticAudit, isSemanticAsyncEnabled } from '../ai/async-semantic-audit.js';
-import { isSyncSemanticRequestEnabled } from '../ai/sync-semantic-request.js';
+import { runPostPolicyAllowGates } from './proxy-post-allow-gates.js';
 import { publishRugPullAlert, isClusterRugPullActive } from './rug-pull-cluster.js';
 import {
   applyToolFingerprintFromResult,
   type ToolFingerprintState,
 } from './tool-fingerprint.js';
 import { isProxyInflightExceeded, proxyMaxInflight } from './proxy-inflight.js';
-import { runSyncSemanticRequestGate } from './proxy-post-policy-gates.js';
 import { resolveToolTimeoutMs } from '../utils/tool-timeout.js';
 import type { HistoryDatabase } from '../database/history-db.js';
 import { resolveModelId, resolveModelIdForServer } from '../config/llm-config.js';
@@ -1106,7 +1098,14 @@ export class McpProxyServer {
               },
             );
             Metrics.requestsTotal.inc({ server_name: this.serverName, decision: 'block', authn_success: String(authnSuccess) });
-            void alertPolicyBlock(this.serverName, toolName, decision.rule, decision.reason, requestId);
+            notifyToolBlock({
+              serverName: this.serverName,
+              toolName,
+              rule: decision.rule,
+              reason: decision.reason,
+              requestId,
+              anomalyScore: 0.95,
+            });
             this.sendError(msg.id, -32001, `Blocked by MCP Mastyf AI policy: ${decision.reason}`, {
               rule: decision.rule,
               policy: policyMode,
@@ -1114,50 +1113,23 @@ export class McpProxyServer {
             return;
           }
 
-          if (isSemanticAsyncEnabled(context.tenantId) && !isSemanticLlmConfigured()) {
-            reportSemanticAuditSkipped('no_api_key', context.tenantId);
-            reportSemanticDegradation('llm_unavailable', {
-              serverName: this.serverName,
+          const semGate = await runPostPolicyAllowGates(context, decision, this.serverName);
+          if (semGate?.block) {
+            this.recordDeniedCall(
               toolName,
+              requestTokens,
+              Date.now() - proxyStartTime,
+              semGate.rule,
+              semGate.reason,
+              requestArguments,
+              requestTenantId,
+            );
+            this.sendError(msg.id, -32001, `Blocked by MCP Mastyf AI semantic gate: ${semGate.reason}`, {
+              rule: semGate.rule,
+              policy: 'block',
             });
-            if (isSemanticStrictMode(context.tenantId)) {
-              this.recordDeniedCall(
-                toolName,
-                requestTokens,
-                Date.now() - proxyStartTime,
-                'semantic-degraded',
-                'Semantic LLM layer unavailable (MASTYF_AI_SEMANTIC_STRICT=true)',
-              );
-              this.sendError(msg.id, -32001, 'Blocked: semantic LLM layer unavailable', {
-                rule: 'semantic-degraded',
-                policy: 'block',
-              });
-              return;
-            }
+            return;
           }
-
-          if (isSyncSemanticRequestEnabled(context.tenantId)) {
-            const semGate = await runSyncSemanticRequestGate(context, decision, this.serverName);
-            if (semGate.block) {
-              this.recordDeniedCall(
-                toolName,
-                requestTokens,
-                Date.now() - proxyStartTime,
-                semGate.rule,
-                semGate.reason,
-                requestArguments,
-                requestTenantId,
-              );
-              this.sendError(msg.id, -32001, `Blocked by MCP Mastyf AI semantic gate: ${semGate.reason}`, {
-                rule: semGate.rule,
-                policy: 'block',
-              });
-              return;
-            }
-          }
-
-          enqueueSemanticAudit(buildSemanticAuditJob(context, decision));
-          recordSessionToolCall(context);
 
           if (requestArguments) {
             const agenticHook = await agenticPreForwardToolCall(
@@ -1227,6 +1199,15 @@ export class McpProxyServer {
         if (ctx) {
           this.armRequestTimeout(fwd.id, ctx.requestToolName || 'unknown');
         }
+        await withMcpToolCallSpan({
+          serverName: this.serverName,
+          toolName: ctx?.requestToolName || (fwd.params as { name?: string } | undefined)?.name || 'unknown',
+          tenantId: ctx?.tenantId,
+          transport: 'stdio',
+        }, async () => {
+          this.child.stdin?.write(raw + '\n');
+        });
+        return;
       }
     } catch {
       // non-JSON — no timeout arm

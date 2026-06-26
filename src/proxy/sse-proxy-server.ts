@@ -5,13 +5,16 @@ import { EventEmitter } from 'events';
 import { randomUUID } from 'crypto';
 import { URL } from 'url';
 import { PolicyEngine } from '../policy/policy-engine.js';
-import { findingsToMessages, isResponseScanSkipped } from '../utils/streaming-inspector.js';
+import { findingsToMessages, isResponseScanSkipped, createStreamingInspectorState } from '../utils/streaming-inspector.js';
+import { inspectCostStreamingChunk } from '../agentic/response-dlp/cost-streaming-inspector.js';
+import { withProxyRequestVault } from './proxy-request-context.js';
 import { gateToolResponseText } from '../utils/response-security-gate.js';
 import { TokenCounter, extractModelFromPayload } from '../utils/token-counter.js';
 import { Logger } from '../utils/logger.js';
 import { requireUpstreamTlsAllowed } from '../utils/upstream-tls.js';
 import { persistCallRecord } from '../utils/call-record-cost.js';
 import { StructuredLogger } from '../utils/structured-logger.js';
+import { notifyToolBlock } from '../alerting/notify-tool-block.js';
 import { auditPolicyDecision } from './audit-policy-decision.js';
 import * as Metrics from '../utils/metrics.js';
 import { resolveModelId, resolveModelIdForServer } from '../config/llm-config.js';
@@ -23,12 +26,17 @@ import { applyGeoToCallContext } from '../utils/request-geo-context.js';
 import { getHttpMaxBodyBytes } from './http-proxy-security.js';
 import { getUpstreamTimeoutMs } from '../utils/upstream-timeout.js';
 import { acquireProxyInflight, releaseProxyInflight } from './proxy-inflight.js';
-import { runSyncSemanticRequestGate } from './proxy-post-policy-gates.js';
+import { runPostPolicyAllowGates } from './proxy-post-allow-gates.js';
 import { hasJsonRpcId } from './json-rpc-utils.js';
 import {
   fingerprintJsonRpcToolsList,
   isRugPullBlockedForCall,
 } from './rug-pull-transport.js';
+import {
+  injectIntoUpstreamHeaders,
+  runWithExtractedTraceAsync,
+  withMcpToolCallSpan,
+} from './trace-context.js';
 import type { ToolFingerprintState } from './tool-fingerprint.js';
 
 interface SseProxyOptions {
@@ -262,10 +270,17 @@ export class SseProxyServer extends EventEmitter {
     }
 
     try {
-      const result = await this.interceptAndForward(
-        jsonRpc,
-        req.headers as Record<string, string | string[] | undefined>,
-        session,
+      const result = await runWithExtractedTraceAsync(req.headers, () =>
+        withProxyRequestVault(
+          body,
+          req.headers as Record<string, string | string[] | undefined>,
+          () =>
+            this.interceptAndForward(
+              jsonRpc,
+              req.headers as Record<string, string | string[] | undefined>,
+              session,
+            ),
+        ),
       );
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify(result));
@@ -434,6 +449,14 @@ export class SseProxyServer extends EventEmitter {
       const decision = await this.opts.policy.evaluateAsync(context);
       auditPolicyDecision(requestId, this.opts.serverName, toolName, decision, context);
       if (decision.action === 'block') {
+        notifyToolBlock({
+          serverName: this.opts.serverName,
+          toolName,
+          rule: decision.rule,
+          reason: decision.reason,
+          requestId,
+          anomalyScore: 0.95,
+        });
         releaseProxyInflight(this.opts.serverName);
         StructuredLogger.logBlocked({
           event: 'tool_blocked',
@@ -454,8 +477,8 @@ export class SseProxyServer extends EventEmitter {
         };
       }
 
-      const semGate = await runSyncSemanticRequestGate(context, decision, this.opts.serverName);
-      if (semGate.block) {
+      const semGate = await runPostPolicyAllowGates(context, decision, this.opts.serverName);
+      if (semGate?.block) {
         releaseProxyInflight(this.opts.serverName);
         return {
           jsonrpc: '2.0',
@@ -469,7 +492,15 @@ export class SseProxyServer extends EventEmitter {
     }
 
     const startMs = Date.now();
-    let response = await this._forwardToUpstream(jsonRpcRequest, session);
+    const relayForward = () => this._forwardToUpstream(jsonRpcRequest, session, resolvedTenantId);
+    let response = isToolCall
+      ? await withMcpToolCallSpan({
+        serverName: this.opts.serverName,
+        toolName: (jsonRpcRequest.params as { name?: string } | undefined)?.name ?? 'unknown',
+        tenantId: resolvedTenantId,
+        transport: 'sse',
+      }, relayForward)
+      : await relayForward();
     fingerprintJsonRpcToolsList(
       this.rugPullState,
       response,
@@ -618,6 +649,7 @@ export class SseProxyServer extends EventEmitter {
   private _forwardToUpstream(
     body: Record<string, unknown>,
     session?: SseSession,
+    tenantId?: string,
   ): Promise<Record<string, unknown>> {
     return new Promise((resolve, reject) => {
       let targetUrl: URL;
@@ -637,11 +669,11 @@ export class SseProxyServer extends EventEmitter {
         port: targetUrl.port || (isHttps ? 443 : 80),
         path: targetUrl.pathname + targetUrl.search,
         method: 'POST',
-        headers: {
+        headers: injectIntoUpstreamHeaders({
           'Content-Type': 'application/json',
-          'Content-Length': Buffer.byteLength(payload),
+          'Content-Length': String(Buffer.byteLength(payload)),
           ...(this.opts.authHeader ? { Authorization: this.opts.authHeader } : {}),
-        },
+        }),
         timeout: getUpstreamTimeoutMs(),
       };
 
@@ -652,7 +684,14 @@ export class SseProxyServer extends EventEmitter {
 
       const req = client.request(reqOpts, (res) => {
         let data = '';
+        const costState = createStreamingInspectorState();
         res.on('data', (chunk: Buffer) => {
+          const costCheck = inspectCostStreamingChunk(costState, chunk, tenantId);
+          if (costCheck.terminateStream) {
+            req.destroy();
+            reject(new Error(costCheck.reason ?? 'Streaming token budget exceeded'));
+            return;
+          }
           const next = appendSseChunk(data, chunk);
           if (next === null) {
             req.destroy();

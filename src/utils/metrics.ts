@@ -213,6 +213,68 @@ export const suggestionQueueDepth = new Gauge({
   registers: [registry],
 });
 
+export const redisAvailable = new Gauge({
+  name: 'mastyf_ai_redis_available',
+  help: 'Redis connectivity for distributed rate limits and sessions (1=up, 0=down)',
+  registers: [registry],
+});
+
+export const semanticLlmOnline = new Gauge({
+  name: 'mastyf_ai_semantic_llm_online',
+  help: 'Semantic LLM layer availability (1=online, 0=offline)',
+  registers: [registry],
+});
+
+export const loopBlocksTotal = new Counter({
+  name: 'mastyf_ai_loop_blocks_total',
+  help: 'Policy blocks from loop / perturbation anomaly guard',
+  labelNames: ['rule', 'tenant_id'],
+  registers: [registry],
+});
+
+export const auditQueueDepth = new Gauge({
+  name: 'mastyf_ai_audit_queue_depth',
+  help: 'Async semantic audit / SIEM export queue depth',
+  registers: [registry],
+});
+
+export const alertingConfigured = new Gauge({
+  name: 'mastyf_ai_alerting_configured',
+  help: 'App-level alert webhooks configured (1=yes, 0=no)',
+  registers: [registry],
+});
+
+export const tracingConfigured = new Gauge({
+  name: 'mastyf_ai_tracing_configured',
+  help: 'OpenTelemetry OTLP tracing active (1=yes, 0=no)',
+  registers: [registry],
+});
+
+export const semanticScanDurationSeconds = new Histogram({
+  name: 'mastyf_ai_semantic_scan_duration_seconds',
+  help: 'Semantic scan duration by phase',
+  labelNames: ['phase', 'outcome'],
+  buckets: [0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10, 15],
+  registers: [registry],
+});
+
+export const tenantSpendUsdDayRatio = new Gauge({
+  name: 'mastyf_ai_tenant_spend_usd_day_ratio',
+  help: 'Tenant daily USD spend as fraction of cap (0-1)',
+  registers: [registry],
+});
+
+export const tenantTokensPerMin = new Gauge({
+  name: 'mastyf_ai_tenant_tokens_per_min',
+  help: 'Recent tenant token rate (rolling window)',
+  labelNames: ['tenant_id'],
+  registers: [registry],
+});
+
+export function recordSemanticScanDuration(phase: string, durationMs: number, outcome: string): void {
+  semanticScanDurationSeconds.observe({ phase, outcome }, Math.max(0, durationMs) / 1000);
+}
+
 /** Update suggestion queue depth from pending suggestions file or engine state. */
 export function setSuggestionQueueDepth(count: number, tenantId?: string): void {
   suggestionQueueDepth.set(withTenantMetricLabels({}, tenantId), Math.max(0, count));
@@ -228,6 +290,9 @@ function startMetricsMaintenance(intervalMs: number): void {
   if (metricsMaintenanceInterval) return;
   metricsMaintenanceInterval = setInterval(() => {
     void registry.metrics().catch(() => {});
+    void import('./observability-gauges.js').then(({ refreshObservabilityGauges }) =>
+      refreshObservabilityGauges(),
+    ).catch(() => {});
   }, intervalMs);
   metricsMaintenanceInterval.unref?.();
 }
@@ -273,6 +338,17 @@ async function runReadinessViaRef(): Promise<ReadinessResult> {
 // ── Metrics server ──
 export async function startMetricsServer(port: number = 9090): Promise<Registry> {
   ensureDefaultMetrics();
+
+  try {
+    const { setSemanticScanDurationHook } = await import(
+      '../../packages/core/dist/semantic-duration-hook.js'
+    );
+    setSemanticScanDurationHook((phase: string, durationMs: number, outcome: string) => {
+      recordSemanticScanDuration(phase, durationMs, outcome);
+    });
+  } catch {
+    // core hook optional in slim builds
+  }
 
   if (process.env['METRICS_ENABLED'] !== 'true') {
     Logger.debug('[metrics] Metrics server not enabled (set METRICS_ENABLED=true)');

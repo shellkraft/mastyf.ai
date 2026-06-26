@@ -9,6 +9,7 @@ import { getLlmConfig } from '../config/llm-config.js';
 import { Logger } from '../utils/logger.js';
 import { StructuredLogger } from '../utils/structured-logger.js';
 import { registry } from '../utils/metrics.js';
+import * as Metrics from '../utils/metrics.js';
 import { getMastyfAiRegionLabels } from '../utils/region.js';
 import {
   isSemanticLlmConfigured,
@@ -375,11 +376,17 @@ Categories: prompt-injection, exfiltration, privilege-escalation, encoded-payloa
     };
     recordSemanticLlmSuccess(job.tenantId);
   } else {
+    const auditStart = Date.now();
     try {
       response = await withSemanticTimeout(
         'async_semantic_audit',
         () => getLlm(job.tenantId).generate(systemPrompt, userPrompt),
         null,
+      );
+      Metrics.recordSemanticScanDuration(
+        'async_audit',
+        Date.now() - auditStart,
+        response?.text ? 'ok' : 'no_llm',
       );
       if (response?.text) {
         recordSemanticLlmSuccess(job.tenantId);
@@ -388,6 +395,7 @@ Categories: prompt-injection, exfiltration, privilege-escalation, encoded-payloa
         recordSemanticLlmFailure(undefined, job.tenantId);
       }
     } catch (err) {
+      Metrics.recordSemanticScanDuration('async_audit', Date.now() - auditStart, 'error');
       recordSemanticLlmFailure(err, job.tenantId);
       response = null;
     }

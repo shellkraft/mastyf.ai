@@ -18,8 +18,8 @@
  *   MASTYF_AI_INCIDENT_REGRESSION_THRESHOLD  Detection drop threshold (default: 0.05)
  *   MASTYF_AI_INCIDENT_BLOCK_SPIKE_SIGMA   Sigma multiplier for block spike (default: 3)
  */
-import { Logger } from '../utils/logger.js';
 import { StructuredLogger } from '../utils/structured-logger.js';
+import { getPagerDutyRoutingKey, getSlackWebhookUrl, isAppAlertingConfigured } from './alert-env.js';
 
 // ── Types ────────────────────────────────────────────────────────────
 
@@ -41,12 +41,14 @@ export interface IncidentResponseResult {
 // ── Configuration ────────────────────────────────────────────────────
 
 function getWebhookUrl(): string {
-  return process.env['MASTYF_AI_INCIDENT_WEBHOOK_URL'] || '';
+  return getSlackWebhookUrl();
 }
 
 function getPagerDutyKey(): string {
-  return process.env['MASTYF_AI_INCIDENT_PAGERDUTY_KEY'] || '';
+  return getPagerDutyRoutingKey();
 }
+
+export { isAppAlertingConfigured };
 
 function getServiceNowUrl(): string {
   return process.env['MASTYF_AI_INCIDENT_SERVICENOW_URL'] || '';
@@ -303,6 +305,10 @@ export async function checkAndRespondToRegression(
 
 /** Track LLM health and alert if offline > threshold minutes. */
 export function trackLlmHealth(online: boolean): void {
+  void import('../utils/observability-gauges.js').then(({ setLlmProbeOnline }) => {
+    setLlmProbeOnline(online);
+  }).catch(() => undefined);
+
   if (online) {
     _llmOfflineSince = null;
     return;

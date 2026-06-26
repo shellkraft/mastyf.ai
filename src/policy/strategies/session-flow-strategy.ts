@@ -7,6 +7,7 @@ import {
   evaluateSessionChainGuard,
 } from '../session-chain-detector.js';
 import type { PolicyStrategy } from './types.js';
+import * as Metrics from '../../utils/metrics.js';
 
 /** Multi-call read-then-exfil sequencing and cross-tool chain detection. */
 export const sessionFlowStrategy: PolicyStrategy = {
@@ -14,6 +15,12 @@ export const sessionFlowStrategy: PolicyStrategy = {
   evaluate({ normalized }, deps) {
     const loop = evaluateLoopAnomalyGuard(normalized);
     if (loop) {
+      Metrics.loopBlocksTotal.inc(
+        Metrics.withTenantMetricLabels(
+          { rule: loop.rule || 'loop-anomaly-perturbation' },
+          normalized.tenantId,
+        ),
+      );
       recordSessionToolCall(normalized);
       return { ...loop, action: deps.resolveAction(loop.action) };
     }

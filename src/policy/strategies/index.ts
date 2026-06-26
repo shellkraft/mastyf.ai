@@ -14,6 +14,7 @@ export { behavioralBiometricsStrategy } from './behavioral-biometrics-strategy.j
 export { zeroTrustStrategy } from './zero-trust-strategy.js';
 export { yamlRulesStrategy } from './yaml-rules-strategy.js';
 export { evaluateRedisRateLimit } from './rate-limit-strategy.js';
+export { evaluateRedisTokenBudget } from './token-budget-strategy.js';
 export { evaluateIdempotency } from './idempotency-strategy.js';
 export { runShadowPolicy } from './shadow-policy-strategy.js';
 export { opaStrategy } from './opa-strategy.js';

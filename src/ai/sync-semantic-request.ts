@@ -17,7 +17,7 @@ import {
   isSemanticStrictMode,
   reportSemanticDegradation,
 } from '../utils/semantic-layer.js';
-import { reportSemanticAuditSkipped } from './semantic-llm-rate-limit.js';
+import { reportSemanticAuditSkipped, allowSemanticLlmCall } from './semantic-llm-rate-limit.js';
 import { tryReserveTenantDailyBudget, getEstimatedSemanticCostUsd } from '../services/tenant-budget.js';
 import { withSemanticTimeout } from '../utils/semantic-timeout.js';
 import type { SemanticAuditResult } from './async-semantic-audit.js';
@@ -157,11 +157,38 @@ Respond ONLY with JSON: {"suspicious":boolean,"confidence":0-1,"categories":stri
     };
   }
 
+  const llmAllowed = await allowSemanticLlmCall(tenantId);
+  if (!llmAllowed) {
+    reportSemanticAuditSkipped('rate_limited', tenantId);
+    if (isSemanticStrictMode(tenantId) || shouldFailClosedOnSemanticDegrade(riskTier)) {
+      return {
+        block: true,
+        result: noop,
+        source: 'none',
+        rule: 'semantic-degraded',
+        reason: 'Semantic LLM rate limit exceeded',
+      };
+    }
+    return {
+      block: false,
+      result: noop,
+      source: 'none',
+      rule: 'semantic-sync-request',
+      reason: 'rate limited',
+    };
+  }
+
+  const semStarted = Date.now();
   const response = await withSemanticTimeout(
     'sync_semantic_request',
     () => llm.generate(systemPrompt, userPrompt),
     null,
     parseInt(process.env['MASTYF_AI_SEMANTIC_SYNC_REQUEST_TIMEOUT_MS'] || '2500', 10),
+  );
+  Metrics.recordSemanticScanDuration(
+    'sync_request',
+    Date.now() - semStarted,
+    response?.text ? 'ok' : 'timeout',
   );
 
   if (!response?.text) {

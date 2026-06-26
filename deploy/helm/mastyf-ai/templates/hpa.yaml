@@ -23,7 +23,7 @@ spec:
     - type: Pods
       pods:
         metric:
-          name: mastyf_ai_proxy_requests_total
+          name: mastyf_ai_requests_total
         target:
           type: AverageValue
           averageValue: {{ .Values.autoscaling.customMetric.averageRequestsPerSecond | quote }}

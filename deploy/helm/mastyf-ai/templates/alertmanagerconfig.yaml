@@ -1,0 +1,71 @@
+{{- if and .Values.monitoring.alertmanager.enabled (.Capabilities.APIVersions.Has "monitoring.coreos.com/v1alpha1") }}
+{{- $slack := .Values.monitoring.alertmanager.slackWebhookUrl }}
+{{- $pagerduty := .Values.monitoring.alertmanager.pagerdutyRoutingKey }}
+apiVersion: monitoring.coreos.com/v1alpha1
+kind: AlertmanagerConfig
+metadata:
+  name: {{ include "mastyf-ai.fullname" . }}
+  labels:
+    {{- include "mastyf-ai.labels" . | nindent 4 }}
+    {{- with .Values.monitoring.alertmanager.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  route:
+    receiver: mastyf-ai-default
+    groupBy: ['alertname']
+    groupWait: 30s
+    groupInterval: 5m
+    repeatInterval: 4h
+    routes:
+      {{- if $pagerduty }}
+      - matchers:
+          - name: severity
+            value: critical
+        receiver: mastyf-ai-pagerduty
+      {{- else if $slack }}
+      - matchers:
+          - name: severity
+            value: critical
+        receiver: mastyf-ai-slack
+      {{- end }}
+      {{- if $slack }}
+      - matchers:
+          - name: severity
+            value: warning
+        receiver: mastyf-ai-slack
+      {{- end }}
+  receivers:
+    - name: mastyf-ai-default
+      {{- if $slack }}
+      slackConfigs:
+        - apiURL:
+            name: {{ include "mastyf-ai.fullname" . }}-secret
+            key: ALERT_SLACK_WEBHOOK
+          channel: {{ .Values.monitoring.alertmanager.slackChannel | default "#mastyf-ai-alerts" | quote }}
+          title: '{{ "{{" }} template "slack.default.title" . {{ "}}" }}'
+          text: '{{ "{{" }} template "slack.default.text" . {{ "}}" }}'
+      {{- else if $pagerduty }}
+      pagerdutyConfigs:
+        - routingKey:
+            name: {{ include "mastyf-ai.fullname" . }}-secret
+            key: ALERT_PAGERDUTY_KEY
+          severity: '{{ "{{" }} .CommonLabels.severity {{ "}}" }}'
+      {{- end }}
+    - name: mastyf-ai-slack
+      {{- if $slack }}
+      slackConfigs:
+        - apiURL:
+            name: {{ include "mastyf-ai.fullname" . }}-secret
+            key: ALERT_SLACK_WEBHOOK
+          channel: {{ .Values.monitoring.alertmanager.slackChannel | default "#mastyf-ai-alerts" | quote }}
+      {{- end }}
+    - name: mastyf-ai-pagerduty
+      {{- if $pagerduty }}
+      pagerdutyConfigs:
+        - routingKey:
+            name: {{ include "mastyf-ai.fullname" . }}-secret
+            key: ALERT_PAGERDUTY_KEY
+          severity: '{{ "{{" }} .CommonLabels.severity {{ "}}" }}'
+      {{- end }}
+{{- end }}

@@ -17,6 +17,7 @@ import {
   SYNC_POLICY_STRATEGIES,
   evaluateIdempotency,
   evaluateRedisRateLimit,
+  evaluateRedisTokenBudget,
   opaStrategy,
   runShadowPolicy,
   yamlRulesStrategy,
@@ -194,6 +195,11 @@ export class PolicyEngine {
       const { decision: rateDecision, skipLocalRateLimit } = await evaluateRedisRateLimit(context, deps);
       if (rateDecision) {
         return resolvePolicyPrecedence(opaDecision, rateDecision);
+      }
+
+      const { decision: tokenBudgetDecision } = await evaluateRedisTokenBudget(context, deps);
+      if (tokenBudgetDecision) {
+        return resolvePolicyPrecedence(opaDecision, tokenBudgetDecision);
       }
 
       if (isPolicyEvalCacheEnabled()) {

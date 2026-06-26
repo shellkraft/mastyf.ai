@@ -20,6 +20,17 @@ const BURST_MAX_SIMILAR = (): number => {
   return Number.isFinite(n) && n > 0 ? n : 8;
 };
 
+const LOOP_TOKENS_PER_MIN = (): number => {
+  const n = parseInt(process.env['MASTYF_AI_LOOP_TOKENS_PER_MIN'] || '200000', 10);
+  return Number.isFinite(n) && n > 0 ? n : 200_000;
+};
+
+function tokensInLastMinute(history: { at: number; tokens?: number }[], now: number): number {
+  return history
+    .filter((e) => now - e.at <= 60_000)
+    .reduce((sum, e) => sum + (e.tokens ?? 0), 0);
+}
+
 function normalizePayload(value: unknown): string {
   if (value == null) return '';
   if (typeof value === 'string') return value.toLowerCase().replace(/\s+/g, ' ').trim();
@@ -69,6 +80,15 @@ export function evaluateLoopAnomalyGuard(ctx: CallContext): PolicyDecision | nul
     if (payloadSimilarity(currentFp, priorFp) >= threshold) {
       similarRecent++;
     }
+  }
+
+  const tokensPerMin = tokensInLastMinute(history, now) + (ctx.requestTokens ?? 0);
+  if (tokensPerMin >= LOOP_TOKENS_PER_MIN()) {
+    return {
+      action: 'block',
+      rule: 'loop-anomaly-perturbation',
+      reason: `Loop token burn rate exceeded (${tokensPerMin} tokens/min, cap ${LOOP_TOKENS_PER_MIN()})`,
+    };
   }
 
   if (similarRecent >= BURST_MAX_SIMILAR()) {

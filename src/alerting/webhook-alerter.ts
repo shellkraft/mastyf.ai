@@ -1,4 +1,5 @@
 import { Logger } from '../utils/logger.js';
+import { getPagerDutyRoutingKey, getSlackWebhookUrl } from './alert-env.js';
 
 export type AlertSeverity = 'critical' | 'high' | 'warning' | 'info' | 'medium';
 
@@ -155,28 +156,34 @@ function parseMinSeverity(): 'critical' | 'high' | 'medium' {
   return 'high';
 }
 
+function webhookTypeForUrl(url: string): WebhookConfig['type'] {
+  if (url.includes('discord')) return 'discord';
+  if (url.includes('slack')) return 'slack';
+  return 'slack';
+}
+
 function createAlerterFromEnv(): WebhookAlerter | null {
   const configs: WebhookConfig[] = [];
   const minSev = parseMinSeverity();
 
-  if (process.env['ALERT_WEBHOOK_URL']) {
-    const url = process.env['ALERT_WEBHOOK_URL'];
-    const type = url.includes('discord') ? 'discord' : url.includes('slack') ? 'slack' : 'generic';
-    configs.push({ url, type, minSeverity: minSev });
+  const slackUrl = getSlackWebhookUrl();
+  if (slackUrl) {
+    configs.push({ url: slackUrl, type: webhookTypeForUrl(slackUrl), minSeverity: minSev });
   }
-  if (process.env['ALERT_SLACK_WEBHOOK']) {
-    configs.push({ url: process.env['ALERT_SLACK_WEBHOOK'], type: 'slack', minSeverity: minSev });
-  }
-  if (process.env['ALERT_PAGERDUTY_KEY']) {
+
+  const pagerDutyKey = getPagerDutyRoutingKey();
+  if (pagerDutyKey) {
     configs.push({
       url: 'https://events.pagerduty.com/v2/enqueue',
       type: 'pagerduty',
-      token: process.env['ALERT_PAGERDUTY_KEY'],
+      token: pagerDutyKey,
       minSeverity: minSev,
     });
   }
-  if (process.env['ALERT_GENERIC_WEBHOOK']) {
-    configs.push({ url: process.env['ALERT_GENERIC_WEBHOOK'], type: 'generic', minSeverity: minSev });
+
+  const genericUrl = process.env['ALERT_GENERIC_WEBHOOK']?.trim();
+  if (genericUrl) {
+    configs.push({ url: genericUrl, type: 'generic', minSeverity: minSev });
   }
 
   return configs.length > 0 ? new WebhookAlerter(configs) : null;

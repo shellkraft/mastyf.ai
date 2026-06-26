@@ -32,6 +32,19 @@ export function recordTenantDailySpend(tenantId: string | undefined, costUsd: nu
   const tid = tenantId?.trim() || 'default';
   const key = cacheKey(tid);
   spendByTenantDay.set(key, (spendByTenantDay.get(key) ?? 0) + costUsd);
+
+  if (isRedisConfigured()) {
+    void (async () => {
+      try {
+        const redis = getSharedRedisClient();
+        const microUsd = Math.ceil(costUsd * 1_000_000);
+        await redis.incrby(redisKey(tid), microUsd);
+        await redis.expire(redisKey(tid), ttlSecondsUntilUtcMidnight());
+      } catch {
+        /* best-effort Redis sync */
+      }
+    })();
+  }
 }
 
 export function getEstimatedSemanticCostUsd(): number {

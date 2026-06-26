@@ -105,6 +105,7 @@ export function recordSessionToolCall(ctx: CallContext): void {
     at: Date.now(),
     argumentsSnapshot: snapshotAuditArguments(ctx.arguments),
     argFingerprint: fingerprintArguments(ctx.arguments),
+    tokens: ctx.requestTokens ?? 0,
   });
 }
 

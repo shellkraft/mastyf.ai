@@ -21,7 +21,8 @@
  *   - Prompt injection in argument values (MCPG-A-PI-*)
  */
 import type { Issue } from './types.js';
-import { runEntropyScan } from './entropy-detector.js';
+import { runEntropyScan, runCredentialFormatScan } from './entropy-detector.js';
+import { getMaxArgumentBytes, serializedArgumentBytes } from './payload-limits.js';
 import { normalizeUnicode } from './confusables.js';
 import { scanArgumentPromptInjection } from './argument-prompt-injection.js';
 import { testPattern } from './safe-pattern-match.js';
@@ -996,11 +997,28 @@ export function runArgumentScan(
     };
   }
 
+  const argBytes = serializedArgumentBytes(args);
+  if (argBytes > getMaxArgumentBytes()) {
+    return {
+      issues: [{
+        id: 'MCPG-META-006',
+        layer: 'argument',
+        severity: 'critical',
+        category: 'payload-limit',
+        message: `Tool arguments exceed ${getMaxArgumentBytes()} byte limit (${argBytes} bytes)`,
+        evidence: toolName,
+        confidence: 1.0,
+      }],
+      addedLayers: { argument: { ran: true, durationMs: Math.round(performance.now() - t0) } },
+    };
+  }
+
   const flat = walkArgs(args);
 
-  // ── Entropy-based secret detection (Shannon entropy) ────────────
   const entropyIssues = runEntropyScan(flat).map((i) => ({ ...i, layer: 'argument' as const }));
   issues.push(...entropyIssues);
+  const credentialIssues = runCredentialFormatScan(flat).map((i) => ({ ...i, layer: 'argument' as const }));
+  issues.push(...credentialIssues);
 
   for (const item of flat) {
     // ── Unicode normalization + recursive decode before regex ────────

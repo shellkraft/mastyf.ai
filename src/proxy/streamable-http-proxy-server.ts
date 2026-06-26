@@ -11,6 +11,7 @@ import { PolicyEngine } from '../policy/policy-engine.js';
 import { Logger } from '../utils/logger.js';
 import { requireUpstreamTlsAllowed } from '../utils/upstream-tls.js';
 import { StructuredLogger } from '../utils/structured-logger.js';
+import { notifyToolBlock } from '../alerting/notify-tool-block.js';
 import { auditPolicyDecision } from './audit-policy-decision.js';
 import { resolveTenantContext, InvalidTenantIdError } from '../tenant/resolve-tenant.js';
 import { resolveProxyTenantId, JwtTenantRequiredError } from '../tenant/jwt-tenant-binding.js';
@@ -30,12 +31,18 @@ import { getMtlsAgent } from '../utils/mtls-agent-registry.js';
 import { parseJsonWithDepthLimit } from './http-proxy-security.js';
 import { getUpstreamTimeoutMs } from '../utils/upstream-timeout.js';
 import { acquireProxyInflight, releaseProxyInflight } from './proxy-inflight.js';
-import { runSyncSemanticRequestGate } from './proxy-post-policy-gates.js';
+import { runPostPolicyAllowGates } from './proxy-post-allow-gates.js';
+import { withProxyRequestVault } from './proxy-request-context.js';
 import {
   fingerprintJsonRpcToolsList,
   isRugPullBlockedForCall,
 } from './rug-pull-transport.js';
 import type { ToolFingerprintState } from './tool-fingerprint.js';
+import {
+  injectIntoUpstreamHeaders,
+  runWithExtractedTraceAsync,
+  withMcpToolCallSpan,
+} from './trace-context.js';
 
 export interface StreamableHttpProxyOptions {
   listenPort: number;
@@ -113,26 +120,39 @@ export class StreamableHttpProxyServer {
       return;
     }
     const body = bodyRead.body;
-    let messages: Record<string, unknown>[];
-    try {
-      const parsed = JSON.parse(body);
-      messages = Array.isArray(parsed) ? parsed : [parsed];
-    } catch {
-      res.writeHead(400, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: 'Invalid JSON' }));
-      return;
-    }
+    return withProxyRequestVault(
+      body,
+      req.headers as Record<string, string | string[] | undefined>,
+      async () => {
+        let messages: Record<string, unknown>[];
+        try {
+          const parsed = JSON.parse(body);
+          messages = Array.isArray(parsed) ? parsed : [parsed];
+        } catch {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Invalid JSON' }));
+          return;
+        }
 
-    const responses: unknown[] = [];
-    for (const msg of messages) {
-      responses.push(await this.processMessage(msg, req));
-    }
+        const responses: unknown[] = [];
+        for (const msg of messages) {
+          responses.push(await this.processMessage(msg, req));
+        }
 
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify(responses.length === 1 ? responses[0] : responses));
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify(responses.length === 1 ? responses[0] : responses));
+      },
+    );
   }
 
   private async processMessage(
+    msg: Record<string, unknown>,
+    req: IncomingMessage,
+  ): Promise<unknown> {
+    return runWithExtractedTraceAsync(req.headers, () => this.processMessageTraced(msg, req));
+  }
+
+  private async processMessageTraced(
     msg: Record<string, unknown>,
     req: IncomingMessage,
   ): Promise<unknown> {
@@ -163,20 +183,29 @@ export class StreamableHttpProxyServer {
       };
     }
 
-    const upstream = await this.relayToUpstream(JSON.stringify(msg), req);
-    if (msg.method === 'tools/call') {
-      releaseProxyInflight(this.opts.serverName);
-    }
-    if (!upstream || typeof upstream !== 'object') return upstream;
-
-    let fpTenant = 'default';
+    let relayTenantId = 'default';
     try {
-      fpTenant = resolveTenantContext({
+      relayTenantId = resolveTenantContext({
         headers: req.headers as Record<string, string | string[] | undefined>,
       }).tenantId;
     } catch {
       /* default */
     }
+
+    const upstream = msg.method === 'tools/call'
+      ? await withMcpToolCallSpan({
+        serverName: this.opts.serverName,
+        toolName: (msg.params as { name?: string } | undefined)?.name ?? 'unknown',
+        tenantId: relayTenantId,
+        transport: 'streamable-http',
+      }, () => this.relayToUpstream(JSON.stringify(msg), req))
+      : await this.relayToUpstream(JSON.stringify(msg), req);
+    if (msg.method === 'tools/call') {
+      releaseProxyInflight(this.opts.serverName);
+    }
+    if (!upstream || typeof upstream !== 'object') return upstream;
+
+    let fpTenant = relayTenantId;
     fingerprintJsonRpcToolsList(
       this.rugPullState,
       upstream,
@@ -257,6 +286,7 @@ export class StreamableHttpProxyServer {
     if (typeof auth === 'string') headers.Authorization = auth;
     const dpop = req.headers['dpop'];
     if (typeof dpop === 'string') headers.DPoP = dpop;
+    const outboundHeaders = injectIntoUpstreamHeaders(headers);
 
     return new Promise((resolve) => {
       const reqOpts = {
@@ -264,7 +294,7 @@ export class StreamableHttpProxyServer {
         port: url.port || (isHttps ? 443 : 80),
         path: url.pathname + url.search,
         method: 'POST',
-        headers,
+        headers: outboundHeaders,
         timeout: getUpstreamTimeoutMs(),
         agent: isHttps ? getMtlsAgent() : undefined,
       };
@@ -449,6 +479,14 @@ export class StreamableHttpProxyServer {
     const decision = await this.opts.policy.evaluateAsync(context);
     auditPolicyDecision(context.requestId, this.opts.serverName, context.toolName, decision, context);
     if (decision.action === 'block') {
+      notifyToolBlock({
+        serverName: this.opts.serverName,
+        toolName: context.toolName,
+        rule: decision.rule,
+        reason: decision.reason,
+        requestId: context.requestId,
+        anomalyScore: 0.95,
+      });
       releaseProxyInflight(this.opts.serverName);
       StructuredLogger.logBlocked({
         event: 'tool_blocked',
@@ -468,8 +506,8 @@ export class StreamableHttpProxyServer {
       };
     }
 
-    const semGate = await runSyncSemanticRequestGate(context, decision, this.opts.serverName);
-    if (semGate.block) {
+    const semGate = await runPostPolicyAllowGates(context, decision, this.opts.serverName);
+    if (semGate?.block) {
       releaseProxyInflight(this.opts.serverName);
       StructuredLogger.logBlocked({
         event: 'tool_blocked',

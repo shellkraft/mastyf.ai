@@ -25,6 +25,8 @@ import {
   stopPolicySubscriber,
 } from '../control-plane/policy-subscriber.js';
 import type { PolicyWatcher } from '../policy/policy-watcher.js';
+import { getAlertDestinationsForLogging, isAppAlertingConfigured } from '../alerting/alert-env.js';
+import { isFieldEncryptionEnabled } from './field-encryption.js';
 
 let exporterManager: ExporterManager | null = null;
 let policyAuditor: PolicyAuditor | null = null;
@@ -40,6 +42,9 @@ const SECRET_KEYS = [
   'MCP_AUTH_JWT_SECRET',
   'JWT_SECRET',
   'ALERT_WEBHOOK_URL',
+  'ALERT_SLACK_WEBHOOK',
+  'ALERT_PAGERDUTY_KEY',
+  'MASTYF_AI_DB_ENCRYPTION_KEY',
   'MASTYF_AI_MANIFEST_SECRET',
 ];
 
@@ -67,6 +72,9 @@ export async function bootstrapSecrets(): Promise<void> {
 }
 
 export async function bootstrapCompliance(db: IDatabase): Promise<void> {
+  const { initTracing } = await import('./tracing.js');
+  await initTracing();
+
   policyAuditor = new PolicyAuditor();
   exporterManager = new ExporterManager();
   await exporterManager.start();
@@ -196,6 +204,43 @@ export function runEnterpriseSecurityPreflight(): void {
   assertStrictUpstreamTlsPosture();
   assertMultiTenantGatewayAuth();
   assertEnterpriseRateLimitRedis();
+  assertAlertingConfigured();
+  assertEnterpriseEncryptionConfigured();
+  assertEnterpriseSemanticStrict();
+}
+
+function assertEnterpriseSemanticStrict(): void {
+  if (process.env['MASTYF_AI_ENTERPRISE_MODE'] !== 'true') return;
+  if (process.env['MASTYF_AI_SEMANTIC_STRICT'] !== 'true') {
+    throw new Error(
+      '[bootstrap] MASTYF_AI_ENTERPRISE_MODE=true requires MASTYF_AI_SEMANTIC_STRICT=true (max-security semantic profile)',
+    );
+  }
+}
+
+function assertEnterpriseEncryptionConfigured(): void {
+  if (process.env['MASTYF_AI_ENTERPRISE_MODE'] !== 'true') return;
+  if (!isFieldEncryptionEnabled()) {
+    throw new Error(
+      '[bootstrap] MASTYF_AI_ENTERPRISE_MODE=true requires MASTYF_AI_DB_ENCRYPTION_KEY for field-level encryption at rest',
+    );
+  }
+}
+
+function assertAlertingConfigured(): void {
+  const alertingRequired = process.env['MASTYF_AI_ALERTING_REQUIRED'] === 'true'
+    || (process.env['MASTYF_AI_ENTERPRISE_MODE'] === 'true' && process.env['MASTYF_AI_STRICT_MODE'] === 'true');
+  if (!alertingRequired) return;
+  if (process.env['MASTYF_AI_CLUSTER_ALERTING_ONLY'] === 'true') {
+    Logger.info('[bootstrap] App alerting optional — MASTYF_AI_CLUSTER_ALERTING_ONLY=true (Prometheus/Alertmanager)');
+    return;
+  }
+  if (!isAppAlertingConfigured()) {
+    throw new Error(
+      '[bootstrap] Alerting required but no destinations configured — set ALERT_SLACK_WEBHOOK and/or ALERT_PAGERDUTY_KEY (or MASTYF_AI_CLUSTER_ALERTING_ONLY=true for cluster-only routing)',
+    );
+  }
+  Logger.info(`[bootstrap] App alerting configured: ${getAlertDestinationsForLogging()}`);
 }
 
 function assertStrictUpstreamTlsPosture(): void {
@@ -310,6 +355,8 @@ export async function shutdownEnterprise(): Promise<void> {
   stopInstanceRegistry();
   stopPolicySubscriber();
   await closeUnifiedDataReaderPool();
+  const { shutdownTracing } = await import('./tracing.js');
+  await shutdownTracing();
   exporterManager = null;
   policyAuditor = null;
 }

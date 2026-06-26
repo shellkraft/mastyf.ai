@@ -2,12 +2,50 @@
   "title": "MCP Mastyf AI — enterprise remediation metrics",
   "panels": [
     {
+      "title": "Block rate",
+      "targets": [{
+        "expr": "sum(rate(mastyf_ai_requests_total{decision=\"block\"}[5m])) / sum(rate(mastyf_ai_requests_total[5m]))"
+      }]
+    },
+    {
+      "title": "Request latency p95 (seconds)",
+      "targets": [{
+        "expr": "histogram_quantile(0.95, sum by (le) (rate(mastyf_ai_request_duration_seconds_bucket[5m])))"
+      }]
+    },
+    {
+      "title": "Redis available",
+      "targets": [{ "expr": "mastyf_ai_redis_available" }]
+    },
+    {
+      "title": "Semantic LLM online",
+      "targets": [{ "expr": "mastyf_ai_semantic_llm_online" }]
+    },
+    {
+      "title": "Audit queue depth",
+      "targets": [{ "expr": "mastyf_ai_audit_queue_depth" }]
+    },
+    {
       "title": "Attacks blocked by rule",
       "targets": [{ "expr": "sum by (rule, tenant_id) (rate(mastyf_ai_attacks_blocked_total[5m]))" }]
     },
     {
       "title": "Semantic audit skipped",
       "targets": [{ "expr": "sum by (reason) (rate(mastyf_ai_semantic_audit_skipped_total[5m]))" }]
+    },
+    {
+      "title": "OpenTelemetry tracing active",
+      "targets": [{ "expr": "mastyf_ai_tracing_configured" }]
+    },
+    {
+      "title": "Semantic scan duration p95 (seconds)",
+      "targets": [{
+        "expr": "histogram_quantile(0.95, sum by (le, phase) (rate(mastyf_ai_semantic_scan_duration_seconds_bucket[5m])))"
+      }]
+    },
+    {
+      "title": "Tenant spend vs daily cap",
+      "targets": [{ "expr": "mastyf_ai_tenant_spend_usd_day_ratio" }]
     },
     {
       "title": "Cost spent USD (tenant)",

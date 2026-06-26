@@ -124,6 +124,14 @@ async function main() {
     };
     writeFileSync(ALERT_PATH, JSON.stringify(alert, null, 2));
     console.error(`[red-team] ALERT: ${alert.message}`);
+    runCmd('pnpm', [
+      'exec',
+      'tsx',
+      'scripts/notify-regression-alert.ts',
+      String(corpusResults.recall),
+      String(baseline.recall),
+      String(results.regressionDelta),
+    ]);
     process.exit(1);
   }
 

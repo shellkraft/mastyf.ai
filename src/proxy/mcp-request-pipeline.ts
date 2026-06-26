@@ -2,6 +2,7 @@
  * Unified MCP lifecycle + resource/prompt gating for all proxy transports.
  */
 import { hasJsonRpcId, jsonRpcErrorBody } from './json-rpc-utils.js';
+import { validateMcpJsonRpcMessage } from '../validation/mcp-jsonrpc.js';
 import {
   gateMcpMethodResponse,
   recordMcpLifecycleRequest,
@@ -25,6 +26,14 @@ export function runMcpPrePipeline(params: {
   authenticated: boolean;
   fallbackSessionKey?: string;
 }): McpPrePipelineResult {
+  const rpcCheck = validateMcpJsonRpcMessage(params.msg);
+  if (!rpcCheck.ok && hasJsonRpcId(params.msg.id)) {
+    return {
+      blocked: true,
+      response: jsonRpcErrorBody(params.msg.id, rpcCheck.code, rpcCheck.message) as Record<string, unknown>,
+    };
+  }
+
   const method = String(params.msg.method ?? '');
   if (!method) {
     return { blocked: false, session: { sessionId: params.fallbackSessionKey ?? 'anon', agentId: 'unknown' } };

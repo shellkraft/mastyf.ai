@@ -113,6 +113,10 @@ spec:
             - name: OTEL_SERVICE_NAME
               value: {{ .Values.monitoring.otel.serviceName | default (include "mastyf-ai.fullname" .) | quote }}
             {{- end }}
+            {{- if index .Values.config.env "MASTYF_AI_ALERTING_REQUIRED" }}
+            - name: MASTYF_AI_ALERTING_REQUIRED
+              value: {{ index .Values.config.env "MASTYF_AI_ALERTING_REQUIRED" | quote }}
+            {{- end }}
             - name: POD_IP
               valueFrom:
                 fieldRef:

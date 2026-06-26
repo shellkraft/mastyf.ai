@@ -1,6 +1,11 @@
 /**
  * Per-request state for stdio proxy — keyed by JSON-RPC id (concurrent tools/call safe).
  */
+import {
+  captureEphemeralSecrets,
+  runWithEphemeralCredentialVault,
+} from '../security/ephemeral-credential-vault.js';
+
 export interface ProxyRequestContext {
   requestStartTime: number;
   requestToolName: string;
@@ -45,4 +50,31 @@ export class ProxyRequestContextStore {
   get size(): number {
     return this.pending.size;
   }
+}
+
+/** Capture provider-shaped secrets from request body/headers for log redaction (in-flight only). */
+export function captureRequestSecrets(
+  body?: string,
+  headers?: Record<string, string | string[] | undefined>,
+): void {
+  if (body) captureEphemeralSecrets(body);
+  if (!headers) return;
+  const auth = headers['authorization'];
+  const authVal = Array.isArray(auth) ? auth.join(' ') : auth;
+  if (authVal) captureEphemeralSecrets(authVal);
+  const apiKey = headers['x-api-key'];
+  const keyVal = Array.isArray(apiKey) ? apiKey.join(' ') : apiKey;
+  if (keyVal) captureEphemeralSecrets(keyVal);
+}
+
+/** Scope ephemeral credential vault to a single proxy request lifecycle. */
+export function withProxyRequestVault<T>(
+  body: string | undefined,
+  headers: Record<string, string | string[] | undefined> | undefined,
+  fn: () => T,
+): T {
+  return runWithEphemeralCredentialVault(() => {
+    captureRequestSecrets(body, headers);
+    return fn();
+  });
 }

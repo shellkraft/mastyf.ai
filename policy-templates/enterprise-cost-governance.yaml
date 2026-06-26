@@ -11,6 +11,11 @@ version: '1.0'
 policy:
   mode: block
   rules:
+    - name: cost-token-budget-per-minute
+      description: Cross-provider token accumulation cap (Redis cluster when REDIS_URL set)
+      action: block
+      maxTokensPerMinute: 250000
+
     - name: cost-rate-limit-global
       description: Cluster-wide 200 tool calls/min per server+tool (use REDIS_URL or Sentinel)
       action: block

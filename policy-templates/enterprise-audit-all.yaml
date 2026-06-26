@@ -5,6 +5,12 @@
 #
 # Requires POLICY_AUDIT_ENABLED=true (default in values-enterprise.yaml).
 # Pair with MASTYF_AI_AUDIT_HASH_CHAIN=true and MASTYF_AI_SIEM_* exporter env.
+# Loop / perturbation guard (session-flow strategy) — tune via:
+#   MASTYF_AI_LOOP_BURST_MAX_SIMILAR (default 8)
+#   MASTYF_AI_LOOP_BURST_WINDOW_MS (default 10000)
+#   MASTYF_AI_LOOP_SIMILARITY_THRESHOLD (default 0.82)
+#   MASTYF_AI_LOOP_TOKENS_PER_MIN (default 200000) — token-rate coupling with burst guard
+# Unified spend pool (all providers): MASTYF_AI_TENANT_TOKENS_PER_MIN, MASTYF_AI_TENANT_USD_PER_MIN
 
 version: '1.0'
 policy:

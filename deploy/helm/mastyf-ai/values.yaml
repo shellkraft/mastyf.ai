@@ -91,11 +91,19 @@ monitoring:
     enabled: false
   alertmanager:
     enabled: false
-    # Document external Alertmanager; wire ALERT_PAGERDUTY_KEY / ALERT_SLACK_WEBHOOK via ExternalSecrets
+    # Renders AlertmanagerConfig when enabled; wire webhooks via externalSecrets or secrets.existingSecret
+    labels: {}
+    slackChannel: "#mastyf-ai-alerts"
+    slackWebhookUrl: false
+    pagerdutyRoutingKey: false
   otel:
     enabled: false
     endpoint: http://otel-collector:4318
     serviceName: mastyf-ai
+    deployCollector: false
+    collectorImage: otel/opentelemetry-collector-contrib:0.96.0
+    # Optional second-hop OTLP export (Jaeger/Tempo/Grafana Cloud)
+    exportEndpoint: ""
 
 autoscaling:
   enabled: false

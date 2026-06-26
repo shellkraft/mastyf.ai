@@ -1,3 +1,6 @@
 {{- if and (gt (int .Values.replicaCount) 1) (eq .Values.database.type "sqlite") }}
 {{- fail (printf "replicaCount=%v with database.type=sqlite is unsafe (SQLite lock contention/corruption). Set database.type=postgres or use values-ha.yaml." .Values.replicaCount) }}
 {{- end }}
+{{- if and .Values.monitoring.alertmanager.enabled (not (or .Values.monitoring.alertmanager.slackWebhookUrl .Values.monitoring.alertmanager.pagerdutyRoutingKey)) }}
+{{- fail "monitoring.alertmanager.enabled requires slackWebhookUrl and/or pagerdutyRoutingKey" }}
+{{- end }}

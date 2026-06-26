@@ -21,6 +21,10 @@
     "./transports/http-fetch-client": {
       "import": "./dist/transports/http-fetch-client.js",
       "types": "./dist/transports/http-fetch-client.d.ts"
+    },
+    "./semantic-duration-hook": {
+      "import": "./dist/semantic-duration-hook.js",
+      "types": "./dist/semantic-duration-hook.d.ts"
     }
   },
   "scripts": {

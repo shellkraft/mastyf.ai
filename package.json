@@ -72,6 +72,7 @@
     "dev:build": "pnpm build && node scripts/dev.mjs mastyf-ai-configs/testbed-memory.json",
     "test:proxy": "MASTYF_AI_DB_PATH=/tmp/mastyf-ai-test-proxy.db vitest run tests/e2e/adversarial-proxy.e2e.test.ts --reporter=dot",
     "test": "vitest run && turbo run test",
+    "test:coverage": "vitest run --coverage",
     "test:report": "vitest run --coverage && echo '\n Reports generated in ./test-results/ and ./coverage/'",
     "report": "tsx scripts/generate-baseline-report.ts",
     "report:quick": "pnpm exec vitest run && pnpm exec tsx benchmarks/run.ts && pnpm exec tsx corpus/run-eval.ts",

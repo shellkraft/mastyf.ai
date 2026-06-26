@@ -78,6 +78,7 @@ export class CircuitBreaker {
       this.successCount = 0;
       this.openedAt = Date.now();
       Logger.warn(`[circuit-breaker:${this.name}] Circuit OPEN — half-open probe failed`);
+      this.notifyCircuitOpen('half-open probe failed');
       this.syncRedis();
     } else if (this.state === 'CLOSED') {
       this.failureCount++;
@@ -85,6 +86,7 @@ export class CircuitBreaker {
         this.state = 'OPEN';
         this.openedAt = Date.now();
         Logger.warn(`[circuit-breaker:${this.name}] Circuit OPEN — ${this.failureCount} consecutive failures`);
+        this.notifyCircuitOpen(`${this.failureCount} consecutive failures`);
         this.syncRedis();
       }
     }
@@ -108,7 +110,19 @@ export class CircuitBreaker {
     this.openedAt = Date.now();
     this.failureCount = this.failureThreshold;
     Logger.warn(`[circuit-breaker:${this.name}] Circuit force-opened${reason ? `: ${reason}` : ''}`);
+    this.notifyCircuitOpen(reason || 'force-opened');
     this.syncRedis();
+  }
+
+  private notifyCircuitOpen(detail: string): void {
+    void import('../alerting/webhook-alerter.js').then(({ sendAlert }) =>
+      sendAlert({
+        severity: 'warning',
+        title: `Circuit open: ${this.name}`,
+        message: detail,
+        serverName: this.name,
+      }),
+    ).catch(() => undefined);
   }
 
   private syncRedis(): void {

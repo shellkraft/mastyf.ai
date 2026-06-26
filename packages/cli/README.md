@@ -91,7 +91,7 @@ mastyf-ai       # stdio transport, auto-starts MCP server
 
 ### Testing & Quality
 - **207 tests** across 19 test files (core, server, cli, integration, e2e, fuzz)
-- **Code coverage** — 80% lines, 80% functions, 75% branches enforced in CI
+- **Code coverage** — 58% lines, 65% functions, 55% branches enforced in CI (`vitest.config.ts`)
 - **E2E proxy tests** — Real proxy spawns with policy YAML, sends JSON-RPC, verifies block/pass decisions
 - **Fuzz testing** — Payload normalizer and policy engine fuzzing
 - **Red-team corpus** — Labeled poisoned/benign test cases with precision/recall measurement
@@ -550,7 +550,7 @@ mastyf-ai proxy --policy ./new-policy.yaml --dry-run
 
 ### How do I contribute?
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines. The monorepo uses pnpm workspaces with turbo for build orchestration. Run `pnpm install && pnpm build && pnpm test` to verify your setup. All PRs must pass the 80% coverage threshold and the red-team corpus evaluation (F1 ≥ 85%).
+See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines. The monorepo uses pnpm workspaces with turbo for build orchestration. Run `pnpm install && pnpm build && pnpm test` to verify your setup. All PRs must pass the coverage thresholds in root `vitest.config.ts` and the red-team corpus evaluation (F1 ≥ 85%).
 
 ### Is it production-ready?
 

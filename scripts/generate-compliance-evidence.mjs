@@ -148,7 +148,7 @@ async function collectEvidence() {
       pciDssTemplate: existsSync(join(REPO_ROOT, 'policy-templates', 'pci-dss-masking.yaml')),
       dataResidencyTemplate: existsSync(join(REPO_ROOT, 'policy-templates', 'data-residency.yaml')),
       gxpTemplate: existsSync(join(REPO_ROOT, 'policy-templates', 'gxp-compliance.yaml')),
-      encryptionAtRest: process.env['MASTYF_AI_ENCRYPTION_KEY'] ? 'Enabled' : 'Not configured',
+      encryptionAtRest: process.env['MASTYF_AI_DB_ENCRYPTION_KEY'] ? 'Enabled' : 'Not configured',
     },
   });
 

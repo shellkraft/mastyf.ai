@@ -55,6 +55,16 @@ jobs:
       - name: Run tests with coverage
         run: pnpm vitest run --coverage
 
+      - name: Verify coverage summary
+        run: test -f coverage/coverage-summary.json
+
+      - name: Upload coverage artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-lcov
+          path: coverage/lcov.info
+          if-no-files-found: warn
+
   enterprise:
     name: Enterprise Preflight & Integration
     runs-on: ubuntu-latest
@@ -287,4 +297,9 @@ jobs:
       - name: Helm lint
         run: helm lint deploy/helm/mastyf-ai
       - name: Helm template smoke
-        run: helm template mastyf-ai deploy/helm/mastyf-ai --set redis.enabled=false > /dev/null
+        run: |
+          helm template mastyf-ai deploy/helm/mastyf-ai --set redis.enabled=false > /dev/null
+          helm template mastyf-ai deploy/helm/mastyf-ai \
+            -f deploy/helm/mastyf-ai/values.yaml \
+            -f deploy/helm/mastyf-ai/values-enterprise.yaml \
+            --set redis.enabled=false > /dev/null

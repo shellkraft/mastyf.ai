@@ -20,9 +20,12 @@ import type { IDatabase } from '../database/database-interface.js';
 import { OAuthValidator } from '../auth/oauth.js';
 import { createSessionCache, validateSessionToken, type MastyfAiSessionCache } from '../auth/session-factory.js';
 import { extractDpopProof, validateRequiredDpop } from '../auth/dpop-enforcement.js';
+import { notifyToolBlock } from '../alerting/notify-tool-block.js';
 import { getCircuitBreaker } from '../utils/circuit-breaker-registry.js';
 import { scanForSecrets } from '../scanners/secret-scanner.js';
-import { findingsToMessages, isResponseScanSkipped } from '../utils/streaming-inspector.js';
+import { findingsToMessages, isResponseScanSkipped, createStreamingInspectorState, type StreamingInspectorState } from '../utils/streaming-inspector.js';
+import { inspectCostStreamingChunk } from '../agentic/response-dlp/cost-streaming-inspector.js';
+import { withProxyRequestVault } from './proxy-request-context.js';
 import { gateToolResponseText } from '../utils/response-security-gate.js';
 import { persistCallRecord } from '../utils/call-record-cost.js';
 import { TokenCounter } from '../utils/token-counter.js';
@@ -41,7 +44,11 @@ import {
 } from './tool-fingerprint.js';
 import { publishRugPullAlert } from './rug-pull-cluster.js';
 import { isProxyInflightExceeded, proxyMaxInflight } from './proxy-inflight.js';
-import { runSyncSemanticRequestGate } from './proxy-post-policy-gates.js';
+import { runPostPolicyAllowGates } from './proxy-post-allow-gates.js';
+import {
+  runWithExtractedTrace,
+  withMcpToolCallSpan,
+} from './trace-context.js';
 
 export interface WebSocketProxyOptions {
   listenPort: number;
@@ -61,6 +68,7 @@ export class WebSocketProxyServer {
   private pendingMcpMethods = new Map<string | number, string>();
   private pendingMcpSessions = new Map<string | number, string>();
   private pendingToolTenants = new Map<string | number, string>();
+  private pendingStreamingCost = new Map<string | number, StreamingInspectorState>();
   private pendingSessionTokens = new Map<string | number, string>();
   private sessionCache: MastyfAiSessionCache | null;
   private tokenCounter = new TokenCounter();
@@ -219,6 +227,26 @@ export class WebSocketProxyServer {
 
       const toolName = this.pendingToolCalls.get(requestId) ?? 'unknown';
       const tenantId = this.pendingToolTenants.get(requestId);
+      const costState = this.pendingStreamingCost.get(requestId);
+      if (costState) {
+        const costCheck = inspectCostStreamingChunk(costState, raw, tenantId);
+        this.pendingStreamingCost.delete(requestId);
+        if (costCheck.terminateStream) {
+          this.pendingToolCalls.delete(requestId);
+          this.pendingToolTenants.delete(requestId);
+          if (clientWs.readyState === WebSocket.OPEN) {
+            clientWs.send(JSON.stringify({
+              jsonrpc: '2.0',
+              id: requestId,
+              error: {
+                code: -32003,
+                message: costCheck.reason ?? 'Streaming spend cap exceeded',
+              },
+            }));
+          }
+          return;
+        }
+      }
       this.pendingToolCalls.delete(requestId);
       this.pendingToolTenants.delete(requestId);
       const blocked = await this.inspectToolResponse(toolName, msg, requestId, tenantId);
@@ -313,6 +341,23 @@ export class WebSocketProxyServer {
     req: IncomingMessage,
   ): Promise<void> {
     const raw = typeof data === 'string' ? data : data.toString('utf-8');
+    return runWithExtractedTrace(
+      req.headers as Record<string, string | string[] | undefined>,
+      () =>
+        withProxyRequestVault(
+          raw,
+          req.headers as Record<string, string | string[] | undefined>,
+          () => this.interceptMessageInner(raw, clientWs, upstream, req),
+        ),
+    );
+  }
+
+  private async interceptMessageInner(
+    raw: string,
+    clientWs: WebSocket,
+    upstream: WebSocket,
+    req: IncomingMessage,
+  ): Promise<void> {
     let msg: Record<string, unknown>;
     try {
       msg = JSON.parse(raw);
@@ -372,7 +417,14 @@ export class WebSocketProxyServer {
         return;
       }
 
-      const blocked = await this.evaluateToolCall(msg, req);
+      const blocked = await withMcpToolCallSpan(
+        {
+          serverName: this.opts.serverName,
+          toolName: (params?.name as string | undefined) ?? 'unknown',
+          transport: 'websocket',
+        },
+        () => this.evaluateToolCall(msg, req),
+      );
       if (blocked) {
         if (msg.id != null) {
           this.pendingToolCalls.delete(msg.id as string | number);
@@ -544,6 +596,14 @@ export class WebSocketProxyServer {
 
     const decision = await this.opts.policy.evaluateAsync(context);
     if (decision.action === 'block') {
+      notifyToolBlock({
+        serverName: this.opts.serverName,
+        toolName: context.toolName,
+        rule: decision.rule,
+        reason: decision.reason,
+        requestId: context.requestId,
+        anomalyScore: 0.95,
+      });
       breaker.recordFailure();
       StructuredLogger.logBlocked({
         event: 'tool_blocked',
@@ -560,8 +620,8 @@ export class WebSocketProxyServer {
       };
     }
 
-    const semGate = await runSyncSemanticRequestGate(context, decision, this.opts.serverName);
-    if (semGate.block) {
+    const semGate = await runPostPolicyAllowGates(context, decision, this.opts.serverName);
+    if (semGate?.block) {
       breaker.recordFailure();
       StructuredLogger.logBlocked({
         event: 'tool_blocked',
@@ -637,6 +697,7 @@ export class WebSocketProxyServer {
 
     if (msg.id != null) {
       this.pendingToolTenants.set(msg.id as string | number, tenantId);
+      this.pendingStreamingCost.set(msg.id as string | number, createStreamingInspectorState());
     }
 
     return null;

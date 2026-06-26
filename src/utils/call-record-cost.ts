@@ -1,5 +1,12 @@
 import type { IDatabase } from '../database/database-interface.js';
 import type { ProxyCallRecord } from '../types.js';
+import { getRuntimeModelPricing } from '../services/runtime-model-pricing.js';
+import { resolveModelIdForServer } from '../config/llm-config.js';
+import * as Metrics from './metrics.js';
+import { broadcastDashboardEvent, emitFlowStep } from './dashboard-events.js';
+import { enqueueAuditWrite, initAuditWriteQueue } from '../database/audit-write-queue.js';
+import { recordTenantDailySpend } from '../services/tenant-budget.js';
+import { recordActualSpend } from '../services/unified-spend-pool.js';
 
 const MAX_BLOCK_REASON_CHARS = parseInt(process.env.MASTYF_AI_AUDIT_MAX_BLOCK_REASON_CHARS || '4096', 10);
 
@@ -16,12 +23,12 @@ export function compactCallRecordForPersistence(record: ProxyCallRecord): ProxyC
     blockReason: `${record.blockReason.slice(0, maxReason)}…[truncated]`,
   };
 }
-import { getRuntimeModelPricing } from '../services/runtime-model-pricing.js';
-import { resolveModelIdForServer } from '../config/llm-config.js';
-import * as Metrics from './metrics.js';
-import { broadcastDashboardEvent, emitFlowStep } from './dashboard-events.js';
-import { enqueueAuditWrite, initAuditWriteQueue } from '../database/audit-write-queue.js';
-import { recordTenantDailySpend } from '../services/tenant-budget.js';
+
+function estimateReservedUsd(requestTokens: number): number {
+  const tokens = requestTokens ?? 0;
+  if (tokens <= 0) return 0.001;
+  return tokens * 0.000002;
+}
 
 export async function enrichCallRecord(
   record: ProxyCallRecord,
@@ -80,6 +87,8 @@ export async function persistCallRecord(
   enqueueAuditWrite({ record: enriched, costRecord: costJob });
   if (enriched.costUsd && enriched.costUsd > 0) {
     recordTenantDailySpend(enriched.tenantId, enriched.costUsd);
+    const reservedUsd = estimateReservedUsd(enriched.requestTokens);
+    void recordActualSpend(enriched.tenantId, enriched.costUsd, reservedUsd);
   }
 
   broadcastDashboardEvent({

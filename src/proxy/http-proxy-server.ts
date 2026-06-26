@@ -15,6 +15,7 @@ import { checkIngressRateLimit } from './ingress-rate-limit.js';
 import { OAuthValidator } from '../auth/oauth.js';
 import { AuthValidationResult, AgentIdentity } from '../auth/auth-types.js';
 import { createSessionCache, validateSessionToken, type MastyfAiSessionCache } from '../auth/session-factory.js';
+import { notifyToolBlock } from '../alerting/notify-tool-block.js';
 import { getCircuitBreaker } from '../utils/circuit-breaker-registry.js';
 import type { MtlsConfig } from '../utils/mtls-config.js';
 import { getMtlsAgent } from '../utils/mtls-agent-registry.js';
@@ -40,7 +41,7 @@ import { inspectToolResponse as sharedInspectToolResponse } from './response-ins
 import { injectRotatedSessionIntoResult } from '../utils/mcp-session-meta.js';
 import { getUpstreamTimeoutMs } from '../utils/upstream-timeout.js';
 import { acquireProxyInflight, releaseProxyInflight } from './proxy-inflight.js';
-import { runSyncSemanticRequestGate } from './proxy-post-policy-gates.js';
+import { runPostPolicyAllowGates } from './proxy-post-allow-gates.js';
 import { runToolCallPreForwardGuard, toolCallGuardBlockResponse } from './tool-call-pre-guard.js';
 import { applyGeoToCallContext } from '../utils/request-geo-context.js';
 import { runMcpPrePipeline, applyMcpResponsePipeline, mcpResponseBlockJson } from './mcp-request-pipeline.js';
@@ -50,6 +51,13 @@ import {
   isRugPullBlockedForCall,
 } from './rug-pull-transport.js';
 import type { ToolFingerprintState } from './tool-fingerprint.js';
+import {
+  injectIntoUpstreamHeaders,
+  runWithExtractedTraceAsync,
+  withMcpToolCallSpan,
+} from './trace-context.js';
+import { runWithEphemeralCredentialVault } from '../security/ephemeral-credential-vault.js';
+import { captureRequestSecrets } from './proxy-request-context.js';
 
 /**
  * HTTP/SSE Proxy for remote MCP servers.
@@ -130,6 +138,12 @@ export class HttpProxyServer {
   }
 
   private async handleRequest(req: IncomingMessage, res: ServerResponse): Promise<void> {
+    return runWithEphemeralCredentialVault(() =>
+      runWithExtractedTraceAsync(req.headers, () => this.dispatchRequest(req, res)),
+    );
+  }
+
+  private async dispatchRequest(req: IncomingMessage, res: ServerResponse): Promise<void> {
     const requestId = randomUUID();
     const start = Date.now();
 
@@ -271,6 +285,7 @@ export class HttpProxyServer {
       chunks.push(chunk);
     }
     const body = Buffer.concat(chunks).toString();
+    captureRequestSecrets(body, req.headers as Record<string, string | string[] | undefined>);
 
     const contentType = req.headers['content-type'];
     const ct = Array.isArray(contentType) ? contentType[0] : contentType;
@@ -437,15 +452,14 @@ export class HttpProxyServer {
           const decision = await this.policyEngine.evaluateAsync(context);
           auditPolicyDecision(requestId, this.serverName, toolName, decision, context);
           if (decision.action === 'block') {
-            void import('../alerting/incident-responder.js').then(({ checkAndRespondToCriticalBlock, trackBlockSpike }) => {
-              trackBlockSpike(true);
-              return checkAndRespondToCriticalBlock(
-                decision.reason,
-                0.95,
-                toolName,
-                this.serverName,
-              );
-            }).catch(() => undefined);
+            notifyToolBlock({
+              serverName: this.serverName,
+              toolName,
+              rule: decision.rule,
+              reason: decision.reason,
+              requestId,
+              anomalyScore: 0.95,
+            });
             releaseProxyInflight(this.serverName);
             StructuredLogger.logBlocked({
               event: 'tool_blocked',
@@ -476,8 +490,8 @@ export class HttpProxyServer {
             return;
           }
 
-          const semGate = await runSyncSemanticRequestGate(context, decision, this.serverName);
-          if (semGate.block) {
+          const semGate = await runPostPolicyAllowGates(context, decision, this.serverName);
+          if (semGate?.block) {
             releaseProxyInflight(this.serverName);
             StructuredLogger.logBlocked({
               event: 'tool_blocked',
@@ -507,6 +521,7 @@ export class HttpProxyServer {
     }
 
     // ── Forward to upstream ──────────────────────────────────
+    const executeForward = async (): Promise<void> => {
     try {
       const upstreamUrl = new URL(this.targetUrl + (req.url || '/'));
       const isHttps = upstreamUrl.protocol === 'https:';
@@ -516,7 +531,7 @@ export class HttpProxyServer {
         port: upstreamUrl.port || (isHttps ? 443 : 80),
         path: upstreamUrl.pathname + upstreamUrl.search,
         method: req.method,
-        headers: { ...req.headers, host: upstreamUrl.hostname },
+        headers: injectIntoUpstreamHeaders(req.headers, { host: upstreamUrl.hostname }),
         timeout: getUpstreamTimeoutMs(),
       };
 
@@ -802,6 +817,18 @@ export class HttpProxyServer {
         res.writeHead(500, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ error: `Proxy error: ${err instanceof Error ? err.message : String(err)}` }));
       }
+    }
+    };
+
+    if (toolsCallName) {
+      await withMcpToolCallSpan({
+        serverName: this.serverName,
+        toolName: toolsCallName,
+        tenantId: requestTenantId,
+        transport: 'http',
+      }, executeForward);
+    } else {
+      await executeForward();
     }
   }
 

@@ -7,6 +7,8 @@ import {
   recordCoreSemanticSuccess,
 } from "./semantic-circuit-breaker.js";
 import { isCoreLocalSemanticEnabled, runLocalSemanticFallback } from "./local-semantic-fallback.js";
+import { isCoreSemanticStrictMode } from "./semantic-strict.js";
+import { reportSemanticScanDuration } from "./semantic-duration-hook.js";
 
 export interface SemanticScanOptions {
   apiKey?: string;               // Falls back to ANTHROPIC_API_KEY env var
@@ -106,6 +108,23 @@ export function sanitizeLlmErrorBody(body: string, secrets: string[] = []): stri
   return sanitized;
 }
 
+function semanticUnavailableIssue(
+  message: string,
+  category: string,
+  defaultId: string,
+): Issue {
+  const strict = isCoreSemanticStrictMode();
+  return {
+    id: strict ? 'MCPG-META-005' : defaultId,
+    layer: 'semantic',
+    severity: strict ? 'critical' : 'info',
+    category: strict ? 'fail-closed' : category,
+    message: strict ? `Semantic unavailable — fail-closed: ${message}` : message,
+    evidence: '',
+    confidence: 1.0,
+  };
+}
+
 async function runSemanticViaOllama(
   userPrompt: string,
   model: string,
@@ -179,15 +198,11 @@ export async function runSemanticScan(
       const localHits = runLocalSemanticFallback(tool);
       if (localHits.length) return localHits;
     }
-    return [{
-      id: "MCPG-META-001",
-      layer: "semantic",
-      severity: "info",
-      category: "configuration",
-      message: "Semantic scan skipped: no LLM API key and Ollama disabled",
-      evidence: "",
-      confidence: 1.0,
-    }];
+    return [semanticUnavailableIssue(
+      'Semantic scan skipped: no LLM API key and Ollama disabled',
+      'configuration',
+      'MCPG-META-001',
+    )];
   }
 
   if (isCoreSemanticCircuitOpen()) {
@@ -195,19 +210,17 @@ export async function runSemanticScan(
       const localHits = runLocalSemanticFallback(tool);
       if (localHits.length) return localHits;
     }
-    return [{
-      id: "MCPG-META-004",
-      layer: "semantic",
-      severity: "info",
-      category: "configuration",
-      message: "Semantic scan skipped: circuit breaker open",
-      evidence: "",
-      confidence: 1.0,
-    }];
+    return [semanticUnavailableIssue(
+      'Semantic scan skipped: circuit breaker open',
+      'configuration',
+      'MCPG-META-004',
+    )];
   }
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  const scanStarted = Date.now();
+  let scanOutcome = 'ok';
 
   try {
     let rawText = "";
@@ -256,6 +269,7 @@ export async function runSemanticScan(
     return verdictToIssues(verdict);
 
   } catch (err) {
+    scanOutcome = 'error';
     recordCoreSemanticFailure(err);
     const ollamaFallbackEnabled =
       process.env.OLLAMA_ENABLED === "true"
@@ -281,15 +295,11 @@ export async function runSemanticScan(
           const localHits = runLocalSemanticFallback(tool);
           if (localHits.length) return localHits;
         }
-        return [{
-          id: "MCPG-META-003",
-          layer: "semantic",
-          severity: "info",
-          category: "error",
-          message: `Semantic scan failed (Ollama fallback): ${(ollamaErr as Error).message}`,
-          evidence: "",
-          confidence: 1.0,
-        }];
+        return [semanticUnavailableIssue(
+          `Semantic scan failed (Ollama fallback): ${(ollamaErr as Error).message}`,
+          'error',
+          'MCPG-META-003',
+        )];
       }
     }
     if (isCoreLocalSemanticEnabled()) {
@@ -297,26 +307,19 @@ export async function runSemanticScan(
       if (localHits.length) return localHits;
     }
     if ((err as Error).name === "AbortError") {
-      return [{
-        id: "MCPG-META-002",
-        layer: "semantic",
-        severity: "info",
-        category: "configuration",
-        message: `Semantic scan timed out after ${timeoutMs}ms`,
-        evidence: "",
-        confidence: 1.0,
-      }];
+      return [semanticUnavailableIssue(
+        `Semantic scan timed out after ${timeoutMs}ms`,
+        'configuration',
+        'MCPG-META-002',
+      )];
     }
-    return [{
-      id: "MCPG-META-003",
-      layer: "semantic",
-      severity: "info",
-      category: "error",
-      message: `Semantic scan failed: ${sanitizeLlmErrorBody((err as Error).message, apiKey ? [apiKey] : [])}`,
-      evidence: "",
-      confidence: 1.0,
-    }];
+    return [semanticUnavailableIssue(
+      `Semantic scan failed: ${sanitizeLlmErrorBody((err as Error).message, apiKey ? [apiKey] : [])}`,
+      'error',
+      'MCPG-META-003',
+    )];
   } finally {
     clearTimeout(timeout);
+    reportSemanticScanDuration('core_corpus', Date.now() - scanStarted, scanOutcome);
   }
 }

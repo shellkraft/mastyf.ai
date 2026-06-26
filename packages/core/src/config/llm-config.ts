@@ -1,3 +1,6 @@
+import { getScanToolTimeoutMaxMs } from '../scan-timeouts.js';
+import { redactSecrets } from './redact-secrets.js';
+
 export type LlmProvider = 'anthropic' | 'openai' | 'ollama';
 
 export interface LlmConfig {
@@ -35,6 +38,17 @@ function defaultModelForProvider(provider: LlmProvider): string {
   }
 }
 
+function resolveTimeoutMs(): number {
+  const raw = parseInt(
+    process.env.MASTYF_AI_SEMANTIC_LLM_TIMEOUT_MS
+      || process.env.MASTYF_AI_LLM_TIMEOUT_MS
+      || '30000',
+    10,
+  );
+  const base = Number.isFinite(raw) && raw > 0 ? raw : 30_000;
+  return Math.min(base, getScanToolTimeoutMaxMs());
+}
+
 export function getLlmConfig(): LlmConfig {
   if (cached) return cached;
 
@@ -51,16 +65,19 @@ export function getLlmConfig(): LlmConfig {
       process.env.OLLAMA_URL ||
       'http://localhost:11434',
     maxTokens: parseInt(process.env.MASTYF_AI_LLM_MAX_TOKENS || '512', 10),
-    timeoutMs: parseInt(
-      process.env.MASTYF_AI_SEMANTIC_LLM_TIMEOUT_MS
-        || process.env.MASTYF_AI_LLM_TIMEOUT_MS
-        || '30000',
-      10,
-    ),
+    timeoutMs: resolveTimeoutMs(),
     temperature: parseFloat(process.env.MASTYF_AI_LLM_TEMPERATURE || '0.1'),
     enabled: process.env.MASTYF_AI_LLM_ENABLED !== 'false',
   };
   return cached;
+}
+
+/** Safe snapshot for debug logging (secrets redacted). */
+export function getLlmConfigForLogging(): Omit<LlmConfig, 'anthropicApiKey' | 'openaiApiKey'> & {
+  anthropicApiKey?: string;
+  openaiApiKey?: string;
+} {
+  return redactSecrets(getLlmConfig());
 }
 
 export function resetLlmConfigForTests(): void {

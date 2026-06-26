@@ -8,7 +8,8 @@ import { tryAcquireSemanticSlot, releaseSemanticSlot, semanticQueueMax, semantic
 import { isCoreSemanticCircuitOpen, tryBeginCoreSemanticScan, abortCoreSemanticProbe } from "./semantic-circuit-breaker.js";
 import { isCoreLocalSemanticEnabled, runLocalSemanticFallback } from "./local-semantic-fallback.js";
 import { runArgumentScan } from "./argument-scanner.js";
-import { getLlmConfig } from "./config/llm-config.js";
+import { resolveScanToolTimeoutMs } from "./scan-timeouts.js";
+import { getMaxArgumentBytes, serializedArgumentBytes } from "./payload-limits.js";
 
 export interface ScanEngineOptions {
   /** TR39 confusables before offline regex (default: true). */
@@ -33,26 +34,36 @@ function computeStatus(issues: Issue[]): ScanStatus {
   return "clean";
 }
 
-const REGEX_TO_SEMANTIC_CATEGORY: Record<string, string> = {
+const CATEGORY_ALIASES: Record<string, string> = {
   "cross-tool": "cross-tool-chaining",
   "privilege-escalation": "privilege-escalation",
-  "exfiltration": "exfiltration",
-  "stealth": "stealth",
-  "injection": "prompt-injection",
-  "shell": "shell-injection",
-  "ssrf": "ssrf",
-  "path": "path-traversal",
+  exfiltration: "exfiltration",
+  stealth: "stealth",
+  injection: "prompt-injection",
+  "prompt-injection": "prompt-injection",
+  shell: "shell-injection",
+  ssrf: "ssrf",
+  path: "path-traversal",
+  "path-traversal": "path-traversal",
 };
+
+function normalizeIssueCategory(category: string): string {
+  const key = category.toLowerCase().trim();
+  if (CATEGORY_ALIASES[key]) return CATEGORY_ALIASES[key];
+  return key.replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "unknown";
+}
 
 function deduplicateIssues(issues: Issue[]): Issue[] {
   const semanticCategories = new Set(
-    issues.filter((i) => i.layer === "semantic").map((i) => i.category),
+    issues
+      .filter((i) => i.layer === "semantic")
+      .map((i) => normalizeIssueCategory(i.category || "unknown")),
   );
   return issues.filter((i) => {
     if (i.layer === "argument" || i.layer === "semantic") return true;
     if (i.layer !== "regex" && i.layer !== "schema") return true;
-    const mapped = REGEX_TO_SEMANTIC_CATEGORY[i.category] ?? i.category;
-    return !semanticCategories.has(mapped);
+    const cat = normalizeIssueCategory(i.category || "unknown");
+    return !semanticCategories.has(cat);
   });
 }
 
@@ -78,10 +89,11 @@ export function resetScanConcurrencyCacheForTests(): void {
 }
 
 function scanToolTimeoutMs(): number {
-  const explicit = parseInt(process.env["MASTYF_AI_SCAN_TOOL_TIMEOUT_MS"] || "", 10);
-  if (Number.isFinite(explicit) && explicit > 0) return explicit;
-  return getLlmConfig().timeoutMs + 5000;
+  return resolveScanToolTimeoutMs();
 }
+
+/** @internal Test hook */
+export { resolveScanToolTimeoutMs } from "./scan-timeouts.js";
 
 function scanServerBudgetMs(): number {
   const n = parseInt(process.env["MASTYF_AI_SCAN_SERVER_BUDGET_MS"] || "300000", 10);
@@ -224,14 +236,19 @@ export async function scanTool(
             alwaysRun: !onlyOnHits,
           }
         );
-        const skipMeta = rawSemantic.find((i) => i.category === "configuration" || i.category === "error");
+        const skipMeta = rawSemantic.find(
+          (i) => (i.category === "configuration" || i.category === "error")
+            && i.severity !== "critical",
+        );
         if (skipMeta && skipMeta.layer === "semantic") {
           timings.semantic = {
             ran: false,
             durationMs: Math.round(performance.now() - t0),
             skipped: skipMeta.message,
           };
-          semanticIssues = rawSemantic.filter((i) => i.category !== "configuration" && i.category !== "error");
+          semanticIssues = rawSemantic.filter(
+            (i) => i.severity === "critical" || (i.category !== "configuration" && i.category !== "error"),
+          );
         } else {
           semanticIssues = rawSemantic.filter(
             i => i.layer !== "semantic" || i.confidence >= confidenceThreshold
@@ -282,9 +299,22 @@ export async function scanToolCall(
 
   // ── Argument scan (runtime layer) ─────────────────────────────────
   let rawArgumentIssues: Issue[] = [];
-  if (args && !options.skipRegex) {
-    const argResult = runArgumentScan(args, tool.name);
-    rawArgumentIssues = argResult.issues;
+  if (args) {
+    const argBytes = serializedArgumentBytes(args);
+    if (argBytes > getMaxArgumentBytes()) {
+      rawArgumentIssues = [{
+        id: "MCPG-META-006",
+        layer: "argument",
+        severity: "critical",
+        category: "payload-limit",
+        message: `Tool arguments exceed ${getMaxArgumentBytes()} byte limit (${argBytes} bytes)`,
+        evidence: tool.name,
+        confidence: 1.0,
+      }];
+    } else if (!options.skipRegex) {
+      const argResult = runArgumentScan(args, tool.name);
+      rawArgumentIssues = argResult.issues;
+    }
   }
 
   const allIssues = deduplicateIssues([

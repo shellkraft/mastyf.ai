@@ -11,6 +11,7 @@ import {
 } from './db-aggregate.js';
 import { getEffectiveSwarmDir } from '../tenant/swarm-tenant-paths.js';
 import { DEFAULT_TENANT_ID } from '../tenant/resolve-tenant.js';
+import { getTraceLogFields } from './tracing.js';
 import { resolveAiPendingSuggestionsPath } from '../ai/ai-paths.js';
 import { getAiEngine } from '../ai/suggestion-engine.js';
 
@@ -59,6 +60,7 @@ export function wireDashboardWsProviders(ws: WsBroadcaster | null, historyDb: un
           activeServers: srvs.length,
           burnRatePerHour: sum.total > 0 ? (sum.costUsd / sum.total) * 100 : 0,
           lastUpdated: new Date().toISOString(),
+          ...getTraceLogFields(),
         };
       } catch {
         return null;

@@ -122,3 +122,41 @@ export function runEntropyScan(
 
   return issues;
 }
+
+const OPENAI_KEY_RE = /^sk-[A-Za-z0-9_-]{20,}$/;
+const ANTHROPIC_KEY_RE = /^sk-ant-[A-Za-z0-9_-]{20,}$/;
+const BEARER_JWT_RE = /^Bearer\s+[A-Za-z0-9._-]{20,}$/i;
+const MIN_PROVIDER_KEY_ENTROPY = 3.8;
+const MIN_PROVIDER_KEY_LENGTH = 40;
+
+function redactCredentialEvidence(value: string): string {
+  if (value.length <= 8) return '***';
+  return `${value.slice(0, 4)}…${value.slice(-4)}`;
+}
+
+/** Flag provider-shaped API keys with insufficient entropy (format-only bypass). */
+export function runCredentialFormatScan(
+  flat: { keyPath: string; value: string }[],
+): Issue[] {
+  const issues: Issue[] = [];
+  for (const item of flat) {
+    const trimmed = item.value.trim();
+    const looksLikeKey = OPENAI_KEY_RE.test(trimmed)
+      || ANTHROPIC_KEY_RE.test(trimmed)
+      || BEARER_JWT_RE.test(trimmed);
+    if (!looksLikeKey) continue;
+    const entropy = shannonEntropyBpc(trimmed.replace(/^Bearer\s+/i, ''));
+    if (trimmed.length < MIN_PROVIDER_KEY_LENGTH || entropy < MIN_PROVIDER_KEY_ENTROPY) {
+      issues.push({
+        id: 'MCPG-CRED-001',
+        layer: 'regex',
+        severity: 'warning',
+        category: 'weak-credential',
+        message: `Probable API key with low entropy in "${item.keyPath}"`,
+        evidence: redactCredentialEvidence(trimmed),
+        confidence: 0.82,
+      });
+    }
+  }
+  return issues;
+}

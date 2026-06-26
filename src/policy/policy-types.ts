@@ -49,6 +49,10 @@ export interface PolicyRule {
   cacheable?: boolean;
   /** Max calls per minute per server */
   maxCallsPerMinute?: number;
+  /** Max tokens accumulated per minute (cluster Redis when configured) */
+  maxTokensPerMinute?: number;
+  /** Max estimated USD per minute for tool traffic */
+  maxUsdPerMinute?: number;
   /** Adaptive burst limit — max calls per 10-second window */
   maxCallsPer10Seconds?: number;
   /** v0.5.1: RBAC — scope, client_id, and tenant constraints */

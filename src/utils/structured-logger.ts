@@ -1,6 +1,8 @@
 import pino from 'pino';
 import { PolicyDecision, CallContext } from '../policy/policy-types.js';
 import { Logger } from './logger.js';
+import { getTraceLogFields } from './tracing.js';
+import { redactEphemeralSecrets } from '../security/ephemeral-credential-vault.js';
 
 /**
  * Structured JSON logger for enterprise SIEM ingestion.
@@ -20,6 +22,22 @@ const logger = pino(
   },
   pino.destination({ fd: 2, sync: false }),
 );
+
+function withTraceCorrelation<T extends object>(entry: T): T & { trace_id?: string; span_id?: string } {
+  const merged = { ...entry, ...getTraceLogFields() };
+  if (typeof merged === 'object' && merged !== null && 'message' in merged && typeof merged.message === 'string') {
+    (merged as { message: string }).message = redactEphemeralSecrets(merged.message);
+  }
+  return merged as T & { trace_id?: string; span_id?: string };
+}
+
+function logObject(levelFn: (obj: object) => void, msg: object | string): void {
+  if (typeof msg === 'string') {
+    levelFn(withTraceCorrelation({ message: msg }));
+    return;
+  }
+  levelFn(withTraceCorrelation(msg));
+}
 
 export interface AuditLogEntry {
   event: 'policy_decision';
@@ -49,9 +67,9 @@ export interface ErrorLogEntry {
 
 export class StructuredLogger {
   static logPolicyDecision(entry: AuditLogEntry): void {
-    logger.info(entry);
+    logger.info(withTraceCorrelation(entry));
     import('./enterprise-bootstrap.js').then(({ exportSiemEvent }) => {
-      exportSiemEvent('policy_decision', entry as unknown as Record<string, unknown>).catch((e: unknown) => {
+      exportSiemEvent('policy_decision', withTraceCorrelation(entry) as unknown as Record<string, unknown>).catch((e: unknown) => {
         Logger.error(`[structured-logger] SIEM export failed: ${e instanceof Error ? e.message : String(e)}`);
       });
     }).catch((e: unknown) => {
@@ -60,9 +78,9 @@ export class StructuredLogger {
   }
 
   static logBlocked(entry: BlockLogEntry): void {
-    logger.warn(entry);
+    logger.warn(withTraceCorrelation(entry));
     import('./enterprise-bootstrap.js').then(({ exportSiemEvent }) => {
-      exportSiemEvent('tool_blocked', entry as unknown as Record<string, unknown>).catch((e: unknown) => {
+      exportSiemEvent('tool_blocked', withTraceCorrelation(entry) as unknown as Record<string, unknown>).catch((e: unknown) => {
         Logger.error(`[structured-logger] SIEM export failed: ${e instanceof Error ? e.message : String(e)}`);
       });
     }).catch((e: unknown) => {
@@ -71,18 +89,18 @@ export class StructuredLogger {
   }
 
   static logError(entry: ErrorLogEntry): void {
-    logger.error(entry);
+    logger.error(withTraceCorrelation(entry));
   }
 
   static info(msg: object | string): void {
-    logger.info(msg);
+    logObject((obj) => logger.info(obj), msg);
   }
 
   static warn(msg: object | string): void {
-    logger.warn(msg);
+    logObject((obj) => logger.warn(obj), msg);
   }
 
   static debug(msg: object | string): void {
-    logger.debug(msg);
+    logObject((obj) => logger.debug(obj), msg);
   }
 }

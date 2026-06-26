@@ -43,6 +43,8 @@ export const PolicyRuleSchema = z
     toolAllowExceptions: z.array(z.string()).optional(),
     maxTokens: z.number().positive().optional(),
     maxCallsPerMinute: z.number().positive().optional(),
+    maxTokensPerMinute: z.number().positive().optional(),
+    maxUsdPerMinute: z.number().positive().optional(),
     maxCallsPer10Seconds: z.number().positive().optional(),
     cacheable: z.boolean().optional(),
     rbac: RbacSchema.optional(),

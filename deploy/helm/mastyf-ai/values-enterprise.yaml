@@ -56,9 +56,17 @@ config:
     MASTYF_AI_TELEMETRY_ENDPOINTS: "http://$(POD_IP):9090/metrics"
     MASTYF_AI_REQUIRE_INBOUND_TLS: "true"
     OTEL_SERVICE_NAME: mastyf-ai
+    OTEL_ENABLED: "true"
     MASTYF_AI_DASHBOARD_DATA_SOURCE: "auto"
     MASTYF_AI_DPOP_LOCK_FREE: "true"
     OLLAMA_ENABLED: "true"
+    MASTYF_AI_ALERTING_REQUIRED: "true"
+    MASTYF_AI_SEMANTIC_STRICT: "true"
+    MASTYF_AI_CORE_SEMANTIC_FAIL_CLOSED: "true"
+    MASTYF_AI_SEMANTIC_SYNC_REQUEST_LLM: "true"
+    MASTYF_AI_DB_ENCRYPT_AUDIT_ARGS: "true"
+    MASTYF_AI_TENANT_TOKENS_PER_MIN: "500000"
+    MASTYF_AI_LOOP_TOKENS_PER_MIN: "200000"
 database:
   type: postgres
   # Route through PgBouncer (transaction mode), port 6432 — NOT postgres:5432
@@ -119,9 +127,14 @@ monitoring:
     enabled: true
   alertmanager:
     enabled: true
+    labels:
+      alertmanagerConfig: mastyf-ai
+    slackWebhookUrl: true
+    pagerdutyRoutingKey: true
   otel:
     enabled: true
     endpoint: http://otel-collector.observability:4318
+    deployCollector: false
 
 networkPolicy:
   enabled: true
@@ -170,3 +183,7 @@ affinity:
             matchLabels:
               app.kubernetes.io/name: mastyf-ai
           topologyKey: kubernetes.io/hostname
+
+# Requires External Secrets Operator + ClusterSecretStore (see externalsecret.yaml vault paths).
+externalSecrets:
+  enabled: true

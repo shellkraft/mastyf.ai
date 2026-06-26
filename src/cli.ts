@@ -17,12 +17,10 @@ import { shutdownMetrics, startMetricsServer } from './utils/metrics.js';
 import { closeDashboardServer } from './utils/dashboard-server.js';
 import { startDashboardServer, setDashboardDataSource } from './utils/dashboard-server.js';
 import { DashboardAuth } from './auth/dashboard-auth.js';
-import { initTracing } from './utils/tracing.js';
 import { createContainer } from './container.js';
 import { setAgenticContainer } from './utils/dashboard-server.js';
-import { bootstrapCompliance, shutdownEnterprise, bootstrapControlPlane } from './utils/enterprise-bootstrap.js';
+import { bootstrapCompliance, shutdownEnterprise, bootstrapControlPlane, bootstrapSecrets } from './utils/enterprise-bootstrap.js';
 import { createDatabase } from './database/create-database.js';
-import { bootstrapSecrets } from './utils/enterprise-bootstrap.js';
 import { broadcastDashboardEvent } from './utils/dashboard-events.js';
 import { triggerLearningCycleIfEnabled } from './ai/suggestion-engine.js';
 import { readFileSync } from 'fs';
@@ -966,9 +964,6 @@ program
 
     const { runPreflightScanAndHealth } = await import('./utils/preflight-scan.js');
     runPreflightScanAndHealth(servers, db);
-
-    // Start OpenTelemetry tracing if configured
-    initTracing().catch(() => {});
 
     // Start Prometheus metrics server if enabled
     const metricsPort = parseInt(process.env['METRICS_PORT'] || '9090', 10);

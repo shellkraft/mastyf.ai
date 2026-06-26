@@ -1,4 +1,4 @@
-{{- if and .Values.monitoring.prometheusRule.enabled .Capabilities.APIVersions.Has "monitoring.coreos.com/v1" }}
+{{- if and .Values.monitoring.prometheusRule.enabled (.Capabilities.APIVersions.Has "monitoring.coreos.com/v1") }}
 apiVersion: monitoring.coreos.com/v1
 kind: PrometheusRule
 metadata:
@@ -14,8 +14,8 @@ spec:
       rules:
         - alert: MastyfAiHighBlockRate
           expr: |
-            sum(rate(mastyf_ai_proxy_requests_total{decision="block"}[5m]))
-            / sum(rate(mastyf_ai_proxy_requests_total[5m])) > {{ .Values.monitoring.prometheusRule.thresholds.blockRateRatio }}
+            sum(rate(mastyf_ai_requests_total{decision="block"}[5m]))
+            / sum(rate(mastyf_ai_requests_total[5m])) > {{ .Values.monitoring.prometheusRule.thresholds.blockRateRatio }}
           for: 10m
           labels:
             severity: warning
@@ -46,4 +46,12 @@ spec:
           annotations:
             summary: Audit queue depth high
             description: SIEM export or audit sync may be backlogged.
+        - alert: MastyfAiTenantSpendNearCap
+          expr: mastyf_ai_tenant_spend_usd_day_ratio > 0.9
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: Tenant daily spend near cap
+            description: Unified spend pool above 90% of daily USD cap.
 {{- end }}

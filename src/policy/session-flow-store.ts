@@ -35,6 +35,8 @@ export interface FlowEvent {
   argumentsSnapshot?: Record<string, unknown>;
   /** Normalized argument fingerprint for loop / perturbation detection. */
   argFingerprint?: string;
+  /** Request tokens for token-rate loop detection. */
+  tokens?: number;
 }
 
 const memoryStore = new LRUCache<string, FlowEvent[]>({
