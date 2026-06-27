@@ -169,36 +169,54 @@ mastyf.ai runs two coordinated swarms. The CI Swarm attacks your policy before c
 ```mermaid
 flowchart TB
 
-  subgraph CI["CI Swarm (PR + Nightly)"]
+  AI["🤖 AI Clients\nCursor · Claude Desktop · Cline"]
+
+  subgraph CI["🔵 CI Swarm (PR + Nightly)"]
     direction LR
-    Scout["Scout Agent\nSAST, deps, config scan"]
-    Corpus["Corpus Agent\n228 fixtures eval"]
-    Evasion["Evasion Agent\n120+ probes + generate new"]
-    Parity["Parity Agent\nNode vs Python"]
-    ProxyA["Proxy Agent\nLive stdio MCP tests"]
-    Report["Report Agent\nsecurity-swarm/latest.json"]
+    Scout["🔍 Scout Agent\nSAST, deps, config scan"]
+    Corpus["📋 Corpus Agent\n228 fixtures eval"]
+    Evasion["⚡ Evasion Agent\n120+ probes + generate new"]
+    Parity["🔄 Parity Agent\nNode vs Python"]
+    ProxyA["🖥️ Proxy Agent\nLive stdio MCP tests"]
+    Report["📊 Report Agent\nsecurity-swarm/latest.json"]
     Scout --> Corpus --> Evasion --> Parity --> ProxyA --> Report
   end
 
-  subgraph Runtime["Runtime Swarm (Production Proxy)"]
+  subgraph Runtime["🟢 Runtime Swarm (Production Proxy)"]
     direction LR
-    BG["BlockGuard\nsync policy"]
-    IL["InstantLearner\nper-block stats + suggestions"]
-    SA["SemanticAuditor\nasync LLM, optional"]
-    PS["PatternSynthesizer\nbatch suggestions"]
-    Cal["Calibrator\nlabels + thresholds"]
+    BG["🛡️ BlockGuard\nsync policy"]
+    IL["📈 InstantLearner\nper-block stats + suggestions"]
+    SA["🧠 SemanticAuditor\nasync LLM, optional"]
+    PS["🔗 PatternSynthesizer\nbatch suggestions"]
+    Cal["⚙️ Calibrator\nlabels + thresholds"]
     BG --> IL --> PS --> Cal
     BG --> SA --> PS
   end
 
-  Report -->|"Loop A: bypasses to corpus"| Corpus
-  Cal -->|"Loop B: blocks to rules"| BG
-  Cal -->|"Loop C: labels to LLM calibration"| SA
-  Report -->|"Loop D: CI metrics to runtime config weekly"| Cal
+  Tools["🗄️ MCP Tools\nfilesystem · GitHub · databases · APIs"]
 
-  AI["AI clients\nCursor · Claude Desktop · Cline · custom"] --> BG
-  Cal -->|"promote rules / calibrate LLM"| BG
-  BG -->|"allowed calls only"| Tools["MCP tools\nfilesystem · GitHub · databases · APIs"]
+  AI -->|"every tool call"| BG
+  BG -->|"✅ allowed"| Tools
+  Report -->|"🔁 Loop A: bypasses to corpus"| Corpus
+  Cal -->|"🔁 Loop B: blocks to rules"| BG
+  Cal -->|"🔁 Loop C: labels to LLM"| SA
+  Report -->|"🔁 Loop D: CI metrics weekly"| Cal
+
+  style CI fill:#EFF6FF,stroke:#3B82F6,stroke-width:2px,color:#1E3A5F
+  style Runtime fill:#F0FDF4,stroke:#22C55E,stroke-width:2px,color:#14532D
+  style Scout fill:#DBEAFE,stroke:#3B82F6,color:#1E40AF
+  style Corpus fill:#DBEAFE,stroke:#3B82F6,color:#1E40AF
+  style Evasion fill:#DBEAFE,stroke:#3B82F6,color:#1E40AF
+  style Parity fill:#DBEAFE,stroke:#3B82F6,color:#1E40AF
+  style ProxyA fill:#DBEAFE,stroke:#3B82F6,color:#1E40AF
+  style Report fill:#DBEAFE,stroke:#3B82F6,color:#1E40AF
+  style BG fill:#BBF7D0,stroke:#16A34A,color:#14532D
+  style IL fill:#BBF7D0,stroke:#16A34A,color:#14532D
+  style SA fill:#BBF7D0,stroke:#16A34A,color:#14532D
+  style PS fill:#BBF7D0,stroke:#16A34A,color:#14532D
+  style Cal fill:#BBF7D0,stroke:#16A34A,color:#14532D
+  style AI fill:#FEF3C7,stroke:#F59E0B,stroke-width:2px,color:#78350F
+  style Tools fill:#FEF3C7,stroke:#F59E0B,stroke-width:2px,color:#78350F
 ```
 
 **Canonical gates:** 228/228 corpus, 0 bypasses, 100% parity
