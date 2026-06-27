@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/assets/logo.jpeg" alt="mastyf.ai logo" width="100" />
+  <img src="docs/assets/logo.jpeg" alt="mastyf.ai logo" width="200" />
 </p>
 
 <h1 align="center">mastyf.ai</h1>
@@ -17,16 +17,10 @@
 </p>
 
 <p align="center">
-  <a href="LICENSE">
-    <img src="https://img.shields.io/badge/License-MIT-yellow" alt="License">
-  </a>
-  <a href="https://github.com/mastyf-ai/mastyf.ai/actions">
-    <img src="https://img.shields.io/badge/CI-GitHub_Actions-blue" alt="CI">
-  </a>
-  <a href="coverage/lcov-report/index.html">
-    <img src="https://img.shields.io/badge/coverage-58%25-yellow" alt="Coverage">
-  </a>
-  <img src="https://img.shields.io/badge/version-4.1.7-green" alt="Version">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-F59E0B?style=for-the-badge" alt="License"></a>
+  <a href="https://github.com/mastyf-ai/mastyf.ai/actions"><img src="https://img.shields.io/badge/CI-passing-22C55E?style=for-the-badge&logo=githubactions&logoColor=white" alt="CI"></a>
+  <a href="coverage/lcov-report/index.html"><img src="https://img.shields.io/badge/coverage-58%25-EAB308?style=for-the-badge" alt="Coverage"></a>
+  <img src="https://img.shields.io/badge/version-4.1.7-3B82F6?style=for-the-badge" alt="Version">
 </p>
 
 ---
