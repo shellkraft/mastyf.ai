@@ -16,10 +16,18 @@
   <a href="https://github.com/mastyf-ai/mastyf.ai">GitHub</a>
 </p>
 
-[![License](https://img.shields.io/badge/License-MIT-yellow)](LICENSE)
-[![CI](https://img.shields.io/badge/CI-GitHub_Actions-blue)](https://github.com/mastyf-ai/mastyf.ai/actions)
-[![Coverage](https://img.shields.io/badge/coverage-58%25-yellow)](coverage/lcov-report/index.html)
-[![Version](https://img.shields.io/badge/version-4.1.7-green)]()
+<p align="center">
+  <a href="LICENSE">
+    <img src="https://img.shields.io/badge/License-MIT-yellow" alt="License">
+  </a>
+  <a href="https://github.com/mastyf-ai/mastyf.ai/actions">
+    <img src="https://img.shields.io/badge/CI-GitHub_Actions-blue" alt="CI">
+  </a>
+  <a href="coverage/lcov-report/index.html">
+    <img src="https://img.shields.io/badge/coverage-58%25-yellow" alt="Coverage">
+  </a>
+  <img src="https://img.shields.io/badge/version-4.1.7-green" alt="Version">
+</p>
 
 ---
 
@@ -53,13 +61,13 @@ There is no perimeter. No enforcement. No audit trail. Until now.
 
 Every tool call passes through three layers before it reaches your infrastructure.
 
-**Layer 1 — Pattern detection**
+**Layer 1 - Pattern detection**
 Regex-based scanning for injection, dangerous paths, leaked secrets, shell commands, and encoding tricks. Runs in microseconds with no external dependencies.
 
-**Layer 2 — Schema validation**
+**Layer 2 - Schema validation**
 Rejects malformed payloads, oversized arguments, and JSON-RPC violations before they reach policy evaluation.
 
-**Layer 3 — Semantic review**
+**Layer 3 - Semantic review**
 An optional local LLM (Ollama) or cloud model evaluates borderline calls that pass pattern checks. Falls back to heuristics if no model is configured.
 
 Anything that fails is blocked. The tool never runs. Everything is logged.
@@ -98,6 +106,34 @@ node dist/cli.js doctor    # verify everything is connected
 
 ---
 
+## Dashboard
+
+Full visibility into every action your AI takes.
+
+<!-- SCREENSHOT: Dashboard overview / main metrics view -->
+<!-- Replace this comment with a screenshot of the main dashboard -->
+
+| Section | What you see |
+|---------|-------------|
+| Protection | Block rate, top triggered rules, live threat feed |
+| Activity | Every tool call with full arguments, allow or block status, timestamp |
+| Policy | Live rule editor with hot-reload from YAML |
+| Threat Lab | AI-suggested attack tests, reviewed and approved before anything applies |
+| Cost | Token usage and cost estimates broken down per tool call |
+
+<!-- SCREENSHOT: Activity log / audit trail -->
+<!-- Replace this comment with a screenshot of the activity and audit log view -->
+
+> Do not expose port 4000 publicly without enabling dashboard auth. The default local dev config has `DASHBOARD_AUTH_DISABLED=true`.
+
+### Security Operations Dashboard
+<img width="1077" height="979" alt="image" src="https://github.com/user-attachments/assets/2a5a0104-1489-4f2c-843f-447fc8f6893e" />
+
+### Real Time Agent Activity 
+<img width="1074" height="980" alt="image" src="https://github.com/user-attachments/assets/8e4cca48-c1fb-4f3a-aad3-dd771548f309" />
+
+---
+
 ## Policy
 
 Your rules live in `default-policy.yaml`. You own them. mastyf.ai enforces them.
@@ -133,32 +169,7 @@ Roll out safely with three enforcement modes:
 
 Pre-built templates for HIPAA, PCI-DSS, GxP, and data residency are in [`policy-templates/`](policy-templates/).
 
----
-
-<!-- SCREENSHOT: Policy editor in the dashboard -->
-<!-- Replace this comment with a screenshot of the policy management UI -->
-
----
-
-## Dashboard
-
-Full visibility into every action your AI takes.
-
-<!-- SCREENSHOT: Dashboard overview / main metrics view -->
-<!-- Replace this comment with a screenshot of the main dashboard -->
-
-| Section | What you see |
-|---------|-------------|
-| Protection | Block rate, top triggered rules, live threat feed |
-| Activity | Every tool call with full arguments, allow or block status, timestamp |
-| Policy | Live rule editor with hot-reload from YAML |
-| Threat Lab | AI-suggested attack tests, reviewed and approved before anything applies |
-| Cost | Token usage and cost estimates broken down per tool call |
-
-<!-- SCREENSHOT: Activity log / audit trail -->
-<!-- Replace this comment with a screenshot of the activity and audit log view -->
-
-> Do not expose port 4000 publicly without enabling dashboard auth. The default local dev config has `DASHBOARD_AUTH_DISABLED=true`.
+<img width="1017" height="698" alt="image" src="https://github.com/user-attachments/assets/cd1aa0a7-3b2c-4af4-b347-0bb4ebab2f61" />
 
 ---
 
@@ -323,6 +334,4 @@ Before installing any MCP server from npm, check its trust score at [mastyf-ai-c
 - [Real-world MCP integration examples](docs/REAL_WORLD_INTEGRATION.md)
 - [Core detection engine](packages/core/README.md)
 
----
 
-**License:** [MIT](LICENSE) · [GitHub](https://github.com/mastyf-ai/mastyf.ai) · [Website](https://mastyf-ai-cloud-jet.vercel.app/)
