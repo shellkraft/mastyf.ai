@@ -68,11 +68,6 @@ Anything that fails is blocked. The tool never runs. Everything is logged.
 
 ---
 
-<!-- SCREENSHOT: Enforcement pipeline visualization -->
-<!-- Replace this comment with a screenshot of the real-time block feed -->
-
----
-
 ## Quick start
 
 **Requirements:** Node.js 18+, pnpm
