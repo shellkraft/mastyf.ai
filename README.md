@@ -69,30 +69,25 @@ Anything that fails is blocked. The tool never runs. Everything is logged.
 ---
 
 ## Quick start
-
-**Requirements:** Node.js 18+, pnpm
-
+ 
+### Docker
+ 
+The easiest way to run mastyf.ai on any platform (Windows, macOS, or Linux).
+ 
+**Requirements:** [Docker Desktop](https://www.docker.com/products/docker-desktop/)
+ 
 ```bash
 git clone https://github.com/mastyf-ai/mastyf.ai.git
 cd mastyf.ai
-corepack enable
-pnpm install && pnpm build
+docker compose -f deploy/docker-compose.yml up -d --build
 ```
-
-Start the proxy and dashboard:
-
-```bash
-node dist/cli.js start
-# Dashboard running at http://localhost:4000
-```
-
-Point your AI at mastyf.ai instead of your tools directly:
-
-```bash
-node dist/cli.js onboard   # wraps your existing MCP config automatically
-node dist/cli.js doctor    # verify everything is connected
-```
-
+ 
+That's it. The proxy and dashboard are running at **http://localhost:4000** and Prometheus metrics at **http://localhost:9090/metrics**.
+ 
+> **Note:** The audit history database is stored in a named Docker volume (`mastyf-ai-data`) and persists across restarts. Only `down -v` wipes it.
+ 
+> **Security:** The dashboard has no auth by default (`DASHBOARD_AUTH_DISABLED=true`). Do not expose port 4000 publicly without enabling dashboard auth.
+ 
 ---
 
 ## Dashboard
