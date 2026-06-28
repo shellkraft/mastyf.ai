@@ -51,23 +51,6 @@ There is no perimeter. No enforcement. No audit trail. Until now.
 
 ---
 
-## How enforcement works
-
-Every tool call passes through three layers before it reaches your infrastructure.
-
-**Layer 1 - Pattern detection**
-Regex-based scanning for injection, dangerous paths, leaked secrets, shell commands, and encoding tricks. Runs in microseconds with no external dependencies.
-
-**Layer 2 - Schema validation**
-Rejects malformed payloads, oversized arguments, and JSON-RPC violations before they reach policy evaluation.
-
-**Layer 3 - Semantic review**
-An optional local LLM (Ollama) or cloud model evaluates borderline calls that pass pattern checks. Falls back to heuristics if no model is configured.
-
-Anything that fails is blocked. The tool never runs. Everything is logged.
-
----
-
 ## Quick start
  
 ### Docker
@@ -94,8 +77,9 @@ That's it. The proxy and dashboard are running at **http://localhost:4000** and 
 
 Full visibility into every action your AI takes.
 
-<!-- SCREENSHOT: Dashboard overview / main metrics view -->
-<!-- Replace this comment with a screenshot of the main dashboard -->
+<img width="1918" height="912" alt="20260628-1234-42 0110563" src="https://github.com/user-attachments/assets/f820017b-c83d-4a8d-9b29-0593597f6271" />
+
+---
 
 | Section | What you see |
 |---------|-------------|
@@ -105,16 +89,29 @@ Full visibility into every action your AI takes.
 | Threat Lab | AI-suggested attack tests, reviewed and approved before anything applies |
 | Cost | Token usage and cost estimates broken down per tool call |
 
-<!-- SCREENSHOT: Activity log / audit trail -->
-<!-- Replace this comment with a screenshot of the activity and audit log view -->
+
 
 > Do not expose port 4000 publicly without enabling dashboard auth. The default local dev config has `DASHBOARD_AUTH_DISABLED=true`.
 
-### Security Operations Dashboard
-<img width="1077" height="979" alt="image" src="https://github.com/user-attachments/assets/2a5a0104-1489-4f2c-843f-447fc8f6893e" />
+---
 
-### Real Time Agent Activity 
-<img width="1074" height="980" alt="image" src="https://github.com/user-attachments/assets/8e4cca48-c1fb-4f3a-aad3-dd771548f309" />
+## How enforcement works
+
+Every tool call passes through three layers before it reaches your infrastructure.
+
+**Layer 1 - Pattern detection**
+Regex-based scanning for injection, dangerous paths, leaked secrets, shell commands, and encoding tricks. Runs in microseconds with no external dependencies.
+
+**Layer 2 - Schema validation**
+Rejects malformed payloads, oversized arguments, and JSON-RPC violations before they reach policy evaluation.
+
+**Layer 3 - Semantic review**
+An optional local LLM (Ollama) or cloud model evaluates borderline calls that pass pattern checks. Falls back to heuristics if no model is configured.
+
+Anything that fails is blocked. The tool never runs. Everything is logged.
+
+<img width="1917" height="912" alt="image" src="https://github.com/user-attachments/assets/cc8976c5-1195-4025-adf7-116b4054482a" />
+
 
 ---
 
@@ -153,7 +150,7 @@ Roll out safely with three enforcement modes:
 
 Pre-built templates for HIPAA, PCI-DSS, GxP, and data residency are in [`policy-templates/`](policy-templates/).
 
-<img width="1017" height="698" alt="image" src="https://github.com/user-attachments/assets/cd1aa0a7-3b2c-4af4-b347-0bb4ebab2f61" />
+<img width="1917" height="912" alt="image" src="https://github.com/user-attachments/assets/40c0ad98-9d3f-4606-a832-5ff034349cfd" />
 
 ---
 
@@ -272,9 +269,7 @@ export MASTYF_AI_LLM_MODEL=qwen3:8b
 
 pnpm dashboard:proxy
 ```
-
-<!-- SCREENSHOT: Threat Lab review queue -->
-<!-- Replace this comment with a screenshot of the Threat Lab suggestion UI -->
+<img width="1917" height="912" alt="image" src="https://github.com/user-attachments/assets/a525e744-badf-48e2-98b0-c45c5a797f7d" />
 
 ---
 
