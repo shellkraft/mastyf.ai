@@ -52,25 +52,57 @@ There is no perimeter. No enforcement. No audit trail. Until now.
 ---
 
 ## Quick start
- 
-### Docker
- 
-The easiest way to run mastyf.ai on any platform (Windows, macOS, or Linux).
- 
-**Requirements:** [Docker Desktop](https://www.docker.com/products/docker-desktop/)
- 
+
+### Build from source
+
+Clone the repository and run the setup script.
+
+**Requirements:**
+- Git
+- Linux (the setup script installs Nix automatically if needed)
+
 ```bash
 git clone https://github.com/mastyf-ai/mastyf.ai.git
 cd mastyf.ai
-docker compose -f deploy/docker-compose.yml up -d --build
+chmod +x setup.sh
+./setup.sh
 ```
- 
-That's it. The proxy and dashboard are running at **http://localhost:4000** and Prometheus metrics at **http://localhost:9090/metrics**.
- 
-> **Note:** The audit history database is stored in a named Docker volume (`mastyf-ai-data`) and persists across restarts. Only `down -v` wipes it.
- 
-> **Security:** The dashboard has no auth by default (`DASHBOARD_AUTH_DISABLED=true`). Do not expose port 4000 publicly without enabling dashboard auth.
- 
+
+The setup script automatically:
+
+- Installs Nix (if required)
+- Enables Nix flakes
+- Creates the development environment
+- Installs all project dependencies
+- Rebuilds native packages
+- Builds the entire project
+- Adds a convenient `mastyf` shell alias
+
+Once installation completes, start the proxy and dashboard:
+
+```bash
+node dist/cli.js start
+```
+
+Or simply use the alias after opening a new terminal:
+
+```bash
+mastyf
+```
+
+The dashboard will be available at:
+
+- Dashboard: http://localhost:4000
+
+---
+
+### Test the installation
+
+If the dashboard is running, verify the HTTP bridge:
+
+```bash
+curl -X POST http://localhost:4000/mcp -H "Content-Type: application/json" -d '{"jsonrpc":"2.0","id":"1","method":"tools/list","params":{}}'
+```
 ---
 
 ## Dashboard
