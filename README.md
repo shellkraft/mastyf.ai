@@ -27,11 +27,14 @@
 
 ## The problem
 
-AI agents can read your files, push code, query your databases, and call external APIs. They do this autonomously, at speed, without asking permission.
+AI agents can read your files, push code, query databases, execute shell commands, and call external APIs. They do it autonomously, at machine speed.
 
-There is no perimeter. No enforcement. No audit trail. Until now.
+Traditional security controls weren't built for that.
 
-**mastyf.ai intercepts every tool call your AI makes, enforces your security policy, and blocks anything that violates it — before it executes.**
+Mastyf.ai acts as a perimeter security layer for AI. It intercepts every tool call, evaluates it against your security policies using multi-agent swarm analysis, and blocks malicious or unauthorized actions before they execute.
+
+Every decision is enforced, logged, and auditable.
+
 
 ---
 
