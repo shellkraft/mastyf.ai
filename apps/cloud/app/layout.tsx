@@ -28,7 +28,11 @@ export const metadata: Metadata = {
     title: `${SITE_NAME} — Know which MCP servers are safe to trust`,
     description:
       'Look up any npm MCP package for an instant 0–100 trust score. Free cloud console for policy and fleet management.',
-    images: ['/assets/security-swarm-architecture.png'],
+    images: ['/logo.png'],
+  },
+  twitter: {
+    card: 'summary',
+    images: ['/logo.png'],
   },
 };
 
