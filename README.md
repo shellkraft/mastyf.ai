@@ -17,11 +17,11 @@
 </p>
 
 <p align="center">
-  <a href="LICENSE"><img src="https://img.shields.io/badge/License-AGPL3.0-F59E0B?style=for-the-badge" alt="License"></a>
-  <a href="https://github.com/mastyf-ai/mastyf.ai/actions"><img src="https://img.shields.io/badge/CI-passing-22C55E?style=for-the-badge&logo=githubactions&logoColor=white" alt="CI"></a>
-  <a href="coverage/lcov-report/index.html"><img src="https://img.shields.io/badge/coverage-58%25-EAB308?style=for-the-badge" alt="Coverage"></a>
-  <img src="https://img.shields.io/badge/version-4.1.7-3B82F6?style=for-the-badge" alt="Version">
-  <img src="https://img.shields.io/npm/dm/@mastyf-ai/server?style=for-the-badge&logo=npm&label=downloads&color=CB3837" alt="Downloads">
+<a href="LICENSE"><img src="https://img.shields.io/badge/License-AGPL3.0-E11D48?style=for-the-badge" alt="License"></a>
+<a href="https://github.com/mastyf-ai/mastyf.ai/actions"><img src="https://img.shields.io/badge/CI-passing-22C55E?style=for-the-badge&logo=githubactions&logoColor=white" alt="CI"></a>
+<img src="https://img.shields.io/badge/version-4.1.7-2563EB?style=for-the-badge" alt="Version">
+<img src="https://img.shields.io/badge/TypeScript-5.x-7C3AED?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript">
+<img src="https://img.shields.io/npm/v/@mastyf_ai/server?style=for-the-badge&logo=npm&label=npm&color=CB3837" alt="npm">
 </p>
 
 ---
