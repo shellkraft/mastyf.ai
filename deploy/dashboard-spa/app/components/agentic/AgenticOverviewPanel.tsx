@@ -29,7 +29,7 @@ export function AgenticOverviewPanel({ refreshKey = 0 }: Props) {
   const { setWindow } = useDashboardWindow();
   const { data, loading, error, reload } = useAgenticDashboard(refreshKey, 10_000);
   const kpis = data?.kpis;
-  const unavailable = data?.available === false || !kpis;
+  const unavailable = data?.available === false || !kpis || !!data?.emptyReason;
 
   const trafficData = useMemo(
     () =>

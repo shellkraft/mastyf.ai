@@ -110,6 +110,7 @@ export class ComplianceEvidenceRunner {
     const policySignals = extractPolicySignals(policyPath);
     const activePolicies = policyTokens(policySignals);
     const auditCounts = await collectAuditCounts(this.db);
+    const hasCvEs = auditCounts.securityScans.some(s => s.cveCount > 0);
     const blockedIncidents = [
       'shell_injection',
       'path_traversal',
@@ -117,14 +118,9 @@ export class ComplianceEvidenceRunner {
       'credential_leak',
       auditCounts.blockedCalls > 0 ? 'incident' : '',
       auditCounts.blockedCalls > 0 ? 'respond' : '',
-      auditCounts.totalCalls > 0 ? 'event' : '',
-      auditCounts.totalCalls > 0 ? 'logging' : '',
-      auditCounts.totalCalls > 0 ? 'audit' : '',
-      auditCounts.securityScans.length > 0 ? 'vulnerability' : '',
-      auditCounts.securityScans.length > 0 ? 'cve' : '',
-      auditCounts.securityScans.length > 0 ? 'scan' : '',
-      activePolicies.some(p => /audit|log/i.test(p)) ? 'audit' : '',
-      activePolicies.some(p => /webhook|alert/i.test(p)) ? 'webhook' : '',
+      hasCvEs ? 'vulnerability' : '',
+      hasCvEs ? 'cve' : '',
+      hasCvEs ? 'scan' : '',
     ].filter(Boolean);
 
     const posture = this.mapper.evaluate(framework, activePolicies, blockedIncidents);

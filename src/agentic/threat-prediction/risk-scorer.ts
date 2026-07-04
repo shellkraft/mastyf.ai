@@ -87,8 +87,10 @@ export class RiskScorer {
       details: authScore > 50 ? 'Weak or missing authentication' : 'Strong authentication configured',
     });
 
-    // Compute weighted overall score
-    const overallScore = factors.reduce((sum, f) => sum + f.score * f.weight, 0);
+    // Compute weighted overall score (normalize so weights always sum to 1)
+    const totalWeight = factors.reduce((sum, f) => sum + f.weight, 0);
+    const norm = totalWeight > 0 ? 1 / totalWeight : 1;
+    const overallScore = factors.reduce((sum, f) => sum + f.score * f.weight * norm, 0);
 
     // Determine tier
     const tier = this.determineTier(overallScore);

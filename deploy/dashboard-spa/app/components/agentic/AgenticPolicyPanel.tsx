@@ -13,7 +13,7 @@ export function AgenticPolicyPanel({ refreshKey = 0 }: Props) {
   const { data, loading } = useAgenticDashboard(refreshKey);
   const pg = data?.policyGen;
   const frameworks = data?.compliance?.frameworks ?? [];
-  const unavailable = data?.available === false;
+  const unavailable = data?.available === false || !!data?.emptyReason;
 
   if (loading && !data) return <p className="hint p-6">Loading policy &amp; compliance…</p>;
 
