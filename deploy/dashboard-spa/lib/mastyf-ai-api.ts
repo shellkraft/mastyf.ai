@@ -3034,6 +3034,7 @@ export async function fetchCertificationRegistry(): Promise<{
   const res = await mastyfAiFetch('/api/certification/registry');
   if (!res.ok) return null;
   const body = (await res.json()) as {
+    available?: boolean;
     certifications?: Array<{
       serverName: string;
       packageName: string;
@@ -3044,9 +3045,11 @@ export async function fetchCertificationRegistry(): Promise<{
     }>;
     count?: number;
   };
+  if (body.available === false) return null;
+  if (!Array.isArray(body.certifications)) return null;
   return {
-    certifications: Array.isArray(body.certifications) ? body.certifications : [],
-    count: typeof body.count === 'number' ? body.count : body.certifications?.length ?? 0,
+    certifications: body.certifications,
+    count: typeof body.count === 'number' ? body.count : body.certifications.length,
   };
 }
 

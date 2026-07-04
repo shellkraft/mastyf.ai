@@ -30,7 +30,7 @@ export function AgenticOperationsPanel({ refreshKey = 0 }: Props) {
   }, [refreshKey, data?.generatedAt]);
 
   const stats = tasks?.stats ?? data?.kpis;
-  const unavailable = tasks?.available === false || data?.available === false || !stats;
+  const unavailable = tasks?.available === false || data?.available === false || !stats || !!data?.emptyReason;
 
   return (
     <div className="agentic-panel space-y-4">

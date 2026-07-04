@@ -11,8 +11,8 @@ const TOOL_GROUPS = [
       { id: 'policy-gen', label: 'Generate policy', path: '/api/agentic/policy-gen/generate' },
       { id: 'policy-start', label: 'Start observation', path: '/api/agentic/policy-gen/start-observation' },
       { id: 'policy-stop', label: 'Stop observation', path: '/api/agentic/policy-gen/stop-observation' },
-      { id: 'injection-scan', label: 'Run injection scan', path: '/api/agentic/prompt-injection/scan' },
-      { id: 'dlp-scan', label: 'Run response DLP', path: '/api/agentic/dlp/scan' },
+      { id: 'injection-scan', label: 'Test injection scan', path: '/api/agentic/prompt-injection/scan', body: { toolName: 'read_file', arguments: { content: 'test input' } } },
+      { id: 'dlp-scan', label: 'Test response DLP', path: '/api/agentic/dlp/scan', body: { responseText: 'sample response' } },
     ],
   },
   {
@@ -28,8 +28,8 @@ const TOOL_GROUPS = [
     title: 'Research (lab)',
     tools: [
       { id: 'red-team', label: 'Run red team', path: '/api/agentic/red-team/run' },
-      { id: 'collusion', label: 'Collusion scan', path: '/api/agentic/collusion/detect' },
-      { id: 'thompson', label: 'Evaluate agent trust', path: '/api/agentic/rl/thompson' },
+      { id: 'collusion', label: 'Collusion scan', path: '/api/agentic/collusion/detect', body: { serverName: 'filesystem', toolName: 'read_file' } },
+      { id: 'thompson', label: 'Evaluate agent trust', path: '/api/agentic/rl/thompson', body: { agentId: 'dashboard' } },
       { id: 'certify', label: 'Certify server', path: '/api/agentic/certification/certify', body: { serverName: 'filesystem', packageName: '@modelcontextprotocol/server-filesystem', version: 'latest', trustScore: 70, complianceScore: 50, cveFree: true, authMethod: 'none', transport: 'stdio', trustedPublisher: true } },
     ],
   },

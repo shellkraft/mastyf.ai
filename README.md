@@ -21,6 +21,7 @@
   <a href="https://github.com/mastyf-ai/mastyf.ai/actions"><img src="https://img.shields.io/badge/CI-passing-22C55E?style=for-the-badge&logo=githubactions&logoColor=white" alt="CI"></a>
   <a href="coverage/lcov-report/index.html"><img src="https://img.shields.io/badge/coverage-58%25-EAB308?style=for-the-badge" alt="Coverage"></a>
   <img src="https://img.shields.io/badge/version-4.1.7-3B82F6?style=for-the-badge" alt="Version">
+  <img src="https://img.shields.io/npm/dm/@mastyf-ai/server?style=for-the-badge&logo=npm&label=downloads&color=CB3837" alt="Downloads">
 </p>
 
 ---
