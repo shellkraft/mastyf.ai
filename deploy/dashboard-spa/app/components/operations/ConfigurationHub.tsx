@@ -17,14 +17,22 @@ import {
   type SetupCloudStatus,
   type AuthStatus,
 } from '@/lib/mastyf-ai-api';
-import { hasPermission } from '@/lib/dashboard-roles';
+import { hasPermission, can } from '@/lib/dashboard-roles';
 import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { Badge } from '../ui/Badge';
 import { EmptyState } from '../ui/EmptyState';
 import { PlatformIntegrationsPanel } from './PlatformIntegrationsPanel';
+import { UsersPanel } from '../UsersPanel';
+import { GroupsPanel } from '../GroupsPanel';
+import { RolesPanel } from '../RolesPanel';
+import { SecuritySettingsPanel } from '../SecuritySettingsPanel';
+import { AuditLogPanel } from '../AuditLogPanel';
+import { ProfilePanel } from '../ProfilePanel';
+import { AccessDenied } from '../AccessDenied';
+import { WorkspaceSubNav } from '../ui/WorkspaceSubNav';
 
-type SettingsView = 'general' | 'tenants' | 'integrations' | 'admin';
+type SettingsView = 'general' | 'tenants' | 'integrations' | 'admin' | 'users' | 'groups' | 'roles' | 'security' | 'audit-log' | 'profile';
 
 type Props = {
   view: SettingsView;
@@ -45,7 +53,22 @@ type ChecklistItem = {
   icon: typeof Activity;
 };
 
-export function ConfigurationHub({ view, roles, tenantLocked = false, refreshKey = 0, onAction, onGoToAgentFlow }: Props) {
+const SETTINGS_TABS: Array<{ id: SettingsView; label: string }> = [
+  { id: 'general', label: 'General' },
+  { id: 'tenants', label: 'Tenants' },
+  { id: 'integrations', label: 'Integrations' },
+  { id: 'admin', label: 'Administration' },
+  { id: 'users', label: 'Users' },
+  { id: 'groups', label: 'Groups' },
+  { id: 'roles', label: 'Roles' },
+  { id: 'security', label: 'Security Settings' },
+  { id: 'audit-log', label: 'Audit Log' },
+  { id: 'profile', label: 'My Profile' },
+];
+
+const RBAC_VIEWS: SettingsView[] = ['admin', 'users', 'groups', 'roles', 'security', 'audit-log', 'profile'];
+
+export function ConfigurationHub({ view, onViewChange, roles, tenantLocked = false, refreshKey = 0, onAction, onGoToAgentFlow }: Props) {
   const isAdmin = hasPermission(roles, 'admin');
 
   const [setupStatus, setSetupStatus] = useState<SetupStatusResponse | null>(null);
@@ -69,6 +92,7 @@ export function ConfigurationHub({ view, roles, tenantLocked = false, refreshKey
   const [trail, setTrail] = useState<unknown[]>([]);
   const [logs, setLogs] = useState<string[]>([]);
   const [authStatus, setAuthStatus] = useState<AuthStatus | null>(null);
+  const [authLoading, setAuthLoading] = useState(false);
 
   const loadAll = useCallback(async () => {
     setLoading(true);
@@ -100,16 +124,24 @@ export function ConfigurationHub({ view, roles, tenantLocked = false, refreshKey
     }
   }, []);
 
+  const loadAuthStatus = useCallback(async () => {
+    setAuthLoading(true);
+    try {
+      const auth = await fetchAuthStatus();
+      setAuthStatus(auth);
+    } finally {
+      setAuthLoading(false);
+    }
+  }, []);
+
   const loadAdmin = useCallback(async () => {
     if (isAdmin) {
-      const [entries, logLines, auth] = await Promise.all([
+      const [entries, logLines] = await Promise.all([
         fetchAdminAuditTrail(),
         fetchLogs(),
-        fetchAuthStatus(),
       ]);
       setTrail(entries);
       setLogs(logLines);
-      setAuthStatus(auth);
     }
   }, [isAdmin]);
 
@@ -117,6 +149,10 @@ export function ConfigurationHub({ view, roles, tenantLocked = false, refreshKey
     void loadAll();
     void loadTenant();
   }, [loadAll, loadTenant]);
+
+  useEffect(() => {
+    if (RBAC_VIEWS.includes(view)) void loadAuthStatus();
+  }, [view, loadAuthStatus]);
 
   useEffect(() => {
     if (view === 'admin') void loadAdmin();
@@ -184,6 +220,7 @@ export function ConfigurationHub({ view, roles, tenantLocked = false, refreshKey
 
   return (
     <div className="configuration-hub">
+      <WorkspaceSubNav tabs={SETTINGS_TABS} active={view} onChange={onViewChange} />
       {view === 'general' && (
         <div className="configuration-general">
           <Card title="Setup Progress" subtitle="Guided setup checklist">
@@ -523,6 +560,48 @@ export function ConfigurationHub({ view, roles, tenantLocked = false, refreshKey
           )}
         </div>
       )}
+
+      {view === 'users' && (
+        authLoading || !authStatus
+          ? <p className="text-sm text-muted">Loading permissions...</p>
+          : can(authStatus?.permissions, 'users.read')
+          ? <UsersPanel canManage={can(authStatus?.permissions, 'users.manage')} />
+          : <AccessDenied message="You need the users.read permission to view this page." />
+      )}
+
+      {view === 'groups' && (
+        authLoading || !authStatus
+          ? <p className="text-sm text-muted">Loading permissions...</p>
+          : can(authStatus?.permissions, 'groups.read')
+          ? <GroupsPanel canManage={can(authStatus?.permissions, 'groups.manage')} />
+          : <AccessDenied message="You need the groups.read permission to view this page." />
+      )}
+
+      {view === 'roles' && (
+        authLoading || !authStatus
+          ? <p className="text-sm text-muted">Loading permissions...</p>
+          : can(authStatus?.permissions, 'roles.read')
+          ? <RolesPanel canManage={can(authStatus?.permissions, 'roles.manage')} />
+          : <AccessDenied message="You need the roles.read permission to view this page." />
+      )}
+
+      {view === 'security' && (
+        authLoading || !authStatus
+          ? <p className="text-sm text-muted">Loading permissions...</p>
+          : can(authStatus?.permissions, 'settings.read')
+          ? <SecuritySettingsPanel canManage={can(authStatus?.permissions, 'settings.manage')} />
+          : <AccessDenied message="You need the settings.read permission to view this page." />
+      )}
+
+      {view === 'audit-log' && (
+        authLoading || !authStatus
+          ? <p className="text-sm text-muted">Loading permissions...</p>
+          : can(authStatus?.permissions, 'audit.read')
+          ? <AuditLogPanel />
+          : <AccessDenied message="You need the audit.read permission to view this page." />
+      )}
+
+      {view === 'profile' && <ProfilePanel />}
     </div>
   );
 }
