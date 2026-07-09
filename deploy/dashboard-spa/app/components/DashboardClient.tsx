@@ -357,7 +357,7 @@ export function DashboardClient() {
               {workspace === 'settings' && (
                 <ConfigurationHub
                   view={settingsView}
-                  onViewChange={(v) => { setSettingsView(v); syncNavToUrl({ workspace: 'settings', view: v }); }}
+                  onViewChange={(v) => { setSettingsView(v); setActiveView(v); syncNavToUrl({ workspace: 'settings', view: v }); }}
                   roles={roles}
                   tenantLocked={!!authStatus?.tenantLocked}
                   refreshKey={refreshTick}

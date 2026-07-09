@@ -470,6 +470,7 @@ export type AuthStatus = {
   authConfigured: boolean;
   setupRequired?: boolean;
   identity?: string;
+  dashboardRole?: string;
   roles?: string[];
   permissions?: string[];
   sessionTenantId?: string;
@@ -548,7 +549,7 @@ export async function mastyfAiFetch(
 export async function fetchAuthStatus(): Promise<AuthStatus> {
   const res = await mastyfAiFetch('/api/auth/status');
   if (!res.ok) {
-    return { authenticated: false, authRequired: true, authConfigured: false };
+    return { authenticated: false, authRequired: true, authConfigured: false, setupRequired: false, dashboardRole: 'viewer', permissions: [] };
   }
   return (await res.json()) as AuthStatus;
 }

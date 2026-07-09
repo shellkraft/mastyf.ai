@@ -1,6 +1,12 @@
 import { getAuthDb } from './db/auth-db.js';
 import { DEFAULT_PASSWORD_POLICY } from './password.js';
-import type { AuthSettings } from './rbac-types.js';
+import type { AuthSettings, LockoutPolicy, PasswordPolicy } from './rbac-types.js';
+
+/** Allows partial updates to the nested policy objects, not just top-level fields. */
+export type AuthSettingsPatch = Partial<Omit<AuthSettings, 'passwordPolicy' | 'lockoutPolicy'>> & {
+  passwordPolicy?: Partial<PasswordPolicy>;
+  lockoutPolicy?: Partial<LockoutPolicy>;
+};
 
 export const DEFAULT_AUTH_SETTINGS: AuthSettings = {
   passwordPolicy: DEFAULT_PASSWORD_POLICY,
@@ -35,7 +41,7 @@ export const authSettingsStore = {
     return settings;
   },
 
-  async update(tenantId: string, partial: Partial<AuthSettings>, updatedBy?: string | null): Promise<AuthSettings> {
+  async update(tenantId: string, partial: AuthSettingsPatch, updatedBy?: string | null): Promise<AuthSettings> {
     const db = await getAuthDb();
     const current = await this.get(tenantId);
     const merged: AuthSettings = {

@@ -30,6 +30,7 @@ import { SecuritySettingsPanel } from '../SecuritySettingsPanel';
 import { AuditLogPanel } from '../AuditLogPanel';
 import { ProfilePanel } from '../ProfilePanel';
 import { AccessDenied } from '../AccessDenied';
+import { WorkspaceSubNav } from '../ui/WorkspaceSubNav';
 
 type SettingsView = 'general' | 'tenants' | 'integrations' | 'admin' | 'users' | 'groups' | 'roles' | 'security' | 'audit-log' | 'profile';
 
@@ -52,7 +53,22 @@ type ChecklistItem = {
   icon: typeof Activity;
 };
 
-export function ConfigurationHub({ view, roles, tenantLocked = false, refreshKey = 0, onAction, onGoToAgentFlow }: Props) {
+const SETTINGS_TABS: Array<{ id: SettingsView; label: string }> = [
+  { id: 'general', label: 'General' },
+  { id: 'tenants', label: 'Tenants' },
+  { id: 'integrations', label: 'Integrations' },
+  { id: 'admin', label: 'Administration' },
+  { id: 'users', label: 'Users' },
+  { id: 'groups', label: 'Groups' },
+  { id: 'roles', label: 'Roles' },
+  { id: 'security', label: 'Security Settings' },
+  { id: 'audit-log', label: 'Audit Log' },
+  { id: 'profile', label: 'My Profile' },
+];
+
+const RBAC_VIEWS: SettingsView[] = ['admin', 'users', 'groups', 'roles', 'security', 'audit-log', 'profile'];
+
+export function ConfigurationHub({ view, onViewChange, roles, tenantLocked = false, refreshKey = 0, onAction, onGoToAgentFlow }: Props) {
   const isAdmin = hasPermission(roles, 'admin');
 
   const [setupStatus, setSetupStatus] = useState<SetupStatusResponse | null>(null);
@@ -76,6 +92,7 @@ export function ConfigurationHub({ view, roles, tenantLocked = false, refreshKey
   const [trail, setTrail] = useState<unknown[]>([]);
   const [logs, setLogs] = useState<string[]>([]);
   const [authStatus, setAuthStatus] = useState<AuthStatus | null>(null);
+  const [authLoading, setAuthLoading] = useState(false);
 
   const loadAll = useCallback(async () => {
     setLoading(true);
@@ -107,16 +124,24 @@ export function ConfigurationHub({ view, roles, tenantLocked = false, refreshKey
     }
   }, []);
 
+  const loadAuthStatus = useCallback(async () => {
+    setAuthLoading(true);
+    try {
+      const auth = await fetchAuthStatus();
+      setAuthStatus(auth);
+    } finally {
+      setAuthLoading(false);
+    }
+  }, []);
+
   const loadAdmin = useCallback(async () => {
     if (isAdmin) {
-      const [entries, logLines, auth] = await Promise.all([
+      const [entries, logLines] = await Promise.all([
         fetchAdminAuditTrail(),
         fetchLogs(),
-        fetchAuthStatus(),
       ]);
       setTrail(entries);
       setLogs(logLines);
-      setAuthStatus(auth);
     }
   }, [isAdmin]);
 
@@ -125,10 +150,12 @@ export function ConfigurationHub({ view, roles, tenantLocked = false, refreshKey
     void loadTenant();
   }, [loadAll, loadTenant]);
 
-  const RBAC_VIEWS: SettingsView[] = ['admin', 'users', 'groups', 'roles', 'security', 'audit-log', 'profile'];
+  useEffect(() => {
+    if (RBAC_VIEWS.includes(view)) void loadAuthStatus();
+  }, [view, loadAuthStatus]);
 
   useEffect(() => {
-    if (RBAC_VIEWS.includes(view)) void loadAdmin();
+    if (view === 'admin') void loadAdmin();
   }, [view, loadAdmin]);
 
   const onSaveConfig = async () => {
@@ -193,6 +220,7 @@ export function ConfigurationHub({ view, roles, tenantLocked = false, refreshKey
 
   return (
     <div className="configuration-hub">
+      <WorkspaceSubNav tabs={SETTINGS_TABS} active={view} onChange={onViewChange} />
       {view === 'general' && (
         <div className="configuration-general">
           <Card title="Setup Progress" subtitle="Guided setup checklist">
@@ -534,31 +562,41 @@ export function ConfigurationHub({ view, roles, tenantLocked = false, refreshKey
       )}
 
       {view === 'users' && (
-        can(authStatus?.permissions, 'users.read')
+        authLoading || !authStatus
+          ? <p className="text-sm text-muted">Loading permissions...</p>
+          : can(authStatus?.permissions, 'users.read')
           ? <UsersPanel canManage={can(authStatus?.permissions, 'users.manage')} />
           : <AccessDenied message="You need the users.read permission to view this page." />
       )}
 
       {view === 'groups' && (
-        can(authStatus?.permissions, 'groups.read')
+        authLoading || !authStatus
+          ? <p className="text-sm text-muted">Loading permissions...</p>
+          : can(authStatus?.permissions, 'groups.read')
           ? <GroupsPanel canManage={can(authStatus?.permissions, 'groups.manage')} />
           : <AccessDenied message="You need the groups.read permission to view this page." />
       )}
 
       {view === 'roles' && (
-        can(authStatus?.permissions, 'roles.read')
+        authLoading || !authStatus
+          ? <p className="text-sm text-muted">Loading permissions...</p>
+          : can(authStatus?.permissions, 'roles.read')
           ? <RolesPanel canManage={can(authStatus?.permissions, 'roles.manage')} />
           : <AccessDenied message="You need the roles.read permission to view this page." />
       )}
 
       {view === 'security' && (
-        can(authStatus?.permissions, 'settings.read')
+        authLoading || !authStatus
+          ? <p className="text-sm text-muted">Loading permissions...</p>
+          : can(authStatus?.permissions, 'settings.read')
           ? <SecuritySettingsPanel canManage={can(authStatus?.permissions, 'settings.manage')} />
           : <AccessDenied message="You need the settings.read permission to view this page." />
       )}
 
       {view === 'audit-log' && (
-        can(authStatus?.permissions, 'audit.read')
+        authLoading || !authStatus
+          ? <p className="text-sm text-muted">Loading permissions...</p>
+          : can(authStatus?.permissions, 'audit.read')
           ? <AuditLogPanel />
           : <AccessDenied message="You need the audit.read permission to view this page." />
       )}

@@ -671,6 +671,9 @@ export async function startDashboardServer(
         setupRequired: false,
         authRequired: false,
         authConfigured: false,
+        dashboardRole: 'admin',
+        roles: ['admin'],
+        permissions: [],
         openCore: true,
       });
     });

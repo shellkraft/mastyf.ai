@@ -209,6 +209,7 @@ export function registerAuthRoutes(app: Express): void {
         authConfigured: true,
         setupRequired,
         identity: req.authUser.username,
+        dashboardRole: req.authUser.dashboardRoles[0] ?? 'viewer',
         roles: req.authUser.dashboardRoles,
         permissions: req.authUser.permissions,
         sessionTenantId: req.authUser.tenantId,
@@ -221,6 +222,8 @@ export function registerAuthRoutes(app: Express): void {
       authRequired: true,
       authConfigured: true,
       setupRequired,
+      dashboardRole: 'viewer',
+      permissions: [],
       openCore: false,
     });
   });
@@ -425,7 +428,7 @@ export function registerAuthRoutes(app: Express): void {
   });
 
   app.delete('/api/auth/sessions/:id', requireAuth, async (req: Request, res: Response) => {
-    const session = await sessionStore.findById(req.params.id);
+    const session = await sessionStore.findById(String(req.params.id));
     const isOwn = session && session.userId === req.authUser!.id;
     const canRevokeAny = req.authUser!.permissions.includes('sessions.revoke');
     if (!session || (!isOwn && !canRevokeAny)) {
@@ -465,7 +468,7 @@ export function registerAuthRoutes(app: Express): void {
   });
 
   app.get('/api/users/:id', requireAuth, requirePermission('users.read'), async (req: Request, res: Response) => {
-    const user = await userStore.findById(req.params.id, req.authUser!.tenantId);
+    const user = await userStore.findById(String(req.params.id), req.authUser!.tenantId);
     if (!user) {
       res.status(404).json({ error: 'User not found' });
       return;
@@ -540,7 +543,7 @@ export function registerAuthRoutes(app: Express): void {
         return;
       }
       const tenantId = req.authUser!.tenantId;
-      const user = await userStore.update(req.params.id, parsed.data, tenantId);
+      const user = await userStore.update(String(req.params.id), parsed.data, tenantId);
       if (!user) {
         res.status(404).json({ error: 'User not found' });
         return;
@@ -564,16 +567,16 @@ export function registerAuthRoutes(app: Express): void {
   });
 
   app.delete('/api/users/:id', requireAuth, requirePermission('users.manage'), async (req: Request, res: Response) => {
-    if (req.params.id === req.authUser!.id) {
+    if (String(req.params.id) === req.authUser!.id) {
       res.status(400).json({ error: 'You cannot delete your own account' });
       return;
     }
-    const deleted = await userStore.delete(req.params.id, req.authUser!.tenantId);
+    const deleted = await userStore.delete(String(req.params.id), req.authUser!.tenantId);
     if (!deleted) {
       res.status(404).json({ error: 'User not found' });
       return;
     }
-    await sessionStore.revokeAllForUser(req.params.id);
+    await sessionStore.revokeAllForUser(String(req.params.id));
     await auditLog.write({
       tenantId: req.authUser!.tenantId,
       userId: req.authUser!.id,
@@ -582,7 +585,7 @@ export function registerAuthRoutes(app: Express): void {
       result: 'success',
       ipAddress: clientIp(req),
       userAgent: req.header('user-agent') || null,
-      metadata: { targetUserId: req.params.id },
+      metadata: { targetUserId: String(req.params.id) },
     });
     res.json({ success: true });
   });
@@ -598,7 +601,7 @@ export function registerAuthRoutes(app: Express): void {
           res.status(400).json({ error: 'Invalid input' });
           return;
         }
-        const user = await userStore.findById(req.params.id, req.authUser!.tenantId);
+        const user = await userStore.findById(String(req.params.id), req.authUser!.tenantId);
         if (!user) {
           res.status(404).json({ error: 'User not found' });
           return;
@@ -645,7 +648,7 @@ export function registerAuthRoutes(app: Express): void {
         res.status(400).json({ error: 'status must be one of active, disabled, locked' });
         return;
       }
-      const user = await userStore.findById(req.params.id, req.authUser!.tenantId);
+      const user = await userStore.findById(String(req.params.id), req.authUser!.tenantId);
       if (!user) {
         res.status(404).json({ error: 'User not found' });
         return;
@@ -680,7 +683,7 @@ export function registerAuthRoutes(app: Express): void {
     requireAuth,
     requirePermission('users.manage'),
     async (req: Request, res: Response) => {
-      const user = await userStore.findById(req.params.id, req.authUser!.tenantId);
+      const user = await userStore.findById(String(req.params.id), req.authUser!.tenantId);
       if (!user) {
         res.status(404).json({ error: 'User not found' });
         return;
@@ -738,7 +741,7 @@ export function registerAuthRoutes(app: Express): void {
         res.status(400).json({ error: 'Invalid input', details: parsed.error.flatten() });
         return;
       }
-      const group = await groupStore.update(req.params.id, parsed.data, req.authUser!.tenantId);
+      const group = await groupStore.update(String(req.params.id), parsed.data, req.authUser!.tenantId);
       if (!group) {
         res.status(404).json({ error: 'Group not found' });
         return;
@@ -761,7 +764,7 @@ export function registerAuthRoutes(app: Express): void {
   });
 
   app.delete('/api/groups/:id', requireAuth, requirePermission('groups.manage'), async (req: Request, res: Response) => {
-    const deleted = await groupStore.delete(req.params.id, req.authUser!.tenantId);
+    const deleted = await groupStore.delete(String(req.params.id), req.authUser!.tenantId);
     if (!deleted) {
       res.status(404).json({ error: 'Group not found' });
       return;
@@ -774,7 +777,7 @@ export function registerAuthRoutes(app: Express): void {
       result: 'success',
       ipAddress: clientIp(req),
       userAgent: req.header('user-agent') || null,
-      metadata: { groupId: req.params.id },
+      metadata: { groupId: String(req.params.id) },
     });
     res.json({ success: true });
   });
@@ -820,7 +823,7 @@ export function registerAuthRoutes(app: Express): void {
         res.status(400).json({ error: 'Invalid input', details: parsed.error.flatten() });
         return;
       }
-      const role = await roleStore.update(req.params.id, parsed.data, req.authUser!.tenantId);
+      const role = await roleStore.update(String(req.params.id), parsed.data, req.authUser!.tenantId);
       if (!role) {
         res.status(404).json({ error: 'Role not found' });
         return;
@@ -843,7 +846,7 @@ export function registerAuthRoutes(app: Express): void {
 
   app.delete('/api/roles/:id', requireAuth, requirePermission('roles.manage'), async (req: Request, res: Response) => {
     try {
-      const deleted = await roleStore.delete(req.params.id, req.authUser!.tenantId);
+      const deleted = await roleStore.delete(String(req.params.id), req.authUser!.tenantId);
       if (!deleted) {
         res.status(404).json({ error: 'Role not found' });
         return;
@@ -856,7 +859,7 @@ export function registerAuthRoutes(app: Express): void {
         result: 'success',
         ipAddress: clientIp(req),
         userAgent: req.header('user-agent') || null,
-        metadata: { roleId: req.params.id },
+        metadata: { roleId: String(req.params.id) },
       });
       res.json({ success: true });
     } catch (err) {
